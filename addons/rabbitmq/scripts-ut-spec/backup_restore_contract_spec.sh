@@ -267,6 +267,57 @@ DATASAFED
     The stderr should include "must be one pod segment or <target-name>/<target-pod-name>"
   End
 
+  It "fails closed when the explicit target pod name is not a DNS subdomain"
+    When call bash -c '
+      set -Eeuo pipefail
+      restore_script="$1"
+      DATA_DIR="$(mktemp -d)" \
+        DP_TARGET_POD_NAME="../other-target" \
+        DP_TARGET_RELATIVE_PATH="rabbitmq/rmq-br-5400-rabbitmq-2" \
+        DP_BACKUP_BASE_PATH="/backup/base" \
+        bash "${restore_script}"
+    ' _ "${restore_script}"
+    The status should be failure
+    The stderr should include "restore target pod name must be a valid DNS subdomain"
+  End
+
+  It "fails closed when either relative-path identity segment is invalid"
+    When call bash -c '
+      set -Eeuo pipefail
+      restore_script="$1"
+      for relative_path in "../rmq-br-5400-rabbitmq-2" "rabbitmq/.." "rabbitmq/RMQ-0"; do
+        if DATA_DIR="$(mktemp -d)" \
+          DP_TARGET_RELATIVE_PATH="${relative_path}" \
+          DP_BACKUP_BASE_PATH="/backup/base" \
+          bash "${restore_script}" >/dev/null 2>&1; then
+          echo "unexpected success for ${relative_path}" >&2
+          exit 1
+        fi
+      done
+    ' _ "${restore_script}"
+    The status should be success
+  End
+
+  It "fails closed before backup when the target pod identity is invalid"
+    When call env \
+      DP_TARGET_POD_NAME="../other-target" \
+      DP_BACKUP_NAME="valid-backup" \
+      DP_BACKUP_BASE_PATH="/backup/base" \
+      bash "${backup_script}"
+    The status should be failure
+    The stderr should include "DP_TARGET_POD_NAME must be a valid DNS subdomain"
+  End
+
+  It "fails closed before backup when the backup identity is invalid"
+    When call env \
+      DP_TARGET_POD_NAME="rmq-br-0" \
+      DP_BACKUP_NAME="../other-backup" \
+      DP_BACKUP_BASE_PATH="/backup/base" \
+      bash "${backup_script}"
+    The status should be failure
+    The stderr should include "DP_BACKUP_NAME must be a valid DNS subdomain"
+  End
+
   It "fails closed when neither DP_TARGET_POD_NAME nor DP_TARGET_RELATIVE_PATH is set"
     When call bash -c '
       set -Eeuo pipefail

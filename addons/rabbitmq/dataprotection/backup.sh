@@ -3,8 +3,33 @@ set -Eeuo pipefail
 
 DATA_DIR="${DATA_DIR:-/var/lib/rabbitmq}"
 TARGET_POD_NAME="${DP_TARGET_POD_NAME:?DP_TARGET_POD_NAME is required}"
+BACKUP_NAME="${DP_BACKUP_NAME:?DP_BACKUP_NAME is required}"
+
+validate_dns_subdomain() {
+  local value="$1"
+  local label=""
+  local -a labels=()
+
+  [ "${#value}" -le 253 ] || return 1
+  [[ "${value}" =~ ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$ ]] || return 1
+  IFS='.' read -r -a labels <<< "${value}"
+  for label in "${labels[@]}"; do
+    [ "${#label}" -le 63 ] || return 1
+    [[ "${label}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || return 1
+  done
+}
+
+if ! validate_dns_subdomain "${TARGET_POD_NAME}"; then
+  echo "ERROR: DP_TARGET_POD_NAME must be a valid DNS subdomain" >&2
+  exit 1
+fi
+if ! validate_dns_subdomain "${BACKUP_NAME}"; then
+  echo "ERROR: DP_BACKUP_NAME must be a valid DNS subdomain" >&2
+  exit 1
+fi
+
 ARCHIVE_NAME="${TARGET_POD_NAME}.tar.zst"
-MARKER_BASE_PATH="$(dirname "${DP_BACKUP_BASE_PATH:?DP_BACKUP_BASE_PATH is required}")/.rabbitmq-physical-br/${DP_BACKUP_NAME:?DP_BACKUP_NAME is required}"
+MARKER_BASE_PATH="$(dirname "${DP_BACKUP_BASE_PATH:?DP_BACKUP_BASE_PATH is required}")/.rabbitmq-physical-br/${BACKUP_NAME}"
 MARKER_TIMEOUT_SECONDS="${RABBITMQ_BACKUP_BARRIER_TIMEOUT_SECONDS:-600}"
 APP_STOPPED=false
 CLUSTER_NODES=()
