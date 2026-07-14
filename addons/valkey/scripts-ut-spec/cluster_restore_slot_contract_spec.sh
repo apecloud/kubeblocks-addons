@@ -611,21 +611,21 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     The contents of file "${VALKEY_DATA_DIR}/.kb-cluster-restore-state" should include "phase=formed"
   End
 
-  It "removes the local restore marker only after positive cluster formation"
+  It "does not bypass local restore validation when the cluster is already formed"
     export VALKEY_DATA_DIR="${restore_tmp}"
     : > "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare"
     : > "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared"
     validate_manage_env() { return 0; }
     cluster_formed_from_self() { return 0; }
-    restore_cluster_from_meta() { echo RESTORE-PATH; return 99; }
+    restore_cluster_from_meta() { echo RESTORE-VALIDATION-REACHED; return 1; }
     When run post_provision
-    The status should be success
-    The file "${restore_meta}" should not be exist
-    The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare" should not be exist
-    The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared" should not be exist
-    The contents of file "${VALKEY_DATA_DIR}/.kb-cluster-restore-state" should include "phase=formed"
-    The stdout should include "committed local cluster restore formed state"
-    The stdout should not include "RESTORE-PATH"
+    The status should be failure
+    The file "${restore_meta}" should be exist
+    The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepare" should be exist
+    The file "${VALKEY_DATA_DIR}/.kb-restored-replica-offline-prepared" should be exist
+    The contents of file "${VALKEY_DATA_DIR}/.kb-cluster-restore-state" should include "phase=prepared"
+    The stdout should include "RESTORE-VALIDATION-REACHED"
+    The stdout should not include "committed local cluster restore formed state"
   End
 
 

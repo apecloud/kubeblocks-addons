@@ -1565,20 +1565,23 @@ post_provision() {
     echo "local restore duties already complete — allowing the next pod action to proceed."
     exit 0
   fi
-  if cluster_formed_from_self; then
-    if [ -e "${restore_state}" ] || [ -e "${restore_meta}" ] || \
-       [ -e "${restore_prepare}" ] || [ -e "${restore_prepared}" ]; then
-      mark_local_cluster_restore_formed "${restore_meta}" || exit 1
-    fi
-    echo "cluster already formed (state ok, 16384 slots) — nothing to do."
-    exit 0
-  fi
+  # A live cluster can be globally formed while this pod still has uncommitted
+  # restore duties. Validate its archived ownership or replica preparation
+  # before the generic formed fast path is allowed to remove cluster-meta.
   if [ -e "${restore_meta}" ]; then
     [ -f "${restore_meta}" ] || {
       classify restore-state no "cluster-meta is not a safe regular file"
       exit 1
     }
     restore_cluster_from_meta "${restore_meta}" || exit 1
+    exit 0
+  fi
+  if cluster_formed_from_self; then
+    if [ -e "${restore_state}" ] || [ -e "${restore_meta}" ] || \
+       [ -e "${restore_prepare}" ] || [ -e "${restore_prepared}" ]; then
+      mark_local_cluster_restore_formed "${restore_meta}" || exit 1
+    fi
+    echo "cluster already formed (state ok, 16384 slots) — nothing to do."
     exit 0
   fi
   if [ -e "${restore_state}" ] || [ -e "${restore_prepare}" ] || [ -e "${restore_prepared}" ]; then
