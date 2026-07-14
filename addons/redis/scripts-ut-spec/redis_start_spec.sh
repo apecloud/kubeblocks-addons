@@ -1006,5 +1006,64 @@ Describe "Redis Start Bash Script Tests"
         The variable primary should eq "redis-0.redis-headless.default"
       End
     End
+
+    Context "when querying peer PVCs through the in-cluster API"
+      setup() {
+        export REDIS_KUBECTL_FIXTURE="./redis-kubectl-fixture"
+        export REDIS_KUBECTL_BIN="$REDIS_KUBECTL_FIXTURE/kubectl"
+        export REDIS_SERVICE_ACCOUNT_DIR="$REDIS_KUBECTL_FIXTURE/serviceaccount"
+        export REDIS_KUBECTL_CAPTURE="$REDIS_KUBECTL_FIXTURE/capture"
+        export KUBERNETES_SERVICE_HOST="10.96.0.1"
+        export KUBERNETES_SERVICE_PORT_HTTPS="443"
+        export CLUSTER_NAMESPACE="default"
+        mkdir -p "$REDIS_SERVICE_ACCOUNT_DIR" "$REDIS_KUBECTL_CAPTURE"
+        printf 'fixture-token\n' > "$REDIS_SERVICE_ACCOUNT_DIR/token"
+        printf 'fixture-ca\n' > "$REDIS_SERVICE_ACCOUNT_DIR/ca.crt"
+        printf '%s\n' \
+          '#!/bin/sh' \
+          'cp "$2" "$REDIS_KUBECTL_CAPTURE/kubeconfig"' \
+          'printf "%s\\n" "$@" > "$REDIS_KUBECTL_CAPTURE/args"' \
+          '[ "${REDIS_KUBECTL_FAIL:-false}" = true ] && exit 7' \
+          'printf "%s" "${REDIS_KUBECTL_OUTPUT:-}"' > "$REDIS_KUBECTL_BIN"
+        chmod +x "$REDIS_KUBECTL_BIN"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset REDIS_KUBECTL_FIXTURE REDIS_KUBECTL_BIN REDIS_SERVICE_ACCOUNT_DIR
+        unset REDIS_KUBECTL_CAPTURE REDIS_KUBECTL_FAIL REDIS_KUBECTL_OUTPUT
+        unset KUBERNETES_SERVICE_HOST KUBERNETES_SERVICE_PORT_HTTPS CLUSTER_NAMESPACE
+        rm -rf ./redis-kubectl-fixture
+      }
+      After "un_setup"
+
+      It "binds kubectl to the API server and service account without exposing the token in argv"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        When call list_pvcs_for_redis_pod redis-1
+        The status should be success
+        The contents of file "$REDIS_KUBECTL_CAPTURE/kubeconfig" should include "server: https://10.96.0.1:443"
+        The contents of file "$REDIS_KUBECTL_CAPTURE/kubeconfig" should include "certificate-authority: $REDIS_SERVICE_ACCOUNT_DIR/ca.crt"
+        The contents of file "$REDIS_KUBECTL_CAPTURE/kubeconfig" should include "token: fixture-token"
+        The contents of file "$REDIS_KUBECTL_CAPTURE/args" should include "persistentvolumeclaims"
+        The contents of file "$REDIS_KUBECTL_CAPTURE/args" should include "apps.kubeblocks.io/pod-name=redis-1"
+        The contents of file "$REDIS_KUBECTL_CAPTURE/args" should not include "fixture-token"
+      End
+
+      It "fails closed before kubectl when the service account token is unavailable"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        rm "$REDIS_SERVICE_ACCOUNT_DIR/token"
+        When call list_pvcs_for_redis_pod redis-1
+        The status should be failure
+        The stderr should include "service account token is unavailable"
+        The path "$REDIS_KUBECTL_CAPTURE/args" should not be exist
+      End
+
+      It "propagates kubectl API and authorization failures"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        export REDIS_KUBECTL_FAIL=true
+        When call list_pvcs_for_redis_pod redis-1
+        The status should eq 7
+      End
+    End
   End
 End

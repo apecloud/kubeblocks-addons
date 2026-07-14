@@ -333,14 +333,83 @@ wait_before_redis_role_rescan() {
   sleep 1
 }
 
-list_pvcs_for_redis_pod() {
+list_pvcs_for_redis_pod() (
   local redis_pod_name="$1"
-  /tools/kubectl get persistentvolumeclaims \
+  local kubectl_bin="${REDIS_KUBECTL_BIN:-/tools/kubectl}"
+  local service_account_dir="${REDIS_SERVICE_ACCOUNT_DIR:-/var/run/secrets/kubernetes.io/serviceaccount}"
+  local api_host="${KUBERNETES_SERVICE_HOST:-}"
+  local api_port="${KUBERNETES_SERVICE_PORT_HTTPS:-${KUBERNETES_SERVICE_PORT:-}}"
+  local token_file="${service_account_dir}/token"
+  local ca_file="${service_account_dir}/ca.crt"
+  local kubeconfig
+  local token
+
+  # Keep the service-account token out of xtrace and process arguments.
+  set +x
+  if [ -z "$api_host" ] || [ -z "$api_port" ]; then
+    echo "Error: Kubernetes API service host or port is unavailable." >&2
+    return 1
+  fi
+  if [ -z "${CLUSTER_NAMESPACE:-}" ]; then
+    echo "Error: CLUSTER_NAMESPACE is unavailable for peer PVC verification." >&2
+    return 1
+  fi
+  if [ ! -x "$kubectl_bin" ]; then
+    echo "Error: kubectl is unavailable or not executable: $kubectl_bin" >&2
+    return 1
+  fi
+  if [ ! -r "$token_file" ]; then
+    echo "Error: Kubernetes service account token is unavailable." >&2
+    return 1
+  fi
+  if [ ! -r "$ca_file" ]; then
+    echo "Error: Kubernetes service account CA is unavailable." >&2
+    return 1
+  fi
+  token=$(cat "$token_file") || {
+    echo "Error: failed to read Kubernetes service account token." >&2
+    return 1
+  }
+  if [ -z "$token" ]; then
+    echo "Error: Kubernetes service account token is empty." >&2
+    return 1
+  fi
+  if [[ "$api_host" == *:* && "$api_host" != \[*\] ]]; then
+    api_host="[$api_host]"
+  fi
+  kubeconfig=$(mktemp "${TMPDIR:-/tmp}/redis-bootstrap-kubeconfig.XXXXXX") || {
+    echo "Error: failed to create temporary kubeconfig." >&2
+    return 1
+  }
+  trap 'rm -f "$kubeconfig"' EXIT
+  chmod 600 "$kubeconfig" || return 1
+  printf '%s\n' \
+    'apiVersion: v1' \
+    'kind: Config' \
+    'clusters:' \
+    '- name: in-cluster' \
+    '  cluster:' \
+    "    server: https://${api_host}:${api_port}" \
+    "    certificate-authority: ${ca_file}" \
+    'users:' \
+    '- name: service-account' \
+    '  user:' \
+    "    token: ${token}" \
+    'contexts:' \
+    '- name: in-cluster' \
+    '  context:' \
+    '    cluster: in-cluster' \
+    '    user: service-account' \
+    "    namespace: ${CLUSTER_NAMESPACE}" \
+    'current-context: in-cluster' > "$kubeconfig" || return 1
+  token=""
+
+  "$kubectl_bin" --kubeconfig "$kubeconfig" get persistentvolumeclaims \
     --namespace "$CLUSTER_NAMESPACE" \
     --selector "apps.kubeblocks.io/pod-name=$redis_pod_name" \
     --output name \
     --request-timeout=3s
-}
+)
 
 clear_bootstrap_authorization_after_topology_discovery() {
   local data_dir="${REDIS_DATA_DIR:-/data}"
