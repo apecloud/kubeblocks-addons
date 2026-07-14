@@ -1,0 +1,361 @@
+# shellcheck shell=bash
+
+Describe "replication full-primary acceptance user fence"
+  entrypoint_file() {
+    printf "%s/addons/mariadb/scripts/replication-entrypoint.sh" "${SHELLSPEC_CWD:?}"
+  }
+
+  extract_function() {
+    function_name="$1"
+    awk -v function_name="${function_name}" '
+      $0 ~ "^[[:space:]]*" function_name "\\(\\)[[:space:]]*\\{" { inside = 1 }
+      inside {
+        print
+        line = $0
+        opens = gsub(/\{/, "", line)
+        closes = gsub(/\}/, "", line)
+        depth += opens - closes
+        if (depth == 0) exit
+      }
+      END { if (!inside) exit 1 }
+    ' "$(entrypoint_file)"
+  }
+
+  run_accept_case() {
+    mode="$1"
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    trace="${work_dir}/trace"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function user_facing_root_read_only_bypass_is_absent
+      extract_function read_only_internal_admin_gate_is_active
+      extract_function set_internal_admin_gate_read_only
+      extract_function primary_write_gates_ready
+      extract_function rollback_fenced_primary_accept
+      extract_function set_primary_read_write
+      cat <<'HARNESS'
+if [ "${MODE}" = "entry-not-fenced" ]; then
+  GLOBAL_READ_ONLY=0
+else
+  GLOBAL_READ_ONLY=1
+fi
+LOCAL_ROOT_LOCKED=1
+REMOTE_ROOT_LOCKED=1
+REQUIRED_GATES_PASSED=0
+
+trace_event() {
+  printf '%s\n' "$1" >> "${TRACE_FILE}"
+}
+ordinary_business_can_write() {
+  [ "${GLOBAL_READ_ONLY}" -eq 0 ]
+}
+local_root_can_write() {
+  [ "${GLOBAL_READ_ONLY}" -eq 0 ] && [ "${LOCAL_ROOT_LOCKED}" -eq 0 ]
+}
+remote_root_can_write() {
+  [ "${GLOBAL_READ_ONLY}" -eq 0 ] && [ "${REMOTE_ROOT_LOCKED}" -eq 0 ]
+}
+assert_all_user_writers_rejected() {
+  ! ordinary_business_can_write && ! local_root_can_write && ! remote_root_can_write
+}
+sample_pre_gate_user_inserts() {
+  if ordinary_business_can_write; then
+    trace_event ordinary-business-insert-committed-before-required-gates
+  else
+    trace_event ordinary-business-insert-rejected-before-required-gates
+  fi
+  if local_root_can_write; then
+    trace_event local-root-insert-committed-before-required-gates
+  else
+    trace_event local-root-insert-rejected-before-required-gates
+  fi
+  if remote_root_can_write; then
+    trace_event remote-root-insert-committed-before-required-gates
+  else
+    trace_event remote-root-insert-rejected-before-required-gates
+  fi
+}
+read_only_is_fail_closed() {
+  [ "${GLOBAL_READ_ONLY}" -eq 1 ]
+}
+read_only_value() {
+  if [ "${GLOBAL_READ_ONLY}" -eq 1 ]; then
+    printf '%s\n' ON
+  else
+    printf '%s\n' OFF
+  fi
+}
+sql_quote() {
+  printf '%s\n' "$1"
+}
+primary_internal_root_write_ready() {
+  trace_event required-gate-begin
+  sample_pre_gate_user_inserts
+  if ! assert_all_user_writers_rejected; then
+    trace_event user-write-open-before-required-gates
+    return 1
+  fi
+  if [ "${MODE}" = "gate-failure" ]; then
+    trace_event required-gate-failed
+    return 1
+  fi
+  REQUIRED_GATES_PASSED=1
+  trace_event required-gate-pass
+}
+query_local_syncer_role() {
+  if [ "${MODE}" = "role-drift" ]; then
+    printf '%s\n' secondary
+  else
+    printf '%s\n' primary
+  fi
+}
+local_sql() {
+  case "$*" in
+    *"SHOW GRANTS FOR"*)
+      case "${MODE}" in
+        bypass-failure) printf '%s\n' 'GRANT READ_ONLY ADMIN ON *.* TO root' ;;
+        bypass-super) printf '%s\n' 'GRANT SUPER ON *.* TO root' ;;
+        bypass-all) printf '%s\n' 'GRANT ALL PRIVILEGES ON *.* TO root' ;;
+        *) printf '%s\n' 'GRANT SELECT ON *.* TO root' ;;
+      esac
+      ;;
+    *"SET GLOBAL read_only = ON;"*|*"SET GLOBAL read_only = 1;"*)
+      if [ "${MODE}" = "gate-mode-failure" ]; then
+        trace_event internal-admin-gate-read-only-failed
+        return 1
+      fi
+      GLOBAL_READ_ONLY=1
+      trace_event internal-admin-gate-read-only-on
+      ;;
+    *"SET GLOBAL read_only = 0;"*|*"SET GLOBAL read_only = 'OFF';"*)
+      if [ "${MODE}" = "open-failure" ]; then
+        trace_event global-read-only-open-failed
+        return 1
+      fi
+      [ "${REQUIRED_GATES_PASSED}" -eq 1 ] || trace_event global-open-before-required-gates
+      GLOBAL_READ_ONLY=0
+      trace_event global-read-only-off
+      ;;
+  esac
+}
+unlock_local_root_writes() {
+  [ "${REQUIRED_GATES_PASSED}" -eq 1 ] || trace_event local-root-open-before-required-gates
+  if [ "${MODE}" = "local-unlock-failure" ]; then
+    trace_event local-root-unlock-failed
+    return 1
+  fi
+  LOCAL_ROOT_LOCKED=0
+  trace_event local-root-unlocked
+}
+unlock_remote_root_writes() {
+  [ "${REQUIRED_GATES_PASSED}" -eq 1 ] || trace_event remote-root-open-before-required-gates
+  if [ "${MODE}" = "remote-unlock-failure" ] || [ "${MODE}" = "rollback-failure" ]; then
+    trace_event remote-root-unlock-failed
+    return 1
+  fi
+  REMOTE_ROOT_LOCKED=0
+  trace_event remote-root-unlocked
+}
+lock_local_root_writes() {
+  LOCAL_ROOT_LOCKED=1
+  trace_event local-root-locked
+}
+lock_remote_root_writes() {
+  if [ "${MODE}" = "rollback-failure" ]; then
+    trace_event remote-root-relock-failed
+    return 1
+  fi
+  REMOTE_ROOT_LOCKED=1
+  trace_event remote-root-locked
+}
+set_fail_closed_read_only() {
+  GLOBAL_READ_ONLY=1
+  trace_event global-read-only-on
+}
+mark_replication_pending() {
+  rm -f "${DATA_DIR}/.primary-read-write-ready"
+  trace_event replication-pending
+}
+touch() {
+  if [ "${MODE}" = "ready-publish-failure" ] && [ "$1" = "${DATA_DIR}/.primary-read-write-ready" ]; then
+    trace_event ready-publish-failed
+    return 1
+  fi
+  command touch "$@"
+}
+prestop_watchdog_log() {
+  trace_event "log:$*"
+}
+
+INTERNAL_LOCAL=(local_sql)
+MARIADB_ROOT_USER=root
+MARIADB_ROOT_HOST=%
+[ "${MODE}" = "prestop" ] && command touch "${DATA_DIR}/.prestop-fence-started"
+set_primary_read_write "test-${MODE}" "require-dcs-primary"
+accept_rc=$?
+[ -f "${DATA_DIR}/.primary-read-write-ready" ] && trace_event ready-published
+if ordinary_business_can_write; then trace_event ordinary-business-writable; else trace_event ordinary-business-rejected; fi
+if local_root_can_write; then trace_event local-root-writable; else trace_event local-root-rejected; fi
+if remote_root_can_write; then trace_event remote-root-writable; else trace_event remote-root-rejected; fi
+cat "${TRACE_FILE}"
+
+case "${MODE}" in
+  success)
+    [ "${accept_rc}" -eq 0 ]
+    gate_line="$(grep -n '^required-gate-pass$' "${TRACE_FILE}" | cut -d: -f1)"
+    global_line="$(grep -n '^global-read-only-off$' "${TRACE_FILE}" | cut -d: -f1)"
+    local_line="$(grep -n '^local-root-unlocked$' "${TRACE_FILE}" | cut -d: -f1)"
+    remote_line="$(grep -n '^remote-root-unlocked$' "${TRACE_FILE}" | cut -d: -f1)"
+    ready_line="$(grep -n '^ready-published$' "${TRACE_FILE}" | cut -d: -f1)"
+    [ "${gate_line}" -lt "${global_line}" ]
+    [ "${gate_line}" -lt "${local_line}" ]
+    [ "${gate_line}" -lt "${remote_line}" ]
+    [ "${global_line}" -lt "${ready_line}" ]
+    [ "${local_line}" -lt "${ready_line}" ]
+    [ "${remote_line}" -lt "${ready_line}" ]
+    ! grep -q 'open-before-required-gates' "${TRACE_FILE}"
+    grep -q '^ordinary-business-writable$' "${TRACE_FILE}"
+    grep -q '^local-root-writable$' "${TRACE_FILE}"
+    grep -q '^remote-root-writable$' "${TRACE_FILE}"
+    ;;
+  prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure)
+    [ "${accept_rc}" -eq 2 ]
+    grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
+    grep -q '^local-root-rejected$' "${TRACE_FILE}"
+    grep -q '^remote-root-rejected$' "${TRACE_FILE}"
+    ! grep -q '^ready-published$' "${TRACE_FILE}"
+    ;;
+  role-drift)
+    [ "${accept_rc}" -eq 1 ]
+    ! grep -q '^global-read-only-off$' "${TRACE_FILE}"
+    grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
+    ! grep -q '^ready-published$' "${TRACE_FILE}"
+    ;;
+  rollback-failure)
+    [ "${accept_rc}" -eq 3 ]
+    grep -q 'fail_closed=false' "${TRACE_FILE}"
+    ! grep -q '^ready-published$' "${TRACE_FILE}"
+    ;;
+esac
+HARNESS
+    } > "${harness}"
+
+    TRACE_FILE="${trace}" DATA_DIR="${data_dir}" MODE="${mode}" bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  It "keeps ordinary, local-root, and remote-root writers fenced until all required gates pass"
+    When call run_accept_case success
+    The status should be success
+    The output should include "required-gate-pass"
+    The output should include "ready-published"
+    The output should not include "open-before-required-gates"
+  End
+
+  It "keeps every user writer fenced when an internal required gate fails"
+    When call run_accept_case gate-failure
+    The status should be success
+    The output should include "required-gate-failed"
+    The output should not include "global-read-only-off"
+  End
+
+  It "refuses the internal-admin gate when a user-facing root has read-only bypass"
+    When call run_accept_case bypass-failure
+    The status should be success
+    The output should include "reason=admin-bypass-present"
+    The output should not include "global-read-only-off"
+    The output should not include "ready-published"
+  End
+
+  It "refuses the internal-admin gate when a user-facing root retains SUPER"
+    When call run_accept_case bypass-super
+    The status should be success
+    The output should include "reason=admin-bypass-present"
+    The output should not include "global-read-only-off"
+  End
+
+  It "refuses the internal-admin gate when a user-facing root retains ALL PRIVILEGES"
+    When call run_accept_case bypass-all
+    The status should be success
+    The output should include "reason=admin-bypass-present"
+    The output should not include "global-read-only-off"
+  End
+
+  It "fails closed when the server cannot enter internal-admin-only gate mode"
+    When call run_accept_case gate-mode-failure
+    The status should be success
+    The output should include "internal-admin-gate-read-only-failed"
+    The output should include "global-read-only-on"
+    The output should not include "ready-published"
+  End
+
+  It "repairs and rejects an entry state that is not fail-closed before running a gate"
+    When call run_accept_case entry-not-fenced
+    The status should be success
+    The output should include "global-read-only-on"
+    The output should not include "required-gate-begin"
+    The output should not include "ready-published"
+  End
+
+  It "keeps every user writer fenced when preStop interrupts acceptance"
+    When call run_accept_case prestop
+    The status should be success
+    The output should include "global-read-only-on"
+    The output should not include "required-gate-begin"
+    The output should not include "ready-published"
+  End
+
+  It "keeps the fence held when DCS leadership drifts after the internal gate"
+    When call run_accept_case role-drift
+    The status should be success
+    The output should include "ordinary-business-rejected"
+    The output should not include "global-read-only-off"
+  End
+
+  It "rolls all user writers back to fenced when remote-root unlock fails after global open"
+    When call run_accept_case remote-unlock-failure
+    The status should be success
+    The output should include "global-read-only-on"
+    The output should include "ordinary-business-rejected"
+    The output should include "local-root-rejected"
+    The output should include "remote-root-rejected"
+  End
+
+  It "rolls all user writers back when global read-only cannot be opened"
+    When call run_accept_case open-failure
+    The status should be success
+    The output should include "global-read-only-open-failed"
+    The output should include "global-read-only-on"
+    The output should not include "ready-published"
+  End
+
+  It "rolls all user writers back when local-root unlock fails after global open"
+    When call run_accept_case local-unlock-failure
+    The status should be success
+    The output should include "local-root-unlock-failed"
+    The output should include "global-read-only-on"
+    The output should not include "ready-published"
+  End
+
+  It "rolls all user writers back when ready publication fails"
+    When call run_accept_case ready-publish-failure
+    The status should be success
+    The output should include "ready-publish-failed"
+    The output should include "global-read-only-on"
+    The output should not include "ready-published"
+  End
+
+  It "surfaces rollback failure instead of publishing a false fail-closed state"
+    When call run_accept_case rollback-failure
+    The status should be success
+    The output should include "remote-root-relock-failed"
+    The output should include "fail_closed=false"
+    The output should not include "ready-published"
+  End
+End

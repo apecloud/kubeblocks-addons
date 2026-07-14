@@ -428,100 +428,154 @@ primary_internal_root_write_ready() {
   prestop_watchdog_log "primary-internal-root-write-ready label=${label} rc=1"
   return 1
 }
-primary_write_gates_ready() {
-  # alpha.110 P0a URGENT Direction E (Jack 15:26 + Helen TL 15:34 sealed +
-  # Edward 15:51 + Rocco 15:53 + Lily 15:54 4-cosign LGTM):
-  # Skip primary_local_root_write_ready syncerctl-writecheck step on
-  # reconcile-repair-begin path. Root cause: chart-side
-  # reconcile_sql_listener_for_syncer_primary_once fires
-  # `runtime-primary-listener-reconcile-repair-begin` every ~3s while
-  # syncer-role=primary but chart markers OUT-OF-SYNC; each iteration's
-  # writecheck INSERTs into kb_health_check generating 1 binlog event
-  # per fire → cumulative orphan events on local domain → post-
-  # reconfigure switchover GTID divergence → alpha.60 fail-closed →
-  # HA permanent refuse follow → cluster stuck Updating. Round 1c-G
-  # 2nd mdb-async-10271 saw 18 events accumulate in 2.5min loop fire
-  # window.
-  #
-  # alpha.110 P0a URGENT Direction E preserves alpha.99 Helen
-  # 2026-05-25 design intent (syncer's WriteCheck deliberately writes
-  # to binlog for replication health verification): happy-path
-  # writecheck still runs on normal primary promotion paths (line
-  # 1942/2134/2218/2383 callers use labels without "-no-writecheck"
-  # suffix). Only the reconcile-repair-begin path passes label with
-  # "-no-writecheck" suffix (per Rocco 15:53 stricter suffix-anchored
-  # pattern), triggering this case to skip the writecheck step while
-  # preserving primary_internal_root_write_ready (kb_addon_write_probe
-  # addon-owned + explicit SET sql_log_bin=0 per line 596-602 — NOT
-  # orphan event source) + marker emit + role probe + read_only +
-  # role transition logic in set_primary_read_write happy path.
-  local label="${1:-primary-write-gates-ready}"
-  case "${label}" in
-    *-no-writecheck)
-      prestop_watchdog_log "primary-write-gates-ready label=${label} reason=skip-writecheck-repair-path"
-      primary_internal_root_write_ready "${label}" || return 1
-      return 0
-      ;;
+user_facing_root_read_only_bypass_is_absent() {
+  local label="${1:-user-root-bypass-check}"
+  local user host grants seen=""
+  user="$(sql_quote "${MARIADB_ROOT_USER}")"
+  for host in localhost 127.0.0.1 "${MARIADB_ROOT_HOST:-%}"; do
+    case " ${seen} " in
+      *" ${host} "*) continue ;;
+    esac
+    seen="${seen} ${host}"
+    host="$(sql_quote "${host}")"
+    if ! grants="$("${INTERNAL_LOCAL[@]}" -e "SHOW GRANTS FOR '${user}'@'${host}';" 2>/dev/null)"; then
+      prestop_watchdog_log "user-root-bypass-check label=${label} host=${host} rc=1 reason=show-grants-failed"
+      return 1
+    fi
+    if printf '%s\n' "${grants}" | grep -Eiq 'READ_ONLY ADMIN|(^|[,[:space:]])SUPER([,[:space:]]|$)|ALL PRIVILEGES ON [`]?\*\.[`]?\*'; then
+      prestop_watchdog_log "user-root-bypass-check label=${label} host=${host} rc=1 reason=admin-bypass-present"
+      return 1
+    fi
+  done
+  prestop_watchdog_log "user-root-bypass-check label=${label} rc=0"
+  return 0
+}
+read_only_internal_admin_gate_is_active() {
+  local value
+  value="$(read_only_value || true)"
+  case "${value}" in
+    1|ON|NO_LOCK) return 0 ;;
   esac
-  primary_local_root_write_ready "${label}" || return 1
+  return 1
+}
+set_internal_admin_gate_read_only() {
+  local label="${1:-internal-admin-gate}"
+  # MariaDB NO_LOCK_NO_ADMIN also blocks READ_ONLY ADMIN, so the internal
+  # write probe cannot run in the strongest replica fence.  After proving all
+  # user-facing root accounts lack SUPER/READ_ONLY ADMIN/ALL, narrow the server
+  # to ON: ordinary and user-root writers remain fenced while only the
+  # addon-owned internal admin can execute the pre-open probe.
+  if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = ON;" 2>/dev/null && \
+     read_only_internal_admin_gate_is_active; then
+    prestop_watchdog_log "internal-admin-gate-read-only label=${label} value=ON rc=0 user-writers=fenced"
+    return 0
+  fi
+  if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null && \
+     read_only_internal_admin_gate_is_active; then
+    prestop_watchdog_log "internal-admin-gate-read-only label=${label} value=1 rc=0 user-writers=fenced"
+    return 0
+  fi
+  prestop_watchdog_log "internal-admin-gate-read-only label=${label} rc=1"
+  return 1
+}
+primary_write_gates_ready() {
+  # r9 role-race contract: every required acceptance gate must run while
+  # global read_only and both user-facing root fences are still closed.
+  # syncerctl writecheck is intentionally strict under read_only and therefore
+  # cannot be a pre-open gate.  Use the addon-owned internal admin probe with
+  # sql_log_bin=0 instead; it validates the local write plane without exposing
+  # ordinary users or generating an orphan replication event.
+  local label="${1:-primary-write-gates-ready}"
+  prestop_watchdog_log "primary-write-gates-ready label=${label} mode=internal-admin-pre-open"
+  user_facing_root_read_only_bypass_is_absent "${label}" || return 1
+  set_internal_admin_gate_read_only "${label}" || return 1
   primary_internal_root_write_ready "${label}" || return 1
 }
-fail_primary_read_write_gate() {
-  local label="$1"
-  local reason="$2"
-  rm -f ${DATA_DIR}/.primary-read-write-ready
-  # tier=fail-path-defensive: this is the failure handler for an
-  # already-failed primary write gate; defensive locking is
-  # best-effort observability. The caller has already concluded
-  # the gate failed and is not about to publish ready/role.
-  lock_remote_root_writes "${label}-${reason}" || true # tier=fail-path-defensive
-  set_fail_closed_read_only "${label}-${reason}" || true # tier=fail-path-defensive
-  lock_local_root_writes "${label}-${reason}" || true # tier=fail-path-defensive
-  prestop_watchdog_log "primary-read-write ${reason} rc=1"
-}
 set_primary_read_write() {
-  # alpha.110 P0a URGENT Direction E (Jack 15:26 + 4-cosign sealed):
-  # accept label parameter so callers can pass "-no-writecheck" suffix
-  # through to primary_write_gates_ready for repair-path skip.
-  # Default label preserves alpha.109 and earlier behavior.
   local label="${1:-primary-read-write}"
+  local role_guard="${2:-no-dcs-check}"
+  local role
+
+  # Do not let any user-facing writer open before all required gates pass.
+  # LOCAL is the user-facing root and remains fenced here; INTERNAL_LOCAL is
+  # the addon-owned admin used for both the pre-open probe and global toggle.
+  mark_replication_pending
   if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
-    prestop_watchdog_log "skip-primary-read-write reason=prestop-fence-started"
-    mark_replication_pending
-    return 1
+    if rollback_fenced_primary_accept "${label}" "prestop-fence-started"; then
+      return 2
+    fi
+    return 3
+  fi
+  if ! read_only_is_fail_closed; then
+    if rollback_fenced_primary_accept "${label}" "entry-not-fail-closed"; then
+      return 2
+    fi
+    return 3
+  fi
+  if ! primary_write_gates_ready "${label}"; then
+    if rollback_fenced_primary_accept "${label}" "internal-write-gate"; then
+      return 2
+    fi
+    return 3
+  fi
+
+  if [ "${role_guard}" = "require-dcs-primary" ]; then
+    role="$(query_local_syncer_role || true)"
+    if [ "${role}" != "primary" ]; then
+      mark_replication_pending
+      prestop_watchdog_log "primary-read-write-defer label=${label} rc=1 reason=dcs-primary-changed global-read-only=held"
+      return 1
+    fi
+  fi
+
+  if ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null && \
+     ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
+    if rollback_fenced_primary_accept "${label}" "read-only-open"; then
+      return 2
+    fi
+    return 3
   fi
   if ! unlock_local_root_writes "${label}"; then
-    rm -f ${DATA_DIR}/.primary-read-write-ready
-    prestop_watchdog_log "primary-read-write local-root-unlock rc=1 label=${label}"
-    return 1
+    if rollback_fenced_primary_accept "${label}" "local-root-unlock"; then
+      return 2
+    fi
+    return 3
   fi
   if ! unlock_remote_root_writes "${label}"; then
-    fail_primary_read_write_gate "${label}" "remote-root-unlock"
+    if rollback_fenced_primary_accept "${label}" "remote-root-unlock"; then
+      return 2
+    fi
+    return 3
+  fi
+  if ! rm -f "${DATA_DIR}/.remote-root-fence-role" || \
+     ! touch "${DATA_DIR}/.primary-read-write-ready"; then
+    if rollback_fenced_primary_accept "${label}" "ready-publish"; then
+      return 2
+    fi
+    return 3
+  fi
+  prestop_watchdog_log "primary-read-write label=${label} rc=0 required-gates=passed user-writers=open ready=published"
+  return 0
+}
+rollback_fenced_primary_accept() {
+  local label="${1:-fenced-primary-accept}"
+  local reason="${2:-unknown}"
+  local rc=0
+
+  # This rollback is part of the required acceptance contract.  Do not hide
+  # failures: a stale ready marker or any user-writer fence that cannot be
+  # restored means the caller must report fail_closed=false.
+  mark_replication_pending
+  [ ! -f "${DATA_DIR}/.primary-read-write-ready" ] || rc=1
+  set_fail_closed_read_only "${label}-${reason}" || rc=1
+  lock_remote_root_writes "${label}-${reason}" || rc=1
+  lock_local_root_writes "${label}-${reason}" || rc=1
+  if [ "${rc}" -ne 0 ]; then
+    prestop_watchdog_log "fenced-primary-accept-rollback label=${label} reason=${reason} rc=1 fail_closed=false"
     return 1
   fi
-  if "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
-    if ! primary_write_gates_ready "${label}"; then
-      fail_primary_read_write_gate "${label}" "write-gate"
-      return 1
-    fi
-    rm -f ${DATA_DIR}/.remote-root-fence-role
-    touch ${DATA_DIR}/.primary-read-write-ready
-    prestop_watchdog_log "primary-read-write rc=0 label=${label}"
-    return 0
-  fi
-  if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
-    if ! primary_write_gates_ready "${label}"; then
-      fail_primary_read_write_gate "${label}" "write-gate"
-      return 1
-    fi
-    rm -f ${DATA_DIR}/.remote-root-fence-role
-    touch ${DATA_DIR}/.primary-read-write-ready
-    prestop_watchdog_log "primary-read-write rc=0 label=${label}"
-    return 0
-  fi
-  fail_primary_read_write_gate "${label}" "read-only-open"
-  prestop_watchdog_log "primary-read-write rc=1 label=${label}"
-  return 1
+  prestop_watchdog_log "fenced-primary-accept-rollback label=${label} reason=${reason} rc=0 fail_closed=true"
+  return 0
 }
 mark_replication_pending() {
   rm -f ${DATA_DIR}/.replication-ready
@@ -559,7 +613,7 @@ replica_lock_abort_if_syncer_primary() {
   return 0
 }
 accept_syncer_primary_promotion_from_replica_path() {
-  local label="${1:-replica-path}" role
+  local label="${1:-replica-path}" role accept_rc
   role="$(query_local_syncer_role || true)"
   [ "${role}" = "primary" ] || return 1
   prestop_watchdog_log "replica-path-accept-dcs-primary label=${label} action=accept-primary-promotion"
@@ -579,9 +633,24 @@ accept_syncer_primary_promotion_from_replica_path() {
     return 1
   fi
   prestop_watchdog_log "replica-path-primary-accept-begin label=${label} global-read-only=held"
-  if expose_sql_listener_for_primary_role "syncer-primary-during-${label}"; then
+  expose_sql_listener_for_primary_role "syncer-primary-during-${label}" "fenced-promotion"
+  accept_rc=$?
+  if [ "${accept_rc}" -eq 0 ]; then
     mark_replication_ready
     return 0
+  fi
+  if [ "${accept_rc}" -eq 3 ]; then
+    prestop_watchdog_log "replica-path-primary-accept-rollback label=${label} rc=1 reason=full-primary-accept-failed fail_closed=false"
+    return 3
+  fi
+  if [ "${accept_rc}" -eq 2 ]; then
+    prestop_watchdog_log "replica-path-primary-accept-rollback label=${label} rc=0 reason=full-primary-accept-failed global-read-only=on"
+    return 2
+  fi
+  role="$(query_local_syncer_role || true)"
+  if [ "${role}" != "primary" ]; then
+    prestop_watchdog_log "replica-path-primary-accept-defer label=${label} rc=1 reason=dcs-primary-changed global-read-only=held"
+    return 1
   fi
   if ! set_fail_closed_read_only "${label}-full-primary-accept-failed"; then
     prestop_watchdog_log "replica-path-primary-accept-rollback label=${label} rc=1 reason=full-primary-accept-failed fail_closed=false"
@@ -1855,6 +1924,8 @@ reset_semisync_master_ack_receiver_if_enabled() {
 }
 expose_sql_listener_for_primary_role() {
   local label="$1"
+  local accept_mode="${2:-standard}"
+  local write_rc
   if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
     prestop_watchdog_log "skip-sql-listener-primary-expose label=${label} reason=prestop-fence-started"
     mark_replication_pending
@@ -1875,14 +1946,21 @@ expose_sql_listener_for_primary_role() {
       prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=existing-listener-semisync-role-shape"
       return 1
     fi
-    if set_primary_read_write "${label}"; then
+    if [ "${accept_mode}" = "fenced-promotion" ]; then
+      set_primary_read_write "${label}" "require-dcs-primary"
+      write_rc=$?
+    else
+      set_primary_read_write "${label}"
+      write_rc=$?
+    fi
+    if [ "${write_rc}" -eq 0 ]; then
       touch ${DATA_DIR}/.sql-listener-ready
       prestop_watchdog_log "sql-listener-primary-existing-reconciled label=${label}"
       return 0
     fi
     mark_replication_pending
     prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=existing-listener-local-write-not-ready"
-    return 1
+    return "${write_rc}"
   fi
   mark_replication_pending
   prestop_watchdog_log "sql-listener-primary-expose-begin label=${label}"
@@ -1899,10 +1977,17 @@ expose_sql_listener_for_primary_role() {
     prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=fresh-listener-semisync-role-shape"
     return 1
   fi
-  if ! set_primary_read_write "${label}"; then
+  if [ "${accept_mode}" = "fenced-promotion" ]; then
+    set_primary_read_write "${label}" "require-dcs-primary"
+    write_rc=$?
+  else
+    set_primary_read_write "${label}"
+    write_rc=$?
+  fi
+  if [ "${write_rc}" -ne 0 ]; then
     mark_replication_pending
-    prestop_watchdog_log "sql-listener-primary-expose-failed label=${label}"
-    return 1
+    prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} rc=${write_rc}"
+    return "${write_rc}"
   fi
   touch ${DATA_DIR}/.sql-listener-ready
   prestop_watchdog_log "sql-listener-primary-expose-complete label=${label}"
@@ -1955,17 +2040,10 @@ reconcile_sql_listener_for_syncer_primary_once() {
       return 0
     fi
     prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=primary-role-state-drift role=${role}"
-    # alpha.110 P0a URGENT Direction E: pass "-no-writecheck" suffix
-    # to skip primary_local_root_write_ready syncerctl-writecheck in
-    # the repair path. Each loop iteration's writecheck INSERTs into
-    # kb_health_check generating 1 binlog event per fire; in Round
-    # 1c-G 2nd this fired 18 times in 2.5min on mdb-async-10271 pod-0
-    # accumulating 18 orphan events that caused post-reconfigure
-    # switchover GTID divergence + alpha.60 fail-closed. Skipping the
-    # writecheck here removes the orphan event source while preserving
-    # primary_internal_root_write_ready (kb_addon_write_probe addon-
-    # owned with explicit SET sql_log_bin=0) + marker emit + role
-    # probe + read_only management + lock/unlock logic.
+    # Keep the historical suffix for log continuity.  The r9 acceptance
+    # contract now uses the internal-admin, sql_log_bin=0 pre-open gate on all
+    # paths, so neither this repair loop nor a normal promotion emits the old
+    # public syncerctl writecheck event before user writers are opened.
     expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener-no-writecheck" || return 1
     mark_replication_ready
     prestop_watchdog_log "runtime-primary-listener-reconcile-repair-complete role=${role}"

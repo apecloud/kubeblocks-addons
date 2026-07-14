@@ -239,38 +239,18 @@ Describe "cmpd-replication.yaml rejoin fence template"
     The status should be success
   End
 
-  It "probes local root table writes before publishing a primary as writable"
-    When call function_contains "primary_write_gates_ready" "primary_local_root_write_ready"
-    The status should be success
-  End
-
-  It "probes internal root table writes before publishing a primary as writable"
+  It "uses only the internal admin probe before publishing a primary as writable"
     When call function_contains "primary_write_gates_ready" "primary_internal_root_write_ready"
     The status should be success
   End
 
-  It "requires local root unlock before publishing a primary as writable"
-    When call function_contains "set_primary_read_write" "primary-read-write local-root-unlock rc=1"
-    The status should be success
-  End
-
-  It "requires remote root unlock before publishing a primary as writable"
-    When call function_contains "set_primary_read_write" "fail_primary_read_write_gate \"\${label}\" \"remote-root-unlock\""
-    The status should be success
-  End
-
-  It "records failed primary write gates before publishing a primary as writable"
-    When call function_contains "fail_primary_read_write_gate" "primary-read-write \${reason} rc=1"
-    The status should be success
-  End
-
-  It "re-fences remote root when a primary write gate fails"
-    When call function_contains "fail_primary_read_write_gate" "lock_remote_root_writes"
+  It "uses required rollback rather than best-effort failure handling"
+    When call function_contains "rollback_fenced_primary_accept" "fail_closed=false"
     The status should be success
   End
 
   It "fails closed when read_only cannot be opened for a primary"
-    When call function_contains "set_primary_read_write" "fail_primary_read_write_gate \"\${label}\" \"read-only-open\""
+    When call function_contains "set_primary_read_write" "rollback_fenced_primary_accept \"\${label}\" \"read-only-open\""
     The status should be success
   End
 
