@@ -35,7 +35,7 @@ Describe 'Redis physical restore bootstrap authorization'
   After 'cleanup_restore_fixture'
 
   It 'creates authorization only after a successful archive extraction'
-    When run sh -c 'bash ../dataprotection/restore.sh 2>/dev/null'
+    When run sh -c 'bash ../dataprotection/restore.sh >/dev/null 2>&1'
     The status should be success
     The path "$DATA_DIR/dump.rdb" should be file
     The path "$DATA_DIR/.kb-data-protection" should not be exist
