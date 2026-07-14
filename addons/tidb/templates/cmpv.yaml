@@ -40,9 +40,9 @@ spec:
       serviceVersion: "7.1.6-enterprise"
       images:
         pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6-enterprise
-        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6-enterprise
-        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6-enterprise
-        switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6-enterprise
+        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6
+        switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6
   compatibilityRules:
     - compDefs:
         - {{ include "tidb.pd7.cmpdRegexpPattern" . }}
@@ -95,7 +95,7 @@ spec:
     - name: "7.1.6-enterprise"
       serviceVersion: "7.1.6-enterprise"
       images:
-        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.enterpriseRepository }}:v7.1.6-enterprise
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.enterpriseRepository }}:v7.1.6
         slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
         postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
         accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
@@ -143,8 +143,8 @@ spec:
     - name: "7.1.6-enterprise"
       serviceVersion: "7.1.6-enterprise"
       images:
-        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.enterpriseRepository }}:v7.1.6-enterprise
-        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6-enterprise
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.enterpriseRepository }}:v7.1.6
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6
   compatibilityRules:
     - compDefs:
         - {{ include "tidb.tikv7.cmpdRegexpPattern" . }}
