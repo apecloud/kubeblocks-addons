@@ -60,6 +60,16 @@ case " $* " in
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
         frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
         ;;
+      post_drop_identity_change:1)
+        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
+        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+        frontend "fe-2" "starrocks-fe-2.old-headless" "9010" "FOLLOWER"
+        ;;
+      post_drop_identity_change:*)
+        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
+        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+        frontend "fe-2" "starrocks-fe-2.new-headless" "9011" "FOLLOWER"
+        ;;
       non_leader_removed:*)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
@@ -152,14 +162,61 @@ TIMEOUT_MOCK
     rc=$?
     alter_count=0
     query_count=0
+    java_count=0
     alter_args=""
     [ -f "${fixture_dir}/alter-count" ] && alter_count=$(cat "${fixture_dir}/alter-count")
     [ -f "${fixture_dir}/query-count" ] && query_count=$(cat "${fixture_dir}/query-count")
+    [ -f "${fixture_dir}/java-count" ] && java_count=$(cat "${fixture_dir}/java-count")
     [ -f "${fixture_dir}/alter-args" ] && alter_args=$(cat "${fixture_dir}/alter-args")
-    printf 'ALTER_COUNT=%s\nQUERY_COUNT=%s\nALTER_ARGS=%s\n' \
-      "${alter_count}" "${query_count}" "${alter_args}"
+    printf 'ALTER_COUNT=%s\nQUERY_COUNT=%s\nJAVA_COUNT=%s\nALTER_ARGS=%s\nTARGET_MATCH_COUNT=%s\nLEAVE_ENDPOINT=%s:%s\n' \
+      "${alter_count}" "${query_count}" "${java_count}" "${alter_args}" \
+      "${TARGET_MATCH_COUNT:-}" "${LEAVE_HOST:-}" "${LEAVE_PORT:-}"
     return "${rc}"
   }
+
+  It "fails before starting commands when the leaving pod identity is unset"
+    unset KB_LEAVE_MEMBER_POD_NAME
+    When call run_member_leave
+    The status should be failure
+    The stderr should include "memberLeave failure phase=required-input"
+    The stderr should include "retry_safe=false"
+    The stdout should include "QUERY_COUNT=0"
+    The stdout should include "ALTER_COUNT=0"
+    The stdout should include "JAVA_COUNT=0"
+  End
+
+  It "fails before starting commands when the leaving pod identity is explicitly empty"
+    KB_LEAVE_MEMBER_POD_NAME=""
+    When call run_member_leave
+    The status should be failure
+    The stderr should include "memberLeave failure phase=required-input"
+    The stderr should include "retry_safe=false"
+    The stdout should include "QUERY_COUNT=0"
+    The stdout should include "ALTER_COUNT=0"
+    The stdout should include "JAVA_COUNT=0"
+  End
+
+  It "fails before starting commands when the discovery service is empty"
+    FE_DISCOVERY_SERVICE_NAME=""
+    When call run_member_leave
+    The status should be failure
+    The stderr should include "required input FE_DISCOVERY_SERVICE_NAME"
+    The stderr should include "retry_safe=false"
+    The stdout should include "QUERY_COUNT=0"
+    The stdout should include "ALTER_COUNT=0"
+    The stdout should include "JAVA_COUNT=0"
+  End
+
+  It "fails before starting commands when the StarRocks user is empty"
+    STARROCKS_USER=""
+    When call run_member_leave
+    The status should be failure
+    The stderr should include "required input STARROCKS_USER"
+    The stderr should include "retry_safe=false"
+    The stdout should include "QUERY_COUNT=0"
+    The stdout should include "ALTER_COUNT=0"
+    The stdout should include "JAVA_COUNT=0"
+  End
 
   It "removes a non-leader and proves the exact host and edit-log port are absent"
     SCENARIO="non_leader_removed"
@@ -228,6 +285,17 @@ TIMEOUT_MOCK
     The status should be failure
     The stderr should include "phase=post-drop-membership-not-converged"
     The stderr should include "retry_safe=true"
+    The stdout should not include "member leave completed"
+  End
+
+  It "fails closed when the target pod remains under a new endpoint after DROP"
+    SCENARIO="post_drop_identity_change"
+    When call run_member_leave
+    The status should be failure
+    The stderr should include "phase=post-drop-membership-not-converged"
+    The stderr should include "retry_safe=true"
+    The stdout should include "TARGET_MATCH_COUNT=1"
+    The stdout should include "LEAVE_ENDPOINT=starrocks-fe-2.new-headless:9011"
     The stdout should not include "member leave completed"
   End
 

@@ -47,6 +47,23 @@ require_command() {
   fi
 }
 
+require_nonempty_input() {
+  local name="$1"
+  local value="$2"
+
+  if [ -z "${value}" ]; then
+    diagnose_failure "required-input" "false" "1" \
+      "required input ${name} is unset or empty"
+    return 1
+  fi
+}
+
+validate_required_inputs() {
+  require_nonempty_input "KB_LEAVE_MEMBER_POD_NAME" "${KB_LEAVE_MEMBER_POD_NAME:-}" || return 1
+  require_nonempty_input "FE_DISCOVERY_SERVICE_NAME" "${FE_DISCOVERY_SERVICE_NAME:-}" || return 1
+  require_nonempty_input "STARROCKS_USER" "${STARROCKS_USER:-}" || return 1
+}
+
 resolve_bdb_je_jar() {
   if [ -n "${BDB_JE_JAR_PATH:-}" ]; then
     if [ ! -r "${BDB_JE_JAR_PATH}" ]; then
@@ -375,13 +392,14 @@ verify_member_absent() {
       "SHOW FRONTENDS has no leader after DROP FOLLOWER"
     return 1
   fi
-  if ! exact_member_present "${MYSQL_OUTPUT}" "${host}" "${port}"; then
+  if [ "${TARGET_MATCH_COUNT}" -eq 0 ] && \
+      ! exact_member_present "${MYSQL_OUTPUT}" "${host}" "${port}"; then
     log "membership convergence proved: ${host}:${port} is absent"
     return 0
   fi
 
   diagnose_failure "post-drop-membership-not-converged" "true" "1" \
-    "exact member ${host}:${port} remains after ALTER rc=0"
+    "target identity or exact member ${host}:${port} remains after ALTER rc=0"
   return 1
 }
 
@@ -389,6 +407,7 @@ member_leave() {
   local leave_host leave_port
 
   ACTION_DEADLINE=$((SECONDS + MEMBER_LEAVE_INTERNAL_DEADLINE_SECS))
+  validate_required_inputs || return 1
   member_leave_runtime_check || return 1
   query_frontends "query-frontends" || return 1
   parse_frontends "${MYSQL_OUTPUT}" || return 1
