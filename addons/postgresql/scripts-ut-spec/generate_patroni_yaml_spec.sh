@@ -38,7 +38,10 @@ EOF
   initdb:
   - auth-host: md5
 postgresql:
-  use_pg_rewind: true'
+  use_pg_rewind: true
+  remove_data_directory_on_rewind_failure: false
+  parameters:
+    max_connections: 123'
   }
 
   cleanup() {
@@ -64,10 +67,16 @@ import sys
 import yaml
 
 with open(sys.argv[1], 'r') as stream:
-    postgresql = yaml.safe_load(stream)['postgresql']
+    config = yaml.safe_load(stream)
+
+postgresql = config['postgresql']
 
 assert postgresql['use_pg_rewind'] is True
 assert postgresql['remove_data_directory_on_rewind_failure'] is True
+assert postgresql['parameters']['max_connections'] == 123
+assert config['bootstrap']['initdb'][0]['auth-host'] == 'md5'
+assert config['bootstrap']['dcs']['ttl'] == 30
+assert 'remove_data_directory_on_rewind_failure' not in config['bootstrap']['dcs']
 PY
     printf "%s" "$?"
   }
