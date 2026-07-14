@@ -15,7 +15,7 @@ spec:
   backupMethods:
   - name: datafile
     snapshotVolumes: false
-    actionSetName: falkordb-cluster-br
+    actionSetName: falkordb-cluster-br-v2
     targetVolumes:
       volumeMounts:
         - name: data

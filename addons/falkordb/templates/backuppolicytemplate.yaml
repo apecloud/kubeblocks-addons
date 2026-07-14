@@ -15,7 +15,7 @@ spec:
   backupMethods:
     - name: datafile
       snapshotVolumes: false
-      actionSetName: falkordb-physical-br
+      actionSetName: falkordb-physical-br-v2
       targetVolumes:
         volumeMounts:
           - name: data
@@ -34,7 +34,7 @@ spec:
               {{- end }}
     - name: aof
       snapshotVolumes: false
-      actionSetName: falkordb-for-pitr
+      actionSetName: falkordb-for-pitr-v2
       targetVolumes:
         volumeMounts:
           - name: data

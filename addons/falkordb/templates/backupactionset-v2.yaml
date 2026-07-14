@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: falkordb-physical-br
+  name: falkordb-physical-br-v2
   labels:
     clusterdefinition.kubeblocks.io/name: falkordb
     {{- include "falkordb.labels" . | nindent 4 }}
@@ -16,7 +16,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -28,7 +28,7 @@ spec:
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       command:
       - bash
       - -c
@@ -42,14 +42,14 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
-        image: {{ include "falkordb4.image" . }}
+        image: $(FALKORDB_IMAGE)
         onError: Fail
         runOnTargetPodNode: true
 ---
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: falkordb-cluster-br
+  name: falkordb-cluster-br-v2
   labels:
     clusterdefinition.kubeblocks.io/name: falkordb-cluster
     {{- include "falkordb.labels" . | nindent 4 }}
@@ -66,7 +66,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -78,7 +78,7 @@ spec:
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       command:
       - bash
       - -c
@@ -91,7 +91,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/wait-for-cluster-ready.sh" | nindent 10 }}
-        image: {{ include "falkordb4.image" . }}
+        image: $(FALKORDB_IMAGE)
         onError: Fail
         runOnTargetPodNode: true
     - job:
@@ -107,7 +107,7 @@ spec:
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: falkordb-for-pitr
+  name: falkordb-for-pitr-v2
   labels:
     clusterdefinition.kubeblocks.io/name: falkordb
     {{- include "falkordb.labels" . | nindent 4 }}
@@ -124,7 +124,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -138,7 +138,7 @@ spec:
         {{- .Files.Get "dataprotection/pitr-backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "falkordb4.image" . }}
+      image: $(FALKORDB_IMAGE)
       command:
       - bash
       - -c
@@ -154,42 +154,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
-        image: {{ include "falkordb4.image" . }}
+        image: $(FALKORDB_IMAGE)
         onError: Fail
         runOnTargetPodNode: true
     baseBackupRequired: false
----
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: ActionSet
-metadata:
-  name: falkordb-for-rebuild-instance
-  labels:
-    clusterdefinition.kubeblocks.io/name: falkordb
-    {{- include "falkordb.labels" . | nindent 4 }}
-spec:
-  backupType: Full
-  env:
-    - name: DATA_DIR
-      value: {{ .Values.dataMountPath }}
-    - name: REBUILD_CLUSTER_INSTANCE
-      value: "false"
-  backup:
-    backupData:
-      image: {{ include "busybox.image" . }}
-      runOnTargetPodNode: true
-      syncProgress:
-        enabled: true
-        intervalSeconds: 5
-      command:
-      - sh
-      - -c
-      - |
-        {{- .Files.Get "dataprotection/backup_for_rebuild.sh" | nindent 8 }}
-  restore:
-    prepareData:
-      image: {{ include "busybox.image" . }}
-      command:
-      - sh
-      - -c
-      - |
-        {{- .Files.Get "dataprotection/restore-cluster-users.sh" | nindent 8 }}
