@@ -157,8 +157,8 @@ kubectl get cmpv postgresql
 And the expected output is like:
 
 ```bash
-NAME         VERSIONS                                                                                    STATUS      AGE
-postgresql   17.5.0,16.9.0,16.4.0,15.13.0,15.7.0,14.18.0,14.8.0,14.7.2,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
+NAME         VERSIONS                                                                                                                                                                                                 STATUS      AGE
+postgresql   12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,14.23.0,15.7.0,15.13.0,15.18.0,16.4.0,16.9.0,16.14.0,17.5.0,17.10.0,18.1.0,18.4.0   Available   Xd
 ```
 
 ### Horizontal scaling

@@ -232,44 +232,6 @@ spec:
 kubectl apply -f examples/weaviate/start.yaml
 ```
 
-### Configure
-
-Configure parameters with the specified components in the cluster:
-
-```yaml
-# cat examples/weaviate/configure.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: weaviate-reconfiguring
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: weaviate-cluster
-  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
-  force: false
-  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
-  reconfigures:
-    # Specifies the name of the Component.
-    - componentName: weaviate
-      parameters:
-        # Represents the name of the parameter that is to be updated.
-        - key: QUERY_DEFAULTS_LIMIT
-          # Represents the parameter values that are to be updated.
-          # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-          value: "150"
-  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
-  preConditionDeadlineSeconds: 0
-  type: Reconfiguring
-
-```
-
-```bash
-kubectl apply -f examples/weaviate/configure.yaml
-```
-
-It sets `QUERY_DEFAULTS_LIMIT` to 150, and all pods will be restarted to apply the new configuration.
-
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
