@@ -490,6 +490,86 @@ Describe "Redis5 Start Bash Script Tests"
     End
   End
 
+  Describe "get_role_from_redis_pod()"
+    setup() {
+      service_port="6379"
+      unset REDIS_DEFAULT_PASSWORD
+    }
+    Before "setup"
+
+    un_setup() {
+      unset REDIS_DEFAULT_PASSWORD
+      unset service_port
+    }
+    After "un_setup"
+
+    It "uses the bounded authenticated ROLE command without a password argument"
+      timeout() {
+        [ "$1" = "1" ] || return 91
+        shift
+        [ "$REDISCLI_AUTH" = "probe-secret" ] || return 92
+        [[ " $* " != *" -a "* ]] || return 93
+        [ "$*" = "redis-cli -h redis-0 -p 6379 ROLE" ] || return 94
+        echo "master"
+      }
+      export REDIS_DEFAULT_PASSWORD="probe-secret"
+      When call get_role_from_redis_pod "redis-0"
+      The status should be success
+      The variable redis_probe_role should eq "master"
+      The variable redis_probe_reason should eq ""
+    End
+
+    It "classifies an explicit connection refusal as positively absent"
+      timeout() {
+        echo "Could not connect to Redis at redis-0:6379: Connection refused"
+        return 1
+      }
+      When call get_role_from_redis_pod "redis-0"
+      The status should eq 1
+      The variable redis_probe_reason should eq "connection refused"
+    End
+
+    It "classifies timeout, DNS, authentication, and malformed output as indeterminate"
+      timeout() {
+        return 124
+      }
+      When call get_role_from_redis_pod "redis-0"
+      The status should eq 2
+      The variable redis_probe_reason should eq "probe timed out"
+    End
+
+    It "classifies a DNS failure as indeterminate without replaying output"
+      timeout() {
+        echo "Could not resolve host"
+        return 1
+      }
+      When call get_role_from_redis_pod "redis-0"
+      The status should eq 2
+      The stdout should eq ""
+      The variable redis_probe_reason should eq "probe command failed (rc=1)"
+    End
+
+    It "classifies an authentication error response as indeterminate"
+      timeout() {
+        echo "(error) WRONGPASS invalid username-password pair"
+        return 0
+      }
+      When call get_role_from_redis_pod "redis-0"
+      The status should eq 2
+      The variable redis_probe_reason should eq "unexpected ROLE response"
+    End
+
+    It "classifies malformed successful output as indeterminate"
+      timeout() {
+        echo "not-a-role"
+        return 0
+      }
+      When call get_role_from_redis_pod "redis-0"
+      The status should eq 2
+      The variable redis_probe_reason should eq "unexpected ROLE response"
+    End
+  End
+
   Describe "init_or_get_primary_from_redis_sentinel()"
     Context "when SENTINEL_COMPONENT_NAME is not set"
       setup() {
@@ -534,28 +614,45 @@ Describe "Redis5 Start Bash Script Tests"
 
     Context "when sentinel is configured but no sentinel returns primary info"
       setup() {
+        service_port="6379"
+        export REDIS_POD_NAME_LIST="redis-1,redis-0"
+        export REDIS_POD_FQDN_LIST="redis-1.redis-headless.default,redis-0.redis-headless.default"
         export REDIS_DATA_DIR="./redis5-data"
         export SENTINEL_COMPONENT_NAME="redis-sentinel"
         export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless,sentinel-1.redis-sentinel-headless"
         mkdir -p "$REDIS_DATA_DIR"
         echo "persisted" > "$REDIS_DATA_DIR/dump.rdb"
+        wait_before_redis_role_rescan() { :; }
       }
       Before "setup"
 
       un_setup() {
         unset SENTINEL_COMPONENT_NAME
         unset SENTINEL_POD_FQDN_LIST
+        unset REDIS_POD_NAME_LIST
+        unset REDIS_POD_FQDN_LIST
         unset REDIS_DATA_DIR
+        unset service_port
         rm -rf ./redis5-data
       }
       After "un_setup"
 
-      It "fails closed instead of falling back to default primary when Redis data exists"
+      It "fails closed instead of guessing a primary when a running replica is observed"
         Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
         getent() {
           echo "10.0.0.1 $2"
         }
         retry_get_master_addr_by_name_from_sentinel() {
+          return 1
+        }
+        get_role_from_redis_pod() {
+          redis_probe_reason=""
+          if [ "$1" = "redis-1.redis-headless.default" ]; then
+            redis_probe_role="slave"
+            return 0
+          fi
+          redis_probe_role=""
+          redis_probe_reason="connection refused"
           return 1
         }
         get_default_initialize_primary_node() {
@@ -565,8 +662,127 @@ Describe "Redis5 Start Bash Script Tests"
         The status should be failure
         The stdout should include "Failed to retrieve primary info from sentinel: sentinel-0.redis-sentinel-headless"
         The stdout should include "Failed to retrieve primary info from sentinel: sentinel-1.redis-sentinel-headless"
-        The stdout should include "Error: no primary node found from all redis sentinels and Redis data already exists; refusing to use default primary while sentinel is configured."
+        The stdout should include "live Redis roles are unsafe (running replica without a running primary: redis-1.redis-headless.default); refusing to guess a new primary."
         The stdout should not include "SHOULD_NOT_FALLBACK"
+      End
+
+      It "uses a running primary when Sentinel has not converged"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() {
+          echo "10.0.0.1 $2"
+        }
+        retry_get_master_addr_by_name_from_sentinel() {
+          return 1
+        }
+        get_role_from_redis_pod() {
+          redis_probe_reason=""
+          if [ "$1" = "redis-1.redis-headless.default" ]; then
+            redis_probe_role="master"
+          else
+            redis_probe_role="replica"
+          fi
+          return 0
+        }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "confirmed stable running Redis primary from pod role: redis-1.redis-headless.default:6379"
+        The variable primary should eq "redis-1.redis-headless.default"
+        The variable primary_port should eq "6379"
+      End
+
+      It "fails closed when multiple running primaries are observed"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() {
+          echo "10.0.0.1 $2"
+        }
+        retry_get_master_addr_by_name_from_sentinel() {
+          return 1
+        }
+        get_role_from_redis_pod() {
+          redis_probe_role="master"
+          redis_probe_reason=""
+          return 0
+        }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "live Redis roles are unsafe (multiple running primaries: redis-1.redis-headless.default,redis-0.redis-headless.default)"
+      End
+
+      It "fails closed when the selected primary changes before final revalidation"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() {
+          echo "10.0.0.1 $2"
+        }
+        retry_get_master_addr_by_name_from_sentinel() {
+          return 1
+        }
+        redis_1_probe_count=0
+        get_role_from_redis_pod() {
+          redis_probe_reason=""
+          if [ "$1" = "redis-1.redis-headless.default" ]; then
+            redis_1_probe_count=$((redis_1_probe_count + 1))
+            if [ "$redis_1_probe_count" -le 2 ]; then
+              redis_probe_role="master"
+            else
+              redis_probe_role="replica"
+            fi
+          else
+            redis_probe_role="replica"
+          fi
+          return 0
+        }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "selected primary redis-1.redis-headless.default did not remain master during final revalidation"
+      End
+
+
+      It "fails closed when otherwise safe roles change between scans"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() {
+          echo "10.0.0.1 $2"
+        }
+        retry_get_master_addr_by_name_from_sentinel() {
+          return 1
+        }
+        redis_0_probe_count=0
+        get_role_from_redis_pod() {
+          redis_probe_reason=""
+          if [ "$1" = "redis-1.redis-headless.default" ]; then
+            redis_probe_role="master"
+          else
+            redis_0_probe_count=$((redis_0_probe_count + 1))
+            if [ "$redis_0_probe_count" -eq 1 ]; then
+              redis_probe_role="replica"
+            else
+              redis_probe_role=""
+              redis_probe_reason="connection refused"
+              return 1
+            fi
+          fi
+          return 0
+        }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "Redis roles changed between consecutive scans"
+      End
+
+      It "fails closed on an indeterminate peer probe"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() {
+          echo "10.0.0.1 $2"
+        }
+        retry_get_master_addr_by_name_from_sentinel() {
+          return 1
+        }
+        get_role_from_redis_pod() {
+          redis_probe_role=""
+          redis_probe_reason="probe timed out"
+          return 2
+        }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "indeterminate role probe for redis-1.redis-headless.default: probe timed out"
       End
     End
 
@@ -580,6 +796,7 @@ Describe "Redis5 Start Bash Script Tests"
         export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless"
         mkdir -p "$REDIS_DATA_DIR"
         echo "placeholder" > "$REDIS_DATA_DIR/users.acl"
+        wait_before_redis_role_rescan() { :; }
       }
       Before "setup"
 
@@ -602,9 +819,60 @@ Describe "Redis5 Start Bash Script Tests"
         retry_get_master_addr_by_name_from_sentinel() {
           return 1
         }
+        get_role_from_redis_pod() {
+          redis_probe_role=""
+          redis_probe_reason="connection refused"
+          return 1
+        }
         When call init_or_get_primary_from_redis_sentinel
         The status should be success
-        The stdout should include "no primary node found from all redis sentinels and Redis data dir is empty, use default primary node for first bootstrap."
+        The stdout should include "every Redis peer explicitly refused connections in two stable scans"
+        The variable primary should eq "redis-0.redis-headless.default"
+        The variable primary_port should eq "6379"
+      End
+    End
+
+    Context "when restored data starts with no running Redis peer"
+      setup() {
+        service_port="6379"
+        export REDIS_POD_NAME_LIST="redis-1,redis-0"
+        export REDIS_POD_FQDN_LIST="redis-1.redis-headless.default,redis-0.redis-headless.default"
+        export REDIS_DATA_DIR="./redis5-data-restored"
+        export SENTINEL_COMPONENT_NAME="redis-sentinel"
+        export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless"
+        mkdir -p "$REDIS_DATA_DIR"
+        echo "restored" > "$REDIS_DATA_DIR/dump.rdb"
+        wait_before_redis_role_rescan() { :; }
+      }
+      Before "setup"
+
+      un_setup() {
+        unset REDIS_POD_NAME_LIST
+        unset REDIS_POD_FQDN_LIST
+        unset REDIS_DATA_DIR
+        unset SENTINEL_COMPONENT_NAME
+        unset SENTINEL_POD_FQDN_LIST
+        unset service_port
+        rm -rf ./redis5-data-restored
+      }
+      After "un_setup"
+
+      It "allows restored data to bootstrap without a backup-method-specific marker"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() {
+          echo "10.0.0.1 $2"
+        }
+        retry_get_master_addr_by_name_from_sentinel() {
+          return 1
+        }
+        get_role_from_redis_pod() {
+          redis_probe_role=""
+          redis_probe_reason="connection refused"
+          return 1
+        }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "every Redis peer explicitly refused connections in two stable scans"
         The variable primary should eq "redis-0.redis-headless.default"
         The variable primary_port should eq "6379"
       End

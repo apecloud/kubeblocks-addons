@@ -156,15 +156,23 @@ init_or_get_primary_from_redis_sentinel() {
     fi
   done
 
-  # if sentinel is configured but no sentinel can provide primary info, only
-  # allow default-primary fallback before Redis has persisted data.
+  # If Sentinel has no primary, inspect live Redis roles before choosing a
+  # deterministic bootstrap node. A visible replica proves this is a partial
+  # restart with unresolved topology. Bootstrap is allowed only after every
+  # peer explicitly refuses connections in two consecutive scans.
   echo "get all primary info from redis sentinel master_count_map: ${master_count_map[*]}"
   if [ ${#master_count_map[@]} -eq 0 ]; then
-    if redis_data_dir_has_existing_data; then
-      echo "Error: no primary node found from all redis sentinels and Redis data already exists; refusing to use default primary while sentinel is configured."
+    local scan_status
+    if scan_redis_pods_for_running_primary; then
+      return
+    else
+      scan_status=$?
+    fi
+    if [ "$scan_status" -eq 2 ]; then
+      echo "Error: no primary node found from all redis sentinels and live Redis roles are unsafe ($unsafe_redis_role_reason); refusing to guess a new primary."
       exit 1
     fi
-    echo "no primary node found from all redis sentinels and Redis data dir is empty, use default primary node for first bootstrap."
+    echo "no primary node found from all redis sentinels and every Redis peer explicitly refused connections in two stable scans, use default primary node for full-component bootstrap."
     get_default_initialize_primary_node
     return
   fi
@@ -180,18 +188,143 @@ init_or_get_primary_from_redis_sentinel() {
   done
 }
 
-redis_data_dir_has_existing_data() {
-  local data_dir="${REDIS_DATA_DIR:-/data}"
-  local existing_data
+get_role_from_redis_pod() {
+  local redis_pod_fqdn="$1"
+  local output
+  local role
+  local status
 
-  [ -d "$data_dir" ] || return 1
-  existing_data=$(find "$data_dir" -mindepth 1 -maxdepth 1 \
-    ! -name "users.acl" \
-    ! -name "users.acl.bak" \
-    ! -name ".fixed_pod_ip_enabled" \
-    ! -name ".kb_redis_start_initialized" \
-    -print -quit 2>/dev/null)
-  [ -n "$existing_data" ]
+  redis_probe_role=""
+  redis_probe_reason=""
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    output=$(timeout 1 redis-cli -h "$redis_pod_fqdn" -p "$service_port" ROLE 2>&1)
+  else
+    output=$(REDISCLI_AUTH="$REDIS_DEFAULT_PASSWORD" timeout 1 redis-cli -h "$redis_pod_fqdn" -p "$service_port" ROLE 2>&1)
+  fi
+  status=$?
+  set_xtrace_when_ut_mode_false
+
+  if [ "$status" -ne 0 ]; then
+    if [[ "$output" == *"Connection refused"* ]]; then
+      redis_probe_reason="connection refused"
+      return 1
+    fi
+    if [ "$status" -eq 124 ]; then
+      redis_probe_reason="probe timed out"
+    else
+      redis_probe_reason="probe command failed (rc=$status)"
+    fi
+    return 2
+  fi
+
+  role=$(echo "$output" | head -n1 | tr -d '\r')
+  case "$role" in
+    master|slave|replica)
+      redis_probe_role="$role"
+      return 0
+      ;;
+    *)
+      redis_probe_reason="unexpected ROLE response"
+      return 2
+      ;;
+  esac
+}
+
+collect_redis_role_snapshot() {
+  local observed_primary=""
+  local observed_replica=""
+  local redis_pod_fqdn
+  local redis_pod_fqdn_list
+  local status
+
+  unsafe_redis_role_reason=""
+  redis_role_snapshot=""
+  redis_role_snapshot_primary=""
+  redis_pod_fqdn_list=($(split "$REDIS_POD_FQDN_LIST" ","))
+  for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
+    if get_role_from_redis_pod "$redis_pod_fqdn"; then
+      status=0
+    else
+      status=$?
+    fi
+    if [ "$status" -eq 1 ]; then
+      redis_role_snapshot+="$redis_pod_fqdn=absent;"
+      continue
+    fi
+    if [ "$status" -ne 0 ]; then
+      unsafe_redis_role_reason="indeterminate role probe for $redis_pod_fqdn: $redis_probe_reason"
+      return 2
+    fi
+
+    redis_role_snapshot+="$redis_pod_fqdn=$redis_probe_role;"
+    case "$redis_probe_role" in
+      master)
+        if [ -n "$observed_primary" ] && [ "$observed_primary" != "$redis_pod_fqdn" ]; then
+          unsafe_redis_role_reason="multiple running primaries: $observed_primary,$redis_pod_fqdn"
+          return 2
+        fi
+        observed_primary="$redis_pod_fqdn"
+        ;;
+      slave|replica)
+        observed_replica="$redis_pod_fqdn"
+        ;;
+    esac
+  done
+
+  if [ -n "$observed_primary" ]; then
+    redis_role_snapshot_primary="$observed_primary"
+    return 0
+  fi
+  if [ -n "$observed_replica" ]; then
+    unsafe_redis_role_reason="running replica without a running primary: $observed_replica"
+    return 2
+  fi
+  return 0
+}
+
+wait_before_redis_role_rescan() {
+  sleep 1
+}
+
+scan_redis_pods_for_running_primary() {
+  local first_primary
+  local first_snapshot
+  local status
+
+  if collect_redis_role_snapshot; then
+    first_snapshot="$redis_role_snapshot"
+    first_primary="$redis_role_snapshot_primary"
+  else
+    return 2
+  fi
+
+  wait_before_redis_role_rescan
+  if ! collect_redis_role_snapshot; then
+    return 2
+  fi
+  if [ "$redis_role_snapshot" != "$first_snapshot" ] || [ "$redis_role_snapshot_primary" != "$first_primary" ]; then
+    unsafe_redis_role_reason="Redis roles changed between consecutive scans"
+    return 2
+  fi
+
+  if [ -z "$first_primary" ]; then
+    return 1
+  fi
+  if get_role_from_redis_pod "$first_primary"; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$status" -ne 0 ] || [ "$redis_probe_role" != "master" ]; then
+    unsafe_redis_role_reason="selected primary $first_primary did not remain master during final revalidation"
+    return 2
+  fi
+
+  primary="$first_primary"
+  primary_port="$service_port"
+  echo "confirmed stable running Redis primary from pod role: $primary:$primary_port"
+  return 0
 }
 
 build_sentinel_get_master_addr_by_name_command() {
