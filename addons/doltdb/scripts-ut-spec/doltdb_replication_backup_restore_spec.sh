@@ -26,7 +26,7 @@ Describe "DoltDB replication backup and restore support"
   AfterEach "cleanup"
 
   assert_role_probe_kubeblocks_version_contract() {
-    grep -Fq 'addon.kubeblocks.io/kubeblocks-version: ">=1.1.0-beta.7"' "$chart_path" || return 1
+    grep -Fq 'addon.kubeblocks.io/kubeblocks-version: ">=1.2.0-alpha.2"' "$chart_path" || return 1
     grep -Fq "printf '%s %s\\n'" "$role_probe_script" || return 1
   }
 
