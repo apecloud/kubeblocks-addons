@@ -108,6 +108,11 @@ spec:
       value: "6379"
     - name: CLUSTER_BUS_PORT
       value: "16379"
+    # prepareData leaves validated cluster-meta plus an exact restore-state
+    # marker on every restored volume. Non-first pods discard their redundant
+    # payload offline before server start; postProvision commits formed state.
+    - name: VALKEY_DATA_DIR
+      value: {{ $.Values.dataMountPath | quote }}
     - name: VALKEY_DEFAULT_USER
       valueFrom:
         credentialVarRef:
@@ -232,6 +237,9 @@ spec:
     postProvision:
       exec:
         container: valkey-cluster
+        # Restore completion is PVC-local. Any-pod success can mark the
+        # Component complete while a sibling PVC still holds prepared state.
+        targetPodSelector: All
         command:
           - /bin/bash
           - -c
