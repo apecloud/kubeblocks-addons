@@ -12,7 +12,7 @@ spec:
   serviceKind: milvus-minio
   serviceVersion: 8.0.17
   systemAccounts:
-    - name: admin
+    - name: root
       initAccount: true
       passwordGenerationPolicy:
         length: 16
@@ -23,13 +23,13 @@ spec:
     - name: MINIO_ROOT_USER
       valueFrom:
         credentialVarRef:
-          name: admin
+          name: root
           optional: false
           username: Required
     - name: MINIO_ROOT_PASSWORD
       valueFrom:
         credentialVarRef:
-          name: admin
+          name: root
           optional: false
           password: Required
   volumes:

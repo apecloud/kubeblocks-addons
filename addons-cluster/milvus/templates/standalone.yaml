@@ -19,6 +19,7 @@ spec:
       {{- end }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: minio
+      componentDef: milvus-minio-
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.persistence.enabled }}
@@ -27,6 +28,7 @@ spec:
       {{- end }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: milvus
+      componentDef: milvus-standalone-
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.persistence.enabled }}
