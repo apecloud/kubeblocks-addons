@@ -163,11 +163,12 @@ verify_hdfs_ha_services() {
 
   verify_script=$(cat <<'EOF'
 set -euo pipefail
-ns="$(hdfs getconf -confKey dfs.nameservices)"
-nn_ids="$(hdfs getconf -confKey "dfs.ha.namenodes.${ns}")"
+# ponytail: NameNode 容器的 PATH 不包含 HADOOP_HOME/bin，直接走绝对路径，避免环境差异导致 smoke 假失败。
+ns="$("${HADOOP_HOME}/bin/hdfs" getconf -confKey dfs.nameservices)"
+nn_ids="$("${HADOOP_HOME}/bin/hdfs" getconf -confKey "dfs.ha.namenodes.${ns}")"
 IFS=',' read -r -a ids <<< "${nn_ids}"
 for id in "${ids[@]}"; do
-  hdfs haadmin -getServiceState "${id}"
+  "${HADOOP_HOME}/bin/hdfs" haadmin -getServiceState "${id}"
 done
 EOF
 )
@@ -192,7 +193,7 @@ verify_hdfs() {
     verify_hdfs_ha_services "${pod}"
   fi
 
-  exec_in_pod "${pod}" "hdfs-namenode" bash -lc "set -euo pipefail; hdfs dfs -mkdir -p '${smoke_dir}'; hdfs dfs -test -d '${smoke_dir}'; hdfs dfs -ls /"
+  exec_in_pod "${pod}" "hdfs-namenode" bash -lc "set -euo pipefail; \"\${HADOOP_HOME}/bin/hdfs\" dfs -mkdir -p '${smoke_dir}'; \"\${HADOOP_HOME}/bin/hdfs\" dfs -test -d '${smoke_dir}'; \"\${HADOOP_HOME}/bin/hdfs\" dfs -ls /"
 }
 
 # 功能：执行 HBase Shell smoke，并在 HDFS 模式下额外验证 rootdir 可达。
