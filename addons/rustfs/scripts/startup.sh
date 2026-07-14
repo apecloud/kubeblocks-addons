@@ -61,6 +61,43 @@ read_replicas_history() {
   echo "$content"
 }
 
+default_parity_count() {
+  local drives=$1
+  case $drives in
+    1) echo 0 ;;
+    2|3) echo 1 ;;
+    4|5) echo 2 ;;
+    6|7) echo 3 ;;
+    *) echo 4 ;;
+  esac
+}
+
+validate_pool_sizes() {
+  local replicas=$1
+  local prev=0
+  local first_pool_parity=""
+  local pool_index=0
+  local old_ifs="$IFS"
+  IFS=','
+  for cur in $replicas; do
+    local pool_size=$((cur - prev))
+    if [ $pool_index -eq 0 ]; then
+      first_pool_parity=$(default_parity_count "$pool_size")
+    fi
+    if [ "$pool_size" -le "$first_pool_parity" ]; then
+      echo "FATAL: erasure pool $pool_index has $pool_size drive(s) but inherited parity is $first_pool_parity (from pool 0)." >&2
+      echo "data_blocks would be $((pool_size - first_pool_parity)) which causes TooFewDataShards panic." >&2
+      echo "Scale to a replica count where every pool has at least $((first_pool_parity + 1)) drives." >&2
+      IFS="$old_ifs"
+      return 1
+    fi
+    prev=$cur
+    pool_index=$((pool_index + 1))
+  done
+  IFS="$old_ifs"
+  return 0
+}
+
 generate_volumes_env() {
   local replicas=$1
   local volumes=""
@@ -121,6 +158,10 @@ startup() {
 
   replicas=$(read_replicas_history "$replicas_history_file")
   echo "the rustfs replicas history is $replicas"
+
+  if ! validate_pool_sizes "$replicas"; then
+    exit 1
+  fi
 
   # Single node mode: use local data path
   if [ "$replicas" = "1" ]; then
