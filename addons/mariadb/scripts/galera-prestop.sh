@@ -274,12 +274,9 @@ local_sql() {
 }
 
 graceful_shutdown() {
-  # galera-start.sh self-heals a non-Primary mariadbd by terminating it. Mark
-  # the intentional shutdown before wsrep state changes so that watcher cannot
-  # race and abort this clean leave while grastate.dat is being written.
   if ! touch "${DATA_DIR}/.galera-shutting-down" 2>/dev/null; then
-    log "warning: failed to mark graceful shutdown; continuing best-effort shutdown"
-    record_degraded "reason=shutdown_marker_write_failed"
+    log "warning: failed to publish .galera-shutting-down before desync; continuing best-effort shutdown"
+    record_degraded "reason=shutting_down_marker_failed"
   fi
 
   if ! local_sql "SET GLOBAL wsrep_desync=ON;"; then
