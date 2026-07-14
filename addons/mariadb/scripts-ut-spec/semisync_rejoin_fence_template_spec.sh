@@ -25,6 +25,37 @@ Describe "cmpd-replication.yaml rejoin fence template"
     ' "$(template_file)"
   }
 
+  fenced_primary_commit_is_last_visible_step() {
+    awk '
+      index($0, "set_primary_read_write() {") { fn = 1 }
+      fn && index($0, "unlock_local_root_writes \"${label}\"") { local_unlock = NR }
+      fn && index($0, "unlock_remote_root_writes \"${label}\"") { remote_unlock = NR }
+      fn && index($0, "if [ \"${role_guard}\" = \"require-dcs-primary\" ]; then") { guarded = NR }
+      fn && index($0, "authoritative_primary_write_commit \"${label}\"") { commit = NR }
+      fn && commit && /^[[:space:]]*else$/ { bootstrap_else = NR; exit }
+      END {
+        exit(local_unlock && remote_unlock && guarded && commit && bootstrap_else &&
+             local_unlock < remote_unlock && remote_unlock < guarded &&
+             guarded < commit && commit < bootstrap_else ? 0 : 1)
+      }
+    ' "$(template_file)"
+  }
+
+  prestop_never_mutates_without_commit_lock() {
+    lock_line="$(grep -n '^if ! acquire_primary_write_commit_lock_for_prestop; then$' "$(prestop_file)" | cut -d: -f1)"
+    exit_line="$(awk -v lock="${lock_line}" 'NR > lock && /^  exit 1$/ { print NR; exit }' "$(prestop_file)")"
+    marker_line="$(grep -n '^touch "${DATA_DIR}/.prestop-fence-started"' "$(prestop_file)" | cut -d: -f1)"
+    [ -n "${lock_line}" ] && [ -n "${exit_line}" ] && [ -n "${marker_line}" ] || return 1
+    [ "${lock_line}" -lt "${exit_line}" ] && [ "${exit_line}" -lt "${marker_line}" ]
+  }
+
+  only_fresh_pod0_bootstrap_may_open_without_dcs_commit() {
+    callsites="$(grep -n 'expose_sql_listener_for_primary_role "' "$(template_file)")"
+    unguarded="$(printf '%s\n' "${callsites}" | grep -v '"fenced-promotion"' || true)"
+    [ "$(printf '%s\n' "${unguarded}" | awk 'NF { count++ } END { print count + 0 }')" -eq 1 ] || return 1
+    printf '%s\n' "${unguarded}" | grep -q 'expose_sql_listener_for_primary_role "default-pod0-primary"'
+  }
+
   wait_loop_queries_primary_before_reconcile() {
     primary_query_line="$(grep -n 'PRIMARY_SID=$(timeout 10 mariadb' "$(template_file)" | tail -1 | cut -d: -f1)"
     reconcile_line="$(grep -n 'reconcile_sql_listener_for_syncer_primary_once || true' "$(template_file)" | tail -1 | cut -d: -f1)"
@@ -261,6 +292,21 @@ Describe "cmpd-replication.yaml rejoin fence template"
 
   It "delegates fenced-promotion global open to syncer's lease-CAS commit"
     When call function_contains "set_primary_read_write" "authoritative_primary_write_commit \"\${label}\""
+    The status should be success
+  End
+
+  It "unlocks both root planes under the global fence before the authoritative commit"
+    When call fenced_primary_commit_is_last_visible_step
+    The status should be success
+  End
+
+  It "makes preStop exit before marker or SQL mutation when commit-lock acquisition times out"
+    When call prestop_never_mutates_without_commit_lock
+    The status should be success
+  End
+
+  It "requires the lease-CAS commit for every write-open except fresh pod-0 bootstrap"
+    When call only_fresh_pod0_bootstrap_may_open_without_dcs_commit
     The status should be success
   End
 

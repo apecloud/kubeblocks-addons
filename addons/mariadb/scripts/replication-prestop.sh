@@ -96,7 +96,13 @@ wait_mariadbd_exit() {
 
 acquire_primary_write_commit_lock_for_prestop() {
   attempt=0
-  while [ "${attempt}" -lt 50 ]; do
+  # The container hook has a 120s termination grace budget. Wait at most 40s
+  # for an in-flight accept to finish, leaving roughly 80s for the existing
+  # bounded SQL fencing (3s per call), TERM/KILL, and exit verification.  A
+  # timeout must NOT continue into marker/SQL mutations without the lock;
+  # returning non-zero makes kubelet proceed with process termination, which
+  # is the only truthful fail-close claim for this exceptional branch.
+  while [ "${attempt}" -lt 400 ]; do
     if mkdir "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" 2>/dev/null; then
       prestop_log "primary-write-commit-lock rc=0 owner=prestop attempts=${attempt}"
       return 0
@@ -109,7 +115,10 @@ acquire_primary_write_commit_lock_for_prestop() {
 }
 
 prestop_log "begin pod=${POD_NAME:-unknown}"
-acquire_primary_write_commit_lock_for_prestop || true
+if ! acquire_primary_write_commit_lock_for_prestop; then
+  prestop_log "end status=commit-lock-timeout fail_closed=process-termination"
+  exit 1
+fi
 touch "${DATA_DIR}/.prestop-fence-started" "${DATA_DIR}/.replication-pending" 2>/dev/null || true
 rm -f "${DATA_DIR}/.replication-ready" "${DATA_DIR}/.primary-read-write-ready" 2>/dev/null || true
 # alpha.64 v2 (Jack 10:32 HOLD blocker 2): Tier B preStop

@@ -588,16 +588,12 @@ set_primary_read_write() {
     return $?
   fi
 
-  if [ "${role_guard}" = "require-dcs-primary" ]; then
-    if ! authoritative_primary_write_commit "${label}"; then
-      rollback_locked_primary_accept "${label}" "authority-commit-rejected"
-      return $?
-    fi
-  elif ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null && \
-       ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
-    rollback_locked_primary_accept "${label}" "read-only-open"
-    return $?
-  fi
+  # Unlock both user-root account planes while global read_only=ON still
+  # rejects every user writer.  The authoritative syncer operation is the
+  # final visible commit: under the HA mutex it refreshes DCS, renews the lease
+  # by resourceVersion CAS, opens/readbacks global writes, and publishes both
+  # ready markers before its HTTP response.  Nothing below that response may
+  # unlock or publish, otherwise the next RunCycle could demote/release first.
   if ! unlock_local_root_writes "${label}"; then
     rollback_locked_primary_accept "${label}" "local-root-unlock"
     return $?
@@ -606,11 +602,26 @@ set_primary_read_write() {
     rollback_locked_primary_accept "${label}" "remote-root-unlock"
     return $?
   fi
-  if ! rm -f "${DATA_DIR}/.remote-root-fence-role" || \
-     ! touch "${DATA_DIR}/.primary-read-write-ready" || \
-     ! mark_replication_ready; then
-    rollback_locked_primary_accept "${label}" "ready-publish"
+  if ! rm -f "${DATA_DIR}/.remote-root-fence-role"; then
+    rollback_locked_primary_accept "${label}" "remote-root-marker-clear"
     return $?
+  fi
+  if [ "${role_guard}" = "require-dcs-primary" ]; then
+    if ! authoritative_primary_write_commit "${label}"; then
+      rollback_locked_primary_accept "${label}" "authority-commit-rejected"
+      return $?
+    fi
+  else
+    if ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null && \
+       ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
+      rollback_locked_primary_accept "${label}" "read-only-open"
+      return $?
+    fi
+    if ! touch "${DATA_DIR}/.primary-read-write-ready" || \
+       ! mark_replication_ready; then
+      rollback_locked_primary_accept "${label}" "ready-publish"
+      return $?
+    fi
   fi
   if ! release_primary_write_commit_lock; then
     rollback_fenced_primary_accept "${label}" "commit-lock-release" || accept_rc=$?
@@ -618,7 +629,7 @@ set_primary_read_write() {
     prestop_watchdog_log "primary-write-commit-lock label=${label} rc=3 reason=release-failed rollback_rc=${accept_rc:-0} fail_closed=false"
     return 3
   fi
-  prestop_watchdog_log "primary-read-write label=${label} rc=0 required-gates=passed user-writers=open ready=published"
+  prestop_watchdog_log "primary-write-accept label=${label} rc=0 required-gates=passed authority-commit-acknowledged=true"
   return 0
 }
 rollback_fenced_primary_accept() {
@@ -2112,7 +2123,7 @@ reconcile_sql_listener_for_syncer_primary_once() {
     # contract now uses the internal-admin, sql_log_bin=0 pre-open gate on all
     # paths, so neither this repair loop nor a normal promotion emits the old
     # public syncerctl writecheck event before user writers are opened.
-    expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener-no-writecheck" || return 1
+    expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener-no-writecheck" "fenced-promotion" || return 1
     prestop_watchdog_log "runtime-primary-listener-reconcile-repair-complete role=${role}"
     return 0
   fi
@@ -2130,7 +2141,7 @@ reconcile_sql_listener_for_syncer_primary_once() {
     prestop_watchdog_log "runtime-primary-listener-reconcile-override reason=dcs-primary-overrides-service-routing primary_sid=${primary_sid} service_id=${SERVICE_ID} syncer_role=${role}"
   fi
   prestop_watchdog_log "runtime-primary-listener-reconcile-begin role=${role}"
-  expose_sql_listener_for_primary_role "syncer-promoted-primary" || return 1
+  expose_sql_listener_for_primary_role "syncer-promoted-primary" "fenced-promotion" || return 1
   prestop_watchdog_log "runtime-primary-listener-reconcile-complete role=${role}"
 }
 configure_replication_from_primary_service_once() {
@@ -2356,7 +2367,7 @@ SLAVE_STATUS=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
 if [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
   # Primary service routes to us — we are the current primary.
   # Clear any stale slave config and mark initialization as complete.
-  if ! expose_sql_listener_for_primary_role "primary-service-route"; then
+  if ! expose_sql_listener_for_primary_role "primary-service-route" "fenced-promotion"; then
     wait ${MARIADB_PID}
     exit 1
   fi
@@ -2468,7 +2479,7 @@ elif [ -n "${SLAVE_STATUS}" ]; then
         done
       fi
       if [ "${blocked_self_election_resolved}" != "true" ]; then
-        if ! expose_sql_listener_for_primary_role "stale-slave-no-primary"; then
+        if ! expose_sql_listener_for_primary_role "stale-slave-no-primary" "fenced-promotion"; then
           wait ${MARIADB_PID}
           exit 1
         fi
@@ -2642,6 +2653,10 @@ else
   # reconcile loop observe the syncer/DCS decision: if another pod is
   # elected primary, this pod can configure replication and publish
   # secondary only after replica health is real.
+  # This is the sole no-DCS write-open: a fresh pod-0 has neither a primary
+  # service target nor slave metadata, and syncer cannot hold a lease before
+  # the database first becomes reachable. Every recurring/repair path above
+  # must use fenced-promotion and the lease-CAS commit.
   if expose_sql_listener_for_primary_role "default-pod0-primary"; then
     echo "Starting as primary by default (index=0)"
   else

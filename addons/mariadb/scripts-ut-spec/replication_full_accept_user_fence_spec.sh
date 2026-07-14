@@ -50,6 +50,8 @@ fi
 LOCAL_ROOT_LOCKED=1
 REMOTE_ROOT_LOCKED=1
 REQUIRED_GATES_PASSED=0
+POST_COMMIT_RETURNED=0
+DEMOTED_AFTER_COMMIT=0
 
 trace_event() {
   printf '%s\n' "$1" >> "${TRACE_FILE}"
@@ -122,8 +124,18 @@ try_acquire_primary_write_commit_lock() {
   return 0
 }
 release_primary_write_commit_lock() {
+  inject_demote_after_commit_return
   trace_event commit-lock-released
   return 0
+}
+inject_demote_after_commit_return() {
+  if [ "${MODE}" = "post-commit-demote" ] && [ "${POST_COMMIT_RETURNED}" -eq 1 ] && [ "${DEMOTED_AFTER_COMMIT}" -eq 0 ]; then
+    GLOBAL_READ_ONLY=1
+    READ_ONLY_MODE=ON
+    command rm -f "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
+    DEMOTED_AFTER_COMMIT=1
+    trace_event run-cycle-demote-after-authority-commit
+  fi
 }
 authoritative_primary_write_commit() {
   trace_event syncer-authority-commit-begin
@@ -136,10 +148,22 @@ authoritative_primary_write_commit() {
     trace_event global-read-only-open-failed
     return 1
   fi
+  if [ "${LOCAL_ROOT_LOCKED}" -ne 0 ] || [ "${REMOTE_ROOT_LOCKED}" -ne 0 ]; then
+    trace_event syncer-commit-before-root-unlocks
+    return 1
+  fi
   GLOBAL_READ_ONLY=0
   READ_ONLY_MODE=OFF
   trace_event global-read-only-off
+  if [ "${MODE}" = "ready-publish-failure" ]; then
+    trace_event ready-publish-failed-after-global-open
+    return 1
+  fi
+  command touch "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
+  trace_event ready-published
+  trace_event replication-ready-published
   trace_event syncer-authority-commit-pass
+  POST_COMMIT_RETURNED=1
 }
 local_sql() {
   case "$*" in
@@ -172,6 +196,8 @@ local_sql() {
   esac
 }
 unlock_local_root_writes() {
+  inject_demote_after_commit_return
+  [ "${DEMOTED_AFTER_COMMIT}" -eq 0 ] || trace_event visible-transition-after-demote
   [ "${REQUIRED_GATES_PASSED}" -eq 1 ] || trace_event local-root-open-before-required-gates
   if [ "${MODE}" = "local-unlock-failure" ]; then
     trace_event local-root-unlock-failed
@@ -181,6 +207,8 @@ unlock_local_root_writes() {
   trace_event local-root-unlocked
 }
 unlock_remote_root_writes() {
+  inject_demote_after_commit_return
+  [ "${DEMOTED_AFTER_COMMIT}" -eq 0 ] || trace_event visible-transition-after-demote
   [ "${REQUIRED_GATES_PASSED}" -eq 1 ] || trace_event remote-root-open-before-required-gates
   if [ "${MODE}" = "remote-unlock-failure" ] || [ "${MODE}" = "rollback-failure" ]; then
     trace_event remote-root-unlock-failed
@@ -215,17 +243,7 @@ mark_replication_pending() {
   rm -f "${DATA_DIR}/.primary-read-write-ready"
   trace_event replication-pending
 }
-mark_replication_ready() {
-  command touch "${DATA_DIR}/.replication-ready"
-  trace_event replication-ready-published
-}
-touch() {
-  if [ "${MODE}" = "ready-publish-failure" ] && [ "$1" = "${DATA_DIR}/.primary-read-write-ready" ]; then
-    trace_event ready-publish-failed
-    return 1
-  fi
-  command touch "$@"
-}
+mark_replication_ready() { trace_event unexpected-addon-ready-publication; return 1; }
 prestop_watchdog_log() {
   trace_event "log:$*"
 }
@@ -236,7 +254,7 @@ MARIADB_ROOT_HOST=%
 [ "${MODE}" = "prestop" ] && command touch "${DATA_DIR}/.prestop-fence-started"
 set_primary_read_write "test-${MODE}" "require-dcs-primary"
 accept_rc=$?
-[ -f "${DATA_DIR}/.primary-read-write-ready" ] && trace_event ready-published
+[ -f "${DATA_DIR}/.primary-read-write-ready" ] && trace_event ready-observed-after-return
 if ordinary_business_can_write; then trace_event ordinary-business-writable; else trace_event ordinary-business-rejected; fi
 if local_root_can_write; then trace_event local-root-writable; else trace_event local-root-rejected; fi
 if remote_root_can_write; then trace_event remote-root-writable; else trace_event remote-root-rejected; fi
@@ -250,9 +268,10 @@ case "${MODE}" in
     local_line="$(grep -n '^local-root-unlocked$' "${TRACE_FILE}" | cut -d: -f1)"
     remote_line="$(grep -n '^remote-root-unlocked$' "${TRACE_FILE}" | cut -d: -f1)"
     ready_line="$(grep -n '^ready-published$' "${TRACE_FILE}" | cut -d: -f1)"
-    [ "${gate_line}" -lt "${global_line}" ]
     [ "${gate_line}" -lt "${local_line}" ]
     [ "${gate_line}" -lt "${remote_line}" ]
+    [ "${local_line}" -lt "${global_line}" ]
+    [ "${remote_line}" -lt "${global_line}" ]
     [ "${global_line}" -lt "${ready_line}" ]
     [ "${local_line}" -lt "${ready_line}" ]
     [ "${remote_line}" -lt "${ready_line}" ]
@@ -260,12 +279,14 @@ case "${MODE}" in
     commit_lock_line="$(grep -n '^commit-lock-acquired$' "${TRACE_FILE}" | cut -d: -f1)"
     syncer_commit_line="$(grep -n '^syncer-authority-commit-pass$' "${TRACE_FILE}" | cut -d: -f1)"
     commit_unlock_line="$(grep -n '^commit-lock-released$' "${TRACE_FILE}" | cut -d: -f1)"
-    [ "${commit_lock_line}" -lt "${syncer_commit_line}" ]
-    [ "${syncer_commit_line}" -lt "${local_line}" ]
+    [ "${commit_lock_line}" -lt "${local_line}" ]
+    [ "${remote_line}" -lt "${syncer_commit_line}" ]
     [ "${remote_line}" -lt "${commit_unlock_line}" ]
     [ "${ready_line}" -lt "${commit_unlock_line}" ]
     [ "${remote_line}" -lt "${replication_ready_line}" ]
     [ "${replication_ready_line}" -lt "${commit_unlock_line}" ]
+    grep -q '^ready-observed-after-return$' "${TRACE_FILE}"
+    ! grep -q '^unexpected-addon-ready-publication$' "${TRACE_FILE}"
     ! grep -q 'open-before-required-gates' "${TRACE_FILE}"
     grep -q '^ordinary-business-writable$' "${TRACE_FILE}"
     grep -q '^local-root-writable$' "${TRACE_FILE}"
@@ -286,6 +307,18 @@ case "${MODE}" in
     grep -q 'fail_closed=false' "${TRACE_FILE}"
     ! grep -q '^ready-published$' "${TRACE_FILE}"
     ;;
+  post-commit-demote)
+    [ "${accept_rc}" -eq 0 ]
+    [ "${READ_ONLY_MODE}" = "ON" ]
+    grep -q '^run-cycle-demote-after-authority-commit$' "${TRACE_FILE}"
+    grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
+    grep -q '^local-root-rejected$' "${TRACE_FILE}"
+    grep -q '^remote-root-rejected$' "${TRACE_FILE}"
+    [ ! -f "${DATA_DIR}/.primary-read-write-ready" ]
+    [ ! -f "${DATA_DIR}/.replication-ready" ]
+    ! grep -q '^visible-transition-after-demote$' "${TRACE_FILE}"
+    ! grep -q '^unexpected-addon-ready-publication$' "${TRACE_FILE}"
+    ;;
 esac
 HARNESS
     } > "${harness}"
@@ -302,6 +335,13 @@ HARNESS
     The output should include "required-gate-pass"
     The output should include "ready-published"
     The output should not include "open-before-required-gates"
+  End
+
+  It "has no addon-visible transition after the authority commit returns"
+    When call run_accept_case post-commit-demote
+    The status should be success
+    The output should include "run-cycle-demote-after-authority-commit"
+    The output should not include "visible-transition-after-demote"
   End
 
   It "keeps every user writer fenced when an internal required gate fails"
@@ -396,7 +436,7 @@ HARNESS
     The output should not include "ready-published"
   End
 
-  It "rolls all user writers back to fenced when remote-root unlock fails after global open"
+  It "rolls all user writers back when remote-root unlock fails before the authority commit"
     When call run_accept_case remote-unlock-failure
     The status should be success
     The output should include "global-read-only-strongest"
@@ -421,7 +461,7 @@ HARNESS
     The output should not include "ready-published"
   End
 
-  It "rolls all user writers back when local-root unlock fails after global open"
+  It "rolls all user writers back when local-root unlock fails before the authority commit"
     When call run_accept_case local-unlock-failure
     The status should be success
     The output should include "local-root-unlock-failed"
@@ -432,7 +472,7 @@ HARNESS
   It "rolls all user writers back when ready publication fails"
     When call run_accept_case ready-publish-failure
     The status should be success
-    The output should include "ready-publish-failed"
+    The output should include "ready-publish-failed-after-global-open"
     The output should include "global-read-only-strongest"
     The output should not include "ready-published"
   End
