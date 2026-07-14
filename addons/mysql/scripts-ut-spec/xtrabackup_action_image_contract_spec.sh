@@ -204,6 +204,13 @@ printf '%s' \"\${lock_per_table_ddl}\""
     ! resolve_lock_flag_from_script xtrabackup-incremental-backup.sh "" 2>/dev/null
   }
 
+  verify_v2_action_shells() {
+    output=$(render_template actionset-xtrabackup-v2.yaml) || return 1
+    output="${output}
+$(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
+    [ "$(printf '%s\n' "$output" | grep -c '^      - bash$')" -eq 4 ]
+  }
+
   It "resolves the exact MySQL 5.7 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 5.7.44
     The status should be success
@@ -213,25 +220,25 @@ printf '%s' \"\${lock_per_table_ddl}\""
   It "resolves the exact MySQL 8.0 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.0.46
     The status should be success
-    The output should equal "docker.io/apecloud/xtrabackup-minimal:8.0.35"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:8.0"
   End
 
   It "resolves the exact MySQL 8.4 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.4.10
     The status should be success
-    The output should equal "docker.io/apecloud/xtrabackup-minimal:8.4.0"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:8.4"
   End
 
   It "uses the exact MySQL 8.0 image for incremental backup Jobs"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup-inc actionset-xtrabackup-inc-v2.yaml 8.0.46
     The status should be success
-    The output should equal "docker.io/apecloud/xtrabackup-minimal:8.0.35"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:8.0"
   End
 
   It "uses the exact MySQL 8.4 image for ORC full-backup Jobs"
     When call resolve_action_image backuppolicytemplate-orc.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.4.10
     The status should be success
-    The output should equal "docker.io/apecloud/xtrabackup-minimal:8.4.0"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:8.4"
   End
 
   It "uses the exact MySQL 5.7 image for ORC incremental backup Jobs"
@@ -240,12 +247,12 @@ printf '%s' \"\${lock_per_table_ddl}\""
     The output should equal "docker.io/apecloud/percona-xtrabackup:2.4"
   End
 
-  It "preserves the minimal-image override in the final MySQL 8.0 Job image"
+  It "preserves the bash-capable image override in the final MySQL 8.0 Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.0.46 \
       --set image.xtraBackup.registry=registry.example.com \
-      --set image.xtraBackup.minimalRepository=team/xtrabackup-minimal
+      --set image.xtraBackup.repository=team/xtrabackup
     The status should be success
-    The output should equal "registry.example.com/team/xtrabackup-minimal:8.0.35"
+    The output should equal "registry.example.com/team/xtrabackup:8.0"
   End
 
   It "preserves the legacy-image override in the final MySQL 5.7 Job image"
@@ -272,6 +279,11 @@ printf '%s' \"\${lock_per_table_ddl}\""
       ! printf "%s\n" "$output" | grep -q "name: IMAGE_TAG"
       ! printf "%s\n" "$output" | grep -q "name: XTRABACKUP_IMAGE"
     ' sh "$(chart_path)"
+    The status should be success
+  End
+
+  It "keeps every v2 backup and restore script on bash"
+    When call verify_v2_action_shells
     The status should be success
   End
 

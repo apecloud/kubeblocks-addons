@@ -318,7 +318,7 @@ init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image
 mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 {{- end -}}
 
-{{- define "mysql.xtrabackup.legacyRepository" -}}
+{{- define "mysql.xtrabackup.repository" -}}
 {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}
 {{- end -}}
 
