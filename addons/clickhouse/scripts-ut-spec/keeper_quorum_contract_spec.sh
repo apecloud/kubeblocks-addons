@@ -1,35 +1,127 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034
 
-role_quorum_value() {
-  local role="$1"
-  local template_file="$2"
+render_clickhouse_template() {
+  helm template clickhouse .. --show-only "$1"
+}
 
-  awk -v role="$role" '
+rendered_metadata_name() {
+  local rendered
+  rendered=$(render_clickhouse_template "$1") || return
+
+  printf '%s\n' "$rendered" | awk '
+    $0 == "metadata:" { in_metadata = 1; next }
+    in_metadata && $1 == "name:" { print $2; exit }
+  '
+}
+
+rendered_role_quorum_value() {
+  local role="$1"
+  local rendered
+  rendered=$(render_clickhouse_template templates/cmpd-keeper.yaml) || return
+
+  printf '%s\n' "$rendered" | awk -v role="$role" '
     $0 ~ "^[[:space:]]*- name: " role "$" { in_role = 1; next }
     in_role && $0 ~ "^[[:space:]]*- name:" { exit }
     in_role && $1 == "participatesInQuorum:" { print $2; exit }
-  ' "$template_file"
+  '
+}
+
+rendered_component_def_reference() {
+  local rendered
+  rendered=$(render_clickhouse_template "$1") || return
+
+  printf '%s\n' "$rendered" | awk '$1 == "componentDef:" { print $2; exit }'
+}
+
+rendered_keeper_selector_contract() {
+  local cluster_definition component_version cluster_selector version_selector
+  cluster_definition=$(render_clickhouse_template templates/clusterdefinition.yaml) || return
+  component_version=$(render_clickhouse_template templates/cmpv.yaml) || return
+
+  cluster_selector=$(printf '%s\n' "$cluster_definition" |
+    awk '$1 == "compDef:" && $2 ~ /^\^clickhouse-keeper-/ { print $2; exit }')
+  version_selector=$(printf '%s\n' "$component_version" |
+    awk '$1 == "-" && $2 ~ /^\^clickhouse-keeper-/ { print $2; exit }')
+  printf '%s|%s\n' "$cluster_selector" "$version_selector"
+}
+
+rendered_keeper_bypass_count() {
+  local rendered
+  rendered=$(render_clickhouse_template templates/cmpd-keeper.yaml) || return
+  printf '%s\n' "$rendered" | grep -cF 'apps.kubeblocks.io/skip-immutable-check:' || true
+}
+
+rendered_old_version_reference_count() {
+  local rendered
+  rendered=$(helm template clickhouse ..) || return
+  printf '%s\n' "$rendered" | grep -cF '1.2.0-alpha.0' || true
 }
 
 Describe "ClickHouse Keeper quorum role contract"
-  template_file="../templates/cmpd-keeper.yaml"
-
   It "marks the leader as a quorum participant"
-    When call role_quorum_value leader "$template_file"
+    When call rendered_role_quorum_value leader
     The status should be success
     The output should eq "true"
   End
 
   It "marks followers as quorum participants"
-    When call role_quorum_value follower "$template_file"
+    When call rendered_role_quorum_value follower
     The status should be success
     The output should eq "true"
   End
 
   It "keeps observers outside the voting quorum"
-    When call role_quorum_value observer "$template_file"
+    When call rendered_role_quorum_value observer
     The status should be success
     The output should eq "false"
+  End
+
+  It "publishes a new versioned Keeper ComponentDefinition"
+    When call rendered_metadata_name templates/cmpd-keeper.yaml
+    The status should be success
+    The output should eq "clickhouse-keeper-1.2.0-alpha.1"
+  End
+
+  It "moves the ClickHouse ComponentDefinition to the same chart version"
+    When call rendered_metadata_name templates/cmpd-ch.yaml
+    The status should be success
+    The output should eq "clickhouse-1.2.0-alpha.1"
+  End
+
+  It "moves the Keeper ParametersDefinition reference to the new name"
+    When call rendered_component_def_reference templates/paramsdef-keeper.yaml
+    The status should be success
+    The output should eq "clickhouse-keeper-1.2.0-alpha.1"
+  End
+
+  It "moves the ClickHouse config ParametersDefinition reference to the new name"
+    When call rendered_component_def_reference templates/paramsdef-config.yaml
+    The status should be success
+    The output should eq "clickhouse-1.2.0-alpha.1"
+  End
+
+  It "moves the ClickHouse user ParametersDefinition reference to the new name"
+    When call rendered_component_def_reference templates/paramsdef-user.yaml
+    The status should be success
+    The output should eq "clickhouse-1.2.0-alpha.1"
+  End
+
+  It "keeps topology and ComponentVersion selectors compatible with the new Keeper name"
+    When call rendered_keeper_selector_contract
+    The status should be success
+    The output should eq "^clickhouse-keeper-1.*|^clickhouse-keeper-1.*"
+  End
+
+  It "does not retain the immutable-check bypass on the new Keeper definition"
+    When call rendered_keeper_bypass_count
+    The status should be success
+    The output should eq "0"
+  End
+
+  It "does not render references to the old chart version"
+    When call rendered_old_version_reference_count
+    The status should be success
+    The output should eq "0"
   End
 End
