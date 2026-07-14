@@ -150,7 +150,7 @@ function buildJsonString() {
 # get the storage host by storage provider and endpoint
 function getStorageHost() {
     if [[ ! -z ${endpoint} ]]; then
-       echo $(replaceK8sSVC "${endpoint#*//}")
+       replaceK8sSVC "${endpoint}"
        return
     fi
     if [[ ${provider} == "Alibaba" ]];then
@@ -163,19 +163,38 @@ function getStorageHost() {
 }
 
 function replaceK8sSVC() {
-    localEndpoint="${1}"
-    if [[ ${localEndpoint} == *".svc."* ]]; then
-       local port=${localEndpoint#*:}
-       local host=${localEndpoint%:*}
-       hostIP=$(getent hosts ${host} 2>/dev/null | awk '{print $1}')
-       if [ -z ${port} ]; then
-           echo ${hostIP}
-       else
-           echo "${hostIP}:${port}"
-       fi
-       return
+    local localEndpoint="${1}"
+    local scheme=""
+    local address="${localEndpoint}"
+    case "${address}" in
+      http://*)
+        scheme="http://"
+        address="${address#http://}"
+        ;;
+      https://*)
+        scheme="https://"
+        address="${address#https://}"
+        ;;
+    esac
+
+    local host="${address%%:*}"
+    local port=""
+    if [[ ${address} == *":"* ]]; then
+       port="${address#*:}"
     fi
-    echo ${localEndpoint}
+    if [[ ${host} == *.svc || ${host} == *.svc.* ]]; then
+       local hostIP
+       hostIP=$(getent hosts "${host}" 2>/dev/null | awk '{print $1}')
+       if [[ -n ${hostIP} ]]; then
+          if [[ -n ${port} ]]; then
+             echo "${scheme}${hostIP}:${port}"
+          else
+             echo "${scheme}${hostIP}"
+          fi
+          return
+       fi
+    fi
+    echo "${localEndpoint}"
 }
 
 function get_pod_ordinal() {
