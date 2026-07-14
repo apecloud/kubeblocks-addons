@@ -18,8 +18,14 @@ maintainers:
   - name: JesseAtSZ
     url: https://github.com/JesseAtSZ
 
+# 2026-07-14 Reason: the ParametersDefinition v1alpha1 chain and file-level
+# configs[].reconfigure this addon relies on are KB main/1.2+ contracts
+# (docs/addon-api/); declaring >=1.0.0 promised a 1.0.x compatibility the
+# parameter chain cannot deliver. Purpose: pin the supported KubeBlocks floor
+# to the contract the addon actually implements. 1.0.x support, if ever
+# needed, goes to a separate release-1.0 chart per docs/addon-api-1.0/.
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.2.0"
   addon.kubeblocks.io/model: "RDBMS"
   addon.kubeblocks.io/provider: "community"
 

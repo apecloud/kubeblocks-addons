@@ -146,24 +146,4 @@ Generate scripts configmap
 {{- end }}
 {{- end }}
 
-{{/*
-Define YashanDB native Configure action.
-*/}}
-{{- define "yashandb.config.reconfigureAction" -}}
-reconfigure:
-  exec:
-    container: yashandb-container
-    command:
-      - /usr/bin/env
-      - bash
-      - -c
-      - |
-        set -euo pipefail
 
-        # 2026-06-22 Reason: KubeBlocks exposes changed parameters as environment variables during Reconfiguring; Purpose: apply only valid YashanDB install.ini keys through the packaged updater.
-        # 2026-06-23 Reason: ConfigMap-mounted scripts are read-only and not executable in the live cluster; Purpose: invoke the updater through bash so reconfigure does not fail with Permission denied.
-        env | cut -d= -f1 | grep -E '^[A-Z0-9_]+$' | sort -u | while IFS= read -r param; do
-          [ -n "${param}" ] || continue
-          bash /home/yashan/kbscripts/update-parameter.sh "${param}" "$(printenv "${param}")"
-        done
-{{- end -}}

@@ -26,12 +26,32 @@ spec:
             targetPort: yashandb
   configs:
     # 2026-07-06 Reason: ParametersDefinition binds by ComponentDefinition config entry name; Purpose: keep the config entry and parameter chain on one shared helper.
-    # Time: 2026-07-06.
+    # 2026-07-14 Reason: the KB main/1.2+ parameters chain requires the config
+    # entry to be externalManaged with a file-level reconfigure exec that
+    # receives the changed key/value pair as "$1"/"$2" from
+    # ActionRequest.Arguments (docs/addon-api/ pd-to-cmpd migration guide).
+    # The earlier lifecycleActions.reconfigure scanned the whole ambient
+    # environment, which could apply zero changes with rc=0 and rewrite
+    # install.ini from unrelated container env vars such as NODE_ID.
+    # Purpose: bind the parameter chain on the CRD-supported main/1.2+ path;
+    # this chart no longer claims 1.0.x compatibility (see Chart.yaml).
     - name: {{ include "yashandb.configEntryName" . }}
       template: {{ include "yashandb.configTplName" . }}
       volumeName: {{ include "yashandb.configEntryName" . }}
       namespace: {{ .Release.Namespace }}
       restartOnFileChange: true
+      externalManaged: true
+      reconfigure:
+        exec:
+          targetPodSelector: All
+          container: yashandb-container
+          command:
+            - /usr/bin/env
+            - bash
+            - -c
+            # 2026-06-23 Reason: ConfigMap-mounted scripts are read-only and not executable in the live cluster; Purpose: invoke the updater through bash so reconfigure does not fail with Permission denied.
+            - bash /home/yashan/kbscripts/update-parameter.sh "$1" "$2"
+            - --
   scripts:
     - name: yashandb-scripts
       template: {{ include "yashandb.scriptsTplName" . }}
@@ -57,9 +77,10 @@ spec:
       updatePriority: 1
       participatesInQuorum: false
   lifecycleActions:
-    # 2026-07-06 Reason: KubeBlocks v1 CRD prunes spec.configs[].reconfigure and externalManaged=true makes the controller ignore this template, blocking provisioning with "config/script template has no template specified"; Purpose: keep current-head workload provisioning on the CRD-supported lifecycle reconfigure path.
-    # Time: 2026-07-06.
-    {{- include "yashandb.config.reconfigureAction" . | nindent 4 }}
+    # 2026-07-14 Reason: reconfigure moved to the config entry's file-level
+    # reconfigure exec above (KB main/1.2+ contract); the earlier claim that
+    # externalManaged breaks provisioning described KB 1.0.x CRD pruning, and
+    # this chart now declares >=1.2.0 where the field is served.
     # 2026-06-02 Reason: wire YashanDB DATABASE_ROLE into KubeBlocks roleProbe; Purpose: map PRIMARY/STANDBY to primary/secondary labels for services and switchover prechecks.
     roleProbe:
       periodSeconds: 10
