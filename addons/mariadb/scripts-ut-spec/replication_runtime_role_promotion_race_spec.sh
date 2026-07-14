@@ -256,7 +256,7 @@ HARNESS
     return "${rc}"
   }
 
-  It "keeps the global read-only fence until full-primary acceptance after promotion interrupts a secondary fence"
+  It "keeps the global read-only fence before full-primary acceptance after promotion interrupts a secondary fence"
     When call run_secondary_fence_promotion_race
     The status should be success
     The output should include "read-only-on"
@@ -264,7 +264,7 @@ HARNESS
     The output should include "full-primary-accept"
   End
 
-  It "keeps an ordinary business writer fenced until full-primary acceptance"
+  It "keeps an ordinary business writer fenced before full-primary acceptance"
     When call run_business_writer_during_primary_accept
     The status should be success
     The output should include "business-write-rejected"

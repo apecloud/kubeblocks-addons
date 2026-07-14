@@ -567,7 +567,7 @@ accept_syncer_primary_promotion_from_replica_path() {
   # r9 first-red: replica fencing can begin while syncer still reports
   # secondary, then race with syncer promoting this same Pod. Keep the
   # global read_only fence ON until the existing full-primary acceptance
-  # completes. MariaDB read_only is server-global, so turning it OFF here
+  # takes control. MariaDB read_only is server-global, so turning it OFF here
   # would also expose ordinary business users, not just kb_internal_root.
   # Syncer's DCS-authoritative local leader heartbeat must instead use its
   # dedicated READ_ONLY ADMIN connection while suppressing binlog output.
