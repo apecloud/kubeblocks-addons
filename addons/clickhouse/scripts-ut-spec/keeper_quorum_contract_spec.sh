@@ -11,7 +11,7 @@ rendered_metadata_name() {
 
   printf '%s\n' "$rendered" | awk '
     $0 == "metadata:" { in_metadata = 1; next }
-    in_metadata && $1 == "name:" && name == "" { name = $2; in_metadata = 0 }
+    in_metadata && $1 == "name:" && !found { name = $2; found = 1; in_metadata = 0 }
     END { print name }
   '
 }
@@ -22,9 +22,9 @@ rendered_role_quorum_value() {
   rendered=$(render_clickhouse_template templates/cmpd-keeper.yaml) || return
 
   printf '%s\n' "$rendered" | awk -v role="$role" '
-    $0 ~ "^[[:space:]]*- name: " role "$" { in_role = 1; next }
-    in_role && $0 ~ "^[[:space:]]*- name:" { in_role = 0 }
-    in_role && $1 == "participatesInQuorum:" && value == "" { value = $2; in_role = 0 }
+    !seen_role && $0 ~ "^[[:space:]]*- name: " role "$" { in_role = 1; seen_role = 1; next }
+    in_role && $0 ~ "^[[:space:]]*- name:" { in_role = 0; done = 1 }
+    in_role && $1 == "participatesInQuorum:" && !done { value = $2; in_role = 0; done = 1 }
     END { print value }
   '
 }
@@ -34,7 +34,7 @@ rendered_component_def_reference() {
   rendered=$(render_clickhouse_template "$1") || return
 
   printf '%s\n' "$rendered" |
-    awk '$1 == "componentDef:" && value == "" { value = $2 } END { print value }'
+    awk '$1 == "componentDef:" && !found { value = $2; found = 1 } END { print value }'
 }
 
 rendered_keeper_selector_contract() {
@@ -43,9 +43,9 @@ rendered_keeper_selector_contract() {
   component_version=$(render_clickhouse_template templates/cmpv.yaml) || return
 
   cluster_selector=$(printf '%s\n' "$cluster_definition" |
-    awk '$1 == "compDef:" && $2 ~ /^\^clickhouse-keeper-/ && value == "" { value = $2 } END { print value }')
+    awk '$1 == "compDef:" && $2 ~ /^\^clickhouse-keeper-/ && !found { value = $2; found = 1 } END { print value }')
   version_selector=$(printf '%s\n' "$component_version" |
-    awk '$1 == "-" && $2 ~ /^\^clickhouse-keeper-/ && value == "" { value = $2 } END { print value }')
+    awk '$1 == "-" && $2 ~ /^\^clickhouse-keeper-/ && !found { value = $2; found = 1 } END { print value }')
   printf '%s|%s\n' "$cluster_selector" "$version_selector"
 }
 
@@ -126,5 +126,29 @@ Describe "ClickHouse Keeper quorum role contract"
     When call rendered_old_version_reference_count
     The status should be success
     The output should eq "0"
+  End
+
+  Context "when the first componentDef reference is empty"
+    Mock render_clickhouse_template
+      printf 'componentDef:\ncomponentDef: later\n'
+    End
+
+    It "does not replace it with a later reference"
+      When call rendered_component_def_reference ignored.yaml
+      The status should be success
+      The output should eq ""
+    End
+  End
+
+  Context "when the first matching role omits participatesInQuorum"
+    Mock render_clickhouse_template
+      printf '%s\n' '- name: leader' '- name: follower' '- name: leader' '  participatesInQuorum: true'
+    End
+
+    It "does not accept the value from a duplicate later role"
+      When call rendered_role_quorum_value leader
+      The status should be success
+      The output should eq ""
+    End
   End
 End
