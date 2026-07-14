@@ -77,9 +77,34 @@ client_contract=true"
     printf 'versions=%s,%s\n' "$addon_version" "$cluster_version"
 
     helm template milvus .. | ruby -ryaml -e '
-      definitions = YAML.load_stream(ARGF.read).compact.select { |document| document["kind"] == "ComponentDefinition" }
+      documents = YAML.load_stream(ARGF.read).compact
+      definitions = documents.select { |document| document["kind"] == "ComponentDefinition" }
       names = definitions.map { |definition| definition.dig("metadata", "name") }
-      puts "definitions=#{names.grep(/milvus-(minio|standalone)-/).sort.join(",")}"
+      definition_names = names.grep(/milvus-(minio|standalone)-/).sort.join(",")
+      puts "definitions=#{definition_names}"
+
+      parameter_definitions = documents.select do |document|
+        document["kind"] == "ParametersDefinition" &&
+          document.dig("metadata", "name").start_with?("milvus-standalone-pd-")
+      end.sort_by { |document| document.dig("metadata", "name") }
+      abort "expected two Milvus standalone ParametersDefinitions" unless parameter_definitions.length == 2
+
+      bindings = parameter_definitions.map do |definition|
+        [definition.dig("metadata", "name"), definition.dig("spec", "componentDef")]
+      end
+      binding_names = bindings.map { |name, pattern| "#{name}:#{pattern}" }.join(",")
+      puts "parameter_definitions=#{binding_names}"
+
+      component_definitions = %w[
+        milvus-standalone-1.2.0-alpha.0
+        milvus-standalone-1.2.0-alpha.1
+      ]
+      matrix = bindings.map do |name, pattern|
+        matches = component_definitions.select { |component_definition| Regexp.new(pattern).match?(component_definition) }
+        abort "#{name} must match exactly one ComponentDefinition" unless matches.length == 1
+        "#{name}:#{matches.first}"
+      end
+      puts "parameter_binding_matrix=#{matrix.join(",")}"
     '
 
     helm dependency build ../../../addons-cluster/milvus >/dev/null
@@ -103,6 +128,8 @@ client_contract=true"
     When call render_upgrade_contract
     The output should eq "versions=1.2.0-alpha.1,1.2.0-alpha.0
 definitions=milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1
+parameter_definitions=milvus-standalone-pd-1.2.0-alpha.0:^milvus-standalone-1[.]2[.]0-alpha[.]0$,milvus-standalone-pd-1.2.0-alpha.1:^milvus-standalone-1[.]2[.]0-alpha[.]1$
+parameter_binding_matrix=milvus-standalone-pd-1.2.0-alpha.0:milvus-standalone-1.2.0-alpha.0,milvus-standalone-pd-1.2.0-alpha.1:milvus-standalone-1.2.0-alpha.1
 cluster_definition_api=topology
 migration=milvus-standalone-minio-root-migrate,Upgrade,precondition=600,force=false,milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1"
     The status should be success

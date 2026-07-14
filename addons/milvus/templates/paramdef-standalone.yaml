@@ -1,40 +1,24 @@
+{{- $root := . -}}
+{{- $currentComponentDef := include "milvus-standalone.cmpdName" . -}}
+{{- $bindings := list
+  (dict
+    "name" "milvus-standalone-pd-1.2.0-alpha.0"
+    "componentDef" "^milvus-standalone-1[.]2[.]0-alpha[.]0$")
+  (dict
+    "name" (printf "milvus-standalone-pd-%s" .Chart.Version)
+    "componentDef" (printf "^%s$" ($currentComponentDef | replace "." "[.]")))
+-}}
+{{- range $binding := $bindings }}
+---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: milvus-standalone-pd-{{ .Chart.Version }}
+  name: {{ $binding.name }}
   labels:
-    {{- include "milvus.labels" . | nindent 4 }}
+    {{- include "milvus.labels" $root | nindent 4 }}
   annotations:
-    {{- include "milvus.annotations" . | nindent 4 }}
+    {{- include "milvus.annotations" $root | nindent 4 }}
 spec:
-  componentDef: {{ include "milvus-standalone.cmpdRegexpPattern" . }}
-  templateName: config
-  fileName: user.yaml
-  fileFormatConfig:
-    format: yaml
-  parametersSchema:
-    topLevelKey: MilvusStandaloneParameter
-    cue: |-
-      #MilvusStandaloneParameter: {
-        ...
-        log?: {
-          ...
-          level?: string & ("debug" | "info" | "warn" | "error" | "panic" | "fatal") | *"info"
-        }
-        proxy?: {
-          ...
-          maxNameLength?: int & >=1 & <=32768 | *255
-          maxFieldNum?: int & >=1 & <=2048 | *64
-          maxDimension?: int & >=1 & <=32768 | *32768
-        }
-        common?: {
-          ...
-          gracefulTime?: int & >=0 & <=600000 | *5000
-        }
-      }
-  staticParameters:
-    - log.level
-    - proxy.maxNameLength
-    - proxy.maxFieldNum
-    - proxy.maxDimension
-    - common.gracefulTime
+  componentDef: {{ $binding.componentDef | quote }}
+  {{- include "milvus-standalone.parametersDefinitionSpec" $root | nindent 2 }}
+{{- end }}

@@ -66,6 +66,11 @@ Helm update of the existing Cluster's `spec.componentSpecs`: KubeBlocks owns
 that atomic field after topology resolution, so another field manager can be
 rejected or can overwrite controller-owned state.
 
+The addon upgrade also narrows the retained alpha.0 and current alpha.1
+Milvus parameter definitions to their exact ComponentDefinition versions.
+This prevents both definitions from claiming the same `user.yaml` file while
+the Cluster transitions between immutable component versions.
+
 Then edit the namespace, Cluster name, and OpsRequest name in
 `examples/upgrade-embedded-minio-credential.yaml` and create it. The KubeBlocks
 `Upgrade` OpsRequest changes the two ComponentDefinitions through the owning
