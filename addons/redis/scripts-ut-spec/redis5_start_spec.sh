@@ -538,15 +538,15 @@ Describe "Redis5 Start Bash Script Tests"
       The variable redis_probe_reason should eq "probe timed out"
     End
 
-    It "classifies a DNS failure as indeterminate without replaying output"
+    It "classifies a name-resolution failure separately without replaying output"
       timeout() {
         echo "Could not resolve host"
         return 1
       }
       When call get_role_from_redis_pod "redis-0"
-      The status should eq 2
+      The status should eq 3
       The stdout should eq ""
-      The variable redis_probe_reason should eq "probe command failed (rc=1)"
+      The variable redis_probe_reason should eq "name resolution failed"
     End
 
     It "classifies an authentication error response as indeterminate"
@@ -668,6 +668,7 @@ Describe "Redis5 Start Bash Script Tests"
 
       It "uses a running primary when Sentinel has not converged"
         Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        touch "$REDIS_DATA_DIR/.kb-redis-restore-bootstrap-authorized"
         getent() {
           echo "10.0.0.1 $2"
         }
@@ -688,6 +689,7 @@ Describe "Redis5 Start Bash Script Tests"
         The stdout should include "confirmed stable running Redis primary from pod role: redis-1.redis-headless.default:6379"
         The variable primary should eq "redis-1.redis-headless.default"
         The variable primary_port should eq "6379"
+        The path "$REDIS_DATA_DIR/.kb-redis-restore-bootstrap-authorized" should not be exist
       End
 
       It "fails closed when multiple running primaries are observed"
@@ -792,10 +794,13 @@ Describe "Redis5 Start Bash Script Tests"
         export REDIS_POD_NAME_LIST="redis-1,redis-0"
         export REDIS_POD_FQDN_LIST="redis-1.redis-headless.default,redis-0.redis-headless.default"
         export REDIS_DATA_DIR="./redis5-data-empty"
+        export REDIS_RESTORE_BOOTSTRAP_MARKER="$REDIS_DATA_DIR/.kb-redis-restore-bootstrap-authorized"
+        export REDIS_FRESH_BOOTSTRAP_MARKER="$REDIS_DATA_DIR/.kb-redis-fresh-bootstrap-pending"
+        export CURRENT_POD_NAME="redis-0"
+        export CLUSTER_NAMESPACE="default"
         export SENTINEL_COMPONENT_NAME="redis-sentinel"
         export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless"
         mkdir -p "$REDIS_DATA_DIR"
-        echo "placeholder" > "$REDIS_DATA_DIR/users.acl"
         wait_before_redis_role_rescan() { :; }
       }
       Before "setup"
@@ -804,6 +809,10 @@ Describe "Redis5 Start Bash Script Tests"
         unset REDIS_POD_NAME_LIST
         unset REDIS_POD_FQDN_LIST
         unset REDIS_DATA_DIR
+        unset REDIS_RESTORE_BOOTSTRAP_MARKER
+        unset REDIS_FRESH_BOOTSTRAP_MARKER
+        unset CURRENT_POD_NAME
+        unset CLUSTER_NAMESPACE
         unset SENTINEL_COMPONENT_NAME
         unset SENTINEL_POD_FQDN_LIST
         unset service_port
@@ -811,7 +820,7 @@ Describe "Redis5 Start Bash Script Tests"
       }
       After "un_setup"
 
-      It "allows default primary fallback for first bootstrap"
+      It "allows only an empty deterministic pod with no peer PVC to bootstrap"
         Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
         getent() {
           echo "10.0.0.1 $2"
@@ -821,14 +830,91 @@ Describe "Redis5 Start Bash Script Tests"
         }
         get_role_from_redis_pod() {
           redis_probe_role=""
+          if [ "$1" = "redis-1.redis-headless.default" ]; then
+            redis_probe_reason="name resolution failed"
+            return 3
+          fi
           redis_probe_reason="connection refused"
           return 1
         }
+        list_pvcs_for_redis_pod() { :; }
         When call init_or_get_primary_from_redis_sentinel
         The status should be success
-        The stdout should include "every Redis peer explicitly refused connections in two stable scans"
+        The stdout should include "fresh bootstrap authorization verified"
         The variable primary should eq "redis-0.redis-headless.default"
         The variable primary_port should eq "6379"
+        The path "$REDIS_FRESH_BOOTSTRAP_MARKER" should be file
+        The path "$REDIS_RESTORE_BOOTSTRAP_MARKER" should not be exist
+      End
+
+      It "fails closed when an absent peer still has a PVC"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() { echo "10.0.0.1 $2"; }
+        retry_get_master_addr_by_name_from_sentinel() { return 1; }
+        get_role_from_redis_pod() {
+          redis_probe_role=""
+          if [ "$1" = "redis-1.redis-headless.default" ]; then
+            redis_probe_reason="name resolution failed"
+            return 3
+          fi
+          redis_probe_reason="connection refused"
+          return 1
+        }
+        list_pvcs_for_redis_pod() { echo "persistentvolumeclaim/data-redis-1"; }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "peer redis-1 still has persistent state"
+        The path "$REDIS_FRESH_BOOTSTRAP_MARKER" should not be exist
+      End
+
+      It "fails closed when the peer PVC lookup is indeterminate"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() { echo "10.0.0.1 $2"; }
+        retry_get_master_addr_by_name_from_sentinel() { return 1; }
+        get_role_from_redis_pod() {
+          redis_probe_role=""
+          redis_probe_reason="connection refused"
+          return 1
+        }
+        list_pvcs_for_redis_pod() { return 1; }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "failed to verify persistent state for peer redis-1"
+        The path "$REDIS_FRESH_BOOTSTRAP_MARKER" should not be exist
+      End
+
+      It "rechecks peer PVCs instead of trusting a fresh-bootstrap retry marker"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        touch "$REDIS_FRESH_BOOTSTRAP_MARKER"
+        echo "started-once" > "$REDIS_DATA_DIR/dump.rdb"
+        getent() { echo "10.0.0.1 $2"; }
+        retry_get_master_addr_by_name_from_sentinel() { return 1; }
+        get_role_from_redis_pod() {
+          redis_probe_role=""
+          redis_probe_reason="connection refused"
+          return 1
+        }
+        list_pvcs_for_redis_pod() { echo "persistentvolumeclaim/data-redis-1"; }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "peer redis-1 still has persistent state"
+      End
+
+      It "allows a fresh-bootstrap retry only after peer PVC absence is reverified"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        touch "$REDIS_FRESH_BOOTSTRAP_MARKER"
+        echo "started-once" > "$REDIS_DATA_DIR/dump.rdb"
+        getent() { echo "10.0.0.1 $2"; }
+        retry_get_master_addr_by_name_from_sentinel() { return 1; }
+        get_role_from_redis_pod() {
+          redis_probe_role=""
+          redis_probe_reason="connection refused"
+          return 1
+        }
+        list_pvcs_for_redis_pod() { :; }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "fresh bootstrap retry authorization reverified"
       End
     End
 
@@ -838,6 +924,8 @@ Describe "Redis5 Start Bash Script Tests"
         export REDIS_POD_NAME_LIST="redis-1,redis-0"
         export REDIS_POD_FQDN_LIST="redis-1.redis-headless.default,redis-0.redis-headless.default"
         export REDIS_DATA_DIR="./redis5-data-restored"
+        export REDIS_RESTORE_BOOTSTRAP_MARKER="$REDIS_DATA_DIR/.kb-redis-restore-bootstrap-authorized"
+        export CURRENT_POD_NAME="redis-0"
         export SENTINEL_COMPONENT_NAME="redis-sentinel"
         export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless"
         mkdir -p "$REDIS_DATA_DIR"
@@ -850,6 +938,8 @@ Describe "Redis5 Start Bash Script Tests"
         unset REDIS_POD_NAME_LIST
         unset REDIS_POD_FQDN_LIST
         unset REDIS_DATA_DIR
+        unset REDIS_RESTORE_BOOTSTRAP_MARKER
+        unset CURRENT_POD_NAME
         unset SENTINEL_COMPONENT_NAME
         unset SENTINEL_POD_FQDN_LIST
         unset service_port
@@ -857,7 +947,7 @@ Describe "Redis5 Start Bash Script Tests"
       }
       After "un_setup"
 
-      It "allows restored data to bootstrap without a backup-method-specific marker"
+      It "fails closed for persisted data without a restore authorization marker"
         Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
         getent() {
           echo "10.0.0.1 $2"
@@ -870,11 +960,26 @@ Describe "Redis5 Start Bash Script Tests"
           redis_probe_reason="connection refused"
           return 1
         }
+        list_pvcs_for_redis_pod() { :; }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "data directory contains persistent state without bootstrap authorization"
+      End
+
+      It "allows restored data with an explicit restore authorization marker"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        touch "$REDIS_RESTORE_BOOTSTRAP_MARKER"
+        getent() { echo "10.0.0.1 $2"; }
+        retry_get_master_addr_by_name_from_sentinel() { return 1; }
+        get_role_from_redis_pod() {
+          redis_probe_role=""
+          redis_probe_reason="connection refused"
+          return 1
+        }
         When call init_or_get_primary_from_redis_sentinel
         The status should be success
-        The stdout should include "every Redis peer explicitly refused connections in two stable scans"
+        The stdout should include "restore bootstrap authorization verified"
         The variable primary should eq "redis-0.redis-headless.default"
-        The variable primary_port should eq "6379"
       End
     End
   End

@@ -68,5 +68,7 @@ get_files_to_restore
 truncate_aof
 
 chmod -R 777 "${DATA_DIR}"
-rm -rf ${data_protection_file} && sync
+touch "${REDIS_RESTORE_BOOTSTRAP_MARKER:-${DATA_DIR}/.kb-redis-restore-bootstrap-authorized}"
+rm -rf ${data_protection_file}
+sync
 DP_log "Restore complete."

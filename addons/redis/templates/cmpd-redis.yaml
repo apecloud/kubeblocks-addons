@@ -93,7 +93,7 @@ spec:
       namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
-  {{- include "kblib.syncer.policyRules" $ | nindent 2 }}
+  {{- include "kblib.syncer.policyRulesWithPersistentVolumeClaims" $ | nindent 2 }}
   systemAccounts:
     - name: default
       initAccount: true
@@ -409,6 +409,16 @@ spec:
           - /bin/dbctl
           - /tools/
         imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+      - name: init-kubectl
+        command:
+          - cp
+          - -r
+          - /opt/bitnami/kubectl/bin/kubectl
+          - /tools/
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.kubectlImage.pullPolicy }}
         volumeMounts:
           - mountPath: /tools
             name: tools

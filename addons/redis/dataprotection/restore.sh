@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
@@ -20,4 +21,6 @@ elif [ "$(datasafed list redis-offline.tar)" == "redis-offline.tar" ]; then
 else
    datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C ${DATA_DIR}
 fi
-rm -rf ${data_protection_file} && sync
+touch "${REDIS_RESTORE_BOOTSTRAP_MARKER:-${DATA_DIR}/.kb-redis-restore-bootstrap-authorized}"
+rm -rf ${data_protection_file}
+sync
