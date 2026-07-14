@@ -132,6 +132,7 @@ DATASAFED
       PATH="${bin_dir}:${PATH}" \
         DATA_DIR="${data_dir}" \
         DP_TARGET_POD_NAME="rabbitmq-cluster-rabbitmq-0" \
+        DP_TARGET_RELATIVE_PATH="ignored/extra/depth" \
         DP_BACKUP_BASE_PATH="/backup/base" \
         FAKE_ARCHIVE_PATH="${tmp_dir}/payload.tar" \
         bash "${restore_script}"
@@ -189,6 +190,81 @@ DATASAFED
     ' _ "${restore_script}"
     The status should be success
     The stdout should include "restore prepareData completed"
+  End
+
+  It "uses the final pod segment from a two-segment volume-populator target path"
+    When call bash -c '
+      set -Eeuo pipefail
+      restore_script="$1"
+      tmp_dir="$(mktemp -d)"
+      trap "rm -rf \"${tmp_dir}\"" EXIT
+      data_dir="${tmp_dir}/data"
+      bin_dir="${tmp_dir}/bin"
+      payload_dir="${tmp_dir}/payload"
+      mkdir -p "${data_dir}" "${bin_dir}" "${payload_dir}"
+      printf "restored-via-relative\n" > "${payload_dir}/restored.txt"
+      tar -cf "${tmp_dir}/payload.tar" -C "${payload_dir}" .
+      cat > "${bin_dir}/datasafed" <<'"'"'DATASAFED'"'"'
+#!/bin/bash
+set -e
+case "$1" in
+  list)
+    test "${DATASAFED_BACKEND_BASE_PATH}" = "${EXPECTED_BACKUP_BASE_PATH}"
+    printf "%s\n" "${EXPECTED_TARGET_POD_NAME}.tar.zst"
+    ;;
+  pull)
+    cat "${FAKE_ARCHIVE_PATH}"
+    ;;
+  *)
+    echo "unexpected datasafed command: $*" >&2
+    exit 1
+    ;;
+esac
+DATASAFED
+      printf "#!/bin/bash\nexit 0\n" > "${bin_dir}/chown"
+      chmod +x "${bin_dir}/datasafed" "${bin_dir}/chown"
+      unset DP_TARGET_POD_NAME || true
+      PATH="${bin_dir}:${PATH}" \
+        DATA_DIR="${data_dir}" \
+        DP_TARGET_RELATIVE_PATH="rabbitmq/rmq-br-5400-rabbitmq-2" \
+        DP_BACKUP_BASE_PATH="/backup/base/rabbitmq/rmq-br-5400-rabbitmq-2" \
+        EXPECTED_BACKUP_BASE_PATH="/backup/base/rabbitmq/rmq-br-5400-rabbitmq-2" \
+        EXPECTED_TARGET_POD_NAME="rmq-br-5400-rabbitmq-2" \
+        FAKE_ARCHIVE_PATH="${tmp_dir}/payload.tar" \
+        bash "${restore_script}"
+      test -f "${data_dir}/restored.txt"
+      test ! -f "${data_dir}/.kb-data-protection"
+    ' _ "${restore_script}"
+    The status should be success
+    The stdout should include "restore prepareData completed"
+  End
+
+  It "fails closed when the target relative path has an empty final segment"
+    When call bash -c '
+      set -Eeuo pipefail
+      restore_script="$1"
+      unset DP_TARGET_POD_NAME || true
+      DATA_DIR="$(mktemp -d)" \
+        DP_TARGET_RELATIVE_PATH="rabbitmq/" \
+        DP_BACKUP_BASE_PATH="/backup/base/rabbitmq" \
+        bash "${restore_script}"
+    ' _ "${restore_script}"
+    The status should be failure
+    The stderr should include "must be one pod segment or <target-name>/<target-pod-name>"
+  End
+
+  It "fails closed when the target relative path has extra depth"
+    When call bash -c '
+      set -Eeuo pipefail
+      restore_script="$1"
+      unset DP_TARGET_POD_NAME || true
+      DATA_DIR="$(mktemp -d)" \
+        DP_TARGET_RELATIVE_PATH="repo/rabbitmq/rmq-br-5400-rabbitmq-2" \
+        DP_BACKUP_BASE_PATH="/backup/base/repo/rabbitmq/rmq-br-5400-rabbitmq-2" \
+        bash "${restore_script}"
+    ' _ "${restore_script}"
+    The status should be failure
+    The stderr should include "must be one pod segment or <target-name>/<target-pod-name>"
   End
 
   It "fails closed when neither DP_TARGET_POD_NAME nor DP_TARGET_RELATIVE_PATH is set"

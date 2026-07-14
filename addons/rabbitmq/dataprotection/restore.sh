@@ -3,9 +3,26 @@ set -Eeuo pipefail
 
 DATA_DIR="${DATA_DIR:-/var/lib/rabbitmq}"
 # Backup jobs inject DP_TARGET_POD_NAME. Volume-populator AsDataSource prepareData
-# may only inject DP_TARGET_RELATIVE_PATH (= pod identity / archive stem). Prefer
-# POD_NAME when present; otherwise accept RELATIVE_PATH so KB12 dataSource restore works.
-TARGET_POD_NAME="${DP_TARGET_POD_NAME:-${DP_TARGET_RELATIVE_PATH:?DP_TARGET_POD_NAME or DP_TARGET_RELATIVE_PATH is required}}"
+# may only inject DP_TARGET_RELATIVE_PATH, either as <pod-name> or
+# <target-name>/<pod-name>. DP_BACKUP_BASE_PATH is already scoped to that path,
+# so the archive key always uses only the final pod-name segment.
+if [ -n "${DP_TARGET_POD_NAME:-}" ]; then
+  TARGET_POD_NAME="${DP_TARGET_POD_NAME}"
+else
+  TARGET_RELATIVE_PATH="${DP_TARGET_RELATIVE_PATH:?DP_TARGET_POD_NAME or DP_TARGET_RELATIVE_PATH is required}"
+  case "${TARGET_RELATIVE_PATH}" in
+    /*|*/|*/*/*)
+      echo "ERROR: DP_TARGET_RELATIVE_PATH must be one pod segment or <target-name>/<target-pod-name>" >&2
+      exit 1
+      ;;
+    */*)
+      TARGET_POD_NAME="${TARGET_RELATIVE_PATH##*/}"
+      ;;
+    *)
+      TARGET_POD_NAME="${TARGET_RELATIVE_PATH}"
+      ;;
+  esac
+fi
 ARCHIVE_NAME="${TARGET_POD_NAME}.tar.zst"
 
 [ -n "${DP_DATASAFED_BIN_PATH:-}" ] && export PATH="${PATH}:${DP_DATASAFED_BIN_PATH}"
