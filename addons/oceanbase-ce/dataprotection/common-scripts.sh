@@ -187,7 +187,13 @@ function replaceK8sSVC() {
        hostIP=$(getent hosts "${host}" 2>/dev/null | awk '
          $1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {
            split($1, octets, ".")
-           if (octets[1] <= 255 && octets[2] <= 255 && octets[3] <= 255 && octets[4] <= 255) {
+           canonical = 1
+           for (i = 1; i <= 4; i++) {
+             if (octets[i] !~ /^(0|[1-9][0-9]*)$/ || octets[i] > 255) {
+               canonical = 0
+             }
+           }
+           if (canonical) {
              print $1
              exit
            }
