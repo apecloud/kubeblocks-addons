@@ -1,0 +1,309 @@
+{{- /*
+ComponentDefinition for Valkey Cluster (sharding) mode — one definition per
+shard; ShardingDefinition stamps N shard components out of it.
+
+Phase A boundary (issue #3021): templates + config + server start only.
+  - Phase C (issue #3037) added roles + roleProbe + switchover + member
+    join/leave (all intra-shard, engine-native CLUSTER commands).
+  - Phase B (issue #3026) added postProvision formation and shardRemove.
+v1 boundary: Valkey 9 only; in-cluster networking only (pod-FQDN announce,
+no NodePort/LB advertise).
+*/}}
+{{- range .Values.valkeyVersions }}
+{{- if eq .major "9" }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ printf "valkey-cluster-%s" .major }}
+  labels:
+    {{- include "valkey.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" $ | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Valkey {{ .major }} Cluster (sharding) component definition — one shard of a Valkey Cluster.
+  serviceKind: valkey-cluster
+  serviceVersion: {{ .serviceVersion }}
+  updateStrategy: BestEffortParallel
+  podManagementPolicy: OrderedReady
+
+  replicasLimit:
+    # Per-shard scale contract at the API layer (not only the chart
+    # schema — OpsRequest / direct-CR paths bypass values.schema.json):
+    # 1 master + up to 4 replicas per shard, matching the sentinel-mode
+    # bound. Raise only together with scale e2e evidence.
+    minReplicas: 1
+    maxReplicas: 5
+
+  # ── TLS: UNSUPPORTED on the cluster topology in v1 (TL ruling,
+  # #valkey:557234f0). Declaring the tls capability here without the full
+  # runtime wiring (enabling var, secure/plaintext port swap, cluster bus
+  # encryption, CLI flags on every script face) produced a SILENT
+  # PLAINTEXT cluster while the user believed encryption was on.
+  # Re-adding this capability requires the complete wiring plus live
+  # acceptance — the boundary block in tls_contract_spec.sh pins this
+  # file to stay tls-free until then. Sentinel topology is unaffected.
+
+  volumes:
+    - name: data
+      needSnapshot: true
+
+  # Per-shard roles: exactly one primary (slot owner) + replicas. Quorum is
+  # the engine's own (cluster config epochs) — not K8s-level.
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+
+  services:
+    # Per-shard ClusterIP service. Cluster-mode clients are expected to be
+    # cluster-aware (MOVED/ASK redirects) and discover topology themselves;
+    # this service is a stable per-shard entry point, not a router.
+    - name: valkey-cluster
+      serviceName: valkey-cluster
+      spec:
+        ports:
+          - name: valkey-cluster
+            port: 6379
+            targetPort: valkey-cluster
+
+  configs:
+    - name: valkey-cluster-config
+      template: {{ include "valkey.clusterConfigTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: valkey-config
+
+  scripts:
+    - name: valkey-scripts
+      template: {{ include "valkey.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+
+  systemAccounts:
+    - name: default
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    # Data port and cluster bus port: single source for scripts and probes.
+    # No hardcoded 6379/16379 anywhere in scripts (design contract).
+    - name: SERVICE_PORT
+      value: "6379"
+    - name: CLUSTER_BUS_PORT
+      value: "16379"
+    - name: VALKEY_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          name: default
+          optional: false
+          username: Required
+    - name: VALKEY_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: default
+          optional: false
+          password: Required
+    ## current shard identity + membership (KB-provided; scripts must not
+    ## derive these by string arithmetic)
+    - name: CURRENT_SHARD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CURRENT_SHARD_COMPONENT_SHORT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CURRENT_SHARD_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    - name: CURRENT_SHARD_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    ## all-shards discovery for formation/scale (KB 'individual' strategy
+    ## emits ALL_SHARDS_POD_FQDN_LIST_<SHARD> per shard; 'combined' gives the
+    ## short-name roster the coordinator election sorts).
+    - name: ALL_SHARDS_COMPONENT_SHORT_NAMES
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "valkey-cluster-%s" .major }}
+          optional: false
+          shortName: Required
+          multipleClusterObjectOption:
+            strategy: combined
+    - name: ALL_SHARDS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ printf "valkey-cluster-%s" .major }}
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    # ── Physical resource hints for config tuning (io-threads, maxmemory).
+    # Optional: pods without explicit limits still render (template guards
+    # every access with index — Emily's phase-A first-blocker, task #367).
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          optional: true
+          memoryLimit: Required
+    - name: PHY_CPU
+      valueFrom:
+        resourceVarRef:
+          optional: true
+          cpuLimit: Required
+    # (v1: no TLS vars — cluster topology TLS is unsupported; see the
+    # tls boundary comment at spec top and cluster-tls-boundary spec.)
+
+  lifecycleActions:
+    # Role probe: pure read of this node's CLUSTER NODES myself line;
+    # emits a SINGLE-TOKEN role (versioned output deferred — a local epoch
+    # cannot prove the complete shard role fact; see check-role script).
+    # Unknown state exits non-zero (skip sample) — never an empty role.
+    roleProbe:
+      periodSeconds: 1
+      timeoutSeconds: 1
+      exec:
+        container: valkey-cluster
+        command:
+          - /scripts/valkey-cluster-check-role.sh
+        env:
+          - name: KB_SERVICE_PORT
+            value: "$(SERVICE_PORT)"
+    # Intra-shard graceful switchover: CLUSTER FAILOVER on the candidate
+    # replica; deterministic candidate pick when unspecified; bounded
+    # in-action confirmation.
+    switchover:
+      exec:
+        container: valkey-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-switchover.sh
+    # Replica join/leave within a shard. Leave of the current master fails
+    # over first and only deletes after mastership provably moved.
+    memberJoin:
+      exec:
+        container: valkey-cluster
+        targetPodSelector: Any
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-member.sh --join
+      retryPolicy:
+        maxRetries: 10
+        retryInterval: 3
+    memberLeave:
+      exec:
+        container: valkey-cluster
+        targetPodSelector: Any
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-member.sh --leave
+      retryPolicy:
+        maxRetries: 10
+        retryInterval: 3
+    # Formation-or-join: single-shot bootstrap-or-defer (rc=1 => framework
+    # retry). Coordinator pod creates the cluster; every other pod verifies
+    # membership or joins (scale-out path). See valkey-cluster-manage.sh.
+    postProvision:
+      exec:
+        container: valkey-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-manage.sh --post-provision
+        env:
+          # kbagent-executed actions do NOT inherit the runtime container's
+          # downward-API env — pod identity must be declared on the action
+          # itself (r2 live first-blocker; same pattern as sentinel cmpd).
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+      # preCondition is a sibling of exec (KB Action API), not an exec field
+      preCondition: RuntimeReady
+      retryPolicy:
+        maxRetries: 20
+        retryInterval: 5
+
+  runtime:
+    containers:
+      - name: valkey-cluster
+        imagePullPolicy: IfNotPresent
+        command: ["/scripts/valkey-cluster-server-start.sh"]
+        ports:
+          - name: valkey-cluster
+            containerPort: 6379
+          - name: cluster-bus
+            containerPort: 16379
+        volumeMounts:
+          - name: data
+            mountPath: {{ $.Values.dataMountPath }}
+          - name: valkey-config    # mounted config template (read-only)
+            mountPath: /etc/conf
+          - name: scripts
+            mountPath: /scripts
+          - name: valkey-conf      # writable dir for the final rendered conf
+            mountPath: /etc/valkey
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/valkey-ping.sh
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/valkey-ping.sh
+    volumes:
+      - name: valkey-conf
+        emptyDir: {}
+{{- end }}
+{{- end }}

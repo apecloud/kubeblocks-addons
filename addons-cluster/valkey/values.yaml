@@ -6,6 +6,8 @@ version: 9.0.0
 ## @param mode Valkey topology mode: standalone or replication.
 ## standalone: a single Valkey data pod.
 ## replication: Valkey data pods monitored by Valkey Sentinel.
+## cluster: Valkey Cluster (sharding). v1: Valkey 9 only, in-cluster
+## networking only (no NodePort/LB direct-to-shard access), 3..32 shards.
 mode: replication
 
 ## @param replicas data component replicas. Replication mode uses at least 2, at most 5 (CMPD replicasLimit).
@@ -64,3 +66,10 @@ prometheus:
 extra:
   disableExporter: true
   terminationPolicy: Delete
+
+## @param cluster Valkey Cluster (sharding) mode settings; required when mode=cluster.
+cluster:
+  ## @param cluster.shards number of shards (3..32; each shard = 1 primary + (replicas-1) replicas)
+  shards: 3
+  ## @param cluster.replicas pods per shard (1..5)
+  replicas: 2

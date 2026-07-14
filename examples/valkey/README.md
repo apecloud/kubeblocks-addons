@@ -25,6 +25,23 @@ Valkey is an open source, in-memory data store compatible with the Redis protoco
 | 8.x | 8.0.0, 8.0.1, 8.0.9, 8.1.0, 8.1.3, 8.1.8 |
 | 9.x | 9.0.0, 9.0.4, 9.1.0 |
 
+### Cluster (sharding) topology — v1 boundary
+
+`topology: cluster` deploys Valkey Cluster: N shards (each one master plus
+replicas) with the 16384 hash slots evenly distributed. See
+[cluster-sharding.yaml](cluster-sharding.yaml).
+
+| Boundary | v1 support |
+|---|---|
+| Valkey version | 9 only |
+| Shards | 3..32 |
+| Replicas per shard | 1..5 |
+| Networking | in-cluster only — clients must be cluster-aware (MOVED/ASK); NodePort/LB direct-to-shard is rejected at render time |
+| TLS | not yet supported in cluster mode (rejected at render time) |
+| Custom account secret | not yet wired in cluster mode (rejected at render time) |
+| Backup | per-shard datafile (BGSAVE snapshot + ACL; nodes.conf is never archived; archives self-describe: source shard count, shard master identity, and the master-line slot ranges — recorded from the shard MASTER even when the backup target is a secondary) |
+| Restore | **not supported in v1** — any cluster archive is refused at restore time. Same shard count is not a sufficient safety condition (source slot layouts after rebalance will not match a re-formed cluster); a slot-aware restore is the planned follow-up |
+
 ## Prerequisites
 
 - Kubernetes cluster with KubeBlocks installed.

@@ -20,6 +20,8 @@ set -o pipefail
 
 function handle_exit() {
   local exit_code=$?
+  # cluster-mode metadata must never remain on the live data volume
+  [ "${_cluster_meta_cleanup_needed:-0}" = "1" ] && rm -f "${DATA_DIR}/cluster-meta"
   if [ "${exit_code}" -ne 0 ]; then
     echo "ERROR: backup failed with exit code ${exit_code}" >&2
     touch "${DP_BACKUP_INFO_FILE}.exit"
@@ -132,7 +134,55 @@ if [ ! -f "./dump.rdb" ]; then
 fi
 backup_files=("./dump.rdb")
 [ -f "./users.acl" ] && backup_files+=("./users.acl")
+
+# Cluster (sharding) mode: embed the source shard count as engine truth
+# (master lines in CLUSTER NODES) so restore can verify the same-shard-count
+# v1 boundary. Sentinel/standalone targets skip this (cluster_enabled:0).
+_cluster_enabled=$("${connect_base[@]}" INFO cluster 2>/dev/null | grep "^cluster_enabled:" | tr -d "\\r" | cut -d: -f2)
+if [ "${_cluster_enabled}" = "1" ]; then
+  _source_shards=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r" | awk '$3 ~ /master/' | grep -c . || true)
+  if [ -z "${_source_shards}" ] || [ "${_source_shards}" -lt 1 ]; then
+    echo "ERROR: cluster mode detected but could not count source shards from CLUSTER NODES." >&2
+    exit 1
+  fi
+  # Record THIS SHARD's slot ranges + master identity: shard count alone
+  # is not a sufficient restore precondition (post-rebalance layouts
+  # differ from a re-formed even split). The backup target is normally a
+  # SECONDARY (BPT role) which owns no slots — so the ranges must come
+  # from this shard's MASTER line, resolved from the target's view:
+  # myself's parent id when the target is a slave, else myself itself.
+  _nodes=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r")
+  _myself_line=$(echo "${_nodes}" | awk '$3 ~ /myself/')
+  if echo "${_myself_line}" | awk '{print $3}' | grep -q slave; then
+    _shard_master_id=$(echo "${_myself_line}" | awk '{print $4}')
+  else
+    _shard_master_id=$(echo "${_myself_line}" | awk '{print $1}')
+  fi
+  _master_line=$(echo "${_nodes}" | awk -v id="${_shard_master_id}" '$1 == id')
+  if [ -z "${_master_line}" ] || [ "${_shard_master_id}" = "-" ]; then
+    echo "ERROR: cluster mode — cannot resolve this shard's master from the target's CLUSTER NODES view." >&2
+    exit 1
+  fi
+  _shard_slot_ranges=$(echo "${_master_line}" | cut -d' ' -f9- | tr ' ' ',')
+  if [ -z "${_shard_slot_ranges}" ]; then
+    echo "ERROR: cluster mode — this shard's master ${_shard_master_id} owns no slot ranges; refusing to write empty metadata." >&2
+    exit 1
+  fi
+  {
+    printf 'source_shards=%s\n' "${_source_shards}"
+    printf 'shard_master_id=%s\n' "${_shard_master_id}"
+    printf 'shard_slot_ranges=%s\n' "${_shard_slot_ranges}"
+  } > ./cluster-meta
+  backup_files+=("./cluster-meta")
+  # cluster-meta is backup metadata, not engine data: it must not remain
+  # on the live DATA_DIR after archiving (review blocker). Cleaned right
+  # after tar below AND on failure via handle_exit (single EXIT trap —
+  # a second `trap EXIT` here would clobber handle_exit).
+  _cluster_meta_cleanup_needed=1
+  echo "INFO: cluster mode — embedded cluster-meta (source_shards=${_source_shards})."
+fi
 tar -cvf - "${backup_files[@]}" | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst" || exit 1
+rm -f ./cluster-meta
 
 save_sentinel_acl || \
   echo "WARNING: Sentinel ACL save failed — ACL rules will not be restored after a cluster restore." >&2

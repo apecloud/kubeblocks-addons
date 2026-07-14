@@ -20,11 +20,13 @@ Describe "Valkey replicasLimit contract"
     The stdout should include "maxReplicas: 5"
   End
 
-  It "caps both cluster chart schema replica fields at the CMPD maximum (5)"
+  It "caps all cluster chart schema replica fields at the CMPD maximum (5)"
     # The chart schema must not accept replica counts the CMPD will reject.
+    # 3 capped fields: data replicas, sentinel replicas, and (since the
+    # sharding topology landed) cluster.replicas per shard.
     When call bash -c "grep -c '\"maximum\": 5' '${cluster_schema}'"
     The status should be success
-    The stdout should eq "2"
+    The stdout should eq "3"
   End
 
   It "keeps the sentinel schema minimum at the CMPD minimum (3)"

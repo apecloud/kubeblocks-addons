@@ -1,0 +1,1145 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+
+# Phase B behavioral tests for valkey-cluster-manage.sh (issue #3026):
+# deterministic coordinator election (hard-fail on bad input), slot
+# arithmetic, and the drain-then-prove shard-removal gate.
+
+Describe "valkey-cluster-manage.sh"
+  Include ../scripts/valkey-cluster-manage.sh
+
+  base_env() {
+    export CURRENT_POD_NAME="vk-shard-abc-0"
+    export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-abc"
+    export CURRENT_SHARD_POD_FQDN_LIST="vk-shard-abc-0.h.ns.svc,vk-shard-abc-1.h.ns.svc"
+    export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-abc:shard-abc,shard-def:shard-def,shard-ghi:shard-ghi"
+    export SERVICE_PORT="6379"
+    unset VALKEY_DEFAULT_PASSWORD VALKEY_CLI_TLS_ARGS
+  }
+  base_cleanup() {
+    unset CURRENT_POD_NAME CURRENT_SHARD_COMPONENT_SHORT_NAME CURRENT_SHARD_POD_FQDN_LIST \
+          ALL_SHARDS_COMPONENT_SHORT_NAMES SERVICE_PORT
+  }
+  Before "base_env"
+  After "base_cleanup"
+
+  Describe "validate_manage_env()"
+    It "hard-fails listing missing inputs"
+      unset ALL_SHARDS_COMPONENT_SHORT_NAMES CURRENT_SHARD_COMPONENT_SHORT_NAME
+      When call validate_manage_env
+      The status should be failure
+      The stderr should include "ALL_SHARDS_COMPONENT_SHORT_NAMES"
+      The stderr should include "CURRENT_SHARD_COMPONENT_SHORT_NAME"
+      The stderr should include "retry_safe=no"
+      The stderr should include "no fallback"
+    End
+  End
+
+  Describe "coordinator_shard()"
+    It "picks the lexicographically first shard deterministically"
+      export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-zzz:shard-zzz,shard-aaa:shard-aaa,shard-mmm:shard-mmm"
+      When call coordinator_shard
+      The status should be success
+      The stdout should equal "shard-aaa"
+    End
+
+    It "hard-fails on a duplicate shard name (unstable input, no fallback)"
+      export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-aaa:shard-aaa,shard-aaa:shard-aaa"
+      When call coordinator_shard
+      The status should be failure
+      The stderr should include "phase=shard-roster"
+      The stderr should include "duplicate shard name"
+    End
+
+    It "hard-fails on an empty entry"
+      export ALL_SHARDS_COMPONENT_SHORT_NAMES=":,shard-bbb:shard-bbb"
+      When call coordinator_shard
+      The status should be failure
+      The stderr should include "phase=shard-roster"
+      The stderr should include "empty shard name"
+    End
+  End
+
+  Describe "self_is_coordinator_pod()"
+    It "is true only for the first pod of the coordinator shard"
+      export CURRENT_POD_NAME="vk-shard-abc-0"
+      When call self_is_coordinator_pod "shard-abc"
+      The status should be success
+    End
+
+    It "is false for a non-first pod of the coordinator shard"
+      export CURRENT_POD_NAME="vk-shard-abc-1"
+      When call self_is_coordinator_pod "shard-abc"
+      The status should be failure
+    End
+
+    It "is false for pods of other shards"
+      When call self_is_coordinator_pod "shard-def"
+      The status should be failure
+    End
+  End
+
+  Describe "slots_owned_by()"
+    It "sums slot ranges and singles from the node line"
+      build_cli() { _cli=(mock_nodes); }
+      mock_nodes() {
+        printf 'aaaa111 10.0.0.1:6379@16379 master - 0 0 1 connected 0-99 200 300-309\n'
+        printf 'bbbb222 10.0.0.2:6379@16379 master - 0 0 2 connected 5461-10922\n'
+      }
+      When call slots_owned_by "any-host" "aaaa111"
+      The status should be success
+      The stdout should equal "111"
+    End
+
+    It "ignores migrating/importing markers"
+      build_cli() { _cli=(mock_nodes2); }
+      mock_nodes2() {
+        printf 'cccc333 10.0.0.3:6379@16379 master - 0 0 3 connected 0-9 [123->-abcdef]\n'
+      }
+      When call slots_owned_by "any-host" "cccc333"
+      The status should be success
+      The stdout should equal "10"
+    End
+
+    It "returns -1 when the node id is not in the cluster view"
+      build_cli() { _cli=(mock_nodes3); }
+      mock_nodes3() { printf 'dddd444 10.0.0.4:6379@16379 master - 0 0 4 connected 0-16383\n'; }
+      When call slots_owned_by "any-host" "absent-id"
+      The status should be success
+      The stdout should equal "-1"
+    End
+  End
+
+  Describe "form_cluster() defer classification"
+    It "defers (rc=1) when fewer than 3 shards are visible"
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-shard-abc-0.h.ns.svc,vk-shard-abc-1.h.ns.svc\n'
+        printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'
+      }
+      build_cli() { _cli=(mock_pong); }
+      mock_pong() { echo PONG; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-wait-shards"
+      The stderr should include "retry_safe=yes"
+      The stdout should include ""
+    End
+
+    It "defers when a designated primary does not answer"
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-shard-abc-0.h.ns.svc\n'
+        printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'
+        printf 'SHARD_GHI vk-shard-ghi-0.h.ns.svc\n'
+      }
+      build_cli() { _cli=(mock_silent); }
+      mock_silent() { return 1; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-wait-primaries"
+      The stderr should include "retry_safe=yes"
+    End
+  End
+
+  Describe "form_cluster() re-entry (fresh-eyes B1: interrupted formation must resume, never re-create)"
+    # Failure model: --cluster create succeeded, then the action was
+    # interrupted (clamp/pod churn) before attach/convergence. Re-issuing
+    # create over non-empty nodes hard-fails on EVERY retry ("Node is not
+    # empty") and the coordinator never reaches the attach path — a
+    # permanent provisioning wedge. Re-entry must SKIP create and drive
+    # the remaining steps (same doctrine as the CT05 completion driver).
+    resume_env() {
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-shard-abc-0.h.ns.svc\n'
+        printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'
+        printf 'SHARD_GHI vk-shard-ghi-0.h.ns.svc\n'
+      }
+      build_cli() { _cli=(mock_pong); }
+      mock_pong() { echo PONG; }
+      node_id_of() {
+        case "$1" in
+          vk-shard-abc-0.h.ns.svc) echo id-abc ;;
+          vk-shard-def-0.h.ns.svc) echo id-def ;;
+          vk-shard-ghi-0.h.ns.svc) echo id-ghi ;;
+        esac
+      }
+      cluster_nodes_of() {
+        printf 'id-abc vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-5460\n'
+        printf 'id-def vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 5461-10922\n'
+        printf 'id-ghi vk-shard-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected 10923-16383\n'
+      }
+      slots_owned_by() { echo 5461; }
+      attach_all_replicas() { echo "ATTACH-DRIVEN"; }
+      cluster_formed_from_self() { return 0; }
+    }
+    Before "resume_env"
+
+    It "skips create and drives attach when a primary already holds cluster config"
+      known_nodes_of() { echo "6"; }
+      assigned_slots_of() { echo "16384"; }
+      build_cluster_cli() { _ccli=(mock_create_forbidden); }
+      mock_create_forbidden() { echo "CREATE-CALLED"; return 1; }
+      When call form_cluster
+      The status should be success
+      The stdout should include "resuming interrupted formation (create skipped)"
+      The stdout should include "ATTACH-DRIVEN"
+      The stdout should not include "CREATE-CALLED"
+      The stdout should not include "cluster create issued"
+    End
+
+    It "repairs partial slot coverage (interrupted mid-create) before attach"
+      known_nodes_of() { echo "6"; }
+      _cov_marker=$(mktemp)
+      assigned_slots_of() {
+        if [ -s "${_cov_marker}" ]; then echo "16384"; else echo "8000"; fi
+      }
+      build_cluster_cli() { _ccli=(mock_fix "${_cov_marker}"); }
+      mock_fix() { local f="${1}"; shift; echo seen > "${f}"; echo "coverage fixed"; }
+      When call form_cluster
+      The status should be success
+      The stdout should include "resuming interrupted formation"
+      The stdout should include "ATTACH-DRIVEN"
+    End
+
+    It "defers retry-safe when coverage stays incomplete after the resume fix"
+      known_nodes_of() { echo "6"; }
+      assigned_slots_of() { echo "8000"; }
+      build_cluster_cli() { _ccli=(mock_fix_noop); }
+      mock_fix_noop() { echo "fix attempted"; }
+      When call form_cluster
+      The status should be failure
+      The stdout should include "resuming interrupted formation"
+      The stderr should include "phase=formation-resume"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "8000/16384"
+    End
+
+    It "still creates on a genuinely fresh primary set"
+      known_nodes_of() { echo "1"; }
+      assigned_slots_of() { echo "0"; }
+      build_cluster_cli() { _ccli=(mock_create_ok); }
+      mock_create_ok() { echo "OK all 16384 slots covered"; }
+      When call form_cluster
+      The status should be success
+      The stdout should include "cluster create issued across 3 primaries"
+      The stdout should include "ATTACH-DRIVEN"
+    End
+
+    It "defers before writes when a designated-primary state probe fails"
+      node_id_of() { return 1; }
+      known_nodes_of() { echo 1; }
+      assigned_slots_of() { echo 0; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-probe"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "CLUSTER MYID"
+      The stdout should not include "WRITE-CALLED"
+    End
+
+    It "defers before writes when known-node count is below the engine domain"
+      known_nodes_of() { echo 0; }
+      assigned_slots_of() { echo 0; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-probe"
+      The stderr should include "known-node count 0 must be at least 1"
+      The stdout should not include "WRITE-CALLED"
+    End
+
+    It "defers before writes when assigned slots exceed the engine domain"
+      known_nodes_of() { echo 1; }
+      assigned_slots_of() { echo 16385; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-probe"
+      The stderr should include "outside 0..16384"
+      The stdout should not include "WRITE-CALLED"
+    End
+
+    It "drives a mixed configured/fresh primary set across two re-entries"
+      _joined_marker=$(mktemp)
+      _balanced_marker=$(mktemp)
+      known_nodes_of() {
+        if [ -s "${_joined_marker}" ]; then echo 3
+        elif [ "$1" = vk-shard-abc-0.h.ns.svc ]; then echo 2
+        else echo 1
+        fi
+      }
+      assigned_slots_of() {
+        [ "$1" = vk-shard-abc-0.h.ns.svc ] && echo 16384 || echo 0
+      }
+      cluster_nodes_of() {
+        printf 'id-abc vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-16383\n'
+        if [ -s "${_joined_marker}" ]; then
+          printf 'id-def vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected\n'
+          printf 'id-ghi vk-shard-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected\n'
+        fi
+      }
+      slots_owned_by() {
+        if [ "$2" = id-abc ] || [ -s "${_balanced_marker}" ]; then echo 5461; else echo 0; fi
+      }
+      build_cluster_cli() { _ccli=(mock_resume_write "${_joined_marker}" "${_balanced_marker}"); }
+      mock_resume_write() {
+        local joined="$1" balanced="$2"; shift 2
+        case "$*" in
+          *"--cluster add-node"*) echo joined >"${joined}"; echo "ADD $*" ;;
+          *"--cluster rebalance"*) echo balanced >"${balanced}"; echo "REBALANCE $*" ;;
+          *"--cluster create"*) echo "CREATE-CALLED"; return 99 ;;
+        esac
+      }
+      two_reentries() {
+        local first_rc=0
+        form_cluster || first_rc=$?
+        [ "${first_rc}" -eq 1 ] || return 99
+        form_cluster || return $?
+        [ -s "${_balanced_marker}" ] || return 98
+        echo "REBALANCE-DRIVEN"
+      }
+      When call two_reentries
+      The status should be success
+      The stdout should include "introduced missing designated primary vk-shard-def-0"
+      The stdout should include "introduced missing designated primary vk-shard-ghi-0"
+      The stdout should include "REBALANCE-DRIVEN"
+      The stdout should include "ATTACH-DRIVEN"
+      The stdout should not include "CREATE-CALLED"
+      The stderr should include "introduced 2 missing designated primary(s)"
+    End
+
+    It "repairs partial coverage before adding fresh designated primaries"
+      _cov_marker=$(mktemp)
+      _order=$(mktemp)
+      known_nodes_of() {
+        if [ "$1" = vk-shard-abc-0.h.ns.svc ]; then echo 2; else echo 1; fi
+      }
+      assigned_slots_of() {
+        if [ "$1" != vk-shard-abc-0.h.ns.svc ]; then echo 0
+        elif [ -s "${_cov_marker}" ]; then echo 16384
+        else echo 8000
+        fi
+      }
+      cluster_nodes_of() {
+        printf 'id-abc vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-7999\n'
+      }
+      build_cluster_cli() { _ccli=(mock_fix_then_add "${_cov_marker}" "${_order}"); }
+      mock_fix_then_add() {
+        local coverage="$1" order="$2"; shift 2
+        case "$*" in
+          *"--cluster fix"*) echo FIX >>"${order}"; echo fixed >"${coverage}" ;;
+          *"--cluster add-node"*) echo ADD >>"${order}"; echo added ;;
+          *"--cluster create"*) echo CREATE >>"${order}"; return 99 ;;
+        esac
+      }
+      When call form_cluster
+      The status should be failure
+      The contents of file "${_order}" should equal "FIX
+ADD
+ADD"
+      The stdout should include "introduced missing designated primary"
+      The stderr should include "introduced 2 missing designated primary(s)"
+    End
+
+    It "fails closed without writes when configured primaries belong to separate clusters"
+      known_nodes_of() { echo 2; }
+      assigned_slots_of() { echo 100; }
+      cluster_nodes_of() {
+        case "$1" in
+          vk-shard-abc-0.h.ns.svc) printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-99\n' ;;
+          vk-shard-def-0.h.ns.svc) printf 'id-def b:6379@16379 master - 0 0 2 connected 100-199\n' ;;
+          vk-shard-ghi-0.h.ns.svc) printf 'id-ghi c:6379@16379 master - 0 0 3 connected 200-299\n' ;;
+        esac
+      }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume-topology"
+      The stderr should include "retry_safe=no"
+      The stderr should include "refusing automatic cluster merge"
+      The stdout should not include "WRITE-CALLED"
+      The stdout should not include "ATTACH-DRIVEN"
+    End
+
+    It "defers without writes while configured-primary gossip is only one-way"
+      known_nodes_of() { echo 3; }
+      assigned_slots_of() { echo 5461; }
+      cluster_nodes_of() {
+        if [ "$1" = vk-shard-abc-0.h.ns.svc ]; then
+          printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-5460\n'
+          printf 'id-def b:6379@16379 master - 0 0 2 connected 5461-10922\n'
+          printf 'id-ghi c:6379@16379 master - 0 0 3 connected 10923-16383\n'
+        else
+          printf '%s self:6379@16379 master - 0 0 2 connected\n' "$(node_id_of "$1")"
+        fi
+      }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume-topology"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "one-way"
+      The stdout should not include "WRITE-CALLED"
+    End
+
+    It "defers without writes when star-shaped views omit configured peers"
+      known_nodes_of() { echo 3; }
+      assigned_slots_of() { echo 5461; }
+      cluster_nodes_of() {
+        case "$1" in
+          vk-shard-abc-0.h.ns.svc)
+            printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-5460\n'
+            printf 'id-def b:6379@16379 master - 0 0 2 connected 5461-10922\n'
+            printf 'id-ghi c:6379@16379 master - 0 0 3 connected 10923-16383\n' ;;
+          vk-shard-def-0.h.ns.svc)
+            printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-5460\n'
+            printf 'id-def b:6379@16379 master - 0 0 2 connected 5461-10922\n' ;;
+          vk-shard-ghi-0.h.ns.svc)
+            printf 'id-abc a:6379@16379 master - 0 0 1 connected 0-5460\n'
+            printf 'id-ghi c:6379@16379 master - 0 0 3 connected 10923-16383\n' ;;
+        esac
+      }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      attach_all_replicas() { echo "ATTACH-WRITE-REACHED"; return 0; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume-topology"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "different node-ID set"
+      The stdout should not include "WRITE-CALLED"
+      The stdout should not include "ATTACH-WRITE-REACHED"
+    End
+
+    It "defers without writes when CLUSTER NODES returns malformed output"
+      known_nodes_of() { echo 3; }
+      assigned_slots_of() { echo 5461; }
+      cluster_nodes_of() { echo "ERR cluster state unavailable"; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume-topology"
+      The stderr should include "malformed CLUSTER NODES"
+      The stdout should not include "WRITE-CALLED"
+      The stdout should not include "ATTACH-DRIVEN"
+    End
+
+    It "defers before rebalance when owned-slot evidence is invalid"
+      known_nodes_of() { echo 3; }
+      assigned_slots_of() { echo 16384; }
+      slots_owned_by() { echo invalid; }
+      build_cluster_cli() { _ccli=(mock_write_forbidden); }
+      mock_write_forbidden() { echo "WRITE-CALLED"; return 99; }
+      When call form_cluster
+      The status should be failure
+      The stderr should include "phase=formation-resume"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "invalid owned-slot count"
+      The stdout should not include "WRITE-CALLED"
+      The stdout should not include "ATTACH-DRIVEN"
+    End
+  End
+
+  Describe "roster env contract (fresh-eyes M1: no silent truncation, no vacuous pass)"
+    roster_clean() {
+      unset ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF
+    }
+    After "roster_clean"
+
+    It "each_shard_fqdn_list hard-fails when NO roster vars are present"
+      When call each_shard_fqdn_list
+      The status should be failure
+      The stderr should include "phase=shard-roster"
+      The stderr should include "no ALL_SHARDS_POD_FQDN_LIST_"
+      The stderr should include "retry_safe=no"
+    End
+
+    It "each_shard_fqdn_list hard-fails when a roster var is empty"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC="vk-shard-abc-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF=""
+      When call each_shard_fqdn_list
+      The status should be failure
+      # lines before the empty var still stream out — the CONTRACT is the
+      # non-zero exit, which is exactly why callers must check it
+      The stdout should include "SHARD_ABC vk-shard-abc-0.h.ns.svc"
+      The stderr should include "ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF is empty"
+    End
+
+    It "all_expected_members_present fails — never vacuously passes — without a readable roster"
+      # regression lock: before the materialization fix, a missing roster
+      # meant zero loop iterations, missing=0, and rc=0 — exactly the
+      # "settle for state/slot totals alone" outcome the design forbids.
+      build_cli() { _cli=(mock_some_nodes); }
+      mock_some_nodes() { printf 'mid1 vk-x-0.h.ns.svc:6379@16379 master - 0 0 5 connected 0-16383\n'; }
+      When call all_expected_members_present "vk-x-0.h.ns.svc"
+      The status should be failure
+      The stderr should include "no ALL_SHARDS_POD_FQDN_LIST_"
+    End
+
+    It "emits sorted 'SHARD fqdns' lines when the roster is complete"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF="vk-shard-def-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC="vk-shard-abc-0.h.ns.svc,vk-shard-abc-1.h.ns.svc"
+      When call each_shard_fqdn_list
+      The status should be success
+      The line 1 of stdout should equal "SHARD_ABC vk-shard-abc-0.h.ns.svc,vk-shard-abc-1.h.ns.svc"
+      The line 2 of stdout should equal "SHARD_DEF vk-shard-def-0.h.ns.svc"
+    End
+  End
+
+  Describe "cluster_formed_from_self positive goal"
+    formed_goal_cleanup() {
+      unset ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC \
+            ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF \
+            ALL_SHARDS_POD_FQDN_LIST_SHARD_GHI
+    }
+    After "formed_goal_cleanup"
+
+    It "rejects a full-slot view when expected shard masters own zero slots"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC="vk-abc-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF="vk-def-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_GHI="vk-ghi-0.h.ns.svc"
+      cluster_state_of() { echo ok; }
+      assigned_slots_of() { echo 16384; }
+      build_cli() { _cli=(mock_zero_shard_masters); }
+      mock_zero_shard_masters() {
+        printf 'a vk-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-16383\n'
+        printf 'd vk-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected\n'
+        printf 'g vk-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected\n'
+      }
+      When call cluster_formed_from_self
+      The status should be failure
+      The stdout should include "shard SHARD_DEF master owns 0 slots"
+    End
+
+    It "accepts only when every expected shard master owns positive slots"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_ABC="vk-abc-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_DEF="vk-def-0.h.ns.svc"
+      export ALL_SHARDS_POD_FQDN_LIST_SHARD_GHI="vk-ghi-0.h.ns.svc"
+      cluster_state_of() { echo ok; }
+      assigned_slots_of() { echo 16384; }
+      build_cli() { _cli=(mock_positive_shard_masters); }
+      mock_positive_shard_masters() {
+        printf 'a vk-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-5460\n'
+        printf 'd vk-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 5461-10922\n'
+        printf 'g vk-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected 10923-16383\n'
+      }
+      When call cluster_formed_from_self
+      The status should be success
+    End
+  End
+
+  Describe "shard removal drain gate"
+    It "refuses node deletion while slots remain (positive zero proof required)"
+      # Simulate: drain issued but 5 slots still owned afterwards.
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() {
+        printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'
+      }
+      cluster_state_of() { echo "ok"; }
+      shard_master_id_via() { echo "master-id-1"; }
+      slots_owned_by() { echo "5"; }
+      cluster_nodes_of() {
+        printf 'master-id-1 vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-5\n'
+        printf 'master-id-2 vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 6-16383\n'
+      }
+      build_cluster_cli() { _ccli=(mock_reb); }
+      mock_reb() { echo "rebalanced"; }
+      # shard_remove exits; run in subshell via run
+      When run shard_remove
+      The status should be failure
+      The stderr should include "phase=remove-slots-nonzero"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "still owns 5 slots"
+      The stdout should include ""
+    End
+
+    It "drain zero-weights every slot-less or failed master (a zero-proven sibling is never re-polluted)"
+      # Round-2 external review (concurrent multi-shard scale-in): weight-1
+      # defaults would rebalance slots INTO a departed-and-drained sibling
+      # (invalidating its zero-proof and forcing a re-drain ping-pong) or a
+      # failed master (aborting the migration). Only slot-owning healthy
+      # masters may receive.
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() {
+        printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'
+      }
+      cluster_state_of() { echo "ok"; }
+      shard_master_id_via() { echo "id-self"; }
+      _drain_args=$(mktemp)
+      _drained_marker=$(mktemp)
+      slots_owned_by() {
+        case "${2}" in
+          id-self) if [ -s "${_drained_marker}" ]; then echo 0; else echo 500; fi ;;
+          id-drained-sibling) echo 0 ;;
+          id-healthy-stayer) echo 4000 ;;
+          *) echo 0 ;;
+        esac
+      }
+      cluster_nodes_of() {
+        printf 'id-self vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-499\n'
+        printf 'id-drained-sibling vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected\n'
+        printf 'id-healthy-stayer vk-shard-ghi-0.h.ns.svc:6379@16379 master - 0 0 3 connected 500-16383\n'
+        printf 'id-failed vk-shard-jkl-0.h.ns.svc:6379@16379 master,fail - 0 0 4 disconnected\n'
+      }
+      build_cluster_cli() { _ccli=(mock_drain_reb "${_drain_args}" "${_drained_marker}"); }
+      mock_drain_reb() {
+        # open_slots_present shares build_cluster_cli — only the rebalance
+        # invocation may record args and flip the drained marker
+        local argf="${1}" marker="${2}"; shift 2
+        case "$*" in
+          *"--cluster rebalance"*)
+            echo "$*" >> "${argf}"
+            echo drained > "${marker}"
+            echo "rebalanced" ;;
+          *) : ;;
+        esac
+      }
+      purge_shard_from_cluster() { echo "PURGED"; }
+      When run shard_remove
+      The status should be success
+      The stdout should include "slot drain proven"
+      The stdout should include "PURGED"
+      The contents of file "${_drain_args}" should include "id-self=0"
+      The contents of file "${_drain_args}" should include "id-drained-sibling=0"
+      The contents of file "${_drain_args}" should include "id-failed=0"
+      The contents of file "${_drain_args}" should not include "id-healthy-stayer=0"
+    End
+
+    It "defers the drain when a master's slot evidence is unreadable (no blind receiver set)"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() {
+        printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'
+      }
+      cluster_state_of() { echo "ok"; }
+      shard_master_id_via() { echo "id-self"; }
+      slots_owned_by() {
+        case "${2}" in
+          id-self) echo 500 ;;
+          *) echo "" ;;
+        esac
+      }
+      cluster_nodes_of() {
+        printf 'id-self vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-499\n'
+        printf 'id-other vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 500-16383\n'
+      }
+      build_cluster_cli() { _ccli=(mock_never); }
+      mock_never() { echo "REBALANCE-CALLED"; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "phase=remove-drain"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "invalid owned-slot count"
+      The stdout should not include "REBALANCE-CALLED"
+    End
+
+    It "defers before rebalance when nonempty CLUSTER NODES is structurally invalid"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo ok; }
+      shard_master_id_via() { echo id-self; }
+      slots_owned_by() { echo 500; }
+      cluster_nodes_of() { echo 'ERR transient topology read'; }
+      _write_log=$(mktemp)
+      build_cluster_cli() { _ccli=(mock_never "${_write_log}"); }
+      mock_never() { local log="${1}"; shift; case "$*" in *"--cluster rebalance"*) echo "REBALANCE-CALLED" >>"${log}" ;; esac; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "phase=remove-drain"
+      The stderr should include "invalid CLUSTER NODES structure"
+      The contents of file "${_write_log}" should equal ""
+    End
+
+    It "defers before rebalance when CLUSTER NODES contains no master rows"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo ok; }
+      shard_master_id_via() { echo id-self; }
+      slots_owned_by() { echo 500; }
+      cluster_nodes_of() {
+        printf 'id-slave vk-shard-def-1.h.ns.svc:6379@16379 slave id-master 0 0 1 connected\n'
+      }
+      _write_log=$(mktemp)
+      build_cluster_cli() { _ccli=(mock_never "${_write_log}"); }
+      mock_never() { local log="${1}"; shift; case "$*" in *"--cluster rebalance"*) echo "REBALANCE-CALLED" >>"${log}" ;; esac; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "phase=remove-drain"
+      The stderr should include "no master rows"
+      The contents of file "${_write_log}" should equal ""
+    End
+
+    It "defers before rebalance when a receiver slot count is negative"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo ok; }
+      shard_master_id_via() { echo id-self; }
+      slots_owned_by() {
+        case "${2}" in id-self) echo 500 ;; *) echo -1 ;; esac
+      }
+      cluster_nodes_of() {
+        printf 'id-self vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-499\n'
+        printf 'id-other vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 500-16383\n'
+      }
+      _write_log=$(mktemp)
+      build_cluster_cli() { _ccli=(mock_never "${_write_log}"); }
+      mock_never() { local log="${1}"; shift; case "$*" in *"--cluster rebalance"*) echo "REBALANCE-CALLED" >>"${log}" ;; esac; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "invalid owned-slot count '-1'"
+      The contents of file "${_write_log}" should equal ""
+    End
+
+    It "defers before rebalance when a receiver slot count exceeds the engine domain"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo ok; }
+      shard_master_id_via() { echo id-self; }
+      slots_owned_by() {
+        case "${2}" in id-self) echo 500 ;; *) echo 16385 ;; esac
+      }
+      cluster_nodes_of() {
+        printf 'id-self vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-499\n'
+        printf 'id-other vk-shard-def-0.h.ns.svc:6379@16379 master - 0 0 2 connected 500-16383\n'
+      }
+      _write_log=$(mktemp)
+      build_cluster_cli() { _ccli=(mock_never "${_write_log}"); }
+      mock_never() { local log="${1}"; shift; case "$*" in *"--cluster rebalance"*) echo "REBALANCE-CALLED" >>"${log}" ;; esac; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "invalid owned-slot count '16385'"
+      The contents of file "${_write_log}" should equal ""
+    End
+  End
+  Describe "drive_shard_completion() — r3 CT05 livelock fix"
+    # r3 live evidence: after one failed replica attach, the old
+    # present-branch only observed ("shard present but full membership
+    # not yet complete") and never re-drove the attach. The driver must
+    # ACT from any partial state, not defer.
+
+    It "drives the missing replica attach when the shard master is present with slots (livelock regression)"
+      node_id_of() { echo "mid-new"; }
+      slots_owned_by() { echo "120"; }
+      ensure_replica_bound() { echo "DRIVE ${2}"; }
+      shard_membership_bound() { return 0; }
+      all_expected_members_present() { return 0; }
+      build_cli() { _cli=(true); }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be success
+      The stdout should include "DRIVE vk-shard-abc-1.h.ns.svc"
+      The stdout should include "membership bound"
+    End
+
+    It "re-drives rebalance when the shard master owns zero slots"
+      node_id_of() { echo "mid-new"; }
+      # command-substitution runs the stub in a subshell, so state must
+      # live in a file: first call reports 0 slots, later calls 200.
+      _slots_marker=$(mktemp)
+      slots_owned_by() {
+        if [ -s "${_slots_marker}" ]; then echo "200"; else echo seen > "${_slots_marker}"; echo "0"; fi
+      }
+      build_cluster_cli() { _ccli=(mock_reb); }
+      mock_reb() { echo "rebalanced"; }
+      ensure_replica_bound() { return 0; }
+      shard_membership_bound() { return 0; }
+      all_expected_members_present() { return 0; }
+      build_cli() { _cli=(true); }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be success
+      The stdout should include "complete: 200 slots"
+    End
+
+    It "classifies a rebalance failure as retry-safe (re-entry re-drives)"
+      node_id_of() { echo "mid-new"; }
+      slots_owned_by() { echo "0"; }
+      build_cluster_cli() { _ccli=(mock_reb_fail); }
+      mock_reb_fail() { echo "[ERR] Nodes don't agree about configuration!" >&2; return 1; }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be failure
+      The stderr should include "phase=join-rebalance"
+      The stderr should include "retry_safe=yes"
+    End
+
+    It "classifies a transient replica add-node preflight failure as retry-safe"
+      build_cli() { _cli=(mock_empty_nodes); }
+      mock_empty_nodes() { printf ''; }
+      build_cluster_cli() { _ccli=(mock_add_fail); }
+      mock_add_fail() { echo "[ERR] Nodes don't agree about configuration!" >&2; return 1; }
+      When call ensure_replica_bound "via.h" "vk-shard-abc-1.h.ns.svc" "mid-new" "shard-abc"
+      The status should be failure
+      The stderr should include "phase=attach-add-node"
+      The stderr should include "retry_safe=yes"
+    End
+
+    It "routes the present-branch of verify_or_join into the driver (no observe-only dead end)"
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-shard-abc-0.h.ns.svc,vk-shard-abc-1.h.ns.svc\n'
+      }
+      cluster_state_of() { echo "ok"; }
+      build_cli() { _cli=(mock_nodes_present); }
+      mock_nodes_present() { printf 'mid-new vk-shard-abc-0.h.ns.svc:6379@16379 master - 0 0 1 connected 0-5460\n'; }
+      drive_shard_completion() { echo "DRIVEN via=${1} self=${2}"; }
+      When call verify_or_join
+      The status should be success
+      The stdout should include "DRIVEN"
+      The stdout should include "self=vk-shard-abc-0.h.ns.svc"
+    End
+  End
+
+  Describe "open-slot repair — r7 CT05 interrupted migration"
+    # r7 live evidence: slot 5517 stuck in importing/migrating (rebalance
+    # interrupted, e.g. by the action runtime clamp) blocks every later
+    # add-node/rebalance preflight, and the engine never self-heals it.
+    # The driver must repair open slots BEFORE trusting slot ownership.
+
+    It "repairs open slots before continuing the join (own>0 must not skip past them)"
+      _fix_marker=$(mktemp)
+      node_id_of() { echo "mid-new"; }
+      slots_owned_by() { echo "120"; }
+      build_cluster_cli() { _ccli=(mock_checkfix "${_fix_marker}"); }
+      mock_checkfix() {
+        local f="${1}"; shift
+        case "$*" in
+          *check*)
+            if [ -s "${f}" ]; then echo "[OK] All 16384 slots covered."; else
+              echo "[WARNING] The following slots are open: 5517"
+            fi ;;
+          *fix*) echo "fixed" > "${f}"; echo "Fixing open slot 5517" ;;
+        esac
+      }
+      ensure_replica_bound() { return 0; }
+      shard_membership_bound() { return 0; }
+      all_expected_members_present() { return 0; }
+      build_cli() { _cli=(true); }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be success
+      The stdout should include "repaired open slots"
+      The stdout should include "membership bound"
+    End
+
+    It "defers retry-safe when the fix cannot close the open slots"
+      node_id_of() { echo "mid-new"; }
+      build_cluster_cli() { _ccli=(mock_stuck_fix); }
+      mock_stuck_fix() {
+        case "$*" in
+          *check*) echo "[WARNING] Node x has slots in importing state 5517." ;;
+          *fix*) echo "tried" ;;
+        esac
+      }
+      When call drive_shard_completion "via.h" "vk-shard-abc-0.h.ns.svc"
+      The status should be failure
+      The stderr should include "phase=join-fix"
+      The stderr should include "retry_safe=yes"
+    End
+
+    It "gates the shard-remove drain on open-slot repair (zero-proof needs clean state)"
+      validate_manage_env() { return 0; }
+      each_shard_fqdn_list() { printf 'SHARD_DEF vk-shard-def-0.h.ns.svc\n'; }
+      cluster_state_of() { echo "ok"; }
+      shard_master_id_via() { echo "master-id-1"; }
+      open_slots_present() { return 0; }
+      repair_open_slots() { echo REPAIR-CALLED >&2; return 1; }
+      When run shard_remove
+      The status should be failure
+      The stderr should include "REPAIR-CALLED"
+    End
+  End
+
+  Describe "multi-join queue — r11 CT12 3->5 concurrent-join livelock"
+    # r11 live evidence: two shards joining in one Parallel operation
+    # mutually wound each other (each driver's fix/rebalance breaks the
+    # other's preflights, alternating forever). Only the sorted-first
+    # INCOMPLETE shard may write; the rest defer deterministically.
+    queue_env() {
+      export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-k74"
+      export CURRENT_SHARD_POD_FQDN_LIST="vk-k74-0.h,vk-k74-1.h"
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-abc-0.h,vk-abc-1.h\n'
+        printf 'SHARD_HX7 vk-hx7-0.h,vk-hx7-1.h\n'
+        printf 'SHARD_K74 vk-k74-0.h,vk-k74-1.h\n'
+      }
+      cluster_state_of() { echo "ok"; }
+    }
+    Before "queue_env"
+
+    It "defers a non-first joining shard with join-queue and performs NO writes"
+      # ABC complete; HX7 and K74 both incomplete -> HX7 (sorted first) holds the turn
+      shard_complete_in_view() { [ "${2}" = "SHARD_ABC" ]; }
+      build_cli() { _cli=(true); }
+      build_cluster_cli() { echo "WRITE-PATH-REACHED" >&2; _ccli=(true); }
+      drive_shard_completion() { echo "DRIVE-REACHED" >&2; return 0; }
+      When call verify_or_join
+      The status should be failure
+      The stderr should include "phase=join-queue"
+      The stderr should include "retry_safe=yes"
+      The stderr should include "holder=SHARD_HX7"
+      The stderr should include "current=SHARD_K74"
+      The stderr should not include "WRITE-PATH-REACHED"
+      The stderr should not include "DRIVE-REACHED"
+    End
+
+    It "turn-holder repairs inherited open slots BEFORE first-contact add-node"
+      # a clamped predecessor may leave open slots; add-node preflight
+      # rejects over them, so repair must run first (review contract)
+      shard_complete_in_view() { [ "${2}" = "SHARD_ABC" ] || [ "${2}" = "SHARD_HX7" ]; }
+      _order=$(mktemp)
+      build_cli() { _cli=(mock_absent_self); }
+      mock_absent_self() { printf 'aid vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'; }
+      open_slots_present() { [ ! -s "${_order}" ]; }
+      repair_open_slots() { echo "REPAIR" >> "${_order}"; return 0; }
+      build_cluster_cli() { echo "ADDNODE" >> "${_order}"; _ccli=(mock_add_ok); }
+      mock_add_ok() { echo "added"; }
+      node_id_of() { echo "kid"; }
+      drive_shard_completion() { echo "DRIVEN"; }
+      When call verify_or_join
+      The status should be success
+      The stdout should include "DRIVEN"
+      The contents of file "${_order}" should equal "REPAIR
+ADDNODE"
+    End
+
+    It "lets the shard proceed once every earlier joining shard is complete"
+      # ABC and HX7 complete; K74 (self) is the first incomplete -> drive
+      shard_complete_in_view() { [ "${2}" != "SHARD_K74" ]; }
+      build_cli() { _cli=(mock_self_present); }
+      mock_self_present() { printf 'kid vk-k74-0.h:6379@16379 master - 0 0 9 connected\n'; }
+      drive_shard_completion() { echo "DRIVEN self=${2}"; }
+      When call verify_or_join
+      The status should be success
+      The stdout should include "DRIVEN self=vk-k74-0.h"
+    End
+
+    It "gates a completed non-holder while a later shard owns the join turn"
+      # HX7 already owns slots, but K74 is now the first incomplete shard.
+      # HX7 must not re-enter global fix/rebalance concurrently with K74.
+      export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-hx7"
+      export CURRENT_SHARD_POD_FQDN_LIST="vk-hx7-0.h,vk-hx7-1.h"
+      shard_complete_in_view() { [ "${2}" != "SHARD_K74" ]; }
+      build_cli() { _cli=(mock_self_present2); }
+      mock_self_present2() { printf 'hid vk-hx7-0.h:6379@16379 master - 0 0 8 connected 5461-10922\n'; }
+      build_cluster_cli() { echo "WRITE-PATH-REACHED" >&2; _ccli=(true); }
+      drive_shard_completion() { echo "DRIVE-REACHED" >&2; return 0; }
+      When call verify_or_join
+      The status should be failure
+      The stderr should include "phase=join-queue"
+      The stderr should include "holder=SHARD_K74"
+      The stderr should include "current=SHARD_HX7"
+      The stderr should not include "WRITE-PATH-REACHED"
+      The stderr should not include "DRIVE-REACHED"
+    End
+
+    It "lets a completed shard verify after every joiner is complete"
+      shard_complete_in_view() { return 0; }
+      build_cli() { _cli=(mock_all_complete); }
+      mock_all_complete() { printf 'kid vk-k74-0.h:6379@16379 master - 0 0 9 connected 5461-10922\n'; }
+      drive_shard_completion() { echo "VERIFIED self=${2}"; }
+      When call verify_or_join
+      The status should be success
+      The stdout should include "VERIFIED self=vk-k74-0.h"
+    End
+
+    It "shard_complete_in_view requires bound membership AND owned slots"
+      # bound but zero slots -> incomplete
+      build_cli() { _cli=(mock_zero_slot_view); }
+      mock_zero_slot_view() {
+        printf 'm1 vk-hx7-0.h:6379@16379 master - 0 0 7 connected\n'
+        printf 's1 vk-hx7-1.h:6379@16379 slave m1 0 0 7 connected\n'
+      }
+      When call shard_complete_in_view "via.h" "SHARD_HX7"
+      The status should be failure
+    End
+  End
+
+  Describe "purge_shard_from_cluster() — r4 CT06 residue-free removal"
+    # r4 CT06 live evidence: del-node's SHUTDOWN let the removed pods
+    # restart with old nodes.conf and re-handshake back as fail entries.
+    # The purge must FORGET old ids on EVERY remaining node and prove
+    # absence before rc=0.
+    purge_env() {
+      export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-def"
+      export CURRENT_SHARD_POD_FQDN_LIST="vk-def-0.h,vk-def-1.h"
+      calls=$(mktemp)
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-abc-0.h,vk-abc-1.h\n'
+        printf 'SHARD_DEF vk-def-0.h,vk-def-1.h\n'
+      }
+      build_cli() { _cli=(mock_cli "${1}" "${calls}"); }
+      # CI runs on Linux where getent EXISTS and fails for these fake
+      # hostnames — without this stub every roster host would be
+      # filtered as "departed" (macOS has no getent, hiding the issue).
+      host_resolves() { return 0; }
+    }
+    Before "purge_env"
+
+    # mock: NODES shows the removed shard's fail residue until all 4
+    # FORGETs (2 remaining hosts x 2 old ids) have been recorded.
+    mock_cli() {
+      local host="${1}" f="${2}"; shift 2
+      case "$*" in
+        PING) echo PONG ;;
+        FLUSHALL) echo OK ;;
+        "CLUSTER RESET HARD") echo "RESET:${host}" >> "${f}"; echo OK ;;
+        "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
+        "CLUSTER NODES")
+          printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+          if [ "$(grep -c FORGET "${f}" 2>/dev/null)" -lt 4 ]; then
+            printf 'dead1 vk-def-0.h:6379@16379 master,fail - 0 0 2 disconnected\n'
+            printf 'dead2 vk-def-1.h:6379@16379 slave,fail dead1 0 0 2 disconnected\n'
+          fi ;;
+      esac
+    }
+
+    It "resets leaving pods, FORGETs old ids on every remaining pod, proves absence"
+      When call purge_shard_from_cluster
+      The status should be success
+      The contents of file "${calls}" should include "RESET:vk-def-0.h"
+      The contents of file "${calls}" should include "RESET:vk-def-1.h"
+      The contents of file "${calls}" should include "FORGET:vk-abc-0.h:dead1"
+      The contents of file "${calls}" should include "FORGET:vk-abc-0.h:dead2"
+      The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead1"
+      The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead2"
+    End
+
+    It "unions old ids across ALL remaining pods (residue known to one pod only)"
+      # review blocker: collecting ids from a single vantage misses a
+      # residue line that only one remaining pod still holds.
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          FLUSHALL|"CLUSTER RESET HARD") echo OK ;;
+          "CLUSTER MYID") echo "" ;;
+          "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            # only the SECOND remaining pod still sees the residue
+            if [ "${host}" = "vk-abc-1.h" ] && [ "$(grep -c FORGET "${f}" 2>/dev/null)" -lt 2 ]; then
+              printf 'dead2 vk-def-1.h:6379@16379 slave,fail dead1 0 0 2 disconnected\n'
+            fi ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be success
+      The contents of file "${calls}" should include "FORGET:vk-abc-0.h:dead2"
+      The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead2"
+    End
+
+    It "skips a concurrently-departed sibling shard (DNS gone) and still purges via live members (r9 CT12)"
+      # 5->3 scale-in: shard-def and shard-ghi leave in the same batch.
+      # From shard-def's action, shard-ghi's pods are roster-listed but
+      # their DNS is already gone — they must be skipped as vantage, not
+      # deferred on forever.
+      each_shard_fqdn_list() {
+        printf 'SHARD_ABC vk-abc-0.h,vk-abc-1.h\n'
+        printf 'SHARD_DEF vk-def-0.h,vk-def-1.h\n'
+        printf 'SHARD_GHI vk-ghi-0.h,vk-ghi-1.h\n'
+      }
+      host_resolves() { case "${1}" in vk-ghi-*) return 1 ;; *) return 0 ;; esac; }
+      When call purge_shard_from_cluster
+      The status should be success
+      The stdout should include "vk-ghi-0.h no longer resolves"
+      The contents of file "${calls}" should include "FORGET:vk-abc-0.h:dead1"
+      The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead1"
+      The contents of file "${calls}" should not include "FORGET:vk-ghi"
+    End
+
+    It "still defers when a resolvable live member cannot be reached (connection failure is NOT departure)"
+      host_resolves() { return 0; }
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          FLUSHALL|"CLUSTER RESET HARD") echo OK ;;
+          "CLUSTER FORGET"*)
+            if [ "${host}" = "vk-abc-1.h" ]; then echo "Could not connect to Valkey at vk-abc-1.h:6379: Connection refused"; else echo OK; fi ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            printf 'dead1 vk-def-0.h:6379@16379 master,fail - 0 0 2 disconnected\n' ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be failure
+      The stderr should include "phase=remove-forget"
+      The stderr should include "retry_safe=yes"
+    End
+
+    It "cannot succeed while resurrection residue persists (retry-safe defer)"
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          FLUSHALL|"CLUSTER RESET HARD"|"CLUSTER FORGET"*) echo OK ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            printf 'dead1 vk-def-0.h:6379@16379 master,fail - 0 0 2 disconnected\n' ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be failure
+      The stderr should include "phase=remove-residue"
+      The stderr should include "retry_safe=yes"
+    End
+
+    It "treats FORGET 'Unknown node' as already forgotten"
+      _nodes_reads=$(mktemp)
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          FLUSHALL|"CLUSTER RESET HARD") echo OK ;;
+          "CLUSTER FORGET"*) echo "ERR Unknown node ${3}" ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            if [ ! -s "${_nodes_reads}" ]; then
+              echo seen > "${_nodes_reads}"
+              printf 'dead1 vk-def-0.h:6379@16379 master,fail - 0 0 2 disconnected\n'
+            fi ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be success
+    End
+
+    It "still purges on the already-removed path (no silent rc=0 over residue)"
+      # shard_remove with no master in view must route through the purge,
+      # not exit 0 blindly — pin by proving purge failure propagates.
+      validate_manage_env() { return 0; }
+      cluster_state_of() { echo "ok"; }
+      shard_master_id_via() { echo ""; }
+      purge_shard_from_cluster() { echo PURGE-CALLED; return 1; }
+      When run shard_remove
+      The status should be failure
+      The stdout should include "PURGE-CALLED"
+    End
+  End
+
+  Describe "shard_membership_bound()"
+    nodes3ok='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
+s1 vk-s-a-1.h:6379@16379 slave m1 0 0 1 connected'
+    It "passes when the shard has one master and slaves bound to it"
+      When call shard_membership_bound "${nodes3ok}" "SHARD_A" "vk-s-a-0.h,vk-s-a-1.h"
+      The status should be success
+    End
+
+    It "fails when a non-first pod is a stray master"
+      nodes_bad='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
+m2 vk-s-a-1.h:6379@16379 master - 0 0 2 connected'
+      When call shard_membership_bound "${nodes_bad}" "SHARD_A" "vk-s-a-0.h,vk-s-a-1.h"
+      The status should be failure
+      The stdout should include "2 in-shard master(s), expected exactly 1"
+    End
+
+    It "fails when a pod replicates a foreign master"
+      nodes_bad2='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
+s1 vk-s-a-1.h:6379@16379 slave OTHER 0 0 1 connected'
+      When call shard_membership_bound "${nodes_bad2}" "SHARD_A" "vk-s-a-0.h,vk-s-a-1.h"
+      The status should be failure
+      The stdout should include "replicates OTHER, not this shard's master m1"
+    End
+  End
+End

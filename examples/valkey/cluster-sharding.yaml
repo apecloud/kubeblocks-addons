@@ -1,0 +1,41 @@
+# Valkey Cluster (sharding) topology — v1 boundary:
+#   - Valkey 9 only
+#   - in-cluster networking only (clients must be cluster-aware; no
+#     NodePort/LB direct-to-shard access)
+#   - shards 3..32, replicas per shard 1..5
+#   - restore of cluster backups: NOT supported in v1 (refused at restore
+#     time; slot-aware restore is a planned follow-up)
+# Each shard is one Valkey master plus (replicas-1) replicas; the 16384
+# hash slots are evenly distributed across shards at creation.
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: valkey-sharding
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: valkey
+  topology: cluster
+  shardings:
+    - name: shard
+      shards: 3
+      template:
+        name: shard
+        serviceVersion: "9.0.0"
+        replicas: 2
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              storageClassName: ""
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 10Gi

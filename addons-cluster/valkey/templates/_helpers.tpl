@@ -40,6 +40,42 @@ replicas: {{ max .Values.replicas 2 }}
 {{- end -}}
 {{- end -}}
 
+{{/*
+Fail-fast contract for cluster (sharding) mode: missing or out-of-range
+inputs must abort rendering — never silently fall back to replication or
+defaults (design record: issue #3021 / Slock #valkey:a7e4c67f).
+v1 boundary: Valkey 9 only; in-cluster networking only.
+*/}}
+{{- define "valkey-cluster.validateClusterMode" -}}
+{{- if not .Values.cluster -}}
+{{- fail "mode=cluster requires the .cluster block (cluster.shards, cluster.replicas)" -}}
+{{- end -}}
+{{- if not .Values.cluster.shards -}}
+{{- fail "mode=cluster requires cluster.shards (3..32)" -}}
+{{- end -}}
+{{- if or (lt (int .Values.cluster.shards) 3) (gt (int .Values.cluster.shards) 32) -}}
+{{- fail (printf "cluster.shards=%v out of the supported range 3..32" .Values.cluster.shards) -}}
+{{- end -}}
+{{- if not .Values.cluster.replicas -}}
+{{- fail "mode=cluster requires cluster.replicas (pods per shard, 1..5)" -}}
+{{- end -}}
+{{- if or (lt (int .Values.cluster.replicas) 1) (gt (int .Values.cluster.replicas) 5) -}}
+{{- fail (printf "cluster.replicas=%v out of the supported range 1..5" .Values.cluster.replicas) -}}
+{{- end -}}
+{{- if ne (include "valkey-cluster.major" .) "9" -}}
+{{- fail (printf "mode=cluster v1 supports Valkey 9 only, got version %v" .Values.version) -}}
+{{- end -}}
+{{- if or .Values.nodePortEnabled .Values.loadBalancerEnabled -}}
+{{- fail "mode=cluster v1 supports in-cluster networking only: nodePortEnabled/loadBalancerEnabled are not supported" -}}
+{{- end -}}
+{{- if .Values.tlsEnable -}}
+{{- fail "mode=cluster v1 does not support TLS yet (shard template and start script do not wire tls-port); tlsEnable must be false" -}}
+{{- end -}}
+{{- if or .Values.customSecretName .Values.customSecretNamespace -}}
+{{- fail "mode=cluster v1 does not wire customSecretName/customSecretNamespace into shard system accounts; unset them (silently ignoring credentials is not acceptable)" -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "valkey-cluster.clusterCommon" }}
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster

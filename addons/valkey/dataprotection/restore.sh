@@ -72,6 +72,36 @@ seed_multipart_aof_from_rdb() {
   echo "INFO: Seeded multipart AOF manifest from restored dump.rdb."
 }
 
+# Cluster (sharding) restore: NOT SUPPORTED in v1 — fail fast.
+#
+# Same shard count is NOT a sufficient safety condition (review, PR #3044):
+# restore re-forms the cluster (phase B) with an even slot split, but the
+# SOURCE layout may differ (any post-rebalance / scale history). Keys
+# restored onto a shard that does not own their hash slots are silently
+# unreachable, and archive->target-shard positional mapping is itself
+# unverified. Until a slot-aware restore is designed (cluster-meta already
+# records source_shards + shard_slot_ranges for exactly that), a cluster
+# archive is refused outright — refusal beats silent misplacement.
+refuse_cluster_restore() {
+  local meta="${DATA_DIR}/cluster-meta" source_shards
+  [ -f "${meta}" ] || return 0
+  source_shards=$(grep '^source_shards=' "${meta}" | cut -d= -f2)
+  # Remove everything THIS run extracted before exiting: the emptiness
+  # guard proved DATA_DIR held no user data at entry, so all entries here
+  # are our own extraction output. Without this, a retried prepareData
+  # pod trips the '/data is not empty' guard over our leftovers and the
+  # TRUE refusal reason is masked on every retry (live finding, CT11
+  # focused rerun).
+  find "${DATA_DIR}" -mindepth 1 -maxdepth 1 ! -name ".kb-data-protection" ! -name "lost+found" -exec rm -rf {} +
+  echo "ERROR: this archive is a Valkey CLUSTER (sharding) backup (source_shards=${source_shards})." >&2
+  echo "  Cluster datafile restore is NOT supported in v1: restored slot layouts cannot yet be" >&2
+  echo "  guaranteed to match the source (slot-aware restore is a planned follow-up; the archive" >&2
+  echo "  already records shard_slot_ranges for it). Refusing before any pod starts." >&2
+  exit 1
+}
+
+refuse_cluster_restore
+
 seed_multipart_aof_from_rdb
 
 rm -f "${placeholder}" && sync

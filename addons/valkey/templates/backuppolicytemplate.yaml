@@ -70,3 +70,67 @@ spec:
       enabled: false
       cronExpression: "0 2 * * *"
       retentionPeriod: 7d
+---
+# ── Cluster (sharding) topology ─────────────────────────────────────────────
+# Per-shard datafile backup: each shard component independently targets its
+# secondary (fallback primary) and archives the #2984 snapshot set
+# (dump.rdb + users.acl + cluster-meta). nodes.conf is deliberately NOT
+# archived — it is cluster identity and must be regenerated on restore.
+#
+# v1 restore compatibility matrix:
+#   ANY cluster datafile restore         -> NOT SUPPORTED (refused at
+#                                           prepareData before pods start):
+#                                           same shard count is not a
+#                                           sufficient condition — source
+#                                           slot layouts (post-rebalance)
+#                                           cannot be guaranteed to match a
+#                                           re-formed cluster's even split.
+#                                           Archives record source_shards +
+#                                           shard_slot_ranges so the planned
+#                                           slot-aware restore can be built.
+#   cluster <-> replication/standalone   -> unsupported
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: valkey-cluster-backup-policy-template
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
+spec:
+  serviceKind: valkey-cluster
+  compDefs:
+    - {{ include "valkeyCluster.cmpdRegexpPattern" . }}
+  target:
+    role: secondary
+    fallbackRole: primary
+    account: default
+  backupMethods:
+    - name: datafile
+      snapshotVolumes: false
+      actionSetName: valkey-physical-br
+      targetVolumes:
+        volumes:
+          - data
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+      env:
+        - name: IMAGE
+          valueFrom:
+            versionMapping:
+              {{- $repo := printf "%s/%s" (.Values.image.registry | default "docker.io") .Values.image.repository }}
+              {{- range .Values.valkeyVersions }}
+              {{- if eq .major "9" }}
+              {{- range .mirrorVersions }}
+              - serviceVersions:
+                  - {{ .version }}
+                mappedValue: {{ $repo }}:{{ .imageTag }}
+              {{- end }}
+              {{- end }}
+              {{- end }}
+  schedules:
+    - backupMethod: datafile
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
