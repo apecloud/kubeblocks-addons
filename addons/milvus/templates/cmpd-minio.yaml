@@ -14,14 +14,19 @@ spec:
   systemAccounts:
     - name: admin
       initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 4
+        numSymbols: 0
+        letterCase: MixedCases
   vars:
-    - name: MINIO_ACCESS_KEY
+    - name: MINIO_ROOT_USER
       valueFrom:
         credentialVarRef:
           name: admin
           optional: false
           username: Required
-    - name: MINIO_SECRET_KEY
+    - name: MINIO_ROOT_PASSWORD
       valueFrom:
         credentialVarRef:
           name: admin
