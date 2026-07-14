@@ -11,7 +11,7 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: etcd
-      componentDef: etcd-
+      componentDef: etcd
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.persistence.enabled }}
@@ -20,7 +20,7 @@ spec:
       {{- end }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: minio
-      componentDef: milvus-minio-
+      componentDef: milvus-minio-{{ .Chart.Version }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.persistence.enabled }}
@@ -29,7 +29,7 @@ spec:
       {{- end }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: milvus
-      componentDef: milvus-standalone-
+      componentDef: milvus-standalone-{{ .Chart.Version }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.persistence.enabled }}

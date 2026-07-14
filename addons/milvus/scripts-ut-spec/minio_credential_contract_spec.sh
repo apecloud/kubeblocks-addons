@@ -91,6 +91,8 @@ client_contract=true"
       puts "etcd=#{components.dig("etcd", "componentDef")}"
       puts "minio=#{components.dig("minio", "componentDef")}"
       puts "milvus=#{components.dig("milvus", "componentDef")}"
+      pattern = /\A[a-z]([a-z0-9.\-]*[a-z0-9])?\z/
+      puts "schema_valid=#{components.values.all? { |item| item["componentDef"].match?(pattern) }}"
     '
   }
 
@@ -98,9 +100,10 @@ client_contract=true"
     When call render_upgrade_contract
     The output should eq "versions=1.2.0-alpha.1,1.2.0-alpha.1
 definitions=milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1
-etcd=etcd-
-minio=milvus-minio-
-milvus=milvus-standalone-"
+etcd=etcd
+minio=milvus-minio-1.2.0-alpha.1
+milvus=milvus-standalone-1.2.0-alpha.1
+schema_valid=true"
     The status should be success
   End
 End
