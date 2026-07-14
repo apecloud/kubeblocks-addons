@@ -274,6 +274,11 @@ local_sql() {
 }
 
 graceful_shutdown() {
+  if ! touch "${DATA_DIR}/.galera-shutting-down" 2>/dev/null; then
+    log "warning: failed to publish .galera-shutting-down before desync; continuing best-effort shutdown"
+    record_degraded "reason=shutting_down_marker_failed"
+  fi
+
   if ! local_sql "SET GLOBAL wsrep_desync=ON;"; then
     log "warning: failed to set wsrep_desync=ON; continuing best-effort shutdown"
     record_degraded "reason=wsrep_desync_failed"

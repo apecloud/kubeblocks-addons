@@ -264,6 +264,48 @@ Describe "galera-prestop.sh"
     The contents of file "${TEST_DIR}/sql.log" should include "mysqladmin -uroot -psecret -h127.0.0.1 shutdown"
   End
 
+  It "publishes the shutting-down marker before the first Galera desync mutation"
+    local_sql() {
+      if [ "$1" = "SET GLOBAL wsrep_desync=ON;" ] \
+        && [ ! -f "${DATA_DIR}/.galera-shutting-down" ]; then
+        printf 'desync-before-marker\n' >> "${TEST_DIR}/sql.log"
+        return 1
+      fi
+      printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
+      return 0
+    }
+    mysqladmin() {
+      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/sql.log"
+      return 0
+    }
+
+    When call graceful_shutdown
+    The status should be success
+    The path "${DATA_DIR}/.galera-shutting-down" should be exist
+    The contents of file "${TEST_DIR}/sql.log" should not include "desync-before-marker"
+    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_desync=ON;"
+    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should not include "reason=wsrep_desync_failed"
+  End
+
+  It "records a marker publication failure but still performs the local shutdown"
+    DATA_DIR="/dev/null/data"
+    local_sql() {
+      printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
+      return 0
+    }
+    mysqladmin() {
+      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/sql.log"
+      return 0
+    }
+
+    When call graceful_shutdown
+    The status should be success
+    The output should include "failed to publish .galera-shutting-down"
+    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=shutting_down_marker_failed"
+    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_desync=ON;"
+    The contents of file "${TEST_DIR}/sql.log" should include "mysqladmin"
+  End
+
   It "does not fail the hook when SQL cleanup commands fail"
     local_sql() {
       return 1
