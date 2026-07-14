@@ -157,21 +157,37 @@ restore_database() {
   start_yasdb_process || return 1
 
   # 2026-06-02 Reason: YashanDB restore requires a NOMOUNT database; Purpose: restore a new cluster from the backup prepared by dataprotection/restore.sh before normal open startup.
-  "${YASQL_BIN}" sys/"$YASDB_PASSWORD" >>"$START_LOG_FILE" <<EOF
+  # 2026-07-14 Reason: the restore marker is the only re-entry signal a restarted
+  # container has. Deleting it right after submitting `restore database` meant an
+  # open/readiness failure + restart silently booted a normal cluster on
+  # half-restored data, and the unchecked yasql rc made a failed restore
+  # submission look successful. Purpose: check every step's rc and remove the
+  # marker only after restore + open + READ_WRITE readiness all positively
+  # close, keeping the restore path re-entrant on failure.
+  if ! "${YASQL_BIN}" sys/"$YASDB_PASSWORD" >>"$START_LOG_FILE" <<EOF
 restore database from '${restore_dir}';
 exit;
 EOF
-
-  rm -f "$YASDB_RESTORE_MARKER"
+  then
+    echo "Database restore submission failed from ${restore_dir}; keeping restore marker for retry. See $START_LOG_FILE."
+    return 1
+  fi
   echo "Database restore command submitted from ${restore_dir}."
 
   # 2026-06-18 Reason: real restore proof left the database mounted while KubeBlocks marked the cluster ready; Purpose: open the restored database before readiness and business SQL validation.
-  "${YASQL_BIN}" sys/"$YASDB_PASSWORD" >>"$START_LOG_FILE" <<EOF
+  if ! "${YASQL_BIN}" sys/"$YASDB_PASSWORD" >>"$START_LOG_FILE" <<EOF
 alter database open;
 exit;
 EOF
+  then
+    echo "alter database open submission failed; keeping restore marker for retry. See $START_LOG_FILE."
+    return 1
+  fi
 
   wait_for_database_open || return 1
+
+  rm -f "$YASDB_RESTORE_MARKER"
+  echo "Restore, open and readiness all verified; restore marker removed."
 }
 
 # Install sample schema if requested
