@@ -66,20 +66,40 @@ Helm update of the existing Cluster's `spec.componentSpecs`: KubeBlocks owns
 that atomic field after topology resolution, so another field manager can be
 rejected or can overwrite controller-owned state.
 
-Then edit the namespace and Cluster name in
-`examples/upgrade-embedded-minio-credential.yaml` and apply it. The KubeBlocks
+Then edit the namespace, Cluster name, and OpsRequest name in
+`examples/upgrade-embedded-minio-credential.yaml` and create it. The KubeBlocks
 `Upgrade` OpsRequest changes the two ComponentDefinitions through the owning
 control plane:
 
 ```bash
-kubectl apply -f examples/upgrade-embedded-minio-credential.yaml
+kubectl create -f examples/upgrade-embedded-minio-credential.yaml
 ```
 
-Wait for the OpsRequest to reach `Succeed` before checking the Cluster. The
-expected definitions are `milvus-minio-1.2.0-alpha.1` and
-`milvus-standalone-1.2.0-alpha.1`; both components then reference the new
-non-empty `root` credential. Do not use server-side apply
-`--force-conflicts` on the Cluster as a migration shortcut.
+An affected alpha.0 MinIO Pod is already NotReady because its generated
+`admin` password is empty. KubeBlocks intentionally does not roll an unavailable
+Pod during a normal component upgrade. After creating the OpsRequest, run the
+bounded recovery helper with the same namespace, Cluster, and OpsRequest names:
+
+```bash
+bash scripts/recover-embedded-minio-credential.sh \
+  demo milvus-standalone milvus-standalone-minio-root-migrate
+```
+
+The helper first waits until the MinIO Component and InstanceSet both show
+`milvus-minio-1.2.0-alpha.1` and the new `root` Secret has non-empty credential
+data. Only then, if the sole MinIO Pod still uses the alpha.0 definition, it
+verifies that the Pod is controlled by the expected InstanceSet and deletes
+that Pod without deleting its PVC or either Secret. KubeBlocks recreates the
+Pod from the alpha.1 template. The helper exits successfully only after the
+replacement Pod is Ready, the OpsRequest is `Succeed`, and the Cluster is
+`Running`; each wait has a finite timeout and reports its first and last
+observations on failure. It is safe to rerun after the replacement Pod already
+uses alpha.1.
+
+Finally, verify Milvus service connectivity. Both MinIO and Milvus must consume
+the new non-empty `root` credential. Do not use server-side apply
+`--force-conflicts` on the Cluster as a migration shortcut, and do not delete
+the affected PVC.
 
 ### Create
 
