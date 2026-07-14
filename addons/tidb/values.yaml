@@ -8,10 +8,13 @@ image:
     repository: pingcap/br
   pd:
     repository: pingcap/pd
+    enterpriseRepository: pingcap/pd-enterprise
   tidb:
     repository: pingcap/tidb
+    enterpriseRepository: pingcap/tidb-enterprise
   tikv:
     repository: pingcap/tikv
+    enterpriseRepository: pingcap/tikv-enterprise
   mysqlClient:
     repository: apecloud/alpine-mysql-client
     tag: "15.1"
