@@ -108,8 +108,9 @@ The addon itself already contains standard parameter-management artifacts:
 
 These resources are defined in `addons/hadoop/templates/paramsdef-*`.
 
-The current KubeBlocks parameter pipeline resolves Hadoop parameter definitions directly from `ParametersDefinition` metadata
-(`componentDef`, `templateName`, `fileName`, `fileFormatConfig`) instead of legacy `ParamConfigRenderer` resources.
+On `release-1.1`, the current KubeBlocks parameter pipeline still relies on `ParamConfigRenderer` to bind component configs to
+the corresponding `ParametersDefinition` resources. The Hadoop addon keeps this compatibility path and restricts
+`ParametersDefinition` to the fields that `release-1.1` actually supports.
 
 This means the addon is not limited to raw static config templates. The standard KubeBlocks parameter chain already exists for addon-managed configuration files such as:
 

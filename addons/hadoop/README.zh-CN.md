@@ -110,9 +110,9 @@ kubectl create ns demo
 
 - `addons/hadoop/templates/paramsdef-*`
 
-当前 KubeBlocks 的参数链路会直接根据 `ParametersDefinition` 上的
-`componentDef`、`templateName`、`fileName`、`fileFormatConfig`
-来解析 Hadoop 的参数模板绑定，而不是再依赖 legacy `ParamConfigRenderer` 资源。
+在 `release-1.1` 上，当前 KubeBlocks 的参数链路仍然依赖 `ParamConfigRenderer`
+来完成组件配置与 `ParametersDefinition` 的绑定。Hadoop addon 采用的是这条兼容路径，
+并将 `ParametersDefinition` 收敛到 `release-1.1` 真正支持的字段范围。
 
 因此，README 不能简单理解成“只有静态配置模板”。Addon 自身已经具备标准参数管理能力，覆盖的配置集合包括：
 

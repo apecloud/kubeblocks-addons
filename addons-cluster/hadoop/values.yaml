@@ -138,5 +138,9 @@ serviceRefs:
 prometheus:
   enabled: false
 
+decommission:
+  enabled: true
+  stateConfigMapName: ""
+
 extra:
   terminationPolicy: Delete

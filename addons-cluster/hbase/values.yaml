@@ -42,6 +42,7 @@ serviceRefs:
         service: headless
         port: client
   hdfsNamenode:
+    enabled: true
     namespace: kubeblocks
     clusterServiceSelector:
       cluster: hdfs
@@ -53,6 +54,7 @@ serviceRefs:
 hdfs:
   nameservice: ""
   namenodeNodes: nn0,nn1
+  namenodePodFQDNs: ""
   namenodeRpcPort: 8020
   namenodeHttpPort: 9870
   haZkParent: /hadoop-ha

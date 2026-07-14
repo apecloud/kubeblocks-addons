@@ -17,6 +17,7 @@ mkdir -p "${HADOOP_LOG_DIR}" "${HADOOP_PID_DIR}" "${LIFECYCLE_DIR}"
 
 USER=$(whoami)
 LOG_FILE="${HADOOP_LOG_DIR}/hadoop-${USER}-namenode-$(hostname).log"
+WATCHER_PID=""
 
 # 功能：仅在 standby ordinal 上执行 bootstrapStandby，避免与 OrderedReady 启动顺序冲突。
 # 参数：无，依赖 POD_NAME、HADOOP_HOME、HADOOP_CONF_DIR 等环境变量。
@@ -94,6 +95,9 @@ bootstrap_standby_if_needed() {
 
 shutdown() {
   echo "[$(date)] Received SIGTERM, stopping NameNode gracefully..."
+  if [[ -n "${WATCHER_PID}" ]]; then
+    kill "${WATCHER_PID}" >/dev/null 2>&1 || true
+  fi
   local is_active=0
   if "${HADOOP_HOME}/bin/hdfs" haadmin -getAllServiceState 2>/dev/null | grep -q "$(hostname -f).*active"; then
     is_active=1
@@ -144,6 +148,15 @@ shutdown() {
   exit 0
 }
 
+# 功能：在 NameNode 进程旁路启动 decommission 状态 watcher，持续刷新本地 exclude 文件。
+# 参数：无，依赖 HDFS_DECOMMISSION_ENABLED 和脚本挂载路径。
+# 返回值：成功返回 0，失败返回非 0。
+start_decommission_watcher() {
+  [[ "${HDFS_DECOMMISSION_ENABLED:-true}" == "true" ]] || return 0
+  "$(dirname "$0")/refresh-decommission-state.sh" &
+  WATCHER_PID=$!
+}
+
 EXCLUDE_PATH=$("${HADOOP_HOME}/bin/hdfs" getconf -confKey dfs.hosts.exclude 2>/dev/null || echo "")
 if [[ -n "$EXCLUDE_PATH" ]]; then
   touch "$EXCLUDE_PATH" || true
@@ -151,6 +164,7 @@ fi
 
 trap shutdown SIGTERM SIGINT
 
+start_decommission_watcher
 bootstrap_standby_if_needed
 
 echo "[$(date)] Starting NameNode..."

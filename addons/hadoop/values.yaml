@@ -184,3 +184,9 @@ scripts:
   defaultMode: 0755
 
 updateStrategy: BestEffortParallel
+
+decommission:
+  enabled: true
+  timeoutSeconds: 300
+  pollIntervalSeconds: 5
+  stateConfigMapName: ""

@@ -101,7 +101,7 @@
 
     <property>
         <name>dfs.hosts.exclude</name>
-        <value>{{- .HDFS_CONF_DIR }}/dfs.exclude</value>
+        <value>{{- .HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE }}</value>
     </property>
 
     <property>

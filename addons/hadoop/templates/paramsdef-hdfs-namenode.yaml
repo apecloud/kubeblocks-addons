@@ -5,11 +5,7 @@ metadata:
   labels:
     {{- include "hadoop.labels" . | nindent 4 }}
 spec:
-  componentDef: hdfs-namenode
-  templateName: namenode-config-template
   fileName: hdfs-site.xml
-  fileFormatConfig:
-    format: xml
   parametersSchema:
     topLevelKey: NameNodeParameter
     cue: |-

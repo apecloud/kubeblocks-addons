@@ -25,5 +25,7 @@ data:
     {{- .Files.Get "scripts/init-zkfc-format.sh" | nindent 4 }}
   init-refresh-nodes.sh: |-
     {{- .Files.Get "scripts/init-refresh-nodes.sh" | nindent 4 }}
+  refresh-decommission-state.sh: |-
+    {{- .Files.Get "scripts/refresh-decommission-state.sh" | nindent 4 }}
   datanode-decommission.sh: |-
     {{- .Files.Get "scripts/datanode-decommission.sh" | nindent 4 }}

@@ -79,6 +79,10 @@
           "type": "string",
           "default": "nn0,nn1"
         },
+        "namenodePodFQDNs": {
+          "type": "string",
+          "default": ""
+        },
         "namenodeRpcPort": {
           "type": "integer",
           "default": 8020,
@@ -426,6 +430,10 @@
     "serviceRefSchema": {
       "type": "object",
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
         "namespace": {
           "type": "string",
           "default": "kubeblocks"

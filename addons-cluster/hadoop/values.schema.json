@@ -207,6 +207,19 @@
           "default": false
         }
       }
+    },
+    "decommission": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "stateConfigMapName": {
+          "type": "string",
+          "default": ""
+        }
+      }
     }
   },
   "definitions": {

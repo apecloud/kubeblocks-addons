@@ -13,6 +13,15 @@ spec:
   exporter:
     containerName: jmx-exporter
     scrapePath: /metrics
+  {{- include "hadoop.decommissionPolicyRules" . | nindent 2 }}
+  lifecycleActions:
+    memberLeave:
+      exec:
+        targetPodSelector: Any
+        container: hdfs-datanode
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/datanode-decommission.sh
   runtime:
     hostNetwork: {{ .Values.runtime.datanode.hostNetwork }}
     hostPID: {{ .Values.runtime.datanode.hostPID }}
@@ -209,6 +218,18 @@ spec:
       value: "NEVER"
     - name: HDFS_PERMISSIONS_ENABLED
       value: {{ .Values.hdfs.permissions.enabled | quote }}
+    - name: HDFS_DECOMMISSION_ENABLED
+      value: {{ .Values.decommission.enabled | quote }}
+    - name: HDFS_DECOMMISSION_TIMEOUT_SECONDS
+      value: {{ .Values.decommission.timeoutSeconds | quote }}
+    - name: HDFS_DECOMMISSION_POLL_INTERVAL_SECONDS
+      value: {{ .Values.decommission.pollIntervalSeconds | quote }}
+    - name: HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT
+      value: {{ .Values.decommission.stateConfigMapName | quote }}
+    - name: HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME
+      expression: {{ `{{ if index . "HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT" }}{{ .HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT }}{{ else }}{{ .CLUSTER_NAME }}-hdfs-decommission-state{{ end }}` | toYaml }}
+    - name: HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE
+      value: {{ printf "%s/dfs.exclude.dynamic" .Values.runtime.configDir | quote }}
     - name: POD_FQDN
       valueFrom:
         fieldRef:

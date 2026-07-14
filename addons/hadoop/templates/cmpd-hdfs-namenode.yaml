@@ -13,6 +13,7 @@ spec:
   exporter:
     containerName: jmx-exporter
     scrapePath: /metrics
+  {{- include "hadoop.decommissionPolicyRules" . | nindent 2 }}
   services:
     - name: default
       spec:
@@ -397,6 +398,18 @@ spec:
       value: {{ .Values.hdfs.client.replaceDatanodeOnFailurePolicy | quote }}
     - name: HDFS_NAMENODE_HANDLER_COUNT
       value: {{ .Values.hdfs.namenode.handlerCount | quote }}
+    - name: HDFS_DECOMMISSION_ENABLED
+      value: {{ .Values.decommission.enabled | quote }}
+    - name: HDFS_DECOMMISSION_TIMEOUT_SECONDS
+      value: {{ .Values.decommission.timeoutSeconds | quote }}
+    - name: HDFS_DECOMMISSION_POLL_INTERVAL_SECONDS
+      value: {{ .Values.decommission.pollIntervalSeconds | quote }}
+    - name: HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT
+      value: {{ .Values.decommission.stateConfigMapName | quote }}
+    - name: HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME
+      expression: {{ `{{ if index . "HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT" }}{{ .HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT }}{{ else }}{{ .CLUSTER_NAME }}-hdfs-decommission-state{{ end }}` | toYaml }}
+    - name: HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE
+      value: {{ printf "%s/dfs.exclude.dynamic" .Values.runtime.configDir | quote }}
     - name: POD_FQDN
       valueFrom:
         fieldRef:

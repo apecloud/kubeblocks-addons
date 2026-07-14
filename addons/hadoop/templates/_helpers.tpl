@@ -100,3 +100,20 @@ Image references
 {{- define "hadoop.jmxExporterImage" -}}
 {{ .Values.image.jmxExporter.registry }}/{{ .Values.image.jmxExporter.repository }}:{{ .Values.image.jmxExporter.tag }}
 {{- end }}
+
+{{/*
+decommission runtime RBAC rules
+*/}}
+{{- define "hadoop.decommissionPolicyRules" -}}
+policyRules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - get
+      - list
+      - patch
+      - update
+{{- end }}

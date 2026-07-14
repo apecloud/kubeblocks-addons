@@ -32,6 +32,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: hdfs-namenode
           serviceVersion: "^*"
+      optional: true
   runtime:
     terminationGracePeriodSeconds: 120
     initContainers:
@@ -103,7 +104,7 @@ spec:
           exec:
             command:
               - /bin/bash
-              - {{ .Values.runtime.scriptsDir }}/check-hmaster-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-hmaster-live.sh
         livenessProbe:
           failureThreshold: 6
           initialDelaySeconds: 120
@@ -112,7 +113,7 @@ spec:
           exec:
             command:
               - /bin/bash
-              - {{ .Values.runtime.scriptsDir }}/check-hmaster-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-hmaster-live.sh
         readinessProbe:
           failureThreshold: 6
           initialDelaySeconds: 30
@@ -121,7 +122,7 @@ spec:
           exec:
             command:
               - /bin/bash
-              - {{ .Values.runtime.scriptsDir }}/check-hmaster-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-hmaster-ready.sh
         volumeMounts:
           - name: hbase-config
             mountPath: {{ .Values.runtime.hbaseConfDir }}/hbase-site.xml
@@ -244,16 +245,15 @@ spec:
       value: {{ .Values.hdfs.nameservice | quote }}
     - name: HDFS_NAMENODE_NODES
       value: {{ .Values.hdfs.namenodeNodes | quote }}
-    - name: HDFS_NAMENODE_HOSTS
+    - name: HDFS_NAMENODE_POD_FQDNS_DEFAULT
+      value: {{ .Values.hdfs.namenodePodFQDNs | quote }}
+    - name: HDFS_NAMENODE_POD_FQDNS
       valueFrom:
         serviceRefVarRef:
           name: hdfs-namenode
-          host: Required
-    - name: HDFS_NAMENODE_RPC_ENDPOINTS
-      valueFrom:
-        serviceRefVarRef:
-          name: hdfs-namenode
-          endpoint: Required
+          optional: true
+          podFQDNs: Required
+      expression: {{ `{{ if index . "HDFS_NAMENODE_POD_FQDNS" }}{{ .HDFS_NAMENODE_POD_FQDNS }}{{ else }}{{ .HDFS_NAMENODE_POD_FQDNS_DEFAULT }}{{ end }}` | toYaml }}
     - name: HDFS_NAMENODE_RPC_PORT
       value: {{ .Values.hdfs.namenodeRpcPort | quote }}
     - name: HDFS_NAMENODE_HTTP_PORT

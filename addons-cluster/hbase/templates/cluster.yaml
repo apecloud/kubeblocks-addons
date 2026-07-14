@@ -1,7 +1,18 @@
 {{- $isCluster := eq .Values.topology "cluster" }}
 {{- $isStandalone := eq .Values.topology "standalone" }}
+{{- $hdfsNameNodeIDs := splitList "," .Values.hdfs.namenodeNodes }}
+{{- $hdfsNameNodePodFQDNs := trim .Values.hdfs.namenodePodFQDNs }}
 {{- if not (or $isCluster $isStandalone) }}
 {{- fail "topology must be either 'cluster' or 'standalone'" }}
+{{- end }}
+{{- if and $isCluster (eq (trim .Values.hdfs.nameservice) "") }}
+{{- fail "hdfs.nameservice must be provided for HBase cluster topology; do not implicitly bind it to serviceRef.cluster" }}
+{{- end }}
+{{- if and $isCluster (not .Values.serviceRefs.hdfsNamenode.enabled) (eq $hdfsNameNodePodFQDNs "") }}
+{{- fail "hdfs.namenodePodFQDNs must be provided when serviceRefs.hdfsNamenode.enabled=false" }}
+{{- end }}
+{{- if and $isCluster (not .Values.serviceRefs.hdfsNamenode.enabled) (ne (len $hdfsNameNodeIDs) (len (splitList "," $hdfsNameNodePodFQDNs))) }}
+{{- fail "hdfs.namenodePodFQDNs must have the same number of entries as hdfs.namenodeNodes when serviceRefs.hdfsNamenode.enabled=false" }}
 {{- end }}
 {{- include "hbase-cluster.clusterCommon" . }}
   clusterDef: hbase
@@ -21,6 +32,7 @@
               component: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.port }}
+{{- if .Values.serviceRefs.hdfsNamenode.enabled }}
         - name: hdfs-namenode
           namespace: {{ .Values.serviceRefs.hdfsNamenode.namespace }}
           clusterServiceSelector:
@@ -29,11 +41,13 @@
               component: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.port }}
+{{- end }}
       configs:
         - name: hbase-config
           variables:
-            HDFS_NAMESERVICE: {{ default .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster .Values.hdfs.nameservice | quote }}
+            HDFS_NAMESERVICE: {{ .Values.hdfs.nameservice | quote }}
             HDFS_NAMENODE_NODES: {{ .Values.hdfs.namenodeNodes | quote }}
+            HDFS_NAMENODE_POD_FQDNS_DEFAULT: {{ .Values.hdfs.namenodePodFQDNs | quote }}
             HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.namenodeRpcPort | quote }}
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.namenodeHttpPort | quote }}
             HDFS_HA_ZK_PARENT: {{ .Values.hdfs.haZkParent | quote }}
@@ -106,6 +120,7 @@
               component: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.port }}
+{{- if .Values.serviceRefs.hdfsNamenode.enabled }}
         - name: hdfs-namenode
           namespace: {{ .Values.serviceRefs.hdfsNamenode.namespace }}
           clusterServiceSelector:
@@ -114,11 +129,13 @@
               component: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.service.port }}
+{{- end }}
       configs:
         - name: hbase-config
           variables:
-            HDFS_NAMESERVICE: {{ default .Values.serviceRefs.hdfsNamenode.clusterServiceSelector.cluster .Values.hdfs.nameservice | quote }}
+            HDFS_NAMESERVICE: {{ .Values.hdfs.nameservice | quote }}
             HDFS_NAMENODE_NODES: {{ .Values.hdfs.namenodeNodes | quote }}
+            HDFS_NAMENODE_POD_FQDNS_DEFAULT: {{ .Values.hdfs.namenodePodFQDNs | quote }}
             HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.namenodeRpcPort | quote }}
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.namenodeHttpPort | quote }}
             HDFS_HA_ZK_PARENT: {{ .Values.hdfs.haZkParent | quote }}

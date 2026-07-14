@@ -21,6 +21,11 @@ shutdown() {
 }
 trap shutdown SIGTERM SIGINT
 
+if [[ "${HDFS_DECOMMISSION_ENABLED:-true}" == "true" ]]; then
+  # ponytail: 启动前清理残留 decommission 状态属于幂等善后，不该因为控制面瞬时抖动阻塞 DataNode 拉起；若后续需要强一致，可改为带退避的预检查。
+  "$(dirname "$0")/datanode-decommission.sh" unregister || true
+fi
+
 echo "[$(date)] Starting DataNode..."
 "${HADOOP_HOME}/bin/hdfs" datanode 2>&1 | tee -a "$LOG_FILE" &
 DN_PID=$!

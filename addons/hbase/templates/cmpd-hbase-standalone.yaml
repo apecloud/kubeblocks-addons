@@ -68,7 +68,7 @@ spec:
           exec:
             command:
               - /bin/bash
-              - {{ .Values.runtime.scriptsDir }}/check-hmaster-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-hmaster-live.sh
         livenessProbe:
           failureThreshold: 6
           initialDelaySeconds: 60
@@ -77,7 +77,7 @@ spec:
           exec:
             command:
               - /bin/bash
-              - {{ .Values.runtime.scriptsDir }}/check-hmaster-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-hmaster-live.sh
         readinessProbe:
           failureThreshold: 6
           initialDelaySeconds: 20
@@ -86,7 +86,7 @@ spec:
           exec:
             command:
               - /bin/bash
-              - {{ .Values.runtime.scriptsDir }}/check-hmaster-status.sh
+              - {{ .Values.runtime.scriptsDir }}/check-hmaster-ready.sh
         volumeMounts:
           - name: hbase-standalone-config
             mountPath: {{ .Values.runtime.hbaseConfDir }}/hbase-site.xml
