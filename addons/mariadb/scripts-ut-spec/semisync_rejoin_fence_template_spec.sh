@@ -250,7 +250,17 @@ Describe "cmpd-replication.yaml rejoin fence template"
   End
 
   It "fails closed when read_only cannot be opened for a primary"
-    When call function_contains "set_primary_read_write" "rollback_fenced_primary_accept \"\${label}\" \"read-only-open\""
+    When call function_contains "set_primary_read_write" "rollback_locked_primary_accept \"\${label}\" \"read-only-open\""
+    The status should be success
+  End
+
+  It "uses the shared local commit lock before accepting primary writes"
+    When call function_contains "set_primary_read_write" "try_acquire_primary_write_commit_lock"
+    The status should be success
+  End
+
+  It "delegates fenced-promotion global open to syncer's lease-CAS commit"
+    When call function_contains "set_primary_read_write" "authoritative_primary_write_commit \"\${label}\""
     The status should be success
   End
 

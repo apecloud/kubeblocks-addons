@@ -37,6 +37,7 @@ Describe "replication full-primary acceptance user fence"
       extract_function primary_write_gates_ready
       extract_function read_only_is_strongest_fail_closed
       extract_function rollback_fenced_primary_accept
+      extract_function rollback_locked_primary_accept
       extract_function set_primary_read_write
       cat <<'HARNESS'
 if [ "${MODE}" = "entry-not-fenced" ]; then
@@ -116,6 +117,30 @@ query_local_syncer_role() {
     printf '%s\n' primary
   fi
 }
+try_acquire_primary_write_commit_lock() {
+  trace_event commit-lock-acquired
+  return 0
+}
+release_primary_write_commit_lock() {
+  trace_event commit-lock-released
+  return 0
+}
+authoritative_primary_write_commit() {
+  trace_event syncer-authority-commit-begin
+  if [ "${MODE}" = "authority-lost" ] || [ "${MODE}" = "role-drift" ] || \
+     [ "${MODE}" = "role-drift-rollback-failure" ] || [ "${MODE}" = "role-drift-strongest-failure" ]; then
+    trace_event syncer-authority-commit-rejected
+    return 1
+  fi
+  if [ "${MODE}" = "open-failure" ]; then
+    trace_event global-read-only-open-failed
+    return 1
+  fi
+  GLOBAL_READ_ONLY=0
+  READ_ONLY_MODE=OFF
+  trace_event global-read-only-off
+  trace_event syncer-authority-commit-pass
+}
 local_sql() {
   case "$*" in
     *"SHOW GRANTS FOR"*)
@@ -190,6 +215,10 @@ mark_replication_pending() {
   rm -f "${DATA_DIR}/.primary-read-write-ready"
   trace_event replication-pending
 }
+mark_replication_ready() {
+  command touch "${DATA_DIR}/.replication-ready"
+  trace_event replication-ready-published
+}
 touch() {
   if [ "${MODE}" = "ready-publish-failure" ] && [ "$1" = "${DATA_DIR}/.primary-read-write-ready" ]; then
     trace_event ready-publish-failed
@@ -227,12 +256,22 @@ case "${MODE}" in
     [ "${global_line}" -lt "${ready_line}" ]
     [ "${local_line}" -lt "${ready_line}" ]
     [ "${remote_line}" -lt "${ready_line}" ]
+    replication_ready_line="$(grep -n '^replication-ready-published$' "${TRACE_FILE}" | cut -d: -f1)"
+    commit_lock_line="$(grep -n '^commit-lock-acquired$' "${TRACE_FILE}" | cut -d: -f1)"
+    syncer_commit_line="$(grep -n '^syncer-authority-commit-pass$' "${TRACE_FILE}" | cut -d: -f1)"
+    commit_unlock_line="$(grep -n '^commit-lock-released$' "${TRACE_FILE}" | cut -d: -f1)"
+    [ "${commit_lock_line}" -lt "${syncer_commit_line}" ]
+    [ "${syncer_commit_line}" -lt "${local_line}" ]
+    [ "${remote_line}" -lt "${commit_unlock_line}" ]
+    [ "${ready_line}" -lt "${commit_unlock_line}" ]
+    [ "${remote_line}" -lt "${replication_ready_line}" ]
+    [ "${replication_ready_line}" -lt "${commit_unlock_line}" ]
     ! grep -q 'open-before-required-gates' "${TRACE_FILE}"
     grep -q '^ordinary-business-writable$' "${TRACE_FILE}"
     grep -q '^local-root-writable$' "${TRACE_FILE}"
     grep -q '^remote-root-writable$' "${TRACE_FILE}"
     ;;
-  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift)
+  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|authority-lost|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift)
     [ "${accept_rc}" -eq 2 ]
     grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
     grep -q '^local-root-rejected$' "${TRACE_FILE}"
@@ -370,6 +409,14 @@ HARNESS
     When call run_accept_case open-failure
     The status should be success
     The output should include "global-read-only-open-failed"
+    The output should include "global-read-only-strongest"
+    The output should not include "ready-published"
+  End
+
+  It "uses the syncer lease-CAS commit and rolls back when authority is lost"
+    When call run_accept_case authority-lost
+    The status should be success
+    The output should include "syncer-authority-commit-rejected"
     The output should include "global-read-only-strongest"
     The output should not include "ready-published"
   End
