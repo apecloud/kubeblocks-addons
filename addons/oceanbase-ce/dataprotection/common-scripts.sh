@@ -167,13 +167,9 @@ function replaceK8sSVC() {
     local scheme=""
     local address="${localEndpoint}"
     case "${address}" in
-      http://*)
-        scheme="http://"
-        address="${address#http://}"
-        ;;
-      https://*)
-        scheme="https://"
-        address="${address#https://}"
+      [hH][tT][tT][pP]://*|[hH][tT][tT][pP][sS]://*)
+        scheme="${address%%://*}://"
+        address="${address#*://}"
         ;;
     esac
 
@@ -253,8 +249,12 @@ function getDestURL() {
      destPath=${archivePath}
   fi
   destPrefix="s3"
-  prefixHost=${host#http://}
-  prefixHost=${prefixHost#https://}
+  prefixHost=${host}
+  case "${prefixHost}" in
+    [hH][tT][tT][pP]://*|[hH][tT][tT][pP][sS]://*)
+      prefixHost="${prefixHost#*://}"
+      ;;
+  esac
   if [[ ${prefixHost} == "cos"* ]]; then
      destPrefix="cos"
   elif [[ ${prefixHost} == "oss"* ]]; then

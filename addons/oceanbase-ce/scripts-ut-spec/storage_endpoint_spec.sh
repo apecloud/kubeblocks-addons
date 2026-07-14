@@ -51,6 +51,12 @@ Describe "OceanBase CE object storage endpoint handling"
     The status should be success
   End
 
+  It "preserves an uppercase HTTP scheme while resolving a Kubernetes service endpoint"
+    When call replaceK8sSVC "HTTP://minio-pre.oceanbase-ce-test.svc:9000"
+    The output should eq "HTTP://10.99.171.87:9000"
+    The status should be success
+  End
+
   It "keeps a scheme-less Kubernetes service endpoint scheme-less"
     When call replaceK8sSVC "minio-pre.oceanbase-ce-test.svc:9000"
     The output should eq "10.99.171.87:9000"
@@ -131,6 +137,19 @@ Describe "OceanBase CE object storage endpoint handling"
     The status should be success
   End
 
+  It "keeps the OSS destination prefix and spelling for an uppercase HTTPS endpoint"
+    endpoint="HTTPS://oss-cn-test.aliyuncs.com"
+    provider="Alibaba"
+    bucket="ob-backups"
+    access_key_id="access"
+    secret_access_key="secret"
+    DP_BACKUP_BASE_PATH="/oceanbase-ce"
+
+    When call getDestURL data tenant 1001
+    The output should eq "oss://ob-backups/oceanbase-ce/tenant/1001?host=HTTPS://oss-cn-test.aliyuncs.com&access_id=access&access_key=secret"
+    The status should be success
+  End
+
   It "keeps the COS destination prefix for an explicit HTTPS endpoint"
     endpoint="https://cos.ap-test.myqcloud.com"
     provider="TencentCOS"
@@ -141,6 +160,19 @@ Describe "OceanBase CE object storage endpoint handling"
 
     When call getDestURL data tenant 1001
     The output should eq "cos://ob-backups/oceanbase-ce/tenant/1001?host=https://cos.ap-test.myqcloud.com&access_id=access&access_key=secret"
+    The status should be success
+  End
+
+  It "keeps the COS destination prefix and spelling for a mixed-case HTTPS endpoint"
+    endpoint="HtTpS://cos.ap-test.myqcloud.com"
+    provider="TencentCOS"
+    bucket="ob-backups"
+    access_key_id="access"
+    secret_access_key="secret"
+    DP_BACKUP_BASE_PATH="/oceanbase-ce"
+
+    When call getDestURL data tenant 1001
+    The output should eq "cos://ob-backups/oceanbase-ce/tenant/1001?host=HtTpS://cos.ap-test.myqcloud.com&access_id=access&access_key=secret"
     The status should be success
   End
 End
