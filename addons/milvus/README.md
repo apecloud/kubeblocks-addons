@@ -54,6 +54,33 @@ Milvus is an open source (Apache-2.0 licensed) vector database built to power em
 
 ## Examples
 
+### Upgrade an affected standalone cluster to 1.2.0-alpha.1
+
+Milvus addon `1.2.0-alpha.1` replaces the embedded MinIO `admin` account with a
+generated `root` account. Existing standalone Clusters must switch both the
+embedded MinIO component and the Milvus component to the new immutable
+ComponentDefinitions.
+
+First upgrade the Milvus addon definitions to `1.2.0-alpha.1`. Do not force a
+Helm update of the existing Cluster's `spec.componentSpecs`: KubeBlocks owns
+that atomic field after topology resolution, so another field manager can be
+rejected or can overwrite controller-owned state.
+
+Then edit the namespace and Cluster name in
+`examples/upgrade-embedded-minio-credential.yaml` and apply it. The KubeBlocks
+`Upgrade` OpsRequest changes the two ComponentDefinitions through the owning
+control plane:
+
+```bash
+kubectl apply -f examples/upgrade-embedded-minio-credential.yaml
+```
+
+Wait for the OpsRequest to reach `Succeed` before checking the Cluster. The
+expected definitions are `milvus-minio-1.2.0-alpha.1` and
+`milvus-standalone-1.2.0-alpha.1`; both components then reference the new
+non-empty `root` credential. Do not use server-side apply
+`--force-conflicts` on the Cluster as a migration shortcut.
+
 ### Create
 
 #### Standalone Mode

@@ -87,23 +87,23 @@ client_contract=true"
       cluster = YAML.load_stream(ARGF.read).compact.find { |document| document["kind"] == "Cluster" }
       abort "standalone Cluster not rendered" unless cluster
 
-      components = cluster.dig("spec", "componentSpecs").to_h { |item| [item["name"], item] }
-      puts "etcd=#{components.dig("etcd", "componentDef")}"
-      puts "minio=#{components.dig("minio", "componentDef")}"
-      puts "milvus=#{components.dig("milvus", "componentDef")}"
-      pattern = /\A[a-z]([a-z0-9.\-]*[a-z0-9])?\z/
-      puts "schema_valid=#{components.values.all? { |item| item["componentDef"].match?(pattern) }}"
+      components = cluster.dig("spec", "componentSpecs")
+      puts "cluster_definition_api=#{components.none? { |item| item.key?("componentDef") } ? "topology" : "direct"}"
+    '
+
+    ruby -ryaml -e '
+      migration = YAML.load_file("../examples/upgrade-embedded-minio-credential.yaml")
+      components = migration.dig("spec", "upgrade", "components").to_h { |item| [item["componentName"], item] }
+      puts "migration=#{migration.dig("spec", "type")},#{components.dig("minio", "componentDefinitionName")},#{components.dig("milvus", "componentDefinitionName")}"
     '
   }
 
-  It "publishes a new immutable definition version and upgrades both credential consumers"
+  It "publishes immutable definitions and migrates existing components through Upgrade OpsRequest"
     When call render_upgrade_contract
-    The output should eq "versions=1.2.0-alpha.1,1.2.0-alpha.1
+    The output should eq "versions=1.2.0-alpha.1,1.2.0-alpha.0
 definitions=milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1
-etcd=etcd
-minio=milvus-minio-1.2.0-alpha.1
-milvus=milvus-standalone-1.2.0-alpha.1
-schema_valid=true"
+cluster_definition_api=topology
+migration=Upgrade,milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1"
     The status should be success
   End
 End

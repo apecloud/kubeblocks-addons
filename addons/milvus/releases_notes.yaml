@@ -1,4 +1,12 @@
 releases:
+  - version: "1.2.0-alpha.1"
+    released_at: ""
+    status: "alpha"
+    notes: "Migrate embedded MinIO credentials to a generated root account. Existing standalone Clusters must upgrade the minio and milvus ComponentDefinitions through an Upgrade OpsRequest."
+    git_branch: "main"
+    git_tag: ""
+    commit_sha: ""
+    breaking_changes: "The embedded MinIO system account changes from admin to root."
   - version: "1.0.1"
     released_at: "2025-09-11"
     status: "stable"
