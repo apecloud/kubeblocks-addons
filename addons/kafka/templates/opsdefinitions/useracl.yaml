@@ -8,10 +8,10 @@ spec:
   componentInfos:
   - componentDefinitionName: kafka-broker
     accountName: client
-    serviceName: broker
+    serviceName: advertised-listener
   - componentDefinitionName: kafka-combine
     accountName: client
-    serviceName: broker
+    serviceName: advertised-listener
 
   parametersSchema:
     openAPIV3Schema:
