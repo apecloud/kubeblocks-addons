@@ -3,7 +3,7 @@
 Describe "OceanBase CE object storage endpoint handling"
   Include ../dataprotection/common-scripts.sh
 
-  Mock getent
+  getent() {
     if [ "$1" = "hosts" ] && [ "$2" = "multi.oceanbase-ce-test.svc" ]; then
       echo "10.99.171.87 $2"
       echo "10.99.171.88 $2"
@@ -25,6 +25,10 @@ Describe "OceanBase CE object storage endpoint handling"
       echo "999.1.1.1 $2"
       return 0
     fi
+    if [ "$1" = "hosts" ] && [ "$2" = "partial-failure.oceanbase-ce-test.svc" ]; then
+      echo "10.99.171.90 $2"
+      return 2
+    fi
     if [ "$1" = "hosts" ] && {
       [ "$2" = "minio-pre.oceanbase-ce-test.svc" ] ||
         [ "$2" = "minio-pre.oceanbase-ce-test.svc.cluster.local" ]
@@ -33,7 +37,7 @@ Describe "OceanBase CE object storage endpoint handling"
       return 0
     fi
     return 2
-  End
+  }
 
   It "preserves HTTP while resolving a Kubernetes service endpoint"
     When call replaceK8sSVC "http://minio-pre.oceanbase-ce-test.svc:9000"
@@ -89,6 +93,12 @@ Describe "OceanBase CE object storage endpoint handling"
     The status should be success
   End
 
+  It "preserves the original endpoint when DNS emits an address then fails"
+    When call replaceK8sSVC "http://partial-failure.oceanbase-ce-test.svc:9000"
+    The output should eq "http://partial-failure.oceanbase-ce-test.svc:9000"
+    The status should be success
+  End
+
   It "preserves an external endpoint exactly"
     When call replaceK8sSVC "https://storage.example.com"
     The output should eq "https://storage.example.com"
@@ -105,6 +115,32 @@ Describe "OceanBase CE object storage endpoint handling"
 
     When call getDestURL data tenant 1001
     The output should eq "s3://kb-backups/oceanbase-ce/tenant/1001?host=http://10.99.171.87:9000&access_id=access&access_key=secret"
+    The status should be success
+  End
+
+  It "keeps the OSS destination prefix for an explicit HTTPS endpoint"
+    endpoint="https://oss-cn-test.aliyuncs.com"
+    provider="Alibaba"
+    bucket="ob-backups"
+    access_key_id="access"
+    secret_access_key="secret"
+    DP_BACKUP_BASE_PATH="/oceanbase-ce"
+
+    When call getDestURL data tenant 1001
+    The output should eq "oss://ob-backups/oceanbase-ce/tenant/1001?host=https://oss-cn-test.aliyuncs.com&access_id=access&access_key=secret"
+    The status should be success
+  End
+
+  It "keeps the COS destination prefix for an explicit HTTPS endpoint"
+    endpoint="https://cos.ap-test.myqcloud.com"
+    provider="TencentCOS"
+    bucket="ob-backups"
+    access_key_id="access"
+    secret_access_key="secret"
+    DP_BACKUP_BASE_PATH="/oceanbase-ce"
+
+    When call getDestURL data tenant 1001
+    The output should eq "cos://ob-backups/oceanbase-ce/tenant/1001?host=https://cos.ap-test.myqcloud.com&access_id=access&access_key=secret"
     The status should be success
   End
 End

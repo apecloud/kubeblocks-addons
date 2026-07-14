@@ -183,8 +183,9 @@ function replaceK8sSVC() {
        port="${address#*:}"
     fi
     if [[ ${host} == *.svc || ${host} == *.svc.* ]]; then
-       local hostIP
-       hostIP=$(getent hosts "${host}" 2>/dev/null | awk '
+       local hostIP resolverOutput
+       if resolverOutput=$(getent hosts "${host}" 2>/dev/null); then
+         hostIP=$(awk '
          $1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {
            split($1, octets, ".")
            canonical = 1
@@ -198,14 +199,15 @@ function replaceK8sSVC() {
              exit
            }
          }
-       ')
-       if [[ -n ${hostIP} ]]; then
-          if [[ -n ${port} ]]; then
-             echo "${scheme}${hostIP}:${port}"
-          else
-             echo "${scheme}${hostIP}"
-          fi
-          return
+         ' <<< "${resolverOutput}")
+         if [[ -n ${hostIP} ]]; then
+            if [[ -n ${port} ]]; then
+               echo "${scheme}${hostIP}:${port}"
+            else
+               echo "${scheme}${hostIP}"
+            fi
+            return
+         fi
        fi
     fi
     echo "${localEndpoint}"
@@ -251,9 +253,11 @@ function getDestURL() {
      destPath=${archivePath}
   fi
   destPrefix="s3"
-  if [[ ${host} == "cos"* ]]; then
+  prefixHost=${host#http://}
+  prefixHost=${prefixHost#https://}
+  if [[ ${prefixHost} == "cos"* ]]; then
      destPrefix="cos"
-  elif [[ ${host} = "oss"* ]]; then
+  elif [[ ${prefixHost} == "oss"* ]]; then
      destPrefix="oss"
   fi
   destUrl="${destPrefix}://${bucket}${destPath}/${tenantName}/${tenantId}?host=${host}&access_id=${access_key_id}&access_key=${secret_access_key}"
