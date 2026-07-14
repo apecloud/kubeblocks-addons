@@ -131,45 +131,6 @@ function set_backup_config_env() {
   DP_log "storage config have been extracted."
 }
 
-# config backup agent
-generate_endpoints() {
-    local fqdns=$1
-    local port=$2
-
-    if [ -z "$fqdns" ]; then
-        echo "ERROR: No FQDNs provided for endpoints." >&2
-        exit 1
-    fi
-
-    IFS=',' read -ra fqdn_array <<< "$fqdns"
-    local endpoints=()
-
-    for fqdn in "${fqdn_array[@]}"; do
-        trimmed_fqdn=$(echo "$fqdn" | xargs)
-        if [[ -n "$trimmed_fqdn" ]]; then
-            endpoints+=("${trimmed_fqdn}:${port}")
-        fi
-    done
-
-    IFS=','; echo "${endpoints[*]}"
-}
-
-function export_pbm_env_vars() {
-  export PBM_AGENT_MONGODB_USERNAME="$MONGODB_USER"
-  export PBM_AGENT_MONGODB_PASSWORD="$MONGODB_PASSWORD"
-
-  cfg_server_endpoints="$(generate_endpoints "$CFG_SERVER_POD_FQDN_LIST" "$CFG_SERVER_INTERNAL_PORT")"
-  export PBM_MONGODB_URI="mongodb://$PBM_AGENT_MONGODB_USERNAME:$PBM_AGENT_MONGODB_PASSWORD@$cfg_server_endpoints/?authSource=admin&replSetName=$CFG_SERVER_REPLICA_SET_NAME"
-}
-
-function export_pbm_env_vars_for_rs() {
-  export PBM_AGENT_MONGODB_USERNAME="$MONGODB_USER"
-  export PBM_AGENT_MONGODB_PASSWORD="$MONGODB_PASSWORD"
-
-  mongodb_endpoints="$(generate_endpoints "$MONGODB_POD_FQDN_LIST" "$KB_SERVICE_PORT")"
-  export PBM_MONGODB_URI="mongodb://$PBM_AGENT_MONGODB_USERNAME:$PBM_AGENT_MONGODB_PASSWORD@$mongodb_endpoints/?authSource=admin&replSetName=$MONGODB_REPLICA_SET_NAME"
-}
-
 function write_pbm_storage_config_file() {
   local file=$1
   if [ -z "$file" ]; then
@@ -221,17 +182,39 @@ function syncerctl_cmd() {
   syncerctl --host "$host" --port "$port" "$@"
 }
 
-function configure_syncer_backup() {
-  local cnf_file="${MOUNT_DIR:-/tmp}/tmp/pbm_syncer_storage.yaml"
-  write_pbm_storage_config_file "$cnf_file"
-  echo "INFO: Configuring PBM storage through syncer on $(target_syncer_host)..."
-  syncerctl_cmd backup configure --file "$cnf_file"
+function prepare_pbm_operation_storage_config() {
+  local mount_dir="${MOUNT_DIR:-}"
+  if [ -z "$mount_dir" ] || [[ "$mount_dir" != /* ]]; then
+    echo "ERROR: MOUNT_DIR must be an absolute target PVC mount path"
+    exit 1
+  fi
+
+  local input_dir="$mount_dir/tmp/pbm-restore-input"
+  PBM_STORAGE_CONFIG_TOKEN=$(tr -d '-' < /proc/sys/kernel/random/uuid)
+  if [[ ! "$PBM_STORAGE_CONFIG_TOKEN" =~ ^[A-Za-z0-9_-]{32,128}$ ]]; then
+    echo "ERROR: Failed to generate PBM storage config token"
+    exit 1
+  fi
+  PBM_STORAGE_CONFIG_FILE="$input_dir/$PBM_STORAGE_CONFIG_TOKEN"
+
+  umask 077
+  mkdir -p "$input_dir"
+  chmod 0700 "$input_dir"
+  if ! (set -o noclobber; write_pbm_storage_config_file "$PBM_STORAGE_CONFIG_FILE"); then
+    echo "ERROR: Failed to create PVC-backed PBM storage config"
+    exit 1
+  fi
+  chmod 0600 "$PBM_STORAGE_CONFIG_FILE"
+  export PBM_STORAGE_CONFIG_FILE PBM_STORAGE_CONFIG_TOKEN
 }
 
 function prepare_restore_storage_config() {
-  RESTORE_STORAGE_CONFIG_FILE="${MOUNT_DIR:-/tmp}/tmp/pbm_restore_syncer_storage.yaml"
-  write_pbm_storage_config_file "$RESTORE_STORAGE_CONFIG_FILE"
-  export RESTORE_STORAGE_CONFIG_FILE
+  prepare_pbm_operation_storage_config
+  RESTORE_STORAGE_CONFIG_FILE="$PBM_STORAGE_CONFIG_FILE"
+  RESTORE_STORAGE_CONFIG_TOKEN="$PBM_STORAGE_CONFIG_TOKEN"
+  RESTORE_REQUEST_ACCEPTED=false
+  RESTORE_COMPLETED=false
+  export RESTORE_STORAGE_CONFIG_FILE RESTORE_STORAGE_CONFIG_TOKEN RESTORE_REQUEST_ACCEPTED RESTORE_COMPLETED
 }
 
 function wait_for_syncer_backup_completion() {
@@ -261,6 +244,22 @@ function wait_for_syncer_backup_completion() {
     fi
     sleep "$retry_interval"
   done
+}
+
+function save_syncer_backup_info() {
+  local response=$1
+  local available
+  available=$(echo "$response" | jq -r '.backup_info.available // false')
+  if [ "$available" != "true" ]; then
+    echo "INFO: Syncer reports no backup range available."
+    return 1
+  fi
+  local total_size start_time end_time extras
+  total_size=$(echo "$response" | jq -r '.backup_info.total_size // 0')
+  start_time=$(echo "$response" | jq -r '.backup_info.start_time // empty')
+  end_time=$(echo "$response" | jq -r '.backup_info.end_time // empty')
+  extras=$(echo "$response" | jq -c '.backup_info.extras // {}')
+  DP_save_backup_status_info "$total_size" "$start_time" "$end_time" "" "$extras"
 }
 
 function wait_for_syncer_restore_completion() {
@@ -307,64 +306,13 @@ function wait_for_syncer_restore_completion() {
   done
 }
 
-function sync_pbm_storage_config() {
-  echo "INFO: Checking if PBM storage config exists"
-  pbm_config_exists=true
-  check_config=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json) || {
-    pbm_config_exists=false
-    echo "INFO: PBM storage config does not exist."
-  }
-  if [ "$pbm_config_exists" = "true" ]; then
-    # check_config=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json)
-    current_endpoint=$(echo "$check_config" | jq -r '.storage.s3.endpointUrl')
-    current_region=$(echo "$check_config" | jq -r '.storage.s3.region')
-    current_bucket=$(echo "$check_config" | jq -r '.storage.s3.bucket')
-    current_prefix=$(echo "$check_config" | jq -r '.storage.s3.prefix')
-    echo "INFO: Current PBM storage endpoint: $current_endpoint"
-    echo "INFO: Current PBM storage region: $current_region"
-    echo "INFO: Current PBM storage bucket: $current_bucket"
-    echo "INFO: Current PBM storage prefix: $current_prefix"
-    if [ "$current_prefix" = "$S3_PREFIX" ] && [ "$current_region" = "$S3_REGION" ] && [ "$current_bucket" = "$S3_BUCKET" ] && [ "$current_endpoint" = "$S3_ENDPOINT" ]; then
-      echo "INFO: PBM storage config already exists."
-    else
-      pbm_config_exists=false
-    fi
-  fi
-  if [ "$pbm_config_exists" = "false" ]; then
-    cat <<EOF | pbm config --mongodb-uri "$PBM_MONGODB_URI" --file /dev/stdin > /dev/null
-storage:
-  type: s3
-  s3:
-    region: ${S3_REGION}
-    bucket: ${S3_BUCKET}
-    prefix: ${S3_PREFIX}
-    endpointUrl: ${S3_ENDPOINT}
-    forcePathStyle: ${S3_FORCE_PATH_STYLE:-false}
-    credentials:
-      access-key-id: ${S3_ACCESS_KEY}
-      secret-access-key: ${S3_SECRET_KEY}
-restore:
-  numDownloadWorkers: ${PBM_RESTORE_DOWNLOAD_WORKERS:-4}
-backup:
-  timeouts:
-    startingStatus: 60
-EOF
-    sleep 5
-    echo "INFO: PBM storage configuration completed."
-  fi
-}
-
-function print_pbm_tail_logs() {
-  echo "INFO: Printing PBM tail logs"
-  pbm logs --tail 20 --mongodb-uri "$PBM_MONGODB_URI"
-}
-
 function handle_backup_exit() {
   exit_code=$?
   set +e
+  if [ -n "${PBM_STORAGE_CONFIG_FILE:-}" ]; then
+    rm -f "$PBM_STORAGE_CONFIG_FILE"
+  fi
   if [ $exit_code -ne 0 ]; then
-    print_pbm_tail_logs
-
     echo "failed with exit code $exit_code"
     touch "${DP_BACKUP_INFO_FILE}.exit"
     exit 1
@@ -374,12 +322,10 @@ function handle_backup_exit() {
 function handle_restore_exit() {
   exit_code=$?
   set +e
-  if [ -n "${RESTORE_STORAGE_CONFIG_FILE:-}" ]; then
+  if [ -n "${RESTORE_STORAGE_CONFIG_FILE:-}" ] && { [ "${RESTORE_REQUEST_ACCEPTED:-false}" != "true" ] || [ "${RESTORE_COMPLETED:-false}" = "true" ]; }; then
     rm -f "$RESTORE_STORAGE_CONFIG_FILE"
   fi
   if [ $exit_code -ne 0 ]; then
-    print_pbm_tail_logs
-
     echo "failed with exit code $exit_code"
     exit 1
   fi
@@ -388,80 +334,12 @@ function handle_restore_exit() {
 function handle_pitr_exit() {
   exit_code=$?
   set +e
+  if [ -n "${PBM_STORAGE_CONFIG_FILE:-}" ]; then
+    rm -f "$PBM_STORAGE_CONFIG_FILE"
+  fi
   if [ $exit_code -ne 0 ]; then
-    print_pbm_tail_logs
-
     echo "failed with exit code $exit_code"
     touch "${DP_BACKUP_INFO_FILE}.exit"
     exit 1
-  fi
-}
-
-function wait_for_other_operations() {
-  status_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json) || {
-    echo "INFO: PBM is not configured."
-    return
-  }
-  local except_type=$1
-  local running_status=$(echo "$status_result" | jq -r '.running')
-  local retry_count=0
-  local max_retries=60
-  while [ -n "$running_status" ] && [ "$running_status" != "{}" ] && [ $retry_count -lt $max_retries ]; do
-    retry_count=$((retry_count+1))
-    local running_type=$(echo "$running_status" | jq -r '.type')
-    if [ -n "$running_type" ] && [ "$running_type" = "$except_type" ]; then
-      break
-    fi
-    echo "INFO: Other operation $running_type is running, waiting... ($retry_count/$max_retries)"
-    sleep 5
-    running_status=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.running')
-  done
-  if [ $retry_count -ge $max_retries ]; then
-    echo "ERROR: Other operations are still running after $max_retries retries"
-    exit 1
-  fi
-}
-
-function sync_pbm_config_from_storage() {
-  echo "INFO: Syncing PBM config from storage..."
-
-  wait_for_other_operations
-
-  pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
-  # resync wait flag might don't work
-  wait_for_other_operations
-
-  echo "INFO: PBM config synced from storage."
-}
-
-function get_describe_backup_info() {
-  describe_result=""
-  local max_retries=60
-  local retry_interval=5
-  local attempt=1
-  set +e
-  while [ $attempt -le $max_retries ]; do
-      describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
-      if [ $? -eq 0 ] && [ -n "$describe_result" ]; then
-          break
-      elif echo "$describe_result" | grep -q "not found"; then
-          echo "INFO: Attempt $attempt: backup $backup_name not found, retrying in ${retry_interval}s..."
-          if [ $((attempt % 30)) -eq 29 ]; then
-              echo "INFO: Sync PBM config from storage again."
-              sync_pbm_config_from_storage
-          fi
-          sleep $retry_interval
-          ((attempt++))
-          continue
-      else
-          echo "ERROR: Failed to get backup metadata: $describe_result"
-          exit 1
-      fi
-  done
-  set -e
-
-  if [ -z "$describe_result" ] || echo "$describe_result" | grep -q "not found"; then
-      echo "ERROR: Failed to get backup metadata after $max_retries attempts"
-      exit 1
   fi
 }

@@ -17,8 +17,6 @@ data:
 
     DATA_VOLUME={{ .Values.dataMountPath }}
     {{- .Files.Get "scripts/replicaset-setup.tpl" | nindent 4 }}
-  backup-agent-setup.sh: |-
-    {{- .Files.Get "scripts/backup-agent-setup.sh" | nindent 4 }}
   mongodb-member-leave.sh: |-
     {{- .Files.Get "scripts/mongodb-member-leave.sh" | nindent 4 }}
   mongodb-switchover.sh: |-

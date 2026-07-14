@@ -136,7 +136,6 @@ spec:
           - |
             cp -r /usr/bin/pbm /tools
             cp -r /usr/bin/pbm-agent /tools
-            cp -r /usr/bin/pbm-agent-entrypoint /tools
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-pbm-agent
@@ -207,10 +206,6 @@ spec:
             value: $(MONGODB_ADMIN_PASSWORD)
           - name: PBM_MONGODB_REPLICA_SET
             value: $(CLUSTER_COMPONENT_NAME)
-          - name: PBM_AGENT_SIDECAR
-            value: "true"
-          - name: PBM_AGENT_SIDECAR_SLEEP
-            value: "5"
           - name: SHARDED
             value: "TRUE"
           - name: PBM_MONGODB_URI
@@ -240,8 +235,6 @@ spec:
             containerPort: 3361
         command:
           - /tools/syncer
-          - --
-          - /scripts/backup-agent-setup.sh
         env:
           - name: POD_NAME
             valueFrom:
@@ -269,6 +262,8 @@ spec:
             value: mongodb
           - name: KB_WORKLOAD_TYPE
             value: pbm-agent
+          - name: PBM_AGENT_BIN
+            value: /tools/pbm-agent
           - name: SYNCER_IGNORE_HA
             value: "true"
           - name: SYNCER_BACKUP_ENABLED
@@ -281,10 +276,6 @@ spec:
             value: $(MONGODB_ADMIN_PASSWORD)
           - name: PBM_MONGODB_REPLICA_SET
             value: $(CLUSTER_COMPONENT_NAME)
-          - name: PBM_AGENT_SIDECAR
-            value: "true"
-          - name: PBM_AGENT_SIDECAR_SLEEP
-            value: "5"
           - name: SHARDED
             value: "TRUE"
           - name: PBM_MONGODB_URI
