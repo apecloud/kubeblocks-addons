@@ -94,7 +94,8 @@ client_contract=true"
     ruby -ryaml -e '
       migration = YAML.load_file("../examples/upgrade-embedded-minio-credential.yaml")
       components = migration.dig("spec", "upgrade", "components").to_h { |item| [item["componentName"], item] }
-      puts "migration=#{migration.dig("metadata", "name")},#{migration.dig("spec", "type")},#{components.dig("minio", "componentDefinitionName")},#{components.dig("milvus", "componentDefinitionName")}"
+      forced = migration.dig("spec", "force") == true ? "true" : "false"
+      puts "migration=#{migration.dig("metadata", "name")},#{migration.dig("spec", "type")},precondition=#{migration.dig("spec", "preConditionDeadlineSeconds")},force=#{forced},#{components.dig("minio", "componentDefinitionName")},#{components.dig("milvus", "componentDefinitionName")}"
     '
   }
 
@@ -103,7 +104,7 @@ client_contract=true"
     The output should eq "versions=1.2.0-alpha.1,1.2.0-alpha.0
 definitions=milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1
 cluster_definition_api=topology
-migration=milvus-standalone-minio-root-migrate,Upgrade,milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1"
+migration=milvus-standalone-minio-root-migrate,Upgrade,precondition=600,force=false,milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1"
     The status should be success
   End
 End

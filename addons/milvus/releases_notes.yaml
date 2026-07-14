@@ -2,7 +2,7 @@ releases:
   - version: "1.2.0-alpha.1"
     released_at: ""
     status: "alpha"
-    notes: "Migrate embedded MinIO credentials to a generated root account. Existing affected standalone Clusters use the shipped Upgrade OpsRequest plus the bounded recovery helper, which replaces only the stale alpha.0 MinIO Pod after the alpha.1 desired contract is visible."
+    notes: "Migrate embedded MinIO credentials to a generated root account. Existing affected standalone Clusters use the shipped Upgrade OpsRequest with a bounded Cluster-phase precondition plus the recovery helper, which replaces only the stale alpha.0 MinIO Pod after the alpha.1 desired contract is visible."
     git_branch: "main"
     git_tag: ""
     commit_sha: ""

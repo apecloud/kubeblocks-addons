@@ -25,13 +25,13 @@ deleted=false
 
 case "${1:-} ${2:-}" in
   "get component")
-    printf '%s' "${target_def}"
+    if [[ "${DESIRED_READY:-true}" == "true" ]]; then printf '%s' "${target_def}"; else printf '%s' 'milvus-minio-1.2.0-alpha.0'; fi
     ;;
   "get instanceset")
-    printf '%s' "${target_def}"
+    if [[ "${DESIRED_READY:-true}" == "true" ]]; then printf '%s' "${target_def}"; else printf '%s' 'milvus-minio-1.2.0-alpha.0'; fi
     ;;
   "get secret")
-    printf '%s' 'cm9vdA==|cGFzc3dvcmQ='
+    if [[ "${DESIRED_READY:-true}" == "true" ]]; then printf '%s' 'cm9vdA==|cGFzc3dvcmQ='; fi
     ;;
   "get pods")
     printf '%s\n' 'demo-minio-0'
@@ -66,9 +66,11 @@ case "${1:-} ${2:-}" in
     case "${output}" in
       *spec.clusterName*) printf '%s' "${FAKE_OPS_CLUSTER:-demo}" ;;
       *spec.type*) printf '%s' 'Upgrade' ;;
+      *spec.preConditionDeadlineSeconds*) printf '%s' "${FAKE_PRECONDITION_DEADLINE:-600}" ;;
+      *spec.force*) printf '%s' "${FAKE_FORCE:-false}" ;;
       *componentName==\"minio\"*) printf '%s' "${target_def}" ;;
       *componentName==\"milvus\"*) printf '%s' "${target_milvus_def}" ;;
-      *status.phase*) if ${deleted}; then printf '%s' 'Succeed'; else printf '%s' 'Running'; fi ;;
+      *status.phase*) if [[ -n "${FAKE_OPS_PHASE:-}" ]]; then printf '%s' "${FAKE_OPS_PHASE}"; elif ${deleted}; then printf '%s' 'Succeed'; else printf '%s' 'Running'; fi ;;
       *) printf 'unexpected OpsRequest query: %s\n' "${output}" >&2; exit 64 ;;
     esac
     ;;
@@ -116,6 +118,18 @@ EOF
     FAKE_OPS_CLUSTER=other-cluster run_recovery
   }
 
+  run_without_bounded_precondition() {
+    FAKE_PRECONDITION_DEADLINE=0 run_recovery
+  }
+
+  run_forced_opsrequest() {
+    FAKE_FORCE=true run_recovery
+  }
+
+  run_failed_before_desired() {
+    DESIRED_READY=false FAKE_OPS_PHASE=Failed run_recovery
+  }
+
   It "replaces only the stale failed MinIO Pod after the desired alpha.1 contract is visible"
     When call run_recovery
     The status should be success
@@ -156,6 +170,29 @@ EOF
     When call run_wrong_opsrequest
     The status should be failure
     The stderr should include "OpsRequest cluster mismatch"
+    The contents of file "${calls_file}" should not include "get pods"
+    The contents of file "${calls_file}" should not include "delete pod"
+  End
+
+  It "requires the published bounded precondition wait before inspecting Pods"
+    When call run_without_bounded_precondition
+    The status should be failure
+    The stderr should include "precondition deadline mismatch"
+    The contents of file "${calls_file}" should not include "get pods"
+  End
+
+  It "rejects force instead of bypassing the Cluster phase safety gate"
+    When call run_forced_opsrequest
+    The status should be failure
+    The stderr should include "must not use force"
+    The contents of file "${calls_file}" should not include "get pods"
+  End
+
+  It "reports a terminal OpsRequest immediately while waiting for desired state"
+    When call run_failed_before_desired
+    The status should be failure
+    The output should include "opsrequest-contract=valid"
+    The stderr should include "OpsRequest reached Failed while waiting for desired contract"
     The contents of file "${calls_file}" should not include "get pods"
     The contents of file "${calls_file}" should not include "delete pod"
   End

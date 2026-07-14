@@ -69,7 +69,11 @@ rejected or can overwrite controller-owned state.
 Then edit the namespace, Cluster name, and OpsRequest name in
 `examples/upgrade-embedded-minio-credential.yaml` and create it. The KubeBlocks
 `Upgrade` OpsRequest changes the two ComponentDefinitions through the owning
-control plane:
+control plane. The example sets `preConditionDeadlineSeconds: 600` because an
+affected alpha.0 Cluster can still be `Creating` while MinIO is failing; the
+OpsRequest waits boundedly for KubeBlocks to classify the Cluster `Abnormal`,
+which is an allowed Upgrade source phase. Do not replace this wait with
+`force: true`:
 
 ```bash
 kubectl create -f examples/upgrade-embedded-minio-credential.yaml
@@ -87,7 +91,10 @@ bash scripts/recover-embedded-minio-credential.sh \
 
 The helper first waits until the MinIO Component and InstanceSet both show
 `milvus-minio-1.2.0-alpha.1` and the new `root` Secret has non-empty credential
-data. Only then, if the sole MinIO Pod still uses the alpha.0 definition, it
+data. It validates the bounded precondition wait and rejects `force`; if the
+OpsRequest reaches a terminal failure while desired state is pending, it exits
+immediately with that state. Only after desired state is ready, if the sole
+MinIO Pod still uses the alpha.0 definition, it
 verifies that the Pod is controlled by the expected InstanceSet and deletes
 that Pod without deleting its PVC or either Secret. KubeBlocks recreates the
 Pod from the alpha.1 template. The helper exits successfully only after the
@@ -98,8 +105,8 @@ uses alpha.1.
 
 Finally, verify Milvus service connectivity. Both MinIO and Milvus must consume
 the new non-empty `root` credential. Do not use server-side apply
-`--force-conflicts` on the Cluster as a migration shortcut, and do not delete
-the affected PVC.
+`--force-conflicts` on the Cluster or `force: true` on the OpsRequest as a
+migration shortcut, and do not delete the affected PVC.
 
 ### Create
 

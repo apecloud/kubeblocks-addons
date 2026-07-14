@@ -5,9 +5,10 @@ set -euo pipefail
 TARGET_MINIO_DEF="milvus-minio-1.2.0-alpha.1"
 TARGET_MILVUS_DEF="milvus-standalone-1.2.0-alpha.1"
 AFFECTED_MINIO_DEF="milvus-minio-1.2.0-alpha.0"
+EXPECTED_PRECONDITION_DEADLINE_SECONDS="600"
 KUBECTL="${KUBECTL:-kubectl}"
 POLL_INTERVAL_SECONDS="${POLL_INTERVAL_SECONDS:-3}"
-DESIRED_TIMEOUT_SECONDS="${DESIRED_TIMEOUT_SECONDS:-300}"
+DESIRED_TIMEOUT_SECONDS="${DESIRED_TIMEOUT_SECONDS:-900}"
 READY_TIMEOUT_SECONDS="${READY_TIMEOUT_SECONDS:-600}"
 
 usage() {
@@ -59,11 +60,15 @@ require_uint READY_TIMEOUT_SECONDS "${READY_TIMEOUT_SECONDS}"
 command -v "${KUBECTL}" >/dev/null 2>&1 || fail "kubectl command is not executable: ${KUBECTL}"
 
 validate_migration_contract() {
-  local ops_cluster ops_type minio_def milvus_def
+  local ops_cluster ops_type precondition_deadline force minio_def milvus_def
   ops_cluster=$("${KUBECTL}" -n "${namespace}" get opsrequest "${opsrequest}" \
     -o jsonpath='{.spec.clusterName}' 2>/dev/null || true)
   ops_type=$("${KUBECTL}" -n "${namespace}" get opsrequest "${opsrequest}" \
     -o jsonpath='{.spec.type}' 2>/dev/null || true)
+  precondition_deadline=$("${KUBECTL}" -n "${namespace}" get opsrequest "${opsrequest}" \
+    -o jsonpath='{.spec.preConditionDeadlineSeconds}' 2>/dev/null || true)
+  force=$("${KUBECTL}" -n "${namespace}" get opsrequest "${opsrequest}" \
+    -o jsonpath='{.spec.force}' 2>/dev/null || true)
   minio_def=$("${KUBECTL}" -n "${namespace}" get opsrequest "${opsrequest}" \
     -o jsonpath='{.spec.upgrade.components[?(@.componentName=="minio")].componentDefinitionName}' 2>/dev/null || true)
   milvus_def=$("${KUBECTL}" -n "${namespace}" get opsrequest "${opsrequest}" \
@@ -73,25 +78,39 @@ validate_migration_contract() {
     fail "OpsRequest cluster mismatch: expected ${cluster}, got ${ops_cluster:-missing}"
   [[ "${ops_type}" == "Upgrade" ]] ||
     fail "OpsRequest type mismatch: expected Upgrade, got ${ops_type:-missing}"
+  [[ "${precondition_deadline}" == "${EXPECTED_PRECONDITION_DEADLINE_SECONDS}" ]] ||
+    fail "OpsRequest precondition deadline mismatch: expected ${EXPECTED_PRECONDITION_DEADLINE_SECONDS}, got ${precondition_deadline:-missing}"
+  [[ -z "${force}" || "${force}" == "false" ]] ||
+    fail "OpsRequest must not use force to bypass the Cluster phase safety gate"
   [[ "${minio_def}" == "${TARGET_MINIO_DEF}" ]] ||
     fail "OpsRequest MinIO definition mismatch: expected ${TARGET_MINIO_DEF}, got ${minio_def:-missing}"
   [[ "${milvus_def}" == "${TARGET_MILVUS_DEF}" ]] ||
     fail "OpsRequest Milvus definition mismatch: expected ${TARGET_MILVUS_DEF}, got ${milvus_def:-missing}"
-  printf 'opsrequest-contract=valid,name=%s\n' "${opsrequest}"
+  printf 'opsrequest-contract=valid,name=%s,precondition=%s,force=false\n' \
+    "${opsrequest}" "${precondition_deadline}"
 }
 
 wait_for_desired_contract() {
-  local deadline first="" last="" comp_def template_def credential_shape current
+  local deadline first="" last="" ops_phase cluster_phase comp_def template_def credential_shape current
   deadline=$(($(date +%s) + DESIRED_TIMEOUT_SECONDS))
 
   while (($(date +%s) <= deadline)); do
+    ops_phase=$("${KUBECTL}" -n "${namespace}" get opsrequest "${opsrequest}" \
+      -o jsonpath='{.status.phase}' 2>/dev/null || true)
+    cluster_phase=$("${KUBECTL}" -n "${namespace}" get cluster "${cluster}" \
+      -o jsonpath='{.status.phase}' 2>/dev/null || true)
+    case "${ops_phase}" in
+      Failed|Cancelled|Aborted)
+        fail "OpsRequest reached ${ops_phase} while waiting for desired contract; cluster=${cluster_phase:-missing}"
+        ;;
+    esac
     comp_def=$("${KUBECTL}" -n "${namespace}" get component "${component}" \
       -o jsonpath='{.spec.compDef}' 2>/dev/null || true)
     template_def=$("${KUBECTL}" -n "${namespace}" get instanceset "${instanceset}" \
       -o jsonpath='{.spec.template.metadata.labels.app\.kubernetes\.io/component}' 2>/dev/null || true)
     credential_shape=$("${KUBECTL}" -n "${namespace}" get secret "${root_secret}" \
       -o jsonpath='{.data.username}{"|"}{.data.password}' 2>/dev/null || true)
-    current="component=${comp_def},template=${template_def},credential=$([[ "${credential_shape}" == ?*'|'?* ]] && printf non-empty || printf missing)"
+    current="ops=${ops_phase:-missing},cluster=${cluster_phase:-missing},component=${comp_def},template=${template_def},credential=$([[ "${credential_shape}" == ?*'|'?* ]] && printf non-empty || printf missing)"
     [[ -n "${first}" ]] || first="${current}"
     last="${current}"
 
