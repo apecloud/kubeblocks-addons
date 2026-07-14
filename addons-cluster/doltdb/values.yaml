@@ -28,7 +28,7 @@ mysqlSource:
   ## @param mysqlSource.replicationFilter optional CHANGE REPLICATION FILTER clause without the leading command. Dolt currently supports REPLICATE_DO_TABLE and REPLICATE_IGNORE_TABLE. Applied by one-time postProvision only; filter durability after Pod restart is not claimed.
   replicationFilter: ""
   serviceRef:
-    ## @param mysqlSource.serviceRef.namespace namespace of the referenced source Cluster or ServiceDescriptor.
+    ## @param mysqlSource.serviceRef.namespace namespace of the referenced source Cluster or ServiceDescriptor. Must be empty or match the Helm release namespace.
     namespace: ""
     ## Bind to another KubeBlocks MySQL Cluster.
     clusterServiceSelector:

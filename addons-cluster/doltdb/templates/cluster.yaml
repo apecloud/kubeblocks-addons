@@ -7,6 +7,7 @@
 {{- $mysqlSourceCluster := .Values.mysqlSource.serviceRef.clusterServiceSelector.cluster -}}
 {{- $mysqlSourceDescriptor := .Values.mysqlSource.serviceRef.serviceDescriptor -}}
 {{- $mysqlSourceEnabled := or .Values.mysqlSource.enabled $mysqlSourceCluster $mysqlSourceDescriptor -}}
+{{- $mysqlSourceNamespace := .Values.mysqlSource.serviceRef.namespace | default .Release.Namespace -}}
 {{- if eq $topology "replication" -}}
 {{- $standbyReplicas := int .Values.replication.standbyReplicas -}}
 {{- if or (lt $standbyReplicas 1) (gt $standbyReplicas 5) -}}
@@ -27,6 +28,9 @@
 {{- end -}}
 {{- if not (or $mysqlSourceCluster $mysqlSourceDescriptor) -}}
 {{- fail "mysqlSource requires either mysqlSource.serviceRef.clusterServiceSelector.cluster or mysqlSource.serviceRef.serviceDescriptor" -}}
+{{- end -}}
+{{- if ne $mysqlSourceNamespace .Release.Namespace -}}
+{{- fail (printf "mysqlSource.serviceRef.namespace must match release namespace %q; cross-namespace mysql-source ServiceRef credentials are not supported" .Release.Namespace) -}}
 {{- end -}}
 {{- end -}}
 apiVersion: apps.kubeblocks.io/v1
@@ -59,7 +63,7 @@ spec:
       {{- if $mysqlSourceEnabled }}
       serviceRefs:
         - name: mysql-source
-          namespace: {{ .Values.mysqlSource.serviceRef.namespace | default .Release.Namespace | quote }}
+          namespace: {{ $mysqlSourceNamespace | quote }}
           {{- if $mysqlSourceCluster }}
           clusterServiceSelector:
             cluster: {{ $mysqlSourceCluster | quote }}
