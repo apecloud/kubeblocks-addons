@@ -870,6 +870,10 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         true
       }
 
+      ensure_current_node_replication() {
+        echo "unexpected-repair-called"
+      }
+
       setup() {
         export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
         export CURRENT_POD_NAME="redis-shard-sxj-0"
@@ -888,6 +892,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         When run scale_redis_cluster_replica
         The status should be success
         The stdout should include "Current pod redis-shard-sxj-0 is primary node, check and correct other primary nodes..."
+        The stdout should not include "unexpected-repair-called"
       End
     End
 
