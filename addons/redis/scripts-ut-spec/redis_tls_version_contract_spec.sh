@@ -31,6 +31,13 @@ Describe "Redis TLS service-version contract"
           "redis-sentinel" => "redis-sentinel"
         }
         majors = %w[5 6 7 8]
+        expected_names = families.keys.product(majors).map do |family, major|
+          "#{family}-#{major}-#{version}"
+        end
+        definition_names = definitions.map { |definition| definition.dig("metadata", "name") }
+        abort "expected exactly 12 ComponentDefinitions, got #{definitions.size}" unless definitions.size == expected_names.size
+        abort "ComponentDefinition names differ: #{definition_names.sort.inspect}" unless definition_names.sort == expected_names.sort
+
         rows = []
         violations = []
 
