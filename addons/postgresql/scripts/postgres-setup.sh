@@ -19,13 +19,32 @@ function wait_pod_restarted() {
 # own per-member pending_restart flag (already checked at the top of the loop)
 # is the ground truth for "this node needs a restart"; no extra gate is needed.
 
-# decide whether the current pod should restart now: only when it has
-# pending_restart, and either no leader is pending or the pending leader
-# is the current pod (the leader restarts first, secondaries follow).
+# Select one cluster-wide restart candidate from a Patroni cluster snapshot.
+# The leader goes first when it is pending; otherwise replicas are ordered by
+# member name. Every pod therefore reaches the same decision before posting to
+# its local /restart endpoint.
+function pending_restart_candidate() {
+  local cluster_state=$1
+
+  printf '%s\n' "${cluster_state}" | jq -r '
+    def healthy: .state == "running" or .state == "streaming";
+    if any(.members[]?; .state == "restarting") then
+      ""
+    else
+      (([.members[]? | select(.role == "leader" and .pending_restart == true and healthy) | .name] | sort | .[0]) //
+       ([.members[]? | select(.role != "leader" and .pending_restart == true and healthy) | .name] | sort | .[0]) //
+       "")
+    end
+  '
+}
+
+# Decide whether this pod is the single candidate selected from the latest
+# cluster snapshot. An empty candidate is fail-closed, not permission for every
+# pending replica to restart.
 function need_restart_for_pending() {
   local pending_restart=$1
-  local leader_pending_restart_pod=$2
-  [[ "${pending_restart}" == "true" && ( -z "${leader_pending_restart_pod}" || "${leader_pending_restart_pod}" == "${CURRENT_POD_NAME}" ) ]]
+  local restart_candidate=$2
+  [[ "${pending_restart}" == "true" && -n "${restart_candidate}" && "${restart_candidate}" == "${CURRENT_POD_NAME}" ]]
 }
 
 function restart_for_pending_restart_flag() {
@@ -60,20 +79,24 @@ function restart_for_pending_restart_flag() {
     result=$(<${result_tmp_path})
     rm -f ${result_tmp_path}
 
-    leader_pending_restart_pod=$(echo ${result} | jq -r ".members[] | select(.role == \"leader\" and .pending_restart == true) | .name")
-    # Serialize member restarts: if any member is already mid-restart, wait
-    # for the next loop iteration instead of taking a second replica down in
-    # the same window (a simultaneous secondary restart leaves zero live
-    # replicas and blocks commits under synchronous mode).
-    restarting_member=$(echo ${result} | jq -r '.members[] | select(.state == "restarting") | .name' | head -n 1)
-    if [[ -n "${restarting_member}" && "${restarting_member}" != "${CURRENT_POD_NAME}" ]]; then
+    if ! restart_candidate=$(pending_restart_candidate "${result}"); then
       continue
     fi
-    # Re-check pending_restart to avoid duplicate restarts
+    if [[ -z "${restart_candidate}" ]]; then
+      continue
+    fi
+
+    # Re-read the whole cluster after the arbitration delay. Rechecking only
+    # this pod's pending flag lets two followers act on the same stale snapshot.
     sleep 5
+    if ! result=$(curl --connect-timeout 3 -s http://localhost:8008/cluster); then
+      continue
+    fi
+    if ! restart_candidate=$(pending_restart_candidate "${result}"); then
+      continue
+    fi
     pending_restart=$(curl --connect-timeout 3 -s http://localhost:8008 | jq -r .pending_restart)
-    if need_restart_for_pending "${pending_restart}" "${leader_pending_restart_pod}"; then
-      # if leader pod is not pending_restart or current pod is leader pod, restart it
+    if need_restart_for_pending "${pending_restart}" "${restart_candidate}"; then
       echo "$(date) ${CURRENT_POD_NAME} is pending restart, restart it"
       curl -m 30 -XPOST http://localhost:8008/restart
       wait_pod_restarted
