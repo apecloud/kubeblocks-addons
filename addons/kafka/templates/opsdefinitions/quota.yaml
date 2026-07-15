@@ -61,8 +61,12 @@ spec:
                 - -c
                 - |
                   set -e
+                  [[ "${KB_COMP_REPLICAS:-}" =~ ^[1-9][0-9]*$ ]] || {
+                    echo "KB_COMP_REPLICAS must be a positive integer" >&2
+                    exit 1
+                  }
                   SERVERS=()
-                  for i in $(seq 0 $((${COMPONENT_REPLICAS}-1))); do
+                  for i in $(seq 0 $((${KB_COMP_REPLICAS}-1))); do
                     SERVERS+=("${KB_COMP_SVC_NAME}-${i}:${KB_COMP_SVC_PORT_BROKER}")
                   done
                   KB_CONNECT_ENDPOINT=$(printf "%s," "${SERVERS[@]}")
