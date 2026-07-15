@@ -118,10 +118,13 @@ EOF
 
     It "retries idempotently when a previous run already staged the data dir"
       mkdir -p "${DATA_DIR}.old/pg_wal"
+      echo x > "${DATA_DIR}.old/pg_wal/000000010000000000000001"
       When run bash "${concat}"
       The status should eq 0
-      The path "${DATA_DIR}" should be exist
-      The path "${DATA_DIR}.old" should not be exist
+      The output should include "done."
+      The path "${DATA_DIR}" should not be exist
+      The path "${DATA_DIR}.old" should be exist
+      The path "${CONF_DIR}/recovery.conf" should be exist
     End
   End
 

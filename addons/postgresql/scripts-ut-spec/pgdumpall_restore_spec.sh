@@ -83,6 +83,7 @@ EOF
     export PSQL_EXIT=2
     When run bash "$(script_path)"
     The status should be failure
+    The error should include "pgdumpall restore pipeline failed"
     The output should not include "restore complete!"
   End
 
@@ -91,6 +92,7 @@ EOF
     export DATASAFED_PULL_EXIT=1
     When run bash "$(script_path)"
     The status should be failure
+    The error should include "pgdumpall restore pipeline failed"
     The output should not include "restore complete!"
   End
 End
