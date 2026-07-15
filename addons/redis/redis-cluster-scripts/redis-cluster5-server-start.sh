@@ -387,6 +387,24 @@ scale_redis_cluster_replica() {
   fi
   # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
   if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$redis_announce_host_value"; then
+    primary_node_cluster_id_status=0
+    primary_node_cluster_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port") || primary_node_cluster_id_status=$?
+    if [ "$primary_node_cluster_id_status" -ne 0 ] || is_empty "$primary_node_cluster_id"; then
+      echo "Failed to resolve the current shard primary ID before replica convergence" >&2
+      exit 1
+    fi
+    current_shard_node_ids_status=0
+    current_shard_node_ids=$(get_current_shard_node_ids "$primary_node_endpoint" "$primary_node_port" "$primary_node_cluster_id") || current_shard_node_ids_status=$?
+    if [ "$current_shard_node_ids_status" -ne 0 ] || is_empty "$current_shard_node_ids"; then
+      echo "Failed to resolve current shard node IDs before replica convergence" >&2
+      exit 1
+    fi
+    current_node_replication_status=0
+    ensure_current_node_replication "$primary_node_endpoint" "$primary_node_port" "$primary_node_cluster_id" "$current_shard_node_ids" || current_node_replication_status=$?
+    if [ "$current_node_replication_status" -ne 0 ]; then
+      echo "Failed to converge current node replication before membership early return" >&2
+      exit 1
+    fi
     # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
     echo "Current pod $CURRENT_POD_NAME is a secondary node, check and meet current primary node..."
     check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"

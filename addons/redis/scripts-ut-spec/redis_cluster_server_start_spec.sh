@@ -466,6 +466,146 @@ Describe "Redis Cluster Server Start Bash Script Tests"
     End
   End
 
+  Describe "get_current_node_replication_state()"
+    setup_replication_state() {
+      export current_node_host_info="redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+      export expected_primary_id="primary-id"
+    }
+    Before "setup_replication_state"
+
+    cleanup_replication_state() {
+      unset current_node_host_info
+      unset expected_primary_id
+    }
+    After "cleanup_replication_state"
+
+    Context "when current node is the slot-owning primary"
+      get_cluster_nodes_info() {
+        echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc myself,master - 0 1 1 connected 0-5460"
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1 1 connected 5461-10922"
+      }
+
+      It "classifies the node as a primary"
+        When call get_current_node_replication_state "$expected_primary_id"
+        The status should be success
+        The output should equal "primary_ok"
+      End
+    End
+
+    Context "when current node is a slotless master"
+      get_cluster_nodes_info() {
+        echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc myself,master - 0 1 1 connected"
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1 1 connected 0-16383"
+      }
+
+      It "classifies the node as repairable"
+        When call get_current_node_replication_state "$expected_primary_id"
+        The status should be success
+        The output should equal "repairable"
+      End
+    End
+
+    Context "when current node already replicates the expected primary"
+      get_cluster_nodes_info() {
+        echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc myself,slave primary-id 0 1 1 connected"
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1 1 connected 0-16383"
+      }
+
+      It "classifies the node as converged"
+        When call get_current_node_replication_state "$expected_primary_id"
+        The status should be success
+        The output should equal "replica_ok"
+      End
+    End
+
+    Context "when current node replicates the wrong primary"
+      get_cluster_nodes_info() {
+        echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc myself,slave stale-primary-id 0 1 1 connected"
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1 1 connected 0-16383"
+      }
+
+      It "classifies the node as repairable"
+        When call get_current_node_replication_state "$expected_primary_id"
+        The status should be success
+        The output should equal "repairable"
+      End
+    End
+
+    Context "when current node state is missing"
+      get_cluster_nodes_info() {
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1 1 connected 0-16383"
+      }
+
+      It "fails closed"
+        When call get_current_node_replication_state "$expected_primary_id"
+        The status should be failure
+        The stderr should include "Failed to resolve current node replication state"
+      End
+    End
+  End
+
+  Describe "ensure_current_node_replication()"
+    Context "when the replica is already converged"
+      get_current_node_replication_state() { echo "replica_ok"; }
+      repair_current_node_replication() { echo "unexpected repair"; return 1; }
+
+      It "returns success without mutation"
+        When call ensure_current_node_replication "primary-id"
+        The status should be success
+        The stdout should include "already replicates expected primary primary-id"
+        The stdout should not include "unexpected repair"
+      End
+    End
+
+    Context "when a slotless member needs repair"
+      get_current_node_replication_state() { echo "repairable"; }
+      repair_current_node_replication() { echo "repair:$1"; return 0; }
+      verify_current_node_replication() { echo "verify:$1"; return 0; }
+
+      It "repairs and verifies the expected primary"
+        When call ensure_current_node_replication "primary-id"
+        The status should be success
+        The stdout should include "repair:primary-id"
+        The stdout should include "verify:primary-id"
+      End
+    End
+
+    Context "when repair command fails"
+      get_current_node_replication_state() { echo "repairable"; }
+      repair_current_node_replication() { return 1; }
+
+      It "fails closed"
+        When call ensure_current_node_replication "primary-id"
+        The status should be failure
+        The stderr should include "Failed to repair current node replication"
+      End
+    End
+
+    Context "when repair verification fails"
+      get_current_node_replication_state() { echo "repairable"; }
+      repair_current_node_replication() { return 0; }
+      verify_current_node_replication() { return 1; }
+
+      It "fails closed"
+        When call ensure_current_node_replication "primary-id"
+        The status should be failure
+        The stderr should include "did not converge to expected primary"
+      End
+    End
+
+    Context "when the member state is unsafe"
+      get_current_node_replication_state() { echo "primary_ok"; }
+      repair_current_node_replication() { echo "unexpected repair"; return 0; }
+
+      It "does not mutate ambiguous topology"
+        When call ensure_current_node_replication "primary-id"
+        The status should be failure
+        The stderr should include "Refusing to repair current node from state primary_ok"
+        The stdout should not include "unexpected repair"
+      End
+    End
+  End
+
   Describe "scale_redis_cluster_replica()"
     Context "when redis server is not ready"
       check_redis_server_ready_with_retry() {
