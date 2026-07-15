@@ -36,6 +36,53 @@ prepare_chart() {
   helm dependency build "$chart" --skip-refresh >/dev/null
 }
 
+# 功能：校验 datanode decommission 脚本能从 Name/Hostname 两种 report 形式中识别目标节点状态。
+# 参数：无。
+# 返回值：校验通过返回 0，失败返回非 0。
+verify_hadoop_decommission_host_match() {
+  export KUBERNETES_SERVICE_HOST="127.0.0.1"
+  export KUBERNETES_SERVICE_PORT_HTTPS="443"
+
+  awk '
+    $0 == "case \"${1:-register}\" in" { exit }
+    { print }
+  ' "${ROOT_DIR}/addons/hadoop/scripts/datanode-decommission.sh" >"${TMP_DIR}/datanode-decommission-prefix.sh"
+  # ponytail: 直接 source 脚本前缀复用现有 helper；如果将来 case 入口结构变化，再改成单独可 source 的库文件。
+  source "${TMP_DIR}/datanode-decommission-prefix.sh"
+
+  cat >"${TMP_DIR}/report-name-with-fqdn.txt" <<'EOF'
+Name: 10.1.2.3:9866 (hdfs-datanode-1.hadoop-headless.default.svc.cluster.local)
+Hostname: hdfs-datanode-1.hadoop-headless.default.svc.cluster.local
+Decommission Status : Decommissioned
+EOF
+
+  cat >"${TMP_DIR}/report-hostname-only.txt" <<'EOF'
+Name: 10.1.2.4:9866
+Hostname: hdfs-datanode-2.hadoop-headless.default.svc.cluster.local
+Decommission Status : Decommissioned
+EOF
+
+  extract_decommission_status_from_report \
+    "${TMP_DIR}/report-name-with-fqdn.txt" \
+    "hdfs-datanode-1.hadoop-headless.default.svc.cluster.local" \
+    >"${TMP_DIR}/status.txt"
+  status="$(<"${TMP_DIR}/status.txt")"
+  [[ "${status}" == "Decommissioned" ]] || {
+    echo "expected report with Name alias to resolve decommission status" >&2
+    return 1
+  }
+
+  extract_decommission_status_from_report \
+    "${TMP_DIR}/report-hostname-only.txt" \
+    "hdfs-datanode-2.hadoop-headless.default.svc.cluster.local" \
+    >"${TMP_DIR}/status.txt"
+  status="$(<"${TMP_DIR}/status.txt")"
+  [[ "${status}" == "Decommissioned" ]] || {
+    echo "expected report with Hostname field to resolve decommission status" >&2
+    return 1
+  }
+}
+
 cd "${ROOT_DIR}"
 
 prepare_chart addons/hadoop
@@ -43,7 +90,7 @@ prepare_chart addons/hbase
 prepare_chart addons-cluster/hadoop
 prepare_chart addons-cluster/hbase
 
-bash "${ROOT_DIR}/hack/verify-hadoop-decommission-host-match.sh"
+verify_hadoop_decommission_host_match
 
 helm template test addons/hadoop > "${TMP_DIR}/hadoop-addon.yaml"
 helm template test addons/hbase > "${TMP_DIR}/hbase-addon.yaml"
