@@ -27,12 +27,14 @@ spec:
   serviceVersion: {{ .serviceVersion }}
   minReadySeconds: 10
   podUpgradePolicy: ReCreate
+  {{- if ne .major "5" }}
   tls:
     volumeName: tls
     mountPath: {{ $.Values.tlsMountPath }}
     caFile: ca.crt
     certFile: tls.crt
     keyFile: tls.key
+  {{- end }}
   services:
     - name: redis-advertised
       serviceName: redis-advertised
