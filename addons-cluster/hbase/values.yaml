@@ -52,7 +52,7 @@ serviceRefs:
         port: fs
 
 hdfs:
-  nameservice: ""
+  nameservice: hdfs
   namenodeNodes: nn0,nn1
   namenodePodFQDNs: ""
   namenodeRpcPort: 8020

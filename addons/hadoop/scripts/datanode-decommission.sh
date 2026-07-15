@@ -114,6 +114,69 @@ sync_current_host() {
     return 1
 }
 
+# 功能：判断目标主机与候选标识是否代表同一个 DataNode，兼容 FQDN、短主机名和 Name 字段里的别名。
+# 参数：$1 为目标主机标识；$2 为待匹配的候选标识。
+# 返回值：匹配返回 0，不匹配返回 1。
+host_matches_candidate() {
+    local host="$1"
+    local candidate="$2"
+    local host_short candidate_short
+
+    candidate="${candidate#"${candidate%%[![:space:]]*}"}"
+    candidate="${candidate%"${candidate##*[![:space:]]}"}"
+    [[ -n "${candidate}" ]] || return 1
+
+    host_short="${host%%.*}"
+    candidate_short="${candidate%%.*}"
+
+    [[ "${candidate}" == "${host}" || "${candidate}" == "${host_short}" || "${candidate_short}" == "${host}" || "${candidate_short}" == "${host_short}" ]]
+}
+
+# 功能：从 dfsadmin -report 输出中提取目标 DataNode 的 decommission 状态，兼容 Name 别名和 Hostname 字段。
+# 参数：$1 为 report 文件路径；$2 为目标主机标识。
+# 返回值：找到状态时输出状态文本并返回 0；未找到时输出空串并返回 0。
+extract_decommission_status_from_report() {
+    local report_file="$1"
+    local host="$2"
+    local line current candidate status
+    local matched="false"
+
+    while IFS= read -r line; do
+        if [[ "${line}" == Name:\ * ]]; then
+            matched="false"
+            current="${line#Name: }"
+            current="${current%% *}"
+            current="${current%:*}"
+            if host_matches_candidate "${host}" "${current}"; then
+                matched="true"
+                continue
+            fi
+            if [[ "${line}" == *"("*")"* ]]; then
+                candidate="${line#*\(}"
+                candidate="${candidate%%\)*}"
+                if host_matches_candidate "${host}" "${candidate}"; then
+                    matched="true"
+                fi
+            fi
+            continue
+        fi
+
+        if [[ "${line}" == Hostname:\ * ]]; then
+            candidate="${line#Hostname: }"
+            if host_matches_candidate "${host}" "${candidate}"; then
+                matched="true"
+            fi
+            continue
+        fi
+
+        if [[ "${matched}" == "true" && "${line}" =~ Decommission[[:space:]]+Status[[:space:]]*:[[:space:]]*(.+)$ ]]; then
+            status="${BASH_REMATCH[1]}"
+            printf '%s\n' "${status}"
+            return 0
+        fi
+    done <"${report_file}"
+}
+
 # 功能：等待 NameNode 完成当前 DataNode 的 decommission，直到状态变为 Decommissioned。
 # 参数：无，依赖 HDFS_DECOMMISSION_TIMEOUT_SECONDS 和 HDFS_DECOMMISSION_POLL_INTERVAL_SECONDS。
 # 返回值：成功返回 0，超时或状态异常返回非 0。
@@ -125,20 +188,7 @@ wait_for_decommission() {
 
     while (( SECONDS < deadline )); do
         if "${HADOOP_HOME}/bin/hdfs" dfsadmin -report >"${report_file}" 2>/dev/null; then
-            status="$(awk -v host="${CURRENT_HOST}" '
-                $1=="Name:" {
-                    current=$2
-                    sub(/:[0-9]+$/, "", current)
-                    matched=(current == host)
-                    next
-                }
-                matched && /Decommission Status/ {
-                    sub(/^.*:/, "", $0)
-                    gsub(/^[[:space:]]+/, "", $0)
-                    print
-                    exit
-                }
-            ' "${report_file}")"
+            status="$(extract_decommission_status_from_report "${report_file}" "${CURRENT_HOST}")"
             if [[ "${status}" == "Decommissioned" ]]; then
                 log "DataNode ${CURRENT_HOST} successfully decommissioned"
                 return 0

@@ -31,13 +31,24 @@ assert_not_exists() {
   fi
 }
 
+prepare_chart() {
+  local chart="$1"
+  helm dependency build "$chart" --skip-refresh >/dev/null
+}
+
 cd "${ROOT_DIR}"
 
-helm dependency build addons-cluster/hbase >/dev/null
+prepare_chart addons/hadoop
+prepare_chart addons/hbase
+prepare_chart addons-cluster/hadoop
+prepare_chart addons-cluster/hbase
+
+bash "${ROOT_DIR}/hack/verify-hadoop-decommission-host-match.sh"
 
 helm template test addons/hadoop > "${TMP_DIR}/hadoop-addon.yaml"
 helm template test addons/hbase > "${TMP_DIR}/hbase-addon.yaml"
 helm template test addons-cluster/hadoop > "${TMP_DIR}/hadoop-cluster.yaml"
+helm template test addons-cluster/hbase > "${TMP_DIR}/hbase-cluster-default.yaml"
 helm template test addons-cluster/hadoop \
   --set decommission.stateConfigMapName=custom-decommission-state \
   > "${TMP_DIR}/hadoop-cluster-custom-state.yaml"
@@ -71,17 +82,6 @@ helm template test addons-cluster/hbase \
   --set serviceRefs.hdfsNamenode.clusterServiceSelector.cluster=external-hdfs-cluster \
   > "${TMP_DIR}/hbase-cluster-serviceref-default-ns.yaml"
 
-if helm template test addons-cluster/hbase \
-  --set topology=cluster \
-  --set-string 'hdfs.namenodeNodes=nn0\,nn1' \
-  --set serviceRefs.hbaseZookeeper.clusterServiceSelector.cluster=external-zk-cluster \
-  --set serviceRefs.hdfsNamenode.enabled=true \
-  --set serviceRefs.hdfsNamenode.clusterServiceSelector.cluster=external-hdfs-cluster \
-  > "${TMP_DIR}/hbase-cluster-missing-nameservice.yaml" 2>/dev/null; then
-  echo "expected HBase cluster render without hdfs.nameservice to fail" >&2
-  exit 1
-fi
-
 assert_contains "${TMP_DIR}/hadoop-addon.yaml" "kind: ParamConfigRenderer"
 assert_contains "${TMP_DIR}/hadoop-addon.yaml" "name: hdfs-namenode-config-renderer"
 assert_contains "${TMP_DIR}/hadoop-addon.yaml" "refresh-decommission-state.sh: |-"
@@ -105,6 +105,8 @@ assert_contains "${TMP_DIR}/hbase-addon.yaml" "check-hmaster-ready.sh: |-"
 assert_contains "${TMP_DIR}/hbase-addon.yaml" "check-hregionserver-live.sh: |-"
 assert_contains "${TMP_DIR}/hbase-addon.yaml" "check-hregionserver-ready.sh: |-"
 
+assert_contains "${TMP_DIR}/hbase-cluster-default.yaml" "topology: cluster"
+assert_contains "${TMP_DIR}/hbase-cluster-default.yaml" 'HDFS_NAMESERVICE: "hdfs"'
 assert_contains "${TMP_DIR}/hbase-cluster-fallback.yaml" "topology: cluster"
 assert_contains "${TMP_DIR}/hbase-cluster-fallback.yaml" 'HDFS_NAMESERVICE: "external-ns"'
 assert_contains "${TMP_DIR}/hbase-cluster-fallback.yaml" 'HDFS_NAMENODE_NODES: "nn0,nn1"'

@@ -73,7 +73,7 @@
       "properties": {
           "nameservice": {
             "type": "string",
-            "default": ""
+            "default": "hdfs"
           },
         "namenodeNodes": {
           "type": "string",
