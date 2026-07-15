@@ -6,7 +6,6 @@ metadata:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
     {{- include "clickhouse.annotations" . | nindent 4 }}
-    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
@@ -206,11 +205,11 @@ spec:
   roles:
     - name: leader
       updatePriority: 3
-      participatesInQuorum: false
+      participatesInQuorum: true
       isExclusive: true
     - name: follower
       updatePriority: 2
-      participatesInQuorum: false
+      participatesInQuorum: true
     - name: observer
       updatePriority: 1
       participatesInQuorum: false
