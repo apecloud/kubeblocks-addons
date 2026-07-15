@@ -157,14 +157,188 @@ Describe "galera-prestop.sh"
     The output should equal "closed"
   End
 
-  It "classifies DNS failure as uncertain rather than stopped"
+  It "classifies authoritative name absence separately from transient DNS failure"
     timeout() {
       printf 'bash: example: Name or service not known\n' >&2
       return 1
     }
 
     When call peer_sql_port_state "missing.example" 2
-    The output should equal "dns-failure"
+    The output should equal "absent"
+  End
+
+  It "classifies no-address name absence as authoritative"
+    timeout() {
+      printf 'bash: example: No address associated with hostname\n' >&2
+      return 1
+    }
+
+    When call peer_sql_port_state "missing.example" 2
+    The output should equal "absent"
+  End
+
+  It "keeps temporary DNS failure uncertain"
+    timeout() {
+      printf 'bash: example: Temporary failure in name resolution\n' >&2
+      return 1
+    }
+
+    When call peer_sql_port_state "missing.example" 2
+    The output should equal "dns-transient"
+  End
+
+  It "requires two consecutive authoritative absences before closing a peer"
+    POD_NAME="mdb-galera-mariadb-1"
+    GALERA_PRESTOP_ORDER_WAIT_SECONDS=10
+    GALERA_PRESTOP_POLL_SECONDS=1
+    printf '0\n' > "${TEST_DIR}/clock"
+    monotonic_seconds() {
+      cat "${TEST_DIR}/clock"
+    }
+    sleep() {
+      local now
+      now="$(cat "${TEST_DIR}/clock")"
+      printf '%s\n' "$((now + 1))" > "${TEST_DIR}/clock"
+    }
+    peer_sql_port_state() {
+      local calls=0
+      [ -f "${TEST_DIR}/peer-calls" ] && calls="$(cat "${TEST_DIR}/peer-calls")"
+      calls=$((calls + 1))
+      printf '%s\n' "${calls}" > "${TEST_DIR}/peer-calls"
+      printf 'absent'
+    }
+
+    When call wait_for_higher_ordinals
+    The status should be success
+    The contents of file "${TEST_DIR}/peer-calls" should equal "2"
+    The output should include "higher-ordinal peers have stopped"
+  End
+
+  It "clears an absence streak after an uncertain observation"
+    POD_NAME="mdb-galera-mariadb-1"
+    GALERA_PRESTOP_ORDER_WAIT_SECONDS=10
+    GALERA_PRESTOP_POLL_SECONDS=1
+    printf '0\n' > "${TEST_DIR}/clock"
+    monotonic_seconds() {
+      cat "${TEST_DIR}/clock"
+    }
+    sleep() {
+      local now
+      now="$(cat "${TEST_DIR}/clock")"
+      printf '%s\n' "$((now + 1))" > "${TEST_DIR}/clock"
+    }
+    peer_sql_port_state() {
+      local calls=0
+      [ -f "${TEST_DIR}/peer-calls" ] && calls="$(cat "${TEST_DIR}/peer-calls")"
+      calls=$((calls + 1))
+      printf '%s\n' "${calls}" > "${TEST_DIR}/peer-calls"
+      case "${calls}" in
+        1|3|4) printf 'absent' ;;
+        2) printf 'dns-transient' ;;
+      esac
+    }
+
+    When call wait_for_higher_ordinals
+    The status should be success
+    The contents of file "${TEST_DIR}/peer-calls" should equal "4"
+    The output should include "higher-ordinal peers have stopped"
+  End
+
+  It "clears an absence streak across timeout unreachable and unknown states"
+    POD_NAME="mdb-galera-mariadb-1"
+    GALERA_PRESTOP_ORDER_WAIT_SECONDS=20
+    GALERA_PRESTOP_POLL_SECONDS=1
+    printf '0\n' > "${TEST_DIR}/clock"
+    monotonic_seconds() {
+      cat "${TEST_DIR}/clock"
+    }
+    sleep() {
+      local now
+      now="$(cat "${TEST_DIR}/clock")"
+      printf '%s\n' "$((now + 1))" > "${TEST_DIR}/clock"
+    }
+    peer_sql_port_state() {
+      local calls=0
+      [ -f "${TEST_DIR}/peer-calls" ] && calls="$(cat "${TEST_DIR}/peer-calls")"
+      calls=$((calls + 1))
+      printf '%s\n' "${calls}" > "${TEST_DIR}/peer-calls"
+      case "${calls}" in
+        1|3|5|7|8) printf 'absent' ;;
+        2) printf 'timeout' ;;
+        4) printf 'unreachable' ;;
+        6) printf 'unexpected-state' ;;
+      esac
+    }
+
+    When call wait_for_higher_ordinals
+    The status should be success
+    The contents of file "${TEST_DIR}/peer-calls" should equal "8"
+    The output should include "higher-ordinal peers have stopped"
+  End
+
+  It "tracks authoritative absence streaks independently per peer"
+    GALERA_PRESTOP_ORDER_WAIT_SECONDS=10
+    GALERA_PRESTOP_POLL_SECONDS=1
+    printf '0\n' > "${TEST_DIR}/clock"
+    monotonic_seconds() {
+      cat "${TEST_DIR}/clock"
+    }
+    sleep() {
+      local now
+      now="$(cat "${TEST_DIR}/clock")"
+      printf '%s\n' "$((now + 1))" > "${TEST_DIR}/clock"
+    }
+    peer_sql_port_state() {
+      local peer="$1"
+      local key="${peer%%.*}"
+      local counter="${TEST_DIR}/${key}.calls"
+      local calls=0
+      [ -f "${counter}" ] && calls="$(cat "${counter}")"
+      calls=$((calls + 1))
+      printf '%s\n' "${calls}" > "${counter}"
+      case "${key}" in
+        mdb-galera-mariadb-1) printf 'absent' ;;
+        mdb-galera-mariadb-2)
+          case "${calls}" in
+            1|3|4) printf 'absent' ;;
+            2) printf 'open' ;;
+          esac
+          ;;
+      esac
+    }
+
+    When call wait_for_higher_ordinals
+    The status should be success
+    The contents of file "${TEST_DIR}/mdb-galera-mariadb-1.calls" should equal "2"
+    The contents of file "${TEST_DIR}/mdb-galera-mariadb-2.calls" should equal "4"
+    The output should include "higher-ordinal peers have stopped"
+  End
+
+  It "does not close a peer after only one authoritative absence"
+    POD_NAME="mdb-galera-mariadb-1"
+    GALERA_PRESTOP_ORDER_WAIT_SECONDS=2
+    GALERA_PRESTOP_POLL_SECONDS=1
+    printf '0\n' > "${TEST_DIR}/clock"
+    monotonic_seconds() {
+      cat "${TEST_DIR}/clock"
+    }
+    sleep() {
+      local now
+      now="$(cat "${TEST_DIR}/clock")"
+      printf '%s\n' "$((now + 1))" > "${TEST_DIR}/clock"
+    }
+    peer_sql_port_state() {
+      if [ ! -f "${TEST_DIR}/observed-once" ]; then
+        : > "${TEST_DIR}/observed-once"
+        printf 'absent'
+      else
+        printf 'open'
+      fi
+    }
+
+    When call wait_for_higher_ordinals
+    The status should be failure
+    The output should include "reason=order_wait_timeout"
   End
 
   It "persists and mirrors degraded shutdown evidence"
