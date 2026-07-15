@@ -209,9 +209,7 @@ function prepare_restore_storage_config() {
 
 function wait_for_syncer_backup_completion() {
   local backup_name=$1
-  local max_retries=${SYNCER_PBM_WAIT_MAX_RETRIES:-720}
   local retry_interval=${SYNCER_PBM_WAIT_INTERVAL_SECONDS:-5}
-  local attempt=0
   describe_result=""
   while true; do
     describe_result=$(syncerctl_cmd backup status --option "op_id=$backup_name")
@@ -225,11 +223,6 @@ function wait_for_syncer_backup_completion() {
     fi
     if [ "$status" = "error" ] || [ "$status" = "failed" ]; then
       echo "ERROR: Backup $backup_name failed: $(echo "$describe_result" | jq -r '.error // empty')"
-      exit 1
-    fi
-    attempt=$((attempt+1))
-    if [ $attempt -gt $max_retries ]; then
-      echo "ERROR: Backup $backup_name did not complete after $max_retries retries"
       exit 1
     fi
     sleep "$retry_interval"
@@ -254,9 +247,7 @@ function save_syncer_backup_info() {
 
 function wait_for_syncer_restore_completion() {
   local request_id=$1
-  local max_retries=${SYNCER_RESTORE_WAIT_MAX_RETRIES:-7200}
   local retry_interval=${SYNCER_RESTORE_WAIT_INTERVAL_SECONDS:-1}
-  local attempt=0
   local last_phase=""
   if [ -z "$request_id" ]; then
     echo "ERROR: Syncer restore start did not return request_id."
@@ -286,11 +277,6 @@ function wait_for_syncer_restore_completion() {
       fi
     else
       echo "INFO: Waiting for syncer restore status: $restore_status"
-    fi
-    attempt=$((attempt+1))
-    if [ $attempt -gt $max_retries ]; then
-      echo "ERROR: Restore request $request_id did not complete after $max_retries retries"
-      exit 1
     fi
     sleep "$retry_interval"
   done
