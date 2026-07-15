@@ -457,8 +457,11 @@ spec:
           tcpSocket:
             port: tcp-pgbouncer
         env:
+          # md5 is PgBouncer's dual-mode setting (auto-SCRAM when the fetched
+          # verifier is SCRAM); scram-sha-256 would be SCRAM-only and lock out
+          # pre-upgrade md5-stored accounts through the pooler.
           - name: PGBOUNCER_AUTH_TYPE
-            value: scram-sha-256
+            value: md5
           - name: POSTGRESQL_USERNAME
             value: $(POSTGRES_USER)
           - name: POSTGRESQL_PASSWORD
