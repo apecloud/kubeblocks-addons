@@ -1,27 +1,29 @@
 #!/bin/bash
 set -euo pipefail
 
-role="$(/tools/dbctl redis getrole | tr -d '[:space:]')"
-case "${role}" in
-  primary|secondary)
-    ;;
-  *)
-    echo "${role}"
-    exit 0
-    ;;
-esac
-
-role_snapshot_period_seconds="${ROLE_SNAPSHOT_PERIOD_SECONDS:-15}"
-now_us="$(date +%s%6N)"
-period_us="$((role_snapshot_period_seconds * 1000000))"
-term="$((now_us / period_us * period_us))"
-pod_name="${CURRENT_POD_NAME:-}"
-pod_uid="${CURRENT_POD_UID:-}"
-
-if [ -z "${pod_name}" ]; then
-  echo "${role}"
-  exit 0
+if (( $# > 1 )); then
+  echo "usage: $0 [dbctl-path]" >&2
+  exit 2
 fi
 
-printf '{"term":"%s","PodRoleNamePairs":[{"podName":"%s","roleName":"%s","podUid":"%s"}]}\n' \
-  "${term}" "${pod_name}" "${role}" "${pod_uid}"
+dbctl_bin="${1:-/tools/dbctl}"
+role_output="$("${dbctl_bin}" redis getrole)"
+role_output="${role_output//$'\r'/}"
+role_output="${role_output//$'\n'/ }"
+read -r role extra <<<"${role_output}"
+
+if [[ -z "${role:-}" || -n "${extra:-}" ]]; then
+  echo "unexpected Redis role output" >&2
+  exit 1
+fi
+
+case "${role}" in
+  primary|secondary)
+    printf '%s\n' "${role}"
+    exit 0
+    ;;
+  *)
+    echo "unexpected Redis role output" >&2
+    exit 1
+    ;;
+esac
