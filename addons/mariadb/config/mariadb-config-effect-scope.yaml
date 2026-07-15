@@ -33,6 +33,12 @@ staticParameters:
   - log_error
   - open_files_limit
   - port
+  # secure_timestamp is a read-only MariaDB variable: SET GLOBAL secure_timestamp
+  # returns `ERROR 1238 (HY000): Variable 'secure_timestamp' is a read only
+  # variable` on mariadb:11.4. It can only be set at startup, so it belongs in
+  # staticParameters (a restart is required); listing it under dynamicParameters
+  # made the Configure controller attempt SET GLOBAL and fail.
+  - secure_timestamp
   - server_id
   - skip_networking
   - skip_slave_start
@@ -145,7 +151,11 @@ dynamicParameters:
   - key_cache_block_size
   - key_cache_division_limit
   - lock_wait_timeout
-  - log_error_verbosity
+  # log_error_verbosity intentionally omitted: it is a MySQL-only system
+  # variable and does not exist in MariaDB. mariadb:11.4 reports
+  # `unknown variable 'log_error_verbosity'` and mariadbd exits rc=7, so
+  # persisting it via reconfigure would CrashLoop the engine on next restart.
+  # Use log_warnings (below) for MariaDB verbosity control.
   - log_output
   - log_queries_not_using_indexes
   - log_slow_admin_statements
@@ -224,7 +234,6 @@ dynamicParameters:
   - read_buffer_size
   - read_only
   - read_rnd_buffer_size
-  - secure_timestamp
   - slave_compressed_protocol
   - slave_exec_mode
   - slave_max_allowed_packet

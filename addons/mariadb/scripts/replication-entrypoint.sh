@@ -202,6 +202,7 @@ ROOT_LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${
 INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
 LOCAL=("${ROOT_LOCAL[@]}")
 LIFECYCLE_MARKER="/tmp/.mariadb-startup-lifecycle"
+PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
 if [ ! -f "${LIFECYCLE_MARKER}" ]; then
   touch "${LIFECYCLE_MARKER}" 2>/dev/null || true
   if [ -f "${DATA_DIR}/.prestop-fence-started" ] || \
@@ -229,6 +230,10 @@ if [ ! -f "${LIFECYCLE_MARKER}" ]; then
     ${DATA_DIR}/.sql-listener-ready \
     ${DATA_DIR}/.primary-read-write-ready \
     ${DATA_DIR}/.replication-ready
+  # The lock directory belongs to the previous container process. A live
+  # container never removes another invocation's lock; only this new-lifecycle
+  # branch is allowed to clear a stale owner after process death.
+  rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}"
 elif [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
   mkdir -p ${DATA_DIR}/log 2>/dev/null || true
   {
@@ -264,6 +269,11 @@ read_only_is_fail_closed() {
       ;;
   esac
   return 1
+}
+read_only_is_strongest_fail_closed() {
+  local value
+  value="$(read_only_value || true)"
+  [ "${value}" = "NO_LOCK_NO_ADMIN" ]
 }
 set_fail_closed_read_only() {
   local label="${1:-fail-closed}"
@@ -428,100 +438,224 @@ primary_internal_root_write_ready() {
   prestop_watchdog_log "primary-internal-root-write-ready label=${label} rc=1"
   return 1
 }
-primary_write_gates_ready() {
-  # alpha.110 P0a URGENT Direction E (Jack 15:26 + Helen TL 15:34 sealed +
-  # Edward 15:51 + Rocco 15:53 + Lily 15:54 4-cosign LGTM):
-  # Skip primary_local_root_write_ready syncerctl-writecheck step on
-  # reconcile-repair-begin path. Root cause: chart-side
-  # reconcile_sql_listener_for_syncer_primary_once fires
-  # `runtime-primary-listener-reconcile-repair-begin` every ~3s while
-  # syncer-role=primary but chart markers OUT-OF-SYNC; each iteration's
-  # writecheck INSERTs into kb_health_check generating 1 binlog event
-  # per fire → cumulative orphan events on local domain → post-
-  # reconfigure switchover GTID divergence → alpha.60 fail-closed →
-  # HA permanent refuse follow → cluster stuck Updating. Round 1c-G
-  # 2nd mdb-async-10271 saw 18 events accumulate in 2.5min loop fire
-  # window.
-  #
-  # alpha.110 P0a URGENT Direction E preserves alpha.99 Helen
-  # 2026-05-25 design intent (syncer's WriteCheck deliberately writes
-  # to binlog for replication health verification): happy-path
-  # writecheck still runs on normal primary promotion paths (line
-  # 1942/2134/2218/2383 callers use labels without "-no-writecheck"
-  # suffix). Only the reconcile-repair-begin path passes label with
-  # "-no-writecheck" suffix (per Rocco 15:53 stricter suffix-anchored
-  # pattern), triggering this case to skip the writecheck step while
-  # preserving primary_internal_root_write_ready (kb_addon_write_probe
-  # addon-owned + explicit SET sql_log_bin=0 per line 596-602 — NOT
-  # orphan event source) + marker emit + role probe + read_only +
-  # role transition logic in set_primary_read_write happy path.
-  local label="${1:-primary-write-gates-ready}"
-  case "${label}" in
-    *-no-writecheck)
-      prestop_watchdog_log "primary-write-gates-ready label=${label} reason=skip-writecheck-repair-path"
-      primary_internal_root_write_ready "${label}" || return 1
-      return 0
-      ;;
+user_facing_root_read_only_bypass_is_absent() {
+  local label="${1:-user-root-bypass-check}"
+  local user host grants seen=""
+  user="$(sql_quote "${MARIADB_ROOT_USER}")"
+  for host in localhost 127.0.0.1 "${MARIADB_ROOT_HOST:-%}"; do
+    case " ${seen} " in
+      *" ${host} "*) continue ;;
+    esac
+    seen="${seen} ${host}"
+    host="$(sql_quote "${host}")"
+    if ! grants="$("${INTERNAL_LOCAL[@]}" -e "SHOW GRANTS FOR '${user}'@'${host}';" 2>/dev/null)"; then
+      prestop_watchdog_log "user-root-bypass-check label=${label} host=${host} rc=1 reason=show-grants-failed"
+      return 1
+    fi
+    if printf '%s\n' "${grants}" | grep -Eiq 'READ_ONLY ADMIN|(^|[,[:space:]])SUPER([,[:space:]]|$)|ALL PRIVILEGES ON [`]?\*\.[`]?\*'; then
+      prestop_watchdog_log "user-root-bypass-check label=${label} host=${host} rc=1 reason=admin-bypass-present"
+      return 1
+    fi
+  done
+  prestop_watchdog_log "user-root-bypass-check label=${label} rc=0"
+  return 0
+}
+read_only_internal_admin_gate_is_active() {
+  local value
+  value="$(read_only_value || true)"
+  case "${value}" in
+    1|ON|NO_LOCK) return 0 ;;
   esac
-  primary_local_root_write_ready "${label}" || return 1
+  return 1
+}
+set_internal_admin_gate_read_only() {
+  local label="${1:-internal-admin-gate}"
+  # MariaDB NO_LOCK_NO_ADMIN also blocks READ_ONLY ADMIN, so the internal
+  # write probe cannot run in the strongest replica fence.  After proving all
+  # user-facing root accounts lack SUPER/READ_ONLY ADMIN/ALL, narrow the server
+  # to ON: ordinary and user-root writers remain fenced while only the
+  # addon-owned internal admin can execute the pre-open probe.
+  if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = ON;" 2>/dev/null && \
+     read_only_internal_admin_gate_is_active; then
+    prestop_watchdog_log "internal-admin-gate-read-only label=${label} value=ON rc=0 user-writers=fenced"
+    return 0
+  fi
+  if "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 1;" 2>/dev/null && \
+     read_only_internal_admin_gate_is_active; then
+    prestop_watchdog_log "internal-admin-gate-read-only label=${label} value=1 rc=0 user-writers=fenced"
+    return 0
+  fi
+  prestop_watchdog_log "internal-admin-gate-read-only label=${label} rc=1"
+  return 1
+}
+primary_write_gates_ready() {
+  # r9 role-race contract: every required acceptance gate must run while
+  # global read_only and both user-facing root fences are still closed.
+  # syncerctl writecheck is intentionally strict under read_only and therefore
+  # cannot be a pre-open gate.  Use the addon-owned internal admin probe with
+  # sql_log_bin=0 instead; it validates the local write plane without exposing
+  # ordinary users or generating an orphan replication event.
+  local label="${1:-primary-write-gates-ready}"
+  prestop_watchdog_log "primary-write-gates-ready label=${label} mode=internal-admin-pre-open"
+  user_facing_root_read_only_bypass_is_absent "${label}" || return 1
+  set_internal_admin_gate_read_only "${label}" || return 1
   primary_internal_root_write_ready "${label}" || return 1
 }
-fail_primary_read_write_gate() {
-  local label="$1"
-  local reason="$2"
-  rm -f ${DATA_DIR}/.primary-read-write-ready
-  # tier=fail-path-defensive: this is the failure handler for an
-  # already-failed primary write gate; defensive locking is
-  # best-effort observability. The caller has already concluded
-  # the gate failed and is not about to publish ready/role.
-  lock_remote_root_writes "${label}-${reason}" || true # tier=fail-path-defensive
-  set_fail_closed_read_only "${label}-${reason}" || true # tier=fail-path-defensive
-  lock_local_root_writes "${label}-${reason}" || true # tier=fail-path-defensive
-  prestop_watchdog_log "primary-read-write ${reason} rc=1"
+try_acquire_primary_write_commit_lock() {
+  mkdir "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" 2>/dev/null
+}
+release_primary_write_commit_lock() {
+  rmdir "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" 2>/dev/null
+}
+force_release_primary_write_commit_lock() {
+  # Call only after strongest-fence rollback. Keeping removal separate from
+  # the normal rmdir prevents a new accept from entering before rollback if
+  # unexpected payload made the owner-private directory non-empty.
+  rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" 2>/dev/null
+}
+authoritative_primary_write_commit() {
+  local label="${1:-primary-write-commit}"
+  local rc
+  if [ ! -x /tools/syncerctl ]; then
+    prestop_watchdog_log "primary-write-commit label=${label} rc=1 reason=syncerctl-missing"
+    return 1
+  fi
+  timeout 5 /tools/syncerctl --host 127.0.0.1 --port 3601 primary-write-commit \
+    >> "${DATA_DIR}/log/prestop-watchdog.log" 2>&1
+  rc=$?
+  if [ "${rc}" -eq 0 ]; then
+    prestop_watchdog_log "primary-write-commit label=${label} rc=0 authority=fresh-lease-cas"
+    return 0
+  fi
+  prestop_watchdog_log "primary-write-commit label=${label} rc=${rc} authority=rejected"
+  return "${rc}"
+}
+rollback_locked_primary_accept() {
+  local label="${1:-fenced-primary-accept}"
+  local reason="${2:-unknown}"
+  local rollback_rc=0
+  local release_rc=0
+  rollback_fenced_primary_accept "${label}" "${reason}" || rollback_rc=$?
+  if ! release_primary_write_commit_lock; then
+    release_rc=1
+    force_release_primary_write_commit_lock || release_rc=2
+  fi
+  if [ "${rollback_rc}" -eq 0 ] && [ "${release_rc}" -eq 0 ]; then
+    return 2
+  fi
+  prestop_watchdog_log "primary-write-commit-cleanup label=${label} reason=${reason} rollback_rc=${rollback_rc} release_rc=${release_rc} fail_closed=false"
+  return 3
 }
 set_primary_read_write() {
-  # alpha.110 P0a URGENT Direction E (Jack 15:26 + 4-cosign sealed):
-  # accept label parameter so callers can pass "-no-writecheck" suffix
-  # through to primary_write_gates_ready for repair-path skip.
-  # Default label preserves alpha.109 and earlier behavior.
   local label="${1:-primary-read-write}"
-  if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
-    prestop_watchdog_log "skip-primary-read-write reason=prestop-fence-started"
-    mark_replication_pending
+  local role_guard="${2:-no-dcs-check}"
+  local accept_rc
+
+  # Do not let any user-facing writer open before all required gates pass.
+  # LOCAL is the user-facing root and remains fenced here; INTERNAL_LOCAL is
+  # the addon-owned admin used for both the pre-open probe and global toggle.
+  # Take the shared local commit lock before changing markers or fences so two
+  # accepts cannot roll one another backward, and preStop is totally ordered
+  # with the complete accept transaction.
+  if ! try_acquire_primary_write_commit_lock; then
+    if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
+      prestop_watchdog_log "primary-write-commit-lock label=${label} rc=2 owner=prestop"
+      return 2
+    fi
+    prestop_watchdog_log "primary-write-commit-lock label=${label} rc=1 owner=other-accept"
     return 1
   fi
+  prestop_watchdog_log "primary-write-commit-lock label=${label} rc=0 owner=accept"
+
+  mark_replication_pending
+  if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
+    rollback_locked_primary_accept "${label}" "prestop-fence-started"
+    return $?
+  fi
+  if ! read_only_is_fail_closed; then
+    rollback_locked_primary_accept "${label}" "entry-not-fail-closed"
+    return $?
+  fi
+  if ! primary_write_gates_ready "${label}"; then
+    rollback_locked_primary_accept "${label}" "internal-write-gate"
+    return $?
+  fi
+
+  # A forced preStop timeout may publish its marker without the lock before
+  # killing mariadbd. Recheck under our ownership after the required gate.
+  if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
+    rollback_locked_primary_accept "${label}" "prestop-before-authority-commit"
+    return $?
+  fi
+
+  # Unlock both user-root account planes while global read_only=ON still
+  # rejects every user writer.  The authoritative syncer operation is the
+  # final visible commit: under the HA mutex it refreshes DCS, renews the lease
+  # by resourceVersion CAS, opens/readbacks global writes, and publishes both
+  # ready markers before its HTTP response.  Nothing below that response may
+  # unlock or publish, otherwise the next RunCycle could demote/release first.
   if ! unlock_local_root_writes "${label}"; then
-    rm -f ${DATA_DIR}/.primary-read-write-ready
-    prestop_watchdog_log "primary-read-write local-root-unlock rc=1 label=${label}"
-    return 1
+    rollback_locked_primary_accept "${label}" "local-root-unlock"
+    return $?
   fi
   if ! unlock_remote_root_writes "${label}"; then
-    fail_primary_read_write_gate "${label}" "remote-root-unlock"
+    rollback_locked_primary_accept "${label}" "remote-root-unlock"
+    return $?
+  fi
+  if ! rm -f "${DATA_DIR}/.remote-root-fence-role"; then
+    rollback_locked_primary_accept "${label}" "remote-root-marker-clear"
+    return $?
+  fi
+  if [ "${role_guard}" = "require-dcs-primary" ]; then
+    if ! authoritative_primary_write_commit "${label}"; then
+      rollback_locked_primary_accept "${label}" "authority-commit-rejected"
+      return $?
+    fi
+  else
+    if ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null && \
+       ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
+      rollback_locked_primary_accept "${label}" "read-only-open"
+      return $?
+    fi
+    if ! touch "${DATA_DIR}/.primary-read-write-ready" || \
+       ! mark_replication_ready; then
+      rollback_locked_primary_accept "${label}" "ready-publish"
+      return $?
+    fi
+  fi
+  if ! release_primary_write_commit_lock; then
+    rollback_fenced_primary_accept "${label}" "commit-lock-release" || accept_rc=$?
+    force_release_primary_write_commit_lock || true
+    prestop_watchdog_log "primary-write-commit-lock label=${label} rc=3 reason=release-failed rollback_rc=${accept_rc:-0} fail_closed=false"
+    return 3
+  fi
+  prestop_watchdog_log "primary-write-accept label=${label} rc=0 required-gates=passed authority-commit-acknowledged=true"
+  return 0
+}
+rollback_fenced_primary_accept() {
+  local label="${1:-fenced-primary-accept}"
+  local reason="${2:-unknown}"
+  local rc=0
+
+  # This rollback is part of the required acceptance contract.  Do not hide
+  # failures: a stale ready marker or any user-writer fence that cannot be
+  # restored means the caller must report fail_closed=false.
+  mark_replication_pending
+  [ ! -f "${DATA_DIR}/.primary-read-write-ready" ] || rc=1
+  set_fail_closed_read_only "${label}-${reason}" || rc=1
+  # ON is sufficient for ordinary replica writers, but not for this rollback:
+  # the pre-open gate has already proved and used the addon-owned READ_ONLY
+  # ADMIN bypass.  A non-primary early exit must restore NO_LOCK_NO_ADMIN so
+  # that internal admin cannot keep writing either.
+  read_only_is_strongest_fail_closed || rc=1
+  lock_remote_root_writes "${label}-${reason}" || rc=1
+  lock_local_root_writes "${label}-${reason}" || rc=1
+  if [ "${rc}" -ne 0 ]; then
+    prestop_watchdog_log "fenced-primary-accept-rollback label=${label} reason=${reason} rc=1 fail_closed=false"
     return 1
   fi
-  if "${LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null; then
-    if ! primary_write_gates_ready "${label}"; then
-      fail_primary_read_write_gate "${label}" "write-gate"
-      return 1
-    fi
-    rm -f ${DATA_DIR}/.remote-root-fence-role
-    touch ${DATA_DIR}/.primary-read-write-ready
-    prestop_watchdog_log "primary-read-write rc=0 label=${label}"
-    return 0
-  fi
-  if "${LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then
-    if ! primary_write_gates_ready "${label}"; then
-      fail_primary_read_write_gate "${label}" "write-gate"
-      return 1
-    fi
-    rm -f ${DATA_DIR}/.remote-root-fence-role
-    touch ${DATA_DIR}/.primary-read-write-ready
-    prestop_watchdog_log "primary-read-write rc=0 label=${label}"
-    return 0
-  fi
-  fail_primary_read_write_gate "${label}" "read-only-open"
-  prestop_watchdog_log "primary-read-write rc=1 label=${label}"
-  return 1
+  prestop_watchdog_log "fenced-primary-accept-rollback label=${label} reason=${reason} rc=0 fail_closed=true"
+  return 0
 }
 mark_replication_pending() {
   rm -f ${DATA_DIR}/.replication-ready
@@ -537,7 +671,12 @@ mark_replication_pending() {
   # demoted peer to re-acquire leader and write orphan events.
   # Bind-state is only reset by the bootstrap start_mariadbd_process
   # at line 1901 (a fresh container restart will rebuild it).
-  rm -f ${DATA_DIR}/.remote-root-fence-role
+  # The remote-root marker is durable fence state, not a readiness marker:
+  # `secondary` means the secondary root fence is active, while absence is the
+  # committed-primary state.  Generic pending transitions must not erase an
+  # already-proven secondary fence.  The role-specific owner removes it only
+  # after a primary transition has repaired grants successfully, and writes it
+  # only after the secondary fence is actually in place.
   touch ${DATA_DIR}/.replication-pending
 }
 mark_replication_ready() {
@@ -559,14 +698,49 @@ replica_lock_abort_if_syncer_primary() {
   return 0
 }
 accept_syncer_primary_promotion_from_replica_path() {
-  local label="${1:-replica-path}" role
+  local label="${1:-replica-path}" role accept_rc
   role="$(query_local_syncer_role || true)"
   [ "${role}" = "primary" ] || return 1
   prestop_watchdog_log "replica-path-accept-dcs-primary label=${label} action=accept-primary-promotion"
-  if expose_sql_listener_for_primary_role "syncer-primary-during-${label}"; then
-    mark_replication_ready
+
+  # r9 first-red: replica fencing can begin while syncer still reports
+  # secondary, then race with syncer promoting this same Pod. Keep the
+  # global read_only fence ON until the existing full-primary acceptance
+  # takes control. MariaDB read_only is server-global, so turning it OFF here
+  # would also expose ordinary business users, not just kb_internal_root.
+  # Syncer's DCS-authoritative local leader heartbeat must instead use its
+  # dedicated READ_ONLY ADMIN connection while suppressing binlog output.
+  # Re-check DCS immediately before the full acceptance to close the role
+  # decision window without opening a write window first.
+  role="$(query_local_syncer_role || true)"
+  if [ "${role}" != "primary" ]; then
+    prestop_watchdog_log "replica-path-primary-accept-defer label=${label} rc=1 reason=dcs-primary-changed global-read-only=held"
+    return 1
+  fi
+  prestop_watchdog_log "replica-path-primary-accept-begin label=${label} global-read-only=held"
+  expose_sql_listener_for_primary_role "syncer-primary-during-${label}" "fenced-promotion"
+  accept_rc=$?
+  if [ "${accept_rc}" -eq 0 ]; then
     return 0
   fi
+  if [ "${accept_rc}" -eq 3 ]; then
+    prestop_watchdog_log "replica-path-primary-accept-rollback label=${label} rc=1 reason=full-primary-accept-failed fail_closed=false"
+    return 3
+  fi
+  if [ "${accept_rc}" -eq 2 ]; then
+    prestop_watchdog_log "replica-path-primary-accept-rollback label=${label} rc=0 reason=full-primary-accept-failed global-read-only=on"
+    return 2
+  fi
+  role="$(query_local_syncer_role || true)"
+  if [ "${role}" != "primary" ]; then
+    prestop_watchdog_log "replica-path-primary-accept-defer label=${label} rc=1 reason=dcs-primary-changed global-read-only=held"
+    return 1
+  fi
+  if ! set_fail_closed_read_only "${label}-full-primary-accept-failed"; then
+    prestop_watchdog_log "replica-path-primary-accept-rollback label=${label} rc=1 reason=full-primary-accept-failed fail_closed=false"
+    return 3
+  fi
+  prestop_watchdog_log "replica-path-primary-accept-rollback label=${label} rc=0 reason=full-primary-accept-failed global-read-only=on"
   return 2
 }
 gtid_state_is_covered_by() {
@@ -688,7 +862,12 @@ prestop_watchdog_log() {
     >> ${DATA_DIR}/log/prestop-watchdog.log 2>/dev/null || true
 }
 sql_quote() {
-  printf "%s" "$1" | sed "s/'/''/g"
+  # Escape backslashes first, then single quotes. MariaDB's default sql_mode
+  # (no NO_BACKSLASH_ESCAPES) treats a trailing backslash as escaping the
+  # closing quote, so quote-doubling alone lets a value ending in '\' break
+  # out of the string literal. This matches the reconfigure helper escaping
+  # in _helpers.tpl (sql_value_literal).
+  printf "%s" "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
 }
 grant_internal_admin_runtime_privileges() {
   # alpha.109 P0a (Jack 12:08 Round 1c-F FAIL § 5.3 halt + Helen 12:13/12:17/12:19
@@ -1829,6 +2008,8 @@ reset_semisync_master_ack_receiver_if_enabled() {
 }
 expose_sql_listener_for_primary_role() {
   local label="$1"
+  local accept_mode="${2:-standard}"
+  local write_rc
   if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
     prestop_watchdog_log "skip-sql-listener-primary-expose label=${label} reason=prestop-fence-started"
     mark_replication_pending
@@ -1849,14 +2030,21 @@ expose_sql_listener_for_primary_role() {
       prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=existing-listener-semisync-role-shape"
       return 1
     fi
-    if set_primary_read_write "${label}"; then
+    if [ "${accept_mode}" = "fenced-promotion" ]; then
+      set_primary_read_write "${label}" "require-dcs-primary"
+      write_rc=$?
+    else
+      set_primary_read_write "${label}"
+      write_rc=$?
+    fi
+    if [ "${write_rc}" -eq 0 ]; then
       touch ${DATA_DIR}/.sql-listener-ready
       prestop_watchdog_log "sql-listener-primary-existing-reconciled label=${label}"
       return 0
     fi
     mark_replication_pending
     prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=existing-listener-local-write-not-ready"
-    return 1
+    return "${write_rc}"
   fi
   mark_replication_pending
   prestop_watchdog_log "sql-listener-primary-expose-begin label=${label}"
@@ -1873,10 +2061,17 @@ expose_sql_listener_for_primary_role() {
     prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=fresh-listener-semisync-role-shape"
     return 1
   fi
-  if ! set_primary_read_write "${label}"; then
+  if [ "${accept_mode}" = "fenced-promotion" ]; then
+    set_primary_read_write "${label}" "require-dcs-primary"
+    write_rc=$?
+  else
+    set_primary_read_write "${label}"
+    write_rc=$?
+  fi
+  if [ "${write_rc}" -ne 0 ]; then
     mark_replication_pending
-    prestop_watchdog_log "sql-listener-primary-expose-failed label=${label}"
-    return 1
+    prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} rc=${write_rc}"
+    return "${write_rc}"
   fi
   touch ${DATA_DIR}/.sql-listener-ready
   prestop_watchdog_log "sql-listener-primary-expose-complete label=${label}"
@@ -1915,7 +2110,7 @@ local_has_user_tables() {
   [ "${table_count}" -gt 0 ]
 }
 reconcile_sql_listener_for_syncer_primary_once() {
-  local now primary_sid role
+  local now primary_sid role primary_ready remote_root_fence master_info listener_wildcard
   [ ! -f "${DATA_DIR}/.prestop-fence-started" ] || return 0
   # alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_is_fresh`
   # early-skip has been removed. alpha.79 v1 minimalist deleted the
@@ -1925,23 +2120,32 @@ reconcile_sql_listener_for_syncer_primary_once() {
   if [ -f "${DATA_DIR}/.sql-listener-ready" ]; then
     role="$(query_local_syncer_role || true)"
     [ "${role}" = "primary" ] || return 0
-    if [ -f "${DATA_DIR}/.primary-read-write-ready" ] && [ ! -f "${DATA_DIR}/.remote-root-fence-role" ] && [ ! -f "${DATA_DIR}/master.info" ] && mariadbd_listen_on_all_interfaces; then
+    primary_ready=absent
+    remote_root_fence=absent
+    master_info=absent
+    listener_wildcard=absent
+    [ -f "${DATA_DIR}/.primary-read-write-ready" ] && primary_ready=present
+    [ -f "${DATA_DIR}/.remote-root-fence-role" ] && remote_root_fence=present
+    [ -f "${DATA_DIR}/master.info" ] && master_info=present
+    if mariadbd_listen_on_all_interfaces; then
+      listener_wildcard=present
+    fi
+    if [ "${primary_ready}" = "present" ] && \
+       [ "${remote_root_fence}" = "absent" ] && \
+       [ "${master_info}" = "absent" ] && \
+       [ "${listener_wildcard}" = "present" ]; then
       return 0
     fi
-    prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=primary-role-state-drift role=${role}"
-    # alpha.110 P0a URGENT Direction E: pass "-no-writecheck" suffix
-    # to skip primary_local_root_write_ready syncerctl-writecheck in
-    # the repair path. Each loop iteration's writecheck INSERTs into
-    # kb_health_check generating 1 binlog event per fire; in Round
-    # 1c-G 2nd this fired 18 times in 2.5min on mdb-async-10271 pod-0
-    # accumulating 18 orphan events that caused post-reconfigure
-    # switchover GTID divergence + alpha.60 fail-closed. Skipping the
-    # writecheck here removes the orphan event source while preserving
-    # primary_internal_root_write_ready (kb_addon_write_probe addon-
-    # owned with explicit SET sql_log_bin=0) + marker emit + role
-    # probe + read_only management + lock/unlock logic.
-    expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener-no-writecheck" || return 1
-    mark_replication_ready
+    # Record the last pre-mutation snapshot. expose_sql_listener_for_primary_role
+    # starts by STOP/RESET and set_primary_read_write starts by retracting both
+    # ready markers, so a post-repair snapshot cannot identify the first broken
+    # predicate that caused the repair.
+    prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=primary-role-state-drift role=${role} primary_ready=${primary_ready} remote_root_fence=${remote_root_fence} master_info=${master_info} listener_wildcard=${listener_wildcard}"
+    # Keep the historical suffix for log continuity.  The r9 acceptance
+    # contract now uses the internal-admin, sql_log_bin=0 pre-open gate on all
+    # paths, so neither this repair loop nor a normal promotion emits the old
+    # public syncerctl writecheck event before user writers are opened.
+    expose_sql_listener_for_primary_role "syncer-promoted-primary-existing-listener-no-writecheck" "fenced-promotion" || return 1
     prestop_watchdog_log "runtime-primary-listener-reconcile-repair-complete role=${role}"
     return 0
   fi
@@ -1959,8 +2163,7 @@ reconcile_sql_listener_for_syncer_primary_once() {
     prestop_watchdog_log "runtime-primary-listener-reconcile-override reason=dcs-primary-overrides-service-routing primary_sid=${primary_sid} service_id=${SERVICE_ID} syncer_role=${role}"
   fi
   prestop_watchdog_log "runtime-primary-listener-reconcile-begin role=${role}"
-  expose_sql_listener_for_primary_role "syncer-promoted-primary" || return 1
-  mark_replication_ready
+  expose_sql_listener_for_primary_role "syncer-promoted-primary" "fenced-promotion" || return 1
   prestop_watchdog_log "runtime-primary-listener-reconcile-complete role=${role}"
 }
 configure_replication_from_primary_service_once() {
@@ -2186,11 +2389,10 @@ SLAVE_STATUS=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
 if [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
   # Primary service routes to us — we are the current primary.
   # Clear any stale slave config and mark initialization as complete.
-  if ! expose_sql_listener_for_primary_role "primary-service-route"; then
+  if ! expose_sql_listener_for_primary_role "primary-service-route" "fenced-promotion"; then
     wait ${MARIADB_PID}
     exit 1
   fi
-  mark_replication_ready
   echo "Starting as primary (server_id=${SERVICE_ID})"
 elif [ -n "${SLAVE_STATUS}" ]; then
   # We have existing slave config from a previous run.
@@ -2299,11 +2501,10 @@ elif [ -n "${SLAVE_STATUS}" ]; then
         done
       fi
       if [ "${blocked_self_election_resolved}" != "true" ]; then
-        if ! expose_sql_listener_for_primary_role "stale-slave-no-primary"; then
+        if ! expose_sql_listener_for_primary_role "stale-slave-no-primary" "fenced-promotion"; then
           wait ${MARIADB_PID}
           exit 1
         fi
-        mark_replication_ready
         echo "Starting as primary (pod-0 with stale slave config, no primary found after ${no_primary_budget}s wait)"
       fi
       PRIMARY_SID=""  # signal: resolved locally; do not fall through to rejoin
@@ -2474,8 +2675,11 @@ else
   # reconcile loop observe the syncer/DCS decision: if another pod is
   # elected primary, this pod can configure replication and publish
   # secondary only after replica health is real.
+  # This is the sole no-DCS write-open: a fresh pod-0 has neither a primary
+  # service target nor slave metadata, and syncer cannot hold a lease before
+  # the database first becomes reachable. Every recurring/repair path above
+  # must use fenced-promotion and the lease-CAS commit.
   if expose_sql_listener_for_primary_role "default-pod0-primary"; then
-    mark_replication_ready
     echo "Starting as primary by default (index=0)"
   else
     mark_replication_pending

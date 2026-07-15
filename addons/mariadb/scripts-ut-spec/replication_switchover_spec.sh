@@ -495,7 +495,12 @@ EOF
     End
 
     Context "when syncerctl cannot create DCS switchover"
-      It "returns failure"
+      # H2 split-brain fix: after syncerctl (invoked with --force under a
+      # timeout(1) wrapper) fails, the DCS record may already be persisted and
+      # syncer may be promoting the candidate. The current primary must be
+      # fenced fail-closed (read_only=1), NOT rolled back to writable — the old
+      # rollback path could leave two writable primaries.
+      It "fails closed by fencing the current primary (does not roll back to writable)"
         make_failing_syncerctl
         prepare_current_primary_for_switchover() {
           return 0
@@ -504,14 +509,24 @@ EOF
           record_call "rollback"
           return 0
         }
+        set_local_read_only() {
+          record_call "set_read_only=$1"
+          return 0
+        }
+        local_read_only_is() {
+          [ "$1" = "1" ]
+        }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be failure
         The output should include "Switchover: creating syncer DCS switchover"
-        The stderr should include "Switchover failed: syncerctl could not create DCS switchover"
-        The contents of file "${TEST_DIR}/calls" should include "rollback"
+        The output should include "fencing current primary read_only=1"
+        The stderr should include "current primary fenced fail-closed"
+        The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+        The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
+        The contents of file "${TEST_DIR}/calls" should not include "rollback"
       End
 
-      It "treats a zero-status syncerctl failure message as failure and rolls back"
+      It "treats a zero-status syncerctl failure message as failure and fails closed by fencing"
         make_zero_status_failing_syncerctl
         prepare_current_primary_for_switchover() {
           return 0
@@ -520,12 +535,39 @@ EOF
           record_call "rollback"
           return 0
         }
+        set_local_read_only() {
+          record_call "set_read_only=$1"
+          return 0
+        }
+        local_read_only_is() {
+          [ "$1" = "1" ]
+        }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be failure
         The output should include "Switchover syncerctl output: switchover failed: operation precheck failed: mdb-mariadb-0 is not the primary"
         The stderr should include "Switchover failed: syncerctl did not report success"
         The stderr should include "Switchover failed: syncerctl could not create DCS switchover"
-        The contents of file "${TEST_DIR}/calls" should include "rollback"
+        The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+        The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
+        The contents of file "${TEST_DIR}/calls" should not include "rollback"
+      End
+
+      It "surfaces a manual-verification error when the fail-closed fence itself cannot be applied"
+        make_failing_syncerctl
+        prepare_current_primary_for_switchover() {
+          return 0
+        }
+        set_local_read_only() {
+          record_call "set_read_only=$1"
+          return 1
+        }
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be failure
+        The output should include "fencing current primary read_only=1"
+        The stderr should include "could not set current primary read_only=1 after uncertain DCS switchover"
+        The stderr should include "manual verification required to avoid split-brain"
+        The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+        The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
       End
 
       It "treats duplicate post-success invocation as idempotent success when final state is already reached"
@@ -958,9 +1000,9 @@ EOF
       The output should equal "1"
     End
 
-    It "Chart.yaml literal version is current (alpha.26 - replication merged topology)"
+    It "Chart.yaml literal version is current (alpha.33 - combined MariaDB candidate)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.2.0-alpha.26$' "${chart_yaml}"
+      When call grep -c '^version: 1.2.0-alpha.33$' "${chart_yaml}"
       The output should equal "1"
     End
 
@@ -3204,10 +3246,11 @@ EOF
         #   reconcile_secondary + configure_from_primary; the body of
         #   set_replica_read_only itself is the function definition not a
         #   self-call, so 4 caller patterns)
-        # + 1 (prestop_lock_failed_both literal in preStop script) + 14 (tier-annotated swallow lines;
-        #   reduced from 16 after CMPD consolidation PR #2933)
+        # + 1 (prestop_lock_failed_both literal in preStop script) + 12 (tier-annotated swallow lines;
+        #   reduced from 14 when required primary-accept rollback stopped swallowing
+        #   its two root re-lock failures)
         The status should be success
-        The output should equal "1 1 4 1 14 "
+        The output should equal "1 1 4 1 12 "
       End
     End
   End
@@ -3225,13 +3268,13 @@ EOF
     }
     Before "setup_chart_alpha65_env"
 
-    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.26 [contract-no-regression]"
+    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.30 [contract-no-regression]"
       # alpha.65 v1 originally locked chart at alpha.65; subsequent alphas
       # bumped further under the SAME CmpD immutability rule. Literal
       # kept in sync with latest chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.2.0-alpha.26"
+      The output should equal "version: 1.2.0-alpha.33"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -3286,13 +3329,13 @@ EOF
     Before "setup_chart_alpha66_env"
 
     Context "chart bump for CmpD immutability (per alpha.65 lesson)"
-      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.26 [contract-no-regression]"
+      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.30 [contract-no-regression]"
         # Subsequent alphas all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.26"
+        The output should equal "version: 1.2.0-alpha.33"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3478,9 +3521,9 @@ EOF
         '
         The status should be success
         # Expected: 1 grant body explicit + 1 secondary fence + 4 explicit set_replica_read_only caller +
-        # 1 prestop_lock_failed_both (in prestop script) + 14 tier-annotated swallow (reduced from 16 after CMPD
-        # consolidation PR #2933) + 2 inline-quoted MONITOR loops
-        The output should equal "1 1 4 1 14 2 "
+        # 1 prestop_lock_failed_both (in prestop script) + 12 tier-annotated swallow (required
+        # primary-accept rollback now propagates its two root re-lock failures) + 2 inline-quoted MONITOR loops
+        The output should equal "1 1 4 1 12 2 "
       End
     End
   End
@@ -3502,13 +3545,13 @@ EOF
     Before "setup_chart_alpha67_env"
 
     Context "chart bump alpha.66 → alpha.67 → alpha.68 (CmpD immutability rule)"
-      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.26 [contract-no-regression]"
+      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.30 [contract-no-regression]"
         # Subsequent alphas all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.26"
+        The output should equal "version: 1.2.0-alpha.33"
       End
     End
 
