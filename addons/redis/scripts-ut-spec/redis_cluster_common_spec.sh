@@ -139,6 +139,24 @@ Describe "Redis Cluster Common Bash Script Tests"
     End
   End
 
+  Describe "classify_redis_cluster_check_output()"
+    Parameters
+      "stable"             "0"  "[OK] All 16384 slots covered."
+      "views-disagreement" "1"  "[ERR] Nodes don't agree about configuration! All 16384 slots covered."
+      "open-or-uncovered"  "1"  "[WARNING] The following slots are open: 12043. Not all 16384 slots are covered by nodes."
+      "open-or-uncovered"  "1"  "node has slots in migrating state. All 16384 slots covered."
+      "open-or-uncovered"  "1"  "[ERR] Nodes don't agree about configuration! [WARNING] The following slots are open: 12043. All 16384 slots covered."
+      "probe-error"        "1"  "Could not connect to Redis at redis-0:6379"
+      "probe-error"        "1"  "[ERR] Unknown cluster check failure. All 16384 slots covered."
+    End
+
+    It "classifies $1 without treating every rc1 as repairable"
+      When call classify_redis_cluster_check_output "$2" "$3"
+      The status should be success
+      The output should eq "$1"
+    End
+  End
+
   Describe "fix_cluster_slots()"
     setup() {
       export REDIS_DEFAULT_PASSWORD=""

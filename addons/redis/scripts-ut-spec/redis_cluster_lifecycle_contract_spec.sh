@@ -77,6 +77,8 @@ Describe "Redis Cluster lifecycle action contract"
       abort "expected four Redis Cluster postProvision actions, got #{post_provision.length}" unless post_provision.length == 4
       post_timeouts = post_provision.map { |action| action.fetch("timeoutSeconds") }
       abort "postProvision timeoutSeconds must all be 50, got #{post_timeouts.inspect}" unless post_timeouts == [50, 50, 50, 50]
+      post_retries = post_provision.map { |action| action.dig("retryPolicy", "maxRetries") }
+      abort "postProvision maxRetries must cover the 32-batch worst-case scale-out, got #{post_retries.inspect}" unless post_retries == [64, 64, 64, 64]
 
       sharding = documents.select { |document| document["kind"] == "ShardingDefinition" }
       abort "expected one ShardingDefinition, got #{sharding.length}" unless sharding.length == 1

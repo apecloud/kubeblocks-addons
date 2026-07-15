@@ -160,6 +160,57 @@ fix_unstable_cluster_and_defer() {
   return 1
 }
 
+scale_out_diagnose_not_ready() {
+  local phase="$1"
+  local context="$2"
+  local retry_safe="$3"
+  {
+    echo "Redis Cluster lifecycle diagnosis:"
+    echo "  action: scale_out_redis_cluster_shard"
+    echo "  phase: $phase"
+    echo "  cluster: ${KB_CLUSTER_NAME:-<unset>}"
+    echo "  component: ${CURRENT_SHARD_COMPONENT_NAME:-<unset>}"
+    echo "$context"
+    echo "  next-retry-safe: $retry_safe"
+  } >&2
+}
+
+ensure_scale_out_cluster_stable_or_defer() {
+  local node_with_port="$1"
+  local node_port
+  local context
+  node_port=$(echo "$node_with_port" | cut -d':' -f2)
+
+  inspect_redis_cluster_check "$node_with_port" "$node_port"
+  case "$redis_cluster_check_state" in
+    stable)
+      return 0
+      ;;
+    views-disagreement)
+      context=$(printf '  cluster_check_rc: %s\n  cluster_check_state: %s' \
+        "$redis_cluster_check_rc" "$redis_cluster_check_state")
+      scale_out_diagnose_not_ready "cluster-views-not-converged" "$context" "yes"
+      ;;
+    open-or-uncovered)
+      if fix_cluster_slots "$node_with_port" "$node_port"; then
+        context=$(printf '  cluster_check_rc: %s\n  cluster_check_state: %s\n  repair_applied: yes' \
+          "$redis_cluster_check_rc" "$redis_cluster_check_state")
+        scale_out_diagnose_not_ready "cluster-slots-repair-applied" "$context" "yes"
+      else
+        context=$(printf '  cluster_check_rc: %s\n  cluster_check_state: %s\n  repair_applied: no' \
+          "$redis_cluster_check_rc" "$redis_cluster_check_state")
+        scale_out_diagnose_not_ready "cluster-slots-repair-failed" "$context" "no"
+      fi
+      ;;
+    *)
+      context=$(printf '  cluster_check_rc: %s\n  cluster_check_state: %s' \
+        "$redis_cluster_check_rc" "$redis_cluster_check_state")
+      scale_out_diagnose_not_ready "cluster-check-failed" "$context" "no"
+      ;;
+  esac
+  return 1
+}
+
 extract_pod_name_prefix() {
   local pod_name="$1"
   # shellcheck disable=SC2001
@@ -799,7 +850,7 @@ scale_out_redis_cluster_shard() {
   fi
 
   if [ ${#other_component_nodes[@]} -gt 0 ]; then
-    fix_unstable_cluster_and_defer "${other_component_nodes[0]}" || return 1
+    ensure_scale_out_cluster_stable_or_defer "${other_component_nodes[0]}" || return 1
   fi
 
   # check the current component shard whether is already scaled out
@@ -877,6 +928,9 @@ scale_out_redis_cluster_shard() {
   local slots_per_shard
   local current_slots
   local remaining_slots
+  local batch_size
+  local batch_slots
+  local context
   total_slots=16384
   current_comp_pod_count=$(echo "$CURRENT_SHARD_POD_NAME_LIST" | tr ',' '\n' | grep -c "^$CURRENT_SHARD_COMPONENT_NAME-")
   all_comp_pod_count=$(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' '\n' | grep -c ".*")
@@ -890,21 +944,53 @@ scale_out_redis_cluster_shard() {
   fi
   remaining_slots=$((slots_per_shard - current_slots))
   if [ "$remaining_slots" -le 0 ]; then
-    if check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"; then
+    if ensure_scale_out_cluster_stable_or_defer "$primary_node_with_port"; then
       echo "Redis cluster scale out shard already owns $current_slots slots and cluster is stable"
       return 0
     fi
-    fix_unstable_cluster_and_defer "$primary_node_with_port" || return 1
-  fi
-
-  if scale_out_shard_reshard "$primary_node_with_port" "$mapping_primary_cluster_id" "$remaining_slots"; then
-    echo "Redis cluster scale out shard reshard successfully"
-  else
-    echo "Failed to scale out shard reshard" >&2
     return 1
   fi
 
-  check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"
+  batch_size=${REDIS_CLUSTER_RESHARD_BATCH_SIZE:-128}
+  if ! [[ "$batch_size" =~ ^[1-9][0-9]*$ ]]; then
+    context=$(printf '  batch_size: %s\n  current_slots: %s\n  target_slots: %s\n  remaining_slots: %s' \
+      "$batch_size" "$current_slots" "$slots_per_shard" "$remaining_slots")
+    scale_out_diagnose_not_ready "invalid-reshard-batch-size" "$context" "no"
+    return 1
+  fi
+  batch_slots=$remaining_slots
+  if [ "$batch_slots" -gt "$batch_size" ]; then
+    batch_slots=$batch_size
+  fi
+
+  if ! scale_out_shard_reshard "$primary_node_with_port" "$mapping_primary_cluster_id" "$batch_slots"; then
+    echo "Failed to scale out shard reshard" >&2
+    context=$(printf '  batch_slots: %s\n  current_slots: %s\n  target_slots: %s\n  remaining_slots: %s' \
+      "$batch_slots" "$current_slots" "$slots_per_shard" "$remaining_slots")
+    scale_out_diagnose_not_ready "reshard-command-failed" "$context" "no"
+    return 1
+  fi
+
+  ensure_scale_out_cluster_stable_or_defer "$primary_node_with_port" || return 1
+  current_slots=$(count_node_slots "$primary_node_fqdn" "$primary_node_port" "$mapping_primary_cluster_id")
+  status=$?
+  if [ $status -ne 0 ] || ! [[ "$current_slots" =~ ^[0-9]+$ ]]; then
+    context=$(printf '  batch_slots: %s\n  current_slots: %s\n  target_slots: %s' \
+      "$batch_slots" "$current_slots" "$slots_per_shard")
+    scale_out_diagnose_not_ready "post-reshard-slot-count-failed" "$context" "no"
+    return 1
+  fi
+
+  remaining_slots=$((slots_per_shard - current_slots))
+  if [ "$remaining_slots" -le 0 ]; then
+    echo "Redis cluster scale out shard owns $current_slots slots and cluster is stable"
+    return 0
+  fi
+
+  context=$(printf '  batch_slots: %s\n  current_slots: %s\n  target_slots: %s\n  remaining_slots: %s' \
+    "$batch_slots" "$current_slots" "$slots_per_shard" "$remaining_slots")
+  scale_out_diagnose_not_ready "reshard-progress" "$context" "yes"
+  return 1
 }
 
 sync_acl_for_redis_cluster_shard() {

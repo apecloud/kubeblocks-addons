@@ -26,6 +26,18 @@ Describe "Redis Cluster Manage Bash Script Tests"
   }
   BeforeAll "init"
 
+  inspect_redis_cluster_check() {
+    if check_slots_covered "$1" "$2"; then
+      redis_cluster_check_state="stable"
+      redis_cluster_check_output="[OK] All 16384 slots covered."
+      redis_cluster_check_rc=0
+    else
+      redis_cluster_check_state="probe-error"
+      redis_cluster_check_output="mocked cluster check failure"
+      redis_cluster_check_rc=1
+    fi
+  }
+
   cleanup() {
     rm -f $common_library_file;
   }
@@ -1191,6 +1203,12 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
       check_slots_covered() {
         return 1
+      }
+
+      inspect_redis_cluster_check() {
+        redis_cluster_check_state="stable"
+        redis_cluster_check_output="[OK] All 16384 slots covered."
+        redis_cluster_check_rc=0
       }
 
       fix_unstable_cluster_and_defer() {

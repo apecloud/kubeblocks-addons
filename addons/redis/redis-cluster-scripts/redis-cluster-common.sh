@@ -398,31 +398,74 @@ check_redis_server_ready_with_retry() {
   return 0
 }
 
-# check redis cluster all slots are covered
-check_slots_covered() {
-  # cluster_node_endpoint_wth_port is the target node endpoint with port, for example 172.0.0.1:6379
-  local node_endpoint_wth_port="$1"
-  local cluster_service_port="$2"
-  unset_xtrace_when_ut_mode_false
-  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    check=$(redis-cli $REDIS_CLI_TLS_CMD --cluster check "$node_endpoint_wth_port" -p "$cluster_service_port")
-  else
-    check=$(redis-cli $REDIS_CLI_TLS_CMD --cluster check "$node_endpoint_wth_port" -p "$cluster_service_port" -a "$REDIS_DEFAULT_PASSWORD")
-  fi
-  set_xtrace_when_ut_mode_false
-  if contains "$check" "All 16384 slots covered"; then
-    if contains "$check" "[ERR]" || \
-       contains "$check" "[WARNING] The following slots are open" || \
-       contains "$check" "has slots in importing state" || \
-       contains "$check" "has slots in migrating state"; then
-      echo "Redis Cluster slots are covered but cluster check is not stable:" >&2
-      echo "$check" >&2
-      return 1
-    fi
+classify_redis_cluster_check_output() {
+  local check_rc="$1"
+  local check_output="$2"
+
+  if contains "$check_output" "[WARNING] The following slots are open" || \
+     contains "$check_output" "has slots in importing state" || \
+     contains "$check_output" "has slots in migrating state" || \
+     contains "$check_output" "Not all 16384 slots are covered by nodes"; then
+    echo "open-or-uncovered"
     return 0
   fi
-  echo "Redis Cluster slots are not fully covered:" >&2
-  echo "$check" >&2
+
+  if contains "$check_output" "All 16384 slots covered" && \
+     contains "$check_output" "Nodes don't agree about configuration"; then
+    echo "views-disagreement"
+    return 0
+  fi
+
+  if [ "$check_rc" -eq 0 ] && \
+     contains "$check_output" "All 16384 slots covered" && \
+     ! contains "$check_output" "[ERR]"; then
+    echo "stable"
+    return 0
+  fi
+
+  echo "probe-error"
+}
+
+inspect_redis_cluster_check() {
+  # node_endpoint_with_port is the target node endpoint with port, for example 172.0.0.1:6379
+  local node_endpoint_with_port="$1"
+  local cluster_service_port="$2"
+  local output
+  local check_rc
+
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    if output=$(redis-cli $REDIS_CLI_TLS_CMD --cluster check "$node_endpoint_with_port" -p "$cluster_service_port" 2>&1); then
+      check_rc=0
+    else
+      check_rc=$?
+    fi
+  else
+    if output=$(redis-cli $REDIS_CLI_TLS_CMD --cluster check "$node_endpoint_with_port" -p "$cluster_service_port" -a "$REDIS_DEFAULT_PASSWORD" 2>&1); then
+      check_rc=0
+    else
+      check_rc=$?
+    fi
+  fi
+  set_xtrace_when_ut_mode_false
+
+  redis_cluster_check_output="$output"
+  redis_cluster_check_rc="$check_rc"
+  redis_cluster_check_state=$(classify_redis_cluster_check_output "$check_rc" "$output")
+}
+
+# check redis cluster all slots are covered and every node view is stable
+check_slots_covered() {
+  local node_endpoint_with_port="$1"
+  local cluster_service_port="$2"
+
+  inspect_redis_cluster_check "$node_endpoint_with_port" "$cluster_service_port"
+  if [ "$redis_cluster_check_state" = "stable" ]; then
+    return 0
+  fi
+
+  echo "Redis Cluster check is not stable (state=$redis_cluster_check_state, rc=$redis_cluster_check_rc):" >&2
+  echo "$redis_cluster_check_output" >&2
   return 1
 }
 

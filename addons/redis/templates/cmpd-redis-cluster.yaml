@@ -503,7 +503,7 @@ spec:
                 fieldPath: status.hostIP
       preCondition: RuntimeReady
       retryPolicy:
-        maxRetries: 10
+        maxRetries: 64
     memberLeave:
       exec:
         container: redis-cluster
