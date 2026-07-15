@@ -10,7 +10,8 @@ Describe "Kafka common script tests"
   Include ../scripts/common.sh
 
   setup() {
-    export kafka_config_path="$(mktemp -d)"
+    kafka_config_path="$(mktemp -d)"
+    export kafka_config_path
     export KAFKA_ADMIN_USER="admin"
     export KAFKA_ADMIN_PASSWORD="admin-password"
     export KAFKA_CLIENT_USER="client"
