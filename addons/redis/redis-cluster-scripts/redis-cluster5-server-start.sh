@@ -36,6 +36,7 @@ current_comp_other_nodes=()
 other_comp_primary_nodes=()
 other_comp_primary_fail_nodes=()
 other_comp_other_nodes=()
+cluster_view_initialized="false"
 
 init_environment(){
   if [[ -z "${CURRENT_SHARD_ADVERTISED_PORT}" ]]; then
@@ -140,6 +141,7 @@ check_and_meet_current_primary_node() {
 get_current_comp_nodes_for_scale_out_replica() {
   local cluster_node="$1"
   local cluster_node_port="$2"
+  cluster_view_initialized="false"
   cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
   status=$?
   if [ $status -ne 0 ]; then
@@ -153,6 +155,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     echo "Cluster nodes info contains less than ${shard_count} nodes, returning..."
     return
   fi
+  cluster_view_initialized="true"
 
   # determine network mode
   local network_mode="default"
@@ -214,10 +217,12 @@ get_current_comp_nodes_for_scale_out_replica() {
     local node_entry="$1"
     local node_role="$2"
     local belong_current_comp="$3"
+    local node_link_state="$4"
+    local node_has_slots="$5"
 
     if [[ "$belong_current_comp" == "true" ]]; then
-      if contains "$node_role" "master"; then
-        if contains "$node_role" "fail"; then
+      if contains "$node_role" "master" && [[ "$node_has_slots" == "true" ]]; then
+        if contains "$node_role" "fail" || [[ "$node_link_state" != "connected" ]]; then
           current_comp_primary_fail_node+=("$node_entry")
         else
           current_comp_primary_node+=("$node_entry")
@@ -269,6 +274,16 @@ get_current_comp_nodes_for_scale_out_replica() {
     node_info=$(parse_node_line_info "$line")
     local node_announce_ip node_port node_bus_port node_role
     read -r node_announce_ip node_port node_bus_port node_role <<< "$node_info"
+    local node_link_state
+    node_link_state=$(echo "$line" | awk '{print $8}')
+    local node_has_slots="false"
+    local slot_entry
+    for slot_entry in $(echo "$line" | cut -d' ' -f9-); do
+      if [[ "$slot_entry" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
+        node_has_slots="true"
+        break
+      fi
+    done
 
     belong_current_comp=false
     for i in "${CURRENT_SHARD_ANNOUNCE_IP_LIST[@]}"; do
@@ -282,7 +297,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     node_entry="$node_announce_ip#$node_announce_ip:$node_port@$node_bus_port"
 
     # categorize nodes
-    categorize_node "$node_entry" "$node_role" "$belong_current_comp"
+    categorize_node "$node_entry" "$node_role" "$belong_current_comp" "$node_link_state" "$node_has_slots"
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
@@ -357,6 +372,12 @@ scale_redis_cluster_replica() {
        break
      fi
   done
+
+  if [ "$cluster_view_initialized" == "true" ] && [ ${#current_comp_primary_node[@]} -ne 1 ]; then
+    echo "Expected exactly one connected non-fail slot-owning primary for initialized shard ${CURRENT_SHARD_COMPONENT_NAME}, found ${#current_comp_primary_node[@]}" >&2
+    shutdown_redis_server "$service_port"
+    exit 1
+  fi
 
   # check current_comp_primary_node is empty or not
   if [ ${#current_comp_primary_node[@]} -eq 0 ]; then
