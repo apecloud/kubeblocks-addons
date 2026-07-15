@@ -156,15 +156,24 @@ init_or_get_primary_from_redis_sentinel() {
     fi
   done
 
-  # if sentinel is configured but no sentinel can provide primary info, only
-  # allow default-primary fallback before Redis has persisted data.
+  # If Sentinel has no primary, inspect live Redis roles before choosing a
+  # deterministic bootstrap node. A visible replica proves this is a partial
+  # restart with unresolved topology. Bootstrap is allowed only after two
+  # stable scans and an authoritative fresh-install or restore authorization.
   echo "get all primary info from redis sentinel master_count_map: ${master_count_map[*]}"
   if [ ${#master_count_map[@]} -eq 0 ]; then
-    if redis_data_dir_has_existing_data; then
-      echo "Error: no primary node found from all redis sentinels and Redis data already exists; refusing to use default primary while sentinel is configured."
+    local scan_status
+    if scan_redis_pods_for_running_primary; then
+      clear_bootstrap_authorization_after_topology_discovery
+      return
+    else
+      scan_status=$?
+    fi
+    if [ "$scan_status" -eq 2 ]; then
+      echo "Error: no primary node found from all redis sentinels and live Redis roles are unsafe ($unsafe_redis_role_reason); refusing to guess a new primary."
       exit 1
     fi
-    echo "no primary node found from all redis sentinels and Redis data dir is empty, use default primary node for first bootstrap."
+    echo "no primary node found from all redis sentinels and $bootstrap_authorization_summary, use default primary node for full-component bootstrap."
     get_default_initialize_primary_node
     return
   fi
@@ -178,20 +187,330 @@ init_or_get_primary_from_redis_sentinel() {
       primary_port=$(echo $host_port | cut -d: -f2)
     fi
   done
+  clear_bootstrap_authorization_after_topology_discovery
 }
 
-redis_data_dir_has_existing_data() {
-  local data_dir="${REDIS_DATA_DIR:-/data}"
-  local existing_data
+get_role_from_redis_pod() {
+  local redis_pod_fqdn="$1"
+  local output
+  local role
+  local status
 
-  [ -d "$data_dir" ] || return 1
-  existing_data=$(find "$data_dir" -mindepth 1 -maxdepth 1 \
-    ! -name "users.acl" \
-    ! -name "users.acl.bak" \
-    ! -name ".fixed_pod_ip_enabled" \
-    ! -name ".kb_redis_start_initialized" \
-    -print -quit 2>/dev/null)
-  [ -n "$existing_data" ]
+  redis_probe_role=""
+  redis_probe_reason=""
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    output=$(timeout 1 redis-cli -h "$redis_pod_fqdn" -p "$service_port" ROLE 2>&1)
+  else
+    output=$(REDISCLI_AUTH="$REDIS_DEFAULT_PASSWORD" timeout 1 redis-cli -h "$redis_pod_fqdn" -p "$service_port" ROLE 2>&1)
+  fi
+  status=$?
+  set_xtrace_when_ut_mode_false
+
+  if [ "$status" -ne 0 ]; then
+    if [[ "$output" == *"Connection refused"* ]]; then
+      redis_probe_reason="connection refused"
+      return 1
+    fi
+    if [[ "$output" == *"Name or service not known"* ]] ||
+       [[ "$output" == *"Temporary failure in name resolution"* ]] ||
+       [[ "$output" == *"Could not resolve host"* ]]; then
+      redis_probe_reason="name resolution failed"
+      return 3
+    fi
+    if [ "$status" -eq 124 ]; then
+      redis_probe_reason="probe timed out"
+    else
+      redis_probe_reason="probe command failed (rc=$status)"
+    fi
+    return 2
+  fi
+
+  role=$(echo "$output" | head -n1 | tr -d '\r')
+  case "$role" in
+    master|slave|replica)
+      redis_probe_role="$role"
+      return 0
+      ;;
+    *)
+      redis_probe_reason="unexpected ROLE response"
+      return 2
+      ;;
+  esac
+}
+
+collect_redis_role_snapshot() {
+  local observed_primary=""
+  local observed_replica=""
+  local redis_pod_fqdn
+  local redis_pod_fqdn_list
+  local status
+
+  unsafe_redis_role_reason=""
+  redis_role_snapshot=""
+  redis_role_snapshot_primary=""
+  redis_pod_fqdn_list=($(split "$REDIS_POD_FQDN_LIST" ","))
+  for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
+    if get_role_from_redis_pod "$redis_pod_fqdn"; then
+      status=0
+    else
+      status=$?
+    fi
+    if [ "$status" -eq 1 ]; then
+      redis_role_snapshot+="$redis_pod_fqdn=absent;"
+      continue
+    fi
+    if [ "$status" -eq 3 ]; then
+      redis_role_snapshot+="$redis_pod_fqdn=dns-absent;"
+      continue
+    fi
+    if [ "$status" -ne 0 ]; then
+      unsafe_redis_role_reason="indeterminate role probe for $redis_pod_fqdn: $redis_probe_reason"
+      return 2
+    fi
+
+    redis_role_snapshot+="$redis_pod_fqdn=$redis_probe_role;"
+    case "$redis_probe_role" in
+      master)
+        if [ -n "$observed_primary" ] && [ "$observed_primary" != "$redis_pod_fqdn" ]; then
+          unsafe_redis_role_reason="multiple running primaries: $observed_primary,$redis_pod_fqdn"
+          return 2
+        fi
+        observed_primary="$redis_pod_fqdn"
+        ;;
+      slave|replica)
+        observed_replica="$redis_pod_fqdn"
+        ;;
+    esac
+  done
+
+  if [ -n "$observed_primary" ]; then
+    redis_role_snapshot_primary="$observed_primary"
+    return 0
+  fi
+  if [ -n "$observed_replica" ]; then
+    unsafe_redis_role_reason="running replica without a running primary: $observed_replica"
+    return 2
+  fi
+  return 0
+}
+
+wait_before_redis_role_rescan() {
+  sleep 1
+}
+
+list_pvcs_for_redis_pod() (
+  local redis_pod_name="$1"
+  local kubectl_bin="${REDIS_KUBECTL_BIN:-/tools/kubectl}"
+  local service_account_dir="${REDIS_SERVICE_ACCOUNT_DIR:-/var/run/secrets/kubernetes.io/serviceaccount}"
+  local api_host="${KUBERNETES_SERVICE_HOST:-}"
+  local api_port="${KUBERNETES_SERVICE_PORT_HTTPS:-${KUBERNETES_SERVICE_PORT:-}}"
+  local token_file="${service_account_dir}/token"
+  local ca_file="${service_account_dir}/ca.crt"
+  local kubeconfig
+  local token
+
+  # Keep the service-account token out of xtrace and process arguments.
+  set +x
+  if [ -z "$api_host" ] || [ -z "$api_port" ]; then
+    echo "Error: Kubernetes API service host or port is unavailable." >&2
+    return 1
+  fi
+  if [ -z "${CLUSTER_NAMESPACE:-}" ]; then
+    echo "Error: CLUSTER_NAMESPACE is unavailable for peer PVC verification." >&2
+    return 1
+  fi
+  if [ ! -x "$kubectl_bin" ]; then
+    echo "Error: kubectl is unavailable or not executable: $kubectl_bin" >&2
+    return 1
+  fi
+  if [ ! -r "$token_file" ]; then
+    echo "Error: Kubernetes service account token is unavailable." >&2
+    return 1
+  fi
+  if [ ! -r "$ca_file" ]; then
+    echo "Error: Kubernetes service account CA is unavailable." >&2
+    return 1
+  fi
+  token=$(cat "$token_file") || {
+    echo "Error: failed to read Kubernetes service account token." >&2
+    return 1
+  }
+  if [ -z "$token" ]; then
+    echo "Error: Kubernetes service account token is empty." >&2
+    return 1
+  fi
+  if [[ "$api_host" == *:* && "$api_host" != \[*\] ]]; then
+    api_host="[$api_host]"
+  fi
+  kubeconfig=$(mktemp "${TMPDIR:-/tmp}/redis-bootstrap-kubeconfig.XXXXXX") || {
+    echo "Error: failed to create temporary kubeconfig." >&2
+    return 1
+  }
+  trap 'rm -f "$kubeconfig"' EXIT
+  chmod 600 "$kubeconfig" || return 1
+  printf '%s\n' \
+    'apiVersion: v1' \
+    'kind: Config' \
+    'clusters:' \
+    '- name: in-cluster' \
+    '  cluster:' \
+    "    server: https://${api_host}:${api_port}" \
+    "    certificate-authority: ${ca_file}" \
+    'users:' \
+    '- name: service-account' \
+    '  user:' \
+    "    token: ${token}" \
+    'contexts:' \
+    '- name: in-cluster' \
+    '  context:' \
+    '    cluster: in-cluster' \
+    '    user: service-account' \
+    "    namespace: ${CLUSTER_NAMESPACE}" \
+    'current-context: in-cluster' > "$kubeconfig" || return 1
+  token=""
+
+  "$kubectl_bin" --kubeconfig "$kubeconfig" get persistentvolumeclaims \
+    --namespace "$CLUSTER_NAMESPACE" \
+    --selector "apps.kubeblocks.io/pod-name=$redis_pod_name" \
+    --output name \
+    --request-timeout=3s
+)
+
+clear_bootstrap_authorization_after_topology_discovery() {
+  local data_dir="${REDIS_DATA_DIR:-/data}"
+  local restore_marker="${REDIS_RESTORE_BOOTSTRAP_MARKER:-${data_dir}/.kb-redis-restore-bootstrap-authorized}"
+  local fresh_marker="${REDIS_FRESH_BOOTSTRAP_MARKER:-${data_dir}/.kb-redis-fresh-bootstrap-pending}"
+
+  if [ -e "$restore_marker" ] || [ -e "$fresh_marker" ]; then
+    rm -f "$restore_marker" "$fresh_marker"
+    sync
+    echo "cleared Redis bootstrap authorization markers after topology discovery"
+  fi
+}
+
+authorize_default_primary_bootstrap() {
+  local data_dir="${REDIS_DATA_DIR:-/data}"
+  local restore_marker="${REDIS_RESTORE_BOOTSTRAP_MARKER:-${data_dir}/.kb-redis-restore-bootstrap-authorized}"
+  local fresh_marker="${REDIS_FRESH_BOOTSTRAP_MARKER:-${data_dir}/.kb-redis-fresh-bootstrap-pending}"
+  local min_pod
+  local peer_pod
+  local peer_pvcs
+  local initialized_entry
+  local redis_pod_name_list
+  local fresh_bootstrap_retry="false"
+
+  bootstrap_authorization_reason=""
+  bootstrap_authorization_summary=""
+  min_pod=$(min_lexicographical_order_pod "$REDIS_POD_NAME_LIST")
+  if [ "$CURRENT_POD_NAME" != "$min_pod" ]; then
+    bootstrap_authorization_reason="current pod $CURRENT_POD_NAME is not deterministic bootstrap owner $min_pod"
+    return 1
+  fi
+
+  if [ -f "$restore_marker" ]; then
+    bootstrap_authorization_summary="restore bootstrap authorization verified"
+    echo "$bootstrap_authorization_summary at $restore_marker"
+    return 0
+  fi
+  if [ -e "$restore_marker" ]; then
+    bootstrap_authorization_reason="restore bootstrap authorization marker is not a regular file: $restore_marker"
+    return 1
+  fi
+  if [ -e "$fresh_marker" ] && [ ! -f "$fresh_marker" ]; then
+    bootstrap_authorization_reason="fresh bootstrap pending marker is not a regular file: $fresh_marker"
+    return 1
+  fi
+  if [ -f "$fresh_marker" ]; then
+    fresh_bootstrap_retry="true"
+  fi
+
+  if [ "$fresh_bootstrap_retry" != "true" ]; then
+    initialized_entry=$(find "$data_dir" -mindepth 1 -maxdepth 1 \
+      ! -name lost+found \
+      ! -name .fixed_pod_ip_enabled \
+      ! -name .kb-redis-restore-bootstrap-authorized \
+      ! -name .kb-redis-fresh-bootstrap-pending \
+      -print -quit 2>/dev/null) || {
+      bootstrap_authorization_reason="failed to inspect Redis data directory $data_dir"
+      return 1
+    }
+    if [ -n "$initialized_entry" ]; then
+      bootstrap_authorization_reason="data directory contains persistent state without bootstrap authorization: $initialized_entry"
+      return 1
+    fi
+  fi
+
+  redis_pod_name_list=($(split "$REDIS_POD_NAME_LIST" ","))
+  for peer_pod in "${redis_pod_name_list[@]}"; do
+    [ "$peer_pod" = "$CURRENT_POD_NAME" ] && continue
+    if ! peer_pvcs=$(list_pvcs_for_redis_pod "$peer_pod" 2>/dev/null); then
+      bootstrap_authorization_reason="failed to verify persistent state for peer $peer_pod"
+      return 1
+    fi
+    if [ -n "$peer_pvcs" ]; then
+      bootstrap_authorization_reason="peer $peer_pod still has persistent state: $peer_pvcs"
+      return 1
+    fi
+  done
+
+  if [ "$fresh_bootstrap_retry" != "true" ]; then
+    if ! touch "$fresh_marker"; then
+      bootstrap_authorization_reason="failed to persist fresh bootstrap pending marker: $fresh_marker"
+      return 1
+    fi
+  fi
+  if [ "$fresh_bootstrap_retry" = "true" ]; then
+    bootstrap_authorization_summary="fresh bootstrap retry authorization reverified"
+  else
+    bootstrap_authorization_summary="fresh bootstrap authorization verified"
+  fi
+  echo "$bootstrap_authorization_summary: no peer PVCs"
+  return 0
+}
+
+scan_redis_pods_for_running_primary() {
+  local first_primary
+  local first_snapshot
+  local status
+
+  if collect_redis_role_snapshot; then
+    first_snapshot="$redis_role_snapshot"
+    first_primary="$redis_role_snapshot_primary"
+  else
+    return 2
+  fi
+
+  wait_before_redis_role_rescan
+  if ! collect_redis_role_snapshot; then
+    return 2
+  fi
+  if [ "$redis_role_snapshot" != "$first_snapshot" ] || [ "$redis_role_snapshot_primary" != "$first_primary" ]; then
+    unsafe_redis_role_reason="Redis roles changed between consecutive scans"
+    return 2
+  fi
+
+  if [ -z "$first_primary" ]; then
+    if authorize_default_primary_bootstrap; then
+      return 1
+    fi
+    unsafe_redis_role_reason="$bootstrap_authorization_reason"
+    return 2
+  fi
+  if get_role_from_redis_pod "$first_primary"; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$status" -ne 0 ] || [ "$redis_probe_role" != "master" ]; then
+    unsafe_redis_role_reason="selected primary $first_primary did not remain master during final revalidation"
+    return 2
+  fi
+
+  primary="$first_primary"
+  primary_port="$service_port"
+  echo "confirmed stable running Redis primary from pod role: $primary:$primary_port"
+  return 0
 }
 
 build_sentinel_get_master_addr_by_name_command() {

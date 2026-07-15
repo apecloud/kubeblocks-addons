@@ -801,6 +801,335 @@ redis_config_get() {
   return 0
 }
 
+build_replication_view_signature() {
+  local cluster_nodes_info="$1"
+  local expected_primary_id="$2"
+  local current_shard_node_ids="$3"
+
+  awk -v expected_ids="$current_shard_node_ids" -v expected_primary_id="$expected_primary_id" '
+    BEGIN {
+      expected_count = split(expected_ids, expected_order, ",")
+      for (i = 1; i <= expected_count; i++) {
+        expected[expected_order[i]] = 1
+      }
+    }
+    {
+      node_id = $1
+      upstream_id = $4
+      if (!(node_id in expected)) {
+        if (node_id == expected_primary_id || upstream_id == expected_primary_id) {
+          unexpected_node = 1
+        }
+        next
+      }
+      if (seen[node_id]++) {
+        duplicate_node = 1
+        next
+      }
+
+      normalized_flags = ""
+      flag_count = split($3, raw_flags, ",")
+      for (i = 1; i <= flag_count; i++) {
+        if (raw_flags[i] == "myself") {
+          continue
+        }
+        normalized_flags = normalized_flags (normalized_flags == "" ? "" : ",") raw_flags[i]
+      }
+
+      slots = ""
+      for (i = 9; i <= NF; i++) {
+        if ($i ~ /^[0-9]+(-[0-9]+)?$/) {
+          slots = slots (slots == "" ? "" : ",") $i
+        }
+      }
+      signature[node_id] = node_id "|" normalized_flags "|" upstream_id "|" slots
+      if (normalized_flags ~ /(^|,)master(,|$)/ && slots != "") {
+        slot_owner_count++
+        slot_owner_id = node_id
+      }
+    }
+    END {
+      if (unexpected_node || duplicate_node) {
+        exit 2
+      }
+      for (i = 1; i <= expected_count; i++) {
+        if (seen[expected_order[i]] != 1) {
+          exit 2
+        }
+      }
+      if (slot_owner_count != 1 || slot_owner_id != expected_primary_id) {
+        exit 3
+      }
+      for (i = 1; i <= expected_count; i++) {
+        print signature[expected_order[i]]
+      }
+    }
+  ' <<< "$cluster_nodes_info"
+}
+
+classify_current_node_replication_view() {
+  local cluster_nodes_info="$1"
+  local expected_primary_id="$2"
+  local current_node_line
+  local current_node_count
+  local current_node_flags
+  local current_node_upstream
+  local current_node_slots
+
+  current_node_count=$(awk '$3 ~ /(^|,)myself(,|$)/ { count++ } END { print count + 0 }' <<< "$cluster_nodes_info")
+  if [ "$current_node_count" -ne 1 ]; then
+    echo "Failed to resolve current node replication state" >&2
+    return 1
+  fi
+  current_node_line=$(awk '$3 ~ /(^|,)myself(,|$)/ { print; exit }' <<< "$cluster_nodes_info")
+  current_node_flags=$(awk '{ print $3 }' <<< "$current_node_line")
+  current_node_upstream=$(awk '{ print $4 }' <<< "$current_node_line")
+  current_node_slots=$(awk '{ for (i = 9; i <= NF; i++) if ($i ~ /^[0-9]+(-[0-9]+)?$/) printf "%s%s", output++ ? "," : "", $i }' <<< "$current_node_line")
+
+  if [[ "$current_node_flags" =~ (^|,)master(,|$) ]]; then
+    if [ -n "$current_node_slots" ]; then
+      echo "primary_ok"
+    else
+      echo "repairable"
+    fi
+    return 0
+  fi
+  if [[ "$current_node_flags" =~ (^|,)slave(,|$) ]]; then
+    if [ "$current_node_upstream" = "$expected_primary_id" ] && [ -z "$current_node_slots" ]; then
+      echo "replica_ok"
+    elif [ -z "$current_node_slots" ]; then
+      echo "repairable"
+    else
+      echo "Failed to resolve current node replication state" >&2
+      return 1
+    fi
+    return 0
+  fi
+
+  echo "Failed to resolve current node replication state" >&2
+  return 1
+}
+
+get_consistent_current_node_replication_state() {
+  local primary_endpoint="$1"
+  local primary_port="$2"
+  local expected_primary_id="$3"
+  local current_shard_node_ids="$4"
+  local local_round_one owner_round_one local_round_two owner_round_two
+  local local_signature_one owner_signature_one local_signature_two owner_signature_two
+  local signature_status
+
+  if ! local_round_one=$(get_cluster_nodes_info "127.0.0.1" "$service_port"); then
+    echo "Failed to read local cluster replication view" >&2
+    return 1
+  fi
+  if ! owner_round_one=$(get_cluster_nodes_info "$primary_endpoint" "$primary_port"); then
+    echo "Failed to read slot-owner cluster replication view" >&2
+    return 1
+  fi
+  if ! local_round_two=$(get_cluster_nodes_info "127.0.0.1" "$service_port"); then
+    echo "Failed to read second local cluster replication view" >&2
+    return 1
+  fi
+  if ! owner_round_two=$(get_cluster_nodes_info "$primary_endpoint" "$primary_port"); then
+    echo "Failed to read second slot-owner cluster replication view" >&2
+    return 1
+  fi
+
+  if local_signature_one=$(build_replication_view_signature "$local_round_one" "$expected_primary_id" "$current_shard_node_ids"); then
+    :
+  else
+    signature_status=$?
+    if [ "$signature_status" -eq 3 ]; then
+      echo "Expected exactly one slot-owning primary" >&2
+    else
+      echo "Cluster replication views disagree" >&2
+    fi
+    return 1
+  fi
+  if owner_signature_one=$(build_replication_view_signature "$owner_round_one" "$expected_primary_id" "$current_shard_node_ids"); then
+    :
+  else
+    signature_status=$?
+    if [ "$signature_status" -eq 3 ]; then
+      echo "Expected exactly one slot-owning primary" >&2
+    else
+      echo "Cluster replication views disagree" >&2
+    fi
+    return 1
+  fi
+  if [ "$local_signature_one" != "$owner_signature_one" ]; then
+    echo "Cluster replication views disagree" >&2
+    return 1
+  fi
+
+  if ! local_signature_two=$(build_replication_view_signature "$local_round_two" "$expected_primary_id" "$current_shard_node_ids"); then
+    echo "Cluster replication view changed before mutation" >&2
+    return 1
+  fi
+  if ! owner_signature_two=$(build_replication_view_signature "$owner_round_two" "$expected_primary_id" "$current_shard_node_ids"); then
+    echo "Cluster replication view changed before mutation" >&2
+    return 1
+  fi
+  if [ "$local_signature_two" != "$owner_signature_two" ]; then
+    echo "Cluster replication views disagree" >&2
+    return 1
+  fi
+  if [ "$local_signature_one" != "$local_signature_two" ]; then
+    echo "Cluster replication view changed before mutation" >&2
+    return 1
+  fi
+
+  classify_current_node_replication_view "$local_round_two" "$expected_primary_id"
+}
+
+get_current_shard_node_ids() {
+  local primary_endpoint="$1"
+  local primary_port="$2"
+  local expected_primary_id="$3"
+  local local_view owner_view current_node_id current_shard_node_ids
+
+  if ! local_view=$(get_cluster_nodes_info "127.0.0.1" "$service_port"); then
+    echo "Failed to read local cluster view for current shard node IDs" >&2
+    return 1
+  fi
+  if ! owner_view=$(get_cluster_nodes_info "$primary_endpoint" "$primary_port"); then
+    echo "Failed to read slot-owner cluster view for current shard node IDs" >&2
+    return 1
+  fi
+  current_node_id=$(awk '$3 ~ /(^|,)myself(,|$)/ { print $1; exit }' <<< "$local_view")
+  if [ -z "$current_node_id" ]; then
+    echo "Failed to resolve current node ID" >&2
+    return 1
+  fi
+  current_shard_node_ids=$(awk -v primary_id="$expected_primary_id" -v current_id="$current_node_id" '
+    $1 == primary_id || $4 == primary_id || $1 == current_id { ids[$1] = 1 }
+    END {
+      ids[primary_id] = 1
+      ids[current_id] = 1
+      print primary_id
+      for (id in ids) if (id != primary_id && id != current_id) print id
+      if (current_id != primary_id) print current_id
+    }
+  ' <<< "$owner_view" | paste -sd, -)
+  if [ -z "$current_shard_node_ids" ] || [[ "$current_shard_node_ids" != *","* ]]; then
+    echo "Failed to resolve current shard node-ID set" >&2
+    return 1
+  fi
+  echo "$current_shard_node_ids"
+}
+
+repair_current_node_replication() {
+  local expected_primary_id="$1"
+  local output
+  local status
+  local logging_command="redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p $service_port"
+
+  unset_xtrace_when_ut_mode_false
+  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    logging_command="$logging_command -a ******** CLUSTER REPLICATE $expected_primary_id"
+    echo "repair current node replication command: $logging_command" >&2
+    if output=$(redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" CLUSTER REPLICATE "$expected_primary_id"); then
+      status=0
+    else
+      status=$?
+    fi
+  else
+    logging_command="$logging_command CLUSTER REPLICATE $expected_primary_id"
+    echo "repair current node replication command: $logging_command" >&2
+    if output=$(redis-cli $REDIS_CLI_TLS_CMD -h 127.0.0.1 -p "$service_port" CLUSTER REPLICATE "$expected_primary_id"); then
+      status=0
+    else
+      status=$?
+    fi
+  fi
+  set_xtrace_when_ut_mode_false
+  if [ "$status" -ne 0 ]; then
+    echo "Failed to execute current node replication repair" >&2
+    return 1
+  fi
+  echo "$output"
+}
+
+verify_current_node_replication() {
+  local primary_endpoint="$1"
+  local primary_port="$2"
+  local expected_primary_id="$3"
+  local current_shard_node_ids="$4"
+  local max_attempts="${check_ready_times:-2}"
+  local attempt=1
+  local state
+  local verification_output
+
+  if [ "$max_attempts" -gt 3 ]; then
+    max_attempts=3
+  fi
+  while [ "$attempt" -le "$max_attempts" ]; do
+    if verification_output=$(get_consistent_current_node_replication_state "$primary_endpoint" "$primary_port" "$expected_primary_id" "$current_shard_node_ids" 2>&1); then
+      state="$verification_output"
+      if [ "$state" = "replica_ok" ]; then
+        return 0
+      fi
+    else
+      case "$verification_output" in
+        *"views disagree"*) echo "Post-repair cluster replication views disagree" >&2 ;;
+        *"view changed"*) echo "Post-repair cluster replication view changed" >&2 ;;
+        *) echo "Post-repair cluster replication verification failed: $verification_output" >&2 ;;
+      esac
+      return 1
+    fi
+    attempt=$((attempt + 1))
+    if [ "$attempt" -le "$max_attempts" ]; then
+      sleep_when_ut_mode_false "$retry_delay_second"
+    fi
+  done
+
+  echo "Replication repair verification timeout" >&2
+  return 1
+}
+
+ensure_current_node_replication() {
+  if [ "$#" -ne 4 ]; then
+    echo "ensure_current_node_replication requires primary endpoint, port, ID, and shard node IDs" >&2
+    return 1
+  fi
+
+  local primary_endpoint="$1"
+  local primary_port="$2"
+  local expected_primary_id="$3"
+  local current_shard_node_ids="$4"
+  local state
+  if ! state=$(get_consistent_current_node_replication_state "$primary_endpoint" "$primary_port" "$expected_primary_id" "$current_shard_node_ids"); then
+    echo "Failed to get consistent current node replication state" >&2
+    return 1
+  fi
+  case "$state" in
+    replica_ok)
+      echo "Current node already replicates expected primary $expected_primary_id"
+      return 0
+      ;;
+    primary_ok)
+      echo "Current node is the legal slot-owning primary $expected_primary_id"
+      return 0
+      ;;
+    repairable)
+      if ! repair_current_node_replication "$expected_primary_id"; then
+        echo "Failed to repair current node replication" >&2
+        return 1
+      fi
+      if ! verify_current_node_replication "$primary_endpoint" "$primary_port" "$expected_primary_id" "$current_shard_node_ids"; then
+        echo "Current node replication did not converge to expected primary $expected_primary_id" >&2
+        return 1
+      fi
+      return 0
+      ;;
+    *)
+      echo "Refusing to repair current node from state $state" >&2
+      return 1
+      ;;
+  esac
+}
+
 forget_fail_node_when_cluster_is_ok() {
   local host=$1
   local port=$2

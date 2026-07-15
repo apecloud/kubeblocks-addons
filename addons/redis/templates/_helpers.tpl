@@ -79,10 +79,10 @@ Define redis sentienl 7.X component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define redis cluster component definition regular expression name prefix
+Define the redis cluster component definition regular expression for this chart version
 */}}
 {{- define "redisCluster.cmpdRegexpPattern" -}}
-^redis-cluster-\d+
+^redis-cluster-\d+-{{ .Chart.Version | replace "." "\\." }}$
 {{- end -}}
 
 {{/*

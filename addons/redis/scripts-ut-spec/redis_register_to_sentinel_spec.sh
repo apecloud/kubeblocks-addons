@@ -76,6 +76,31 @@ Describe 'register_to_sentinel.sh'
     End
   End
 
+  Describe 'clear_bootstrap_authorization_marker()'
+    setup_bootstrap_marker() {
+      export REDIS_DATA_DIR="./redis-register-data"
+      export REDIS_RESTORE_BOOTSTRAP_MARKER="$REDIS_DATA_DIR/.kb-redis-restore-bootstrap-authorized"
+      export REDIS_FRESH_BOOTSTRAP_MARKER="$REDIS_DATA_DIR/.kb-redis-fresh-bootstrap-pending"
+      mkdir -p "$REDIS_DATA_DIR"
+      touch "$REDIS_RESTORE_BOOTSTRAP_MARKER" "$REDIS_FRESH_BOOTSTRAP_MARKER"
+    }
+    Before 'setup_bootstrap_marker'
+
+    cleanup_bootstrap_marker() {
+      unset REDIS_DATA_DIR REDIS_RESTORE_BOOTSTRAP_MARKER REDIS_FRESH_BOOTSTRAP_MARKER
+      rm -rf ./redis-register-data
+    }
+    After 'cleanup_bootstrap_marker'
+
+    It 'removes restore authorization after successful Sentinel registration'
+      When call clear_bootstrap_authorization_marker
+      The status should be success
+      The output should include 'cleared Redis bootstrap authorization markers after Sentinel registration'
+      The path "$REDIS_RESTORE_BOOTSTRAP_MARKER" should not be exist
+      The path "$REDIS_FRESH_BOOTSTRAP_MARKER" should not be exist
+    End
+  End
+
   Describe 'register_to_sentinel_wrapper()'
     register_to_sentinel() {
       # shellcheck disable=SC2145

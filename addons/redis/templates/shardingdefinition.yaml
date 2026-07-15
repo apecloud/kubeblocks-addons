@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ShardingDefinition
 metadata:
-  name: redis-cluster
+  name: {{ printf "redis-cluster-%s" .Chart.Version }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
   annotations:

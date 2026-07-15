@@ -18,8 +18,51 @@ Describe "Redis Cluster lifecycle action contract"
     tmp_render=$(mktemp -t redis-lifecycle-render-XXXXXX)
     helm template test "$(chart_path)" \
       --dependency-update \
+      --show-only templates/clusterdefinition.yaml \
       --show-only templates/cmpd-redis-cluster.yaml \
+      --show-only templates/paramsdef-redis-cluster.yaml \
       --show-only templates/shardingdefinition.yaml >"$tmp_render"
+  }
+
+  validate_versioned_definition_contract() {
+    render_lifecycle_templates || return $?
+    ruby -ryaml -e '
+      documents = YAML.load_stream(File.read(ARGV.fetch(0))).compact
+      chart = YAML.load_file(ARGV.fetch(1))
+      version = chart.fetch("version")
+      abort "Redis chart version must advance past immutable baseline 1.2.0-alpha.0" if version == "1.2.0-alpha.0"
+
+      expected_cmpds = %w[5 6 7 8].map { |major| "redis-cluster-#{major}-#{version}" }
+      actual_cmpds = documents.map do |document|
+        next unless document["kind"] == "ComponentDefinition"
+        name = document.dig("metadata", "name")
+        name if name&.start_with?("redis-cluster-")
+      end.compact.sort
+      abort "versioned Redis Cluster ComponentDefinitions differ: #{actual_cmpds.inspect}" unless actual_cmpds == expected_cmpds
+
+      sharding = documents.find { |document| document["kind"] == "ShardingDefinition" }
+      abort "missing Redis ShardingDefinition" unless sharding
+      expected_sharding = "redis-cluster-#{version}"
+      actual_sharding = sharding.dig("metadata", "name")
+      abort "expected ShardingDefinition #{expected_sharding}, got #{actual_sharding}" unless actual_sharding == expected_sharding
+      expected_cmpd_pattern = "^redis-cluster-\\d+-#{version.gsub(".", "\\\\.")}$"
+      actual_cmpd_pattern = sharding.dig("spec", "template", "compDef")
+      abort "expected ShardingDefinition compDef #{expected_cmpd_pattern}, got #{actual_cmpd_pattern}" unless actual_cmpd_pattern == expected_cmpd_pattern
+
+      actual_parameter_cmpds = documents.map do |document|
+        document.dig("spec", "componentDef") if document["kind"] == "ParametersDefinition"
+      end.compact.sort
+      abort "versioned Redis Cluster ParametersDefinitions differ: #{actual_parameter_cmpds.inspect}" unless actual_parameter_cmpds == expected_cmpds
+
+      cluster = documents.find { |document| document["kind"] == "ClusterDefinition" }
+      abort "missing Redis ClusterDefinition" unless cluster
+      cluster_topology = cluster.fetch("spec").fetch("topologies").find { |topology| topology["name"] == "cluster" }
+      abort "missing Redis cluster topology" unless cluster_topology
+      actual_reference = cluster_topology.fetch("shardings").first.fetch("shardingDef")
+      abort "expected cluster topology to reference #{expected_sharding}, got #{actual_reference}" unless actual_reference == expected_sharding
+
+      puts "versioned immutable definition contract passed"
+    ' "$tmp_render" "$(chart_path)/Chart.yaml"
   }
 
   validate_timeout_contract() {
@@ -105,6 +148,12 @@ Describe "Redis Cluster lifecycle action contract"
     When call validate_timeout_contract
     The status should be success
     The output should include "lifecycle timeout contract passed"
+  End
+
+  It "publishes lifecycle spec changes under new versioned definition identities"
+    When call validate_versioned_definition_contract
+    The status should be success
+    The output should include "versioned immutable definition contract passed"
   End
 
   It "replays postProvision failure diagnostics and preserves the manage rc"
