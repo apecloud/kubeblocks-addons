@@ -10,14 +10,14 @@ Describe "Kafka common script tests"
   Include ../scripts/common.sh
 
   setup() {
-    kafka_config_path="$(mktemp -d)"
-    KAFKA_ADMIN_USER="admin"
-    KAFKA_ADMIN_PASSWORD="admin-password"
-    KAFKA_CLIENT_USER="client"
-    KAFKA_CLIENT_PASSWORD="client-password"
-    KB_KAFKA_SASL_ENABLE="true"
-    KB_KAFKA_ENABLE_SASL_SCRAM="false"
-    KB_KAFKA_SASL_USE_KB_BUILTIN="true"
+    export kafka_config_path="$(mktemp -d)"
+    export KAFKA_ADMIN_USER="admin"
+    export KAFKA_ADMIN_PASSWORD="admin-password"
+    export KAFKA_CLIENT_USER="client"
+    export KAFKA_CLIENT_PASSWORD="client-password"
+    export KB_KAFKA_SASL_ENABLE="true"
+    export KB_KAFKA_ENABLE_SASL_SCRAM="false"
+    export KB_KAFKA_SASL_USE_KB_BUILTIN="true"
   }
 
   cleanup() {
@@ -31,9 +31,10 @@ Describe "Kafka common script tests"
     When call build_server_jaas_config \
       "org.apache.kafka.common.security.plain.PlainLoginModule required"
     The status should be success
-    The path "$kafka_config_path/kafka_jaas.conf" should include \
+    The output should include "[sasl] write jaas config"
+    The contents of file "$kafka_config_path/kafka_jaas.conf" should include \
       'user_admin="admin-password"'
-    The path "$kafka_config_path/kafka_jaas.conf" should include \
+    The contents of file "$kafka_config_path/kafka_jaas.conf" should include \
       'user_client="client-password"'
   End
 End
