@@ -668,16 +668,32 @@ Last_SQL_Errno: 0"
       End
     End
 
-    Context "when publishing a primary with remote root access enabled"
-      setup_primary_remote_root() {
+    Context "when an already-accepted primary has no remote-root fence marker"
+      setup_primary_without_remote_fence_marker() {
+        export MARIADB_ROOT_HOST="%"
+        touch "${TEST_DIR}/.replication-ready"
+      }
+      Before "setup_primary_without_remote_fence_marker"
+
+      It "publishes primary without recreating the marker owned by secondary fencing"
+        When call check_role
+        The status should be success
+        The output should eq "primary"
+        The path "${TEST_DIR}/.remote-root-fence-role" should not be exist
+      End
+    End
+
+    Context "when a primary transitions from a persisted secondary remote-root fence"
+      setup_primary_remote_root_transition() {
         export MARIADB_ROOT_HOST="%"
         export MOCK_MARIADB_CAPTURE_FILE="${TEST_DIR}/mariadb-sql.log"
         touch "${TEST_DIR}/.replication-ready"
+        printf "secondary" > "${TEST_DIR}/.remote-root-fence-role"
         make_mariadb_cli
       }
-      Before "setup_primary_remote_root"
+      Before "setup_primary_remote_root_transition"
 
-      It "alpha.60: restores remote root grants WITHOUT admin bypass privileges and records primary fence marker"
+      It "restores primary grants without admin bypass privileges and clears the secondary fence marker"
         # alpha.60 (Jack 23:28 review): primary grant must NOT include
         # SUPER / READ_ONLY ADMIN / BINLOG ADMIN, because those let user-facing
         # root bypass @@global.read_only=ON during a future switchover and
@@ -694,7 +710,25 @@ Last_SQL_Errno: 0"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "READ_ONLY ADMIN"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "BINLOG ADMIN"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should not include ", GRANT OPTION,"
-        The contents of file "${TEST_DIR}/.remote-root-fence-role" should eq "primary"
+        The path "${TEST_DIR}/.remote-root-fence-role" should not be exist
+      End
+    End
+
+    Context "when a primary cannot replace a persisted secondary remote-root fence"
+      setup_primary_remote_root_transition_failure() {
+        export MARIADB_ROOT_HOST="%"
+        export MOCK_MARIADB_SQL_RC=1
+        touch "${TEST_DIR}/.replication-ready"
+        printf "secondary" > "${TEST_DIR}/.remote-root-fence-role"
+        make_mariadb_cli
+      }
+      Before "setup_primary_remote_root_transition_failure"
+
+      It "fails closed and preserves the secondary fence marker"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+        The contents of file "${TEST_DIR}/.remote-root-fence-role" should eq "secondary"
       End
     End
 
