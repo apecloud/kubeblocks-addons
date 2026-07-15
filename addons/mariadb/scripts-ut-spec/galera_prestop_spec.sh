@@ -6,8 +6,6 @@ Describe "galera-prestop.sh"
     export DATA_DIR="${TEST_DIR}/data"
     export POD_NAME="mdb-galera-mariadb-0"
     export PEER_FQDNS="mdb-galera-mariadb-0.headless.demo.svc.cluster.local,mdb-galera-mariadb-1.headless.demo.svc.cluster.local,mdb-galera-mariadb-2.headless.demo.svc.cluster.local"
-    export MARIADB_ROOT_USER="root"
-    export MARIADB_ROOT_PASSWORD="secret"
     export GALERA_PRESTOP_CONTAINER_LOG_PATH="${TEST_DIR}/container.log"
     export GALERA_PRESTOP_DEGRADED_LOG="${DATA_DIR}/log/galera-prestop-degraded.log"
     mkdir -p "${DATA_DIR}"
@@ -16,12 +14,11 @@ Describe "galera-prestop.sh"
 
   cleanup() {
     rm -rf "${TEST_DIR}"
-    unset DATA_DIR POD_NAME PEER_FQDNS MARIADB_ROOT_USER MARIADB_ROOT_PASSWORD
+    unset DATA_DIR POD_NAME PEER_FQDNS
     unset GALERA_PRESTOP_ORDER_WAIT_SECONDS GALERA_PRESTOP_POLL_SECONDS
-    unset GALERA_PRESTOP_PROBE_TIMEOUT_SECONDS GALERA_PRESTOP_SQL_TIMEOUT_SECONDS
-    unset GALERA_PRESTOP_SHUTDOWN_TIMEOUT_SECONDS GALERA_PRESTOP_CONTAINER_LOG_PATH
+    unset GALERA_PRESTOP_PROBE_TIMEOUT_SECONDS GALERA_PRESTOP_CONTAINER_LOG_PATH
     unset GALERA_PRESTOP_TERMINATION_GRACE_SECONDS GALERA_PRESTOP_SAFETY_MARGIN_SECONDS
-    unset GALERA_PRESTOP_DEGRADED_LOG VALIDATION_ERROR DEGRADED_EVIDENCE_WRITE_FAILED
+    unset GALERA_PRESTOP_DEGRADED_LOG VALIDATION_ERROR
   }
   AfterEach "cleanup"
 
@@ -81,9 +78,7 @@ Describe "galera-prestop.sh"
   End
 
   It "rejects timeout settings that consume the termination grace period"
-    GALERA_PRESTOP_ORDER_WAIT_SECONDS=70
-    GALERA_PRESTOP_SQL_TIMEOUT_SECONDS=5
-    GALERA_PRESTOP_SHUTDOWN_TIMEOUT_SECONDS=40
+    GALERA_PRESTOP_ORDER_WAIT_SECONDS=116
     GALERA_PRESTOP_SAFETY_MARGIN_SECONDS=5
     GALERA_PRESTOP_TERMINATION_GRACE_SECONDS=120
 
@@ -180,43 +175,30 @@ Describe "galera-prestop.sh"
     The contents of file "${GALERA_PRESTOP_CONTAINER_LOG_PATH}" should include "ordered shutdown degraded: reason=test_degradation"
   End
 
-  It "keeps the preStop hook successful after invalid identity is recorded"
+  It "fails closed on invalid identity before publishing the shutdown marker"
     POD_NAME=""
-    local_sql() {
-      return 0
-    }
-    mysqladmin() {
-      return 0
-    }
-
-    When call main
-    The status should be success
-    The output should include "reason=invalid_pod_name"
-    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=invalid_pod_name"
-  End
-
-  It "finishes local shutdown then fails the hook when both degraded evidence sinks are unavailable"
-    POD_NAME=""
-    GALERA_PRESTOP_CONTAINER_LOG_PATH="/dev/null/container-log"
-    GALERA_PRESTOP_DEGRADED_LOG="/dev/null/degraded-log"
-    local_sql() {
-      printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
-      return 0
-    }
-    mysqladmin() {
-      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/sql.log"
-      return 0
-    }
 
     When call main
     The status should be failure
     The output should include "reason=invalid_pod_name"
-    The stderr should include "degraded evidence sinks unavailable"
-    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_desync=ON;"
-    The contents of file "${TEST_DIR}/sql.log" should include "mysqladmin"
+    The stderr should include "shutdown preparation failed: reason=invalid_pod_name"
+    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=invalid_pod_name"
+    The path "${DATA_DIR}/.galera-shutting-down" should not be exist
   End
 
-  It "degrades a stuck higher-ordinal peer but still shuts down locally and exits successfully"
+  It "fails the hook when both failure evidence sinks are unavailable"
+    POD_NAME=""
+    GALERA_PRESTOP_CONTAINER_LOG_PATH="/dev/null/container-log"
+    GALERA_PRESTOP_DEGRADED_LOG="/dev/null/degraded-log"
+
+    When call main
+    The status should be failure
+    The output should include "reason=invalid_pod_name"
+    The stderr should include "shutdown preparation failed"
+    The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+  End
+
+  It "fails closed on a stuck higher-ordinal peer before publishing the shutdown marker"
     GALERA_PRESTOP_ORDER_WAIT_SECONDS=2
     GALERA_PRESTOP_POLL_SECONDS=30
     printf '0\n' > "${TEST_DIR}/clock"
@@ -229,98 +211,49 @@ Describe "galera-prestop.sh"
     peer_sql_port_state() {
       printf 'open'
     }
-    local_sql() {
-      printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
+    When call main
+    The status should be failure
+    The output should include "reason=order_wait_timeout"
+    The stderr should include "shutdown preparation failed: higher-ordinal peers did not stop"
+    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=order_wait_timeout"
+    The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+  End
+
+  It "publishes the marker then lets kubelet signal PID 1"
+    mariadb() {
+      printf 'mariadb %s\n' "$*" >> "${TEST_DIR}/unexpected-client.log"
       return 0
     }
     mysqladmin() {
-      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/sql.log"
+      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/unexpected-client.log"
       return 0
+    }
+
+    When call prepare_ordered_shutdown
+    The status should be success
+    The path "${DATA_DIR}/.galera-shutting-down" should be exist
+    The output should include "kubelet may now signal mariadbd"
+    The path "${TEST_DIR}/unexpected-client.log" should not be exist
+  End
+
+  It "returns success only after order and marker preparation both close"
+    peer_sql_port_state() {
+      printf 'closed'
     }
 
     When call main
     The status should be success
-    The output should include "reason=order_wait_timeout"
-    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=order_wait_timeout"
-    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_desync=ON;"
-    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_on=OFF;"
-    The contents of file "${TEST_DIR}/sql.log" should include "mysqladmin -uroot -psecret -h127.0.0.1 shutdown"
-  End
-
-  It "runs desync, wsrep disable, and mysqladmin shutdown in order"
-    local_sql() {
-      printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
-      return 0
-    }
-    mysqladmin() {
-      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/sql.log"
-      return 0
-    }
-
-    When call graceful_shutdown
-    The status should be success
-    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_desync=ON;"
-    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_on=OFF;"
-    The contents of file "${TEST_DIR}/sql.log" should include "mysqladmin -uroot -psecret -h127.0.0.1 shutdown"
-  End
-
-  It "publishes the shutting-down marker before the first Galera desync mutation"
-    local_sql() {
-      if [ "$1" = "SET GLOBAL wsrep_desync=ON;" ] \
-        && [ ! -f "${DATA_DIR}/.galera-shutting-down" ]; then
-        printf 'desync-before-marker\n' >> "${TEST_DIR}/sql.log"
-        return 1
-      fi
-      printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
-      return 0
-    }
-    mysqladmin() {
-      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/sql.log"
-      return 0
-    }
-
-    When call graceful_shutdown
-    The status should be success
     The path "${DATA_DIR}/.galera-shutting-down" should be exist
-    The contents of file "${TEST_DIR}/sql.log" should not include "desync-before-marker"
-    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_desync=ON;"
-    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should not include "reason=wsrep_desync_failed"
+    The output should include "higher-ordinal peers have stopped"
+    The output should include "kubelet may now signal mariadbd"
   End
 
-  It "records a marker publication failure but still performs the local shutdown"
+  It "fails when the shutdown marker cannot be published"
     DATA_DIR="/dev/null/data"
-    local_sql() {
-      printf '%s\n' "$1" >> "${TEST_DIR}/sql.log"
-      return 0
-    }
-    mysqladmin() {
-      printf 'mysqladmin %s\n' "$*" >> "${TEST_DIR}/sql.log"
-      return 0
-    }
 
-    When call graceful_shutdown
-    The status should be success
+    When call prepare_ordered_shutdown
+    The status should be failure
     The output should include "failed to publish .galera-shutting-down"
     The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=shutting_down_marker_failed"
-    The contents of file "${TEST_DIR}/sql.log" should include "SET GLOBAL wsrep_desync=ON;"
-    The contents of file "${TEST_DIR}/sql.log" should include "mysqladmin"
-  End
-
-  It "does not fail the hook when SQL cleanup commands fail"
-    local_sql() {
-      return 1
-    }
-    mysqladmin() {
-      return 1
-    }
-
-    When call graceful_shutdown
-    The status should be success
-    The output should include "failed to set wsrep_desync=ON"
-    The output should include "failed to set wsrep_on=OFF"
-    The output should include "mysqladmin shutdown failed"
-    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=wsrep_desync_failed"
-    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=wsrep_disable_failed"
-    The contents of file "${GALERA_PRESTOP_DEGRADED_LOG}" should include "reason=mysqladmin_shutdown_failed"
   End
 End

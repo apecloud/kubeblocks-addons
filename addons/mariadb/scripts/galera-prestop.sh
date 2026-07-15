@@ -5,8 +5,6 @@ DATA_DIR="${DATA_DIR:-/var/lib/mysql}"
 GALERA_PRESTOP_ORDER_WAIT_SECONDS="${GALERA_PRESTOP_ORDER_WAIT_SECONDS:-60}"
 GALERA_PRESTOP_POLL_SECONDS="${GALERA_PRESTOP_POLL_SECONDS:-3}"
 GALERA_PRESTOP_PROBE_TIMEOUT_SECONDS="${GALERA_PRESTOP_PROBE_TIMEOUT_SECONDS:-2}"
-GALERA_PRESTOP_SQL_TIMEOUT_SECONDS="${GALERA_PRESTOP_SQL_TIMEOUT_SECONDS:-3}"
-GALERA_PRESTOP_SHUTDOWN_TIMEOUT_SECONDS="${GALERA_PRESTOP_SHUTDOWN_TIMEOUT_SECONDS:-40}"
 GALERA_PRESTOP_TERMINATION_GRACE_SECONDS="${GALERA_PRESTOP_TERMINATION_GRACE_SECONDS:-120}"
 GALERA_PRESTOP_SAFETY_MARGIN_SECONDS="${GALERA_PRESTOP_SAFETY_MARGIN_SECONDS:-5}"
 GALERA_PRESTOP_CONTAINER_LOG_PATH="${GALERA_PRESTOP_CONTAINER_LOG_PATH:-/proc/1/fd/1}"
@@ -36,7 +34,6 @@ record_degraded() {
     mirrored=1
   fi
   if [ "${persisted}" -ne 1 ] && [ "${mirrored}" -ne 1 ]; then
-    DEGRADED_EVIDENCE_WRITE_FAILED=1
     return 1
   fi
   return 0
@@ -99,24 +96,21 @@ validate_inputs() {
   if ! is_uint "${GALERA_PRESTOP_ORDER_WAIT_SECONDS}" \
     || ! is_uint "${GALERA_PRESTOP_POLL_SECONDS}" \
     || ! is_uint "${GALERA_PRESTOP_PROBE_TIMEOUT_SECONDS}" \
-    || ! is_uint "${GALERA_PRESTOP_SQL_TIMEOUT_SECONDS}" \
-    || ! is_uint "${GALERA_PRESTOP_SHUTDOWN_TIMEOUT_SECONDS}" \
     || ! is_uint "${GALERA_PRESTOP_TERMINATION_GRACE_SECONDS}" \
     || ! is_uint "${GALERA_PRESTOP_SAFETY_MARGIN_SECONDS}" \
     || [ "${GALERA_PRESTOP_POLL_SECONDS}" -eq 0 ] \
     || [ "${GALERA_PRESTOP_PROBE_TIMEOUT_SECONDS}" -eq 0 ] \
-    || [ "${GALERA_PRESTOP_SQL_TIMEOUT_SECONDS}" -eq 0 ] \
-    || [ "${GALERA_PRESTOP_SHUTDOWN_TIMEOUT_SECONDS}" -eq 0 ] \
     || [ "${GALERA_PRESTOP_TERMINATION_GRACE_SECONDS}" -eq 0 ] \
     || [ "${GALERA_PRESTOP_SAFETY_MARGIN_SECONDS}" -eq 0 ]; then
     VALIDATION_ERROR="reason=invalid_timeout_configuration"
     return 1
   fi
 
+  # The hook only orders peers and publishes the watcher guard. Kubelet sends
+  # TERM to mariadbd after this hook returns, so the rest of the Pod grace
+  # period is deliberately reserved for the engine's own clean shutdown.
   local worst_case_seconds=$((
     GALERA_PRESTOP_ORDER_WAIT_SECONDS
-    + (2 * GALERA_PRESTOP_SQL_TIMEOUT_SECONDS)
-    + GALERA_PRESTOP_SHUTDOWN_TIMEOUT_SECONDS
     + GALERA_PRESTOP_SAFETY_MARGIN_SECONDS
   ))
   if [ "${worst_case_seconds}" -gt "${GALERA_PRESTOP_TERMINATION_GRACE_SECONDS}" ]; then
@@ -265,48 +259,28 @@ wait_for_higher_ordinals() {
   done
 }
 
-local_sql() {
-  local statement="$1"
-  timeout "${GALERA_PRESTOP_SQL_TIMEOUT_SECONDS}" \
-    mariadb -u"${MARIADB_ROOT_USER:-}" -p"${MARIADB_ROOT_PASSWORD:-}" \
-    -P3306 -h127.0.0.1 \
-    -e "${statement}" >/dev/null 2>&1
-}
-
-graceful_shutdown() {
+prepare_ordered_shutdown() {
   if ! touch "${DATA_DIR}/.galera-shutting-down" 2>/dev/null; then
-    log "warning: failed to publish .galera-shutting-down before desync; continuing best-effort shutdown"
+    log "failed to publish .galera-shutting-down; refusing to report prepared"
     record_degraded "reason=shutting_down_marker_failed"
+    return 1
   fi
-
-  if ! local_sql "SET GLOBAL wsrep_desync=ON;"; then
-    log "warning: failed to set wsrep_desync=ON; continuing best-effort shutdown"
-    record_degraded "reason=wsrep_desync_failed"
-  fi
-
-  if ! local_sql "SET GLOBAL wsrep_on=OFF;"; then
-    log "warning: failed to set wsrep_on=OFF; continuing best-effort shutdown"
-    record_degraded "reason=wsrep_disable_failed"
-  fi
-
-  if ! timeout "${GALERA_PRESTOP_SHUTDOWN_TIMEOUT_SECONDS}" \
-    mysqladmin -u"${MARIADB_ROOT_USER:-}" -p"${MARIADB_ROOT_PASSWORD:-}" \
-    -h127.0.0.1 shutdown >/dev/null 2>&1; then
-    log "warning: mysqladmin shutdown failed; kubelet may terminate mariadbd"
-    record_degraded "reason=mysqladmin_shutdown_failed"
-  fi
+  log "ordered shutdown prepared; kubelet may now signal mariadbd"
+  return 0
 }
 
 main() {
-  DEGRADED_EVIDENCE_WRITE_FAILED=0
   if ! validate_inputs; then
     record_degraded "${VALIDATION_ERROR}"
-  else
-    wait_for_higher_ordinals || true
+    printf 'galera-prestop: shutdown preparation failed: %s\n' "${VALIDATION_ERROR}" >&2
+    return 1
   fi
-  graceful_shutdown || true
-  if [ "${DEGRADED_EVIDENCE_WRITE_FAILED}" -ne 0 ]; then
-    printf 'galera-prestop: degraded evidence sinks unavailable; emitting FailedPreStopHook\n' >&2
+  if ! wait_for_higher_ordinals; then
+    printf 'galera-prestop: shutdown preparation failed: higher-ordinal peers did not stop\n' >&2
+    return 1
+  fi
+  if ! prepare_ordered_shutdown; then
+    printf 'galera-prestop: shutdown preparation failed: watcher guard unavailable\n' >&2
     return 1
   fi
   return 0
