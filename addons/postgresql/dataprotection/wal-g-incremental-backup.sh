@@ -109,7 +109,10 @@ fi
 
 set +e
 echo "switch wal log"
-PSQL="psql -h ${CLUSTER_COMPONENT_NAME}-${COMPONENT_NAME} -U ${DP_DB_USER} -d postgres"
+# The cmpd pins Service serviceName=postgresql with roleSelector=primary; the
+# suffix must be that fixed serviceName, not the user-chosen component name.
+# pg_switch_wal()/archive checks below must run on the primary.
+PSQL="psql -h ${CLUSTER_COMPONENT_NAME}-postgresql -U ${DP_DB_USER} -d postgres"
 ${PSQL} -c "select pg_switch_wal();"
 
 # 3. add sentinel file for this backup CR

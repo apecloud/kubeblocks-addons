@@ -8,7 +8,7 @@ auth_user = postgres
 auth_query = SELECT usename, passwd FROM pg_shadow WHERE usename=$1
 pidfile =/opt/bitnami/pgbouncer/tmp/pgbouncer.pid
 logfile =/opt/bitnami/pgbouncer/logs/pgbouncer.log
-auth_type = md5
+auth_type = scram-sha-256
 pool_mode = session
 ignore_startup_parameters = extra_float_digits
 {{- $max_client_conn := 10000 }}

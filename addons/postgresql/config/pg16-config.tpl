@@ -29,7 +29,7 @@
 
 {{- $pgVersion := "16.0" }}
 {{- range $i, $spec := $.cluster.spec.componentSpecs }}
-{{- if eq "postgresql" $spec.name }}
+{{- if or (eq "postgresql" $spec.name) (hasPrefix "postgresql" (default "" $spec.componentDef)) }}
 {{- if $spec.serviceVersion }}
 {{- $pgVersion = $spec.serviceVersion }}
 {{- end }}
@@ -197,7 +197,7 @@ wal_keep_size = '{{- printf "%dMB" $wal_keep_size }}'
 
 old_snapshot_threshold = '-1'
 parallel_leader_participation = 'True'
-password_encryption = 'md5'
+password_encryption = 'scram-sha-256'
 pg_stat_statements.max = '5000'
 pg_stat_statements.save = 'False'
 pg_stat_statements.track = 'top'

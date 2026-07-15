@@ -240,6 +240,9 @@ spec:
         port: "5001"
         path: "/v1.0/getrole"
     switchover:
+      # script worst case ~45s (leader query 5s + switchover API 20s +
+      # bounded verification ~20s); kbagent clamps every action call at 60s
+      timeoutSeconds: 50
       exec:
         container: postgresql
         command: ["/kb-scripts/switchover.sh"]
@@ -256,7 +259,11 @@ spec:
           - bash
           - -c
           - |
-            eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+            # Expand the ${KB_ACCOUNT_NAME}/${KB_ACCOUNT_PASSWORD} placeholders
+            # without eval: bash pattern substitution treats the replacement as
+            # a literal, so credential values never go through a shell parse.
+            statement="${KB_ACCOUNT_STATEMENT//\$\{KB_ACCOUNT_NAME\}/${KB_ACCOUNT_NAME}}"
+            statement="${statement//\$\{KB_ACCOUNT_PASSWORD\}/${KB_ACCOUNT_PASSWORD}}"
             psql -h 127.0.0.1 -c "${statement}"
         env:
           - name: PGUSER
@@ -451,7 +458,7 @@ spec:
             port: tcp-pgbouncer
         env:
           - name: PGBOUNCER_AUTH_TYPE
-            value: md5
+            value: scram-sha-256
           - name: POSTGRESQL_USERNAME
             value: $(POSTGRES_USER)
           - name: POSTGRESQL_PASSWORD
