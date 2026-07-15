@@ -70,7 +70,7 @@ case "${1:-} ${2:-}" in
       *spec.force*) printf '%s' "${FAKE_FORCE:-false}" ;;
       *componentName==\"minio\"*) printf '%s' "${target_def}" ;;
       *componentName==\"milvus\"*) printf '%s' "${target_milvus_def}" ;;
-      *status.phase*) if [[ -n "${FAKE_OPS_PHASE:-}" ]]; then printf '%s' "${FAKE_OPS_PHASE}"; elif ${deleted}; then printf '%s' 'Succeed'; else printf '%s' 'Running'; fi ;;
+      *status.phase*) if ${deleted} && [[ -n "${FAKE_FINAL_OPS_PHASE:-}" ]]; then printf '%s' "${FAKE_FINAL_OPS_PHASE}"; elif [[ -n "${FAKE_OPS_PHASE:-}" ]]; then printf '%s' "${FAKE_OPS_PHASE}"; elif ${deleted}; then printf '%s' 'Succeed'; else printf '%s' 'Running'; fi ;;
       *) printf 'unexpected OpsRequest query: %s\n' "${output}" >&2; exit 64 ;;
     esac
     ;;
@@ -128,6 +128,14 @@ EOF
 
   run_failed_before_desired() {
     DESIRED_READY=false FAKE_OPS_PHASE=Failed run_recovery
+  }
+
+  run_cancelled_after_replacement() {
+    FAKE_FINAL_OPS_PHASE=Cancelled run_recovery
+  }
+
+  run_aborted_after_replacement() {
+    FAKE_FINAL_OPS_PHASE=Aborted run_recovery
   }
 
   It "replaces only the stale failed MinIO Pod after the desired alpha.1 contract is visible"
@@ -195,5 +203,23 @@ EOF
     The stderr should include "OpsRequest reached Failed while waiting for desired contract"
     The contents of file "${calls_file}" should not include "get pods"
     The contents of file "${calls_file}" should not include "delete pod"
+  End
+
+  It "reports a Cancelled OpsRequest immediately after replacing the stale Pod"
+    When call run_cancelled_after_replacement
+    The status should be failure
+    The output should include "replacement-pod=demo-minio-0,uid-new,Ready"
+    The stderr should include "OpsRequest reached Cancelled"
+    The stderr should not include "recovery did not converge"
+    The contents of file "${calls_file}" should include "delete pod demo-minio-0 --wait=false"
+  End
+
+  It "reports an Aborted OpsRequest immediately after replacing the stale Pod"
+    When call run_aborted_after_replacement
+    The status should be failure
+    The output should include "replacement-pod=demo-minio-0,uid-new,Ready"
+    The stderr should include "OpsRequest reached Aborted"
+    The stderr should not include "recovery did not converge"
+    The contents of file "${calls_file}" should include "delete pod demo-minio-0 --wait=false"
   End
 End

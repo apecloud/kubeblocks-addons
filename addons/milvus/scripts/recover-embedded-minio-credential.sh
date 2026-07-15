@@ -196,7 +196,11 @@ wait_for_operation_and_cluster() {
     [[ -n "${first}" ]] || first="${current}"
     last="${current}"
 
-    [[ "${ops_phase}" != "Failed" ]] || fail "OpsRequest reached Failed; first=${first}; last=${last}"
+    case "${ops_phase}" in
+      Failed|Cancelled|Aborted)
+        fail "OpsRequest reached ${ops_phase}; first=${first}; last=${last}"
+        ;;
+    esac
     if [[ "${ops_phase}" == "Succeed" && "${cluster_phase}" == "Running" ]]; then
       printf 'recovery=Succeed,cluster=Running,first=%s,last=%s\n' "${first}" "${last}"
       return 0
