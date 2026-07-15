@@ -861,6 +861,25 @@ primary:6379:primary-id:primary-id,self-id"
       End
     End
 
+    Context "when the current node already replicates the expected primary"
+      get_consistent_current_node_replication_state() { echo replica_ok; }
+      repair_current_node_replication() { echo called >> ./unexpected-control-repair; }
+      verify_current_node_replication() { echo called >> ./unexpected-control-verify; }
+
+      cleanup_control_calls() { rm -f ./unexpected-control-repair ./unexpected-control-verify; }
+      Before "cleanup_control_calls"
+      After "cleanup_control_calls"
+
+      It "performs zero mutations and zero post-repair verification calls"
+        When call ensure_current_node_replication "primary" "6379" "primary-id" "primary-id,self-id"
+        The status should be success
+        The stdout should include "Current node already replicates expected primary primary-id"
+        The stderr should be blank
+        The path "./unexpected-control-repair" should not be exist
+        The path "./unexpected-control-verify" should not be exist
+      End
+    End
+
     Context "when repair succeeds and dual-view verification converges"
       get_consistent_current_node_replication_state() { echo repairable; }
       repair_current_node_replication() { echo repair >> ./repair-count; }

@@ -239,9 +239,9 @@ get_current_comp_nodes_for_scale_out_replica() {
   }
 
   # get current pod ip list from KB_POD_LIST
-  IFS=',' read -ra CURRENT_SHARD_ANNOUNCE_IP_LIST <<< "$CURRENT_SHARD_POD_NAME_LIST"
+  IFS=',' read -ra CURRENT_POD_LIST <<< "$CURRENT_SHARD_POD_NAME_LIST"
   CURRENT_SHARD_ANNOUNCE_IP_LIST=()
-  for pod_name in "${CURRENT_SHARD_ANNOUNCE_IP_LIST[@]}"; do
+  for pod_name in "${CURRENT_POD_LIST[@]}"; do
     local pod_fqdn="$pod_name.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.cluster.local"
     if [ "$network_mode" == "advertised_svc" ]; then
       svc_and_port=$(parse_advertised_svc_and_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_PORT" "true")
