@@ -1096,6 +1096,9 @@
   // Enable parallel execution on the slave of all uncommitted threads already in the prepare phase, without violating consistency.
   slave_preserve_commit_order?: string & "0" | "1" | "OFF" | "ON"
 
+	// Enables or disables the Performance Schema
+	performance_schema: string & "OFF" | "ON" | *"OFF"
+
 	// The number of seconds the slave SQL thread waits for activity on the replication queue before checking for more events.
   performance_schema_digests_size?: int & >=-1 & <=1048576
 
