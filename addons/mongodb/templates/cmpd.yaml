@@ -188,8 +188,6 @@ spec:
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
             value: $(MONGODB_PASSWORD)
-          - name: PBM_MONGODB_REPLICA_SET
-            value: $(KB_CLUSTER_COMP_NAME)
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
           # syncer uses the env to wait dns ready
@@ -228,11 +226,6 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.namespace
-          - name: POD_UID
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.uid
           - name: POD_IP
             valueFrom:
               fieldRef:
@@ -256,17 +249,11 @@ spec:
             value: $(MONGODB_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
             value: $(MONGODB_PASSWORD)
-          - name: PBM_MONGODB_REPLICA_SET
-            value: $(KB_CLUSTER_COMP_NAME)
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
-          - name: PBM_DATA_MOUNT_POINT
-            value: {{ .Values.dataMountPath }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
-          - name: scripts
-            mountPath: /scripts
           - mountPath: /tools
             name: tools
       - name: exporter

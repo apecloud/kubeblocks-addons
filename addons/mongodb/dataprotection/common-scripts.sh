@@ -23,16 +23,6 @@ function DP_error_log() {
     echo "${curr_date} ERROR: $msg"
 }
 
-function buildJsonString() {
-    local jsonString=${1}
-    local key=${2}
-    local value=${3}
-    if [ ! -z "$jsonString" ];then
-       jsonString="${jsonString},"
-    fi
-    echo "${jsonString}\"${key}\":\"${value}\""
-}
-
 # Save backup status info file for syncing progress.
 # timeFormat: %Y-%m-%dT%H:%M:%SZ
 function DP_save_backup_status_info() {
@@ -306,7 +296,128 @@ function wait_for_syncer_restore_completion() {
   done
 }
 
-function handle_backup_exit() {
+function run_pbm_full_backup() {
+  set_backup_config_env
+  prepare_pbm_operation_storage_config
+
+  echo "INFO: Starting $PBM_BACKUP_TYPE backup for MongoDB through syncer..."
+  backup_result=$(syncerctl_cmd backup start --option "type=$PBM_BACKUP_TYPE" --option "compression=$PBM_COMPRESSION" --option "storage_config_token=$PBM_STORAGE_CONFIG_TOKEN")
+  rm -f "$PBM_STORAGE_CONFIG_FILE"
+  PBM_STORAGE_CONFIG_FILE=""
+  PBM_STORAGE_CONFIG_TOKEN=""
+  backup_name=$(echo "$backup_result" | jq -r '.op_id // empty')
+  if [ -z "$backup_name" ] || [ "$backup_name" = "null" ]; then
+    echo "ERROR: syncer backup start did not return op_id: $backup_result"
+    exit 1
+  fi
+  echo "INFO: Backup name: $backup_name"
+
+  wait_for_syncer_backup_completion "$backup_name"
+
+  echo "INFO: Backup status result:"
+  echo "$(echo "$describe_result" | jq)"
+  save_syncer_backup_info "$describe_result"
+}
+
+function run_pbm_full_restore() {
+  prepare_restore_storage_config
+
+  extras=$(cat /dp_downward/status_extras)
+  backup_name=$(echo "$extras" | jq -r '.[0].backup_name // empty')
+  backup_type=$(echo "$extras" | jq -r '.[0].backup_type // empty')
+
+  if [ -z "$backup_type" ] || [ -z "$backup_name" ]; then
+    echo "ERROR: Backup type or backup name is empty, skip restore."
+    exit 1
+  fi
+
+  echo "INFO: Starting syncer physical restore..."
+  if ! restore_result=$(syncerctl_cmd restore start --option "backup_name=$backup_name" --option type=physical --option "storage_config_token=$RESTORE_STORAGE_CONFIG_TOKEN" 2>&1); then
+    echo "ERROR: Syncer restore start failed: $restore_result"
+    exit 1
+  fi
+  RESTORE_REQUEST_ACCEPTED=true
+  echo "INFO: Syncer restore start result: $restore_result"
+  request_id=$(echo "$restore_result" | jq -r '.request_id // empty')
+
+  wait_for_syncer_restore_completion "$request_id"
+  RESTORE_COMPLETED=true
+  echo "INFO: Restore completed."
+}
+
+function ensure_pbm_pitr_enabled() {
+  local current_pitr_conf
+  current_pitr_conf=$(syncerctl_cmd pitr status)
+  local current_pitr_enabled
+  local current_oplog_span_min
+  local current_pitr_compression
+  local current_purge_interval_seconds
+  current_pitr_enabled=$(echo "$current_pitr_conf" | jq -r '.enabled // false')
+  current_oplog_span_min=$(echo "$current_pitr_conf" | jq -r '.oplog_span_min // empty')
+  current_pitr_compression=$(echo "$current_pitr_conf" | jq -r '.compression // empty')
+  current_purge_interval_seconds=$(echo "$current_pitr_conf" | jq -r '.purge_interval_seconds // empty')
+
+  if [ -n "${PBM_STORAGE_CONFIG_TOKEN:-}" ] || [ "$current_pitr_enabled" != "true" ] || [ "$current_oplog_span_min" != "$PBM_OPLOG_SPAN_MIN_MINUTES" ] || [ "$current_pitr_compression" != "$PBM_COMPRESSION" ] || [ "$current_purge_interval_seconds" != "$PBM_PURGE_INTERVAL_SECONDS" ]; then
+    echo "INFO: Applying desired PITR configuration through syncer..."
+    local args=(pitr enable --option "oplog_span_min=$PBM_OPLOG_SPAN_MIN_MINUTES" --option "compression=$PBM_COMPRESSION" --option "purge_interval_seconds=$PBM_PURGE_INTERVAL_SECONDS")
+    if [ -n "${PBM_STORAGE_CONFIG_TOKEN:-}" ]; then
+      args+=(--option "storage_config_token=$PBM_STORAGE_CONFIG_TOKEN")
+    fi
+    syncerctl_cmd "${args[@]}"
+    if [ -n "${PBM_STORAGE_CONFIG_FILE:-}" ]; then
+      rm -f "$PBM_STORAGE_CONFIG_FILE"
+      PBM_STORAGE_CONFIG_FILE=""
+      PBM_STORAGE_CONFIG_TOKEN=""
+    fi
+    echo "INFO: PITR config updated."
+  fi
+}
+
+function upload_pbm_continuous_backup_info() {
+  local status_result
+  status_result=$(syncerctl_cmd pitr chunks)
+  echo "INFO: Continuous backup result:"
+  echo "$(echo "$status_result" | jq)"
+  if save_syncer_backup_info "$status_result"; then
+    echo "INFO: Continuous backup info uploaded."
+  fi
+}
+
+function run_pbm_pitr_backup() {
+  set_backup_config_env
+
+  # Apply storage once through the first PITR enable call. Re-applying storage in
+  # the loop clears PBM PITR settings and restarts slicing before chunks mature.
+  prepare_pbm_operation_storage_config
+
+  while true; do
+    ensure_pbm_pitr_enabled
+    upload_pbm_continuous_backup_info
+    sleep 30
+  done
+}
+
+function run_pbm_pitr_restore() {
+  prepare_restore_storage_config
+
+  recovery_target_time=$(date -d "@${DP_RESTORE_TIMESTAMP}" +"%Y-%m-%dT%H:%M:%S")
+  echo "INFO: Recovery target time: $recovery_target_time"
+
+  echo "INFO: Starting syncer PITR restore..."
+  if ! restore_result=$(syncerctl_cmd restore start --option "pitr_target=$recovery_target_time" --option type=physical --option "storage_config_token=$RESTORE_STORAGE_CONFIG_TOKEN" 2>&1); then
+    echo "ERROR: Syncer restore start failed: $restore_result"
+    exit 1
+  fi
+  RESTORE_REQUEST_ACCEPTED=true
+  echo "INFO: Syncer restore start result: $restore_result"
+  request_id=$(echo "$restore_result" | jq -r '.request_id // empty')
+
+  wait_for_syncer_restore_completion "$request_id"
+  RESTORE_COMPLETED=true
+  echo "INFO: Restore completed."
+}
+
+function handle_pbm_backup_exit() {
   exit_code=$?
   set +e
   if [ -n "${PBM_STORAGE_CONFIG_FILE:-}" ]; then
@@ -327,19 +438,6 @@ function handle_restore_exit() {
   fi
   if [ $exit_code -ne 0 ]; then
     echo "failed with exit code $exit_code"
-    exit 1
-  fi
-}
-
-function handle_pitr_exit() {
-  exit_code=$?
-  set +e
-  if [ -n "${PBM_STORAGE_CONFIG_FILE:-}" ]; then
-    rm -f "$PBM_STORAGE_CONFIG_FILE"
-  fi
-  if [ $exit_code -ne 0 ]; then
-    echo "failed with exit code $exit_code"
-    touch "${DP_BACKUP_INFO_FILE}.exit"
     exit 1
   fi
 }
