@@ -211,7 +211,10 @@
 	// Indicates the status of the Event Scheduler
 	event_scheduler?: string & "ON" | "OFF"
 
-	expire_logs_days: int & >=0 & <=4294967295 | *2592000
+	// Deprecated alias of binlog expiration in days; MySQL range is 0-99 days
+	// (the previous 2592000 default was binlog_expire_logs_seconds' default
+	// pasted into the wrong variable).
+	expire_logs_days?: int & >=0 & <=99 | *0
 
 	// Needed for 5.6.7
 	explicit_defaults_for_timestamp: string & "OFF" | "ON" | *"ON"
@@ -579,6 +582,9 @@
 
 	// Controls encryption of redo log data for tables encrypted using the InnoDB tablespace encryption feature.
 	innodb_redo_log_encrypt: string & "OFF" | "ON" | *"OFF"
+
+	// Optional because the template only derives it when a memory limit is available.
+	innodb_redo_log_capacity?: int & >= 8388608
 
 	// The replication thread delay (in ms) on a slave server if innodb_thread_concurrency is reached.
 	innodb_replication_delay?: int & >=0 & <=4294967295

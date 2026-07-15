@@ -145,7 +145,7 @@ function universal_sed {
 }
 
 function fail {
-  message="$myname[$$]: $1"
+  message="${myname}[$$]: $1"
   >&2 echo "$message"
   exit 1
 }
@@ -275,7 +275,7 @@ function api {
   api_call_result=0
   if [[ ${curl_auth_params} != "401 Unauthorized" ]]; then
     for sleep_time in 0.1 0.2 0.5 1 2 2.5 5 0 ; do
-      api_response=$(curl ${curl_auth_params} -s "$uri" | jq '.')
+      api_response=$(curl ${curl_auth_params} -fsS "$uri" | jq -ce 'select(. != null)')
       api_call_result=$?
       [ $api_call_result -eq 0 ] && break
       sleep $sleep_time
@@ -1048,4 +1048,5 @@ function main {
   run_command
 }
 
+${__SOURCED__:+false} : || return 0
 main

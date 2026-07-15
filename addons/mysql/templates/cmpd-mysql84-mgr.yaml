@@ -8,6 +8,7 @@ metadata:
     {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
+  {{- include "mysql.spec.roles.mgr" . | nindent 2 }}
   serviceVersion: 8.4.10
   configs:
     - name: mysql-replication-config
@@ -32,7 +33,7 @@ spec:
       {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - syncer
           - --port
