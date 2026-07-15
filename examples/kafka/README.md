@@ -11,7 +11,9 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 
 | Topology | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |----------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Combined/Separated | Yes          | Yes                   | Yes               | Yes       | Yes        | Yes       | Yes    | N/A   |
+| Combined | Scale-out not verified; controller scale-in blocked | Yes | Yes | Yes | Yes | Yes | Yes | N/A |
+| Separated controller | Scale-out not verified; scale-in blocked | Yes | Yes | Yes | Yes | Yes | Yes | N/A |
+| Separated broker | Scale-out not verified; scale-in pending validation | Yes | Yes | Yes | Yes | Yes | Yes | N/A |
 
 - Combine Mode: KRaft (Controller) and Broker components are combined in the same pod.
 - Separated Mode: KRaft (Controller) and Broker components are deployed in different pods.
@@ -69,8 +71,7 @@ When the cluster creation is done, refer to a secret named `$(CLUSTER_NAME)$-kaf
 ### Horizontal scaling
 
 > [!IMPORTANT]
-> As per the Kafka documentation, the number of KRaft replicas should be odd to avoid split-brain scenarios.
-> Make sure the number of KRaft replicas, i.e. Controller replicas,  is always odd after Horizontal Scaling, either in Separated or Combined mode.
+> The KRaft components in this addon use a static `controller.quorum.voters` list. Do not scale in `kafka-combine` or `kafka-controller`, either with an OpsRequest or by editing Cluster replicas. Installing the latest chart does not retrofit the guard into Components that still reference an older ComponentDefinition; move them through the supported ComponentDefinition upgrade workflow before relying on this protection.
 
 #### [Scale-out](scale-out.yaml)
 
@@ -86,27 +87,9 @@ After applying the operation, you will see a new pod created. You can check the 
 kubectl describe -n demo ops kafka-combined-scale-out
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
-Horizontal scaling in  `kafka-combine` component in cluster `kafka-combined-cluster` by deleting ONE replica:
-
-```bash
-kubectl apply -f examples/kafka/scale-in.yaml
-```
-
-#### Scale-in/out using Cluster API
-
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: kafka-combine
-      replicas: 1 # Set the number of replicas to your desired number
-```
+Controller-bearing scale-in is blocked. The guard does not automatically restore the requested replica count after timeout, and timeout is not cancellation. Separated broker scale-in remains pending positive runtime validation.
 
 ### [Vertical scaling](verticalscale.yaml)
 
