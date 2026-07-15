@@ -548,6 +548,18 @@ Describe "Redis Cluster Common Bash Script Tests"
     End
   End
 
+  Describe "classify_current_node_replication_view()"
+    It "classifies a slotless replica with the wrong upstream as repairable"
+      cluster_nodes_info="self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 myself,slave stale-primary-id 0 1 1 connected
+primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+
+      When call classify_current_node_replication_view "$cluster_nodes_info" "primary-id"
+      The status should be success
+      The output should equal "repairable"
+      The stderr should be blank
+    End
+  End
+
   Describe "get_consistent_current_node_replication_state()"
     setup_replication_views() {
       service_port=6379
@@ -823,6 +835,12 @@ primary:6379:primary-id:primary-id,self-id"
   End
 
   Describe "ensure_current_node_replication() dual-view gate"
+    It "rejects the removed one-argument API"
+      When call ensure_current_node_replication "primary-id"
+      The status should be failure
+      The stderr should include "requires primary endpoint, port, ID, and shard node IDs"
+    End
+
     Context "when pre-repair views are inconsistent"
       get_consistent_current_node_replication_state() {
         echo "Error: Cluster replication views disagree before mutation" >&2

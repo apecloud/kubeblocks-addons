@@ -910,17 +910,6 @@ classify_current_node_replication_view() {
   return 1
 }
 
-get_current_node_replication_state() {
-  local expected_primary_id="$1"
-  local cluster_nodes_info
-
-  if ! cluster_nodes_info=$(get_cluster_nodes_info "127.0.0.1" "$service_port"); then
-    echo "Failed to resolve current node replication state" >&2
-    return 1
-  fi
-  classify_current_node_replication_view "$cluster_nodes_info" "$expected_primary_id"
-}
-
 get_consistent_current_node_replication_state() {
   local primary_endpoint="$1"
   local primary_port="$2"
@@ -1100,41 +1089,16 @@ verify_current_node_replication() {
 }
 
 ensure_current_node_replication() {
-  local expected_primary_id
-  local state
-
-  if [ "$#" -eq 1 ]; then
-    expected_primary_id="$1"
-    if ! state=$(get_current_node_replication_state "$expected_primary_id"); then
-      return 1
-    fi
-    case "$state" in
-      replica_ok)
-        echo "Current node already replicates expected primary $expected_primary_id"
-        return 0
-        ;;
-      repairable)
-        if ! repair_current_node_replication "$expected_primary_id"; then
-          echo "Failed to repair current node replication" >&2
-          return 1
-        fi
-        if ! verify_current_node_replication "$expected_primary_id"; then
-          echo "Current node replication did not converge to expected primary $expected_primary_id" >&2
-          return 1
-        fi
-        return 0
-        ;;
-      *)
-        echo "Refusing to repair current node from state $state" >&2
-        return 1
-        ;;
-    esac
+  if [ "$#" -ne 4 ]; then
+    echo "ensure_current_node_replication requires primary endpoint, port, ID, and shard node IDs" >&2
+    return 1
   fi
 
   local primary_endpoint="$1"
   local primary_port="$2"
-  expected_primary_id="$3"
+  local expected_primary_id="$3"
   local current_shard_node_ids="$4"
+  local state
   if ! state=$(get_consistent_current_node_replication_state "$primary_endpoint" "$primary_port" "$expected_primary_id" "$current_shard_node_ids"); then
     echo "Failed to get consistent current node replication state" >&2
     return 1
