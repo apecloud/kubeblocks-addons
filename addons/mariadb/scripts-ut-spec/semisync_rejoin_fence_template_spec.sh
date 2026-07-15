@@ -25,6 +25,53 @@ Describe "cmpd-replication.yaml rejoin fence template"
     ' "$(template_file)"
   }
 
+  extract_function_definition() {
+    function_name="$1"
+    awk -v function_name="${function_name}" '
+      index($0, function_name "() {") == 1 { inside = 1; start = NR }
+      inside && NR > start && /^[[:alnum:]_]+\(\) \{$/ { exit }
+      inside { print }
+    ' "$(template_file)"
+  }
+
+  runtime_secondary_pending_preserves_remote_root_fence() {
+    tmpdir="$(mktemp -d)" || return 1
+    DATA_DIR="${tmpdir}"
+    mkdir -p "${DATA_DIR}" || return 1
+    touch "${DATA_DIR}/.replication-ready" "${DATA_DIR}/.primary-read-write-ready"
+    printf '%s' secondary > "${DATA_DIR}/.remote-root-fence-role"
+
+    eval "$(extract_function_definition mark_replication_pending)"
+    eval "$(extract_function_definition configure_replication_from_primary_service_once)"
+
+    observed_marker=unobserved
+    set_replica_read_only() {
+      if [ -f "${DATA_DIR}/.remote-root-fence-role" ]; then
+        observed_marker="$(cat "${DATA_DIR}/.remote-root-fence-role")"
+      else
+        observed_marker=absent
+      fi
+      return 1
+    }
+    prestop_watchdog_log() { :; }
+
+    configure_replication_from_primary_service_once "runtime-secondary-reconcile"
+    reconcile_rc=$?
+    marker_after=absent
+    [ ! -f "${DATA_DIR}/.remote-root-fence-role" ] || marker_after="$(cat "${DATA_DIR}/.remote-root-fence-role")"
+    ready_removed=false
+    pending_present=false
+    [ ! -f "${DATA_DIR}/.replication-ready" ] && [ ! -f "${DATA_DIR}/.primary-read-write-ready" ] && ready_removed=true
+    [ -f "${DATA_DIR}/.replication-pending" ] && pending_present=true
+    rm -rf "${tmpdir}"
+
+    [ "${reconcile_rc}" -eq 1 ] &&
+      [ "${observed_marker}" = secondary ] &&
+      [ "${marker_after}" = secondary ] &&
+      [ "${ready_removed}" = true ] &&
+      [ "${pending_present}" = true ]
+  }
+
   fenced_primary_commit_is_last_visible_step() {
     awk '
       index($0, "set_primary_read_write() {") { fn = 1 }
@@ -325,8 +372,13 @@ Describe "cmpd-replication.yaml rejoin fence template"
     The status should be success
   End
 
-  It "clears stale remote-root fence markers when replication becomes pending"
+  It "does not let generic pending state erase the durable secondary fence marker"
     When call function_contains "mark_replication_pending" ".remote-root-fence-role"
+    The status should be failure
+  End
+
+  It "keeps the secondary fence marker throughout the first runtime-secondary reconcile step"
+    When call runtime_secondary_pending_preserves_remote_root_fence
     The status should be success
   End
 
