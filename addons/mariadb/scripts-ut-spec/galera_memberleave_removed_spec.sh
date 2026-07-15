@@ -4,9 +4,10 @@
 # kbagent execution face (no mariadb client), all SQL guarded with
 # `2>/dev/null || true`, so its claimed FLUSH TABLES / wsrep_desync=ON never
 # executed. Galera evicts a departed node natively (keepalive timeout) and
-# the shutdown-time graceful leave (final seqno + safe_to_bootstrap, clean
-# InnoDB flush) is handled by the mariadb container preStop, which runs
-# in-container against 127.0.0.1. The broken action + its script were removed.
+# the native container preStop orders peer termination and publishes the
+# watcher guard. Kubelet then signals mariadbd PID 1, which performs the
+# shutdown-time graceful leave (final seqno + safe_to_bootstrap, clean InnoDB
+# flush). The broken action + its script were removed.
 
 Describe "galera memberLeave removal (H10)"
   CMPD_GALERA="${SHELLSPEC_CWD:?}/addons/mariadb/templates/cmpd-galera.yaml"
@@ -37,20 +38,15 @@ Describe "galera memberLeave removal (H10)"
     The output should equal "GONE"
   End
 
-  It "graceful-leave intent is still covered by the galera preStop (in-container)"
-    # The shutdown-time graceful leave lives in the mariadb container preStop.
+  It "graceful-leave intent is still covered by the native container termination path"
+    # preStop orders the nodes; kubelet TERM drives the actual engine exit.
     When run sh -c "grep -c 'preStop:' '${CMPD_GALERA}'"
     The status should be success
     The output should equal "1"
   End
 
-  It "preStop performs the in-container graceful shutdown (inline SQL or dedicated prestop script)"
-    # Implementation-agnostic on purpose: the graceful shutdown may live as
-    # inline preStop SQL (current main) or be delegated to a dedicated
-    # galera-prestop.sh (PR #3108's bounded ordered shutdown). Pinning the
-    # inline SQL literal here made this spec fail when combined with #3108
-    # even though the behavior is preserved — assert the intent, not the form.
-    When run sh -c "grep -F 'SET GLOBAL wsrep_on=OFF' '${CMPD_GALERA}' || grep -E 'galera-prestop\.sh' '${CMPD_GALERA}'"
+  It "preStop delegates bounded ordering to the dedicated script"
+    When run sh -c "grep -E 'galera-prestop\.sh' '${CMPD_GALERA}'"
     The status should be success
     The output should not equal ""
   End
