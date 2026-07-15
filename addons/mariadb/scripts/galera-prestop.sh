@@ -175,10 +175,20 @@ peer_sql_port_state() {
 
   case "${output}" in
     *"Connection refused"*) printf 'closed' ;;
-    *"Name or service not known"*|*"Temporary failure in name resolution"*|*"No address associated"*)
-      printf 'dns-failure'
+    *"Name or service not known"*|*"No address associated"*)
+      printf 'absent'
       ;;
+    *"Temporary failure in name resolution"*) printf 'dns-transient' ;;
     *) printf 'unreachable' ;;
+  esac
+}
+
+peer_in_list() {
+  local list="$1"
+  local peer="$2"
+  case " ${list} " in
+    *" ${peer} "*) return 0 ;;
+    *) return 1 ;;
   esac
 }
 
@@ -194,6 +204,10 @@ wait_for_higher_ordinals() {
   local started_at
   started_at="$(monotonic_seconds)"
   local deadline=$((started_at + GALERA_PRESTOP_ORDER_WAIT_SECONDS))
+  # Bash 3 compatible, space-delimited sets. Peer FQDNs are validated to
+  # contain no whitespace before this function is called by main.
+  local absent_once=""
+  local confirmed_stopped=""
   while true; do
     local now
     now="$(monotonic_seconds)"
@@ -209,8 +223,13 @@ wait_for_higher_ordinals() {
     fi
 
     local still_waiting=""
+    local next_absent_once=""
     local peer
     for peer in ${peers}; do
+      if peer_in_list "${confirmed_stopped}" "${peer}"; then
+        continue
+      fi
+
       now="$(monotonic_seconds)"
       remaining=$((deadline - now))
       if [ "${remaining}" -le 0 ]; then
@@ -229,8 +248,23 @@ wait_for_higher_ordinals() {
           # A refused connection is only the local observation that the SQL
           # listener is down. It is the cleanest signal available to this
           # preStop hook, but it is not proof that the peer wrote grastate.dat.
+          confirmed_stopped="${confirmed_stopped} ${peer}"
           ;;
-        open|timeout|dns-failure|unreachable)
+        absent)
+          # A deleted higher-ordinal Pod may disappear from headless-Service
+          # DNS before this hook probes it. Require the same authoritative
+          # name-absence result in two consecutive polls so a one-off resolver
+          # anomaly cannot release the lower ordinal early.
+          if peer_in_list "${absent_once}" "${peer}"; then
+            confirmed_stopped="${confirmed_stopped} ${peer}"
+          else
+            next_absent_once="${next_absent_once} ${peer}"
+            still_waiting="${still_waiting} ${peer}(absent-1/2)"
+          fi
+          ;;
+        open|timeout|dns-transient|unreachable)
+          # Do not carry an authoritative-absence streak across any uncertain
+          # or live observation. The peer must start again at 1/2.
           still_waiting="${still_waiting} ${peer}(${state})"
           ;;
         *)
@@ -238,6 +272,7 @@ wait_for_higher_ordinals() {
           ;;
       esac
     done
+    absent_once="${next_absent_once}"
 
     if [ -z "${still_waiting}" ]; then
       log "higher-ordinal peers have stopped; proceeding with local shutdown"
