@@ -168,6 +168,24 @@ LOWERCLIENT
     ' "${CASE_DIR}/client.log"
   }
 
+  source_wrapper_contract() {
+    script="${ADDON_ROOT}/scripts/replication-roleprobe.sh"
+    # shellcheck disable=SC2016 # Deliberately match the literal source token.
+    raw_client_token='"${mariadb_cli}"'
+    wrapper_defs="$(grep -c '^roleprobe_loopback_sql_as() {' "${script}")"
+    wrapper_refs="$(grep -c 'roleprobe_loopback_sql_as' "${script}")"
+    raw_client_execs="$(grep -c "^[[:space:]]*${raw_client_token}" "${script}")"
+    explicit_flag_argv_sites="$(grep -c -- '--connect-timeout=5 --skip-ssl' "${script}")"
+    [ "${wrapper_defs}" -eq 1 ] || return 1
+    # Definition + local_sql_as + root/internal status + STOP/repair/START.
+    [ "${wrapper_refs}" -eq 7 ] || return 1
+    # The only raw client execs are the wrapper's scalar and labeled branches,
+    # and each branch owns exactly one explicit flag site.
+    [ "${raw_client_execs}" -eq 2 ] || return 1
+    [ "${explicit_flag_argv_sites}" -eq 2 ] || return 1
+    printf 'wrapper=1 refs=7 raw-inside-wrapper=2 flag-sites=2\n'
+  }
+
   primary_production_contract() {
     prepare_rendered_probe || return 1
     role="$(invoke_rendered_probe false 2>"${CASE_DIR}/stderr")"
@@ -233,5 +251,12 @@ LOWERCLIENT
     When call secondary_repair_contract
     The status should be success
     The output should equal "secondary"
+  End
+
+
+  It "keeps one wrapper and prevents all six call sites from falling back to raw client exec"
+    When call source_wrapper_contract
+    The status should be success
+    The output should equal "wrapper=1 refs=7 raw-inside-wrapper=2 flag-sites=2"
   End
 End
