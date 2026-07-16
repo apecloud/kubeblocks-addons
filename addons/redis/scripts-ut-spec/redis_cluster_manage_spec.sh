@@ -1030,7 +1030,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         When call scale_out_redis_cluster_shard
         The status should be success
         The output should include "The current component shard primary and replicas already joined the cluster."
-        The output should include "Redis cluster scale out shard already owns 16384 slots and cluster is stable"
+        The output should include "membership converged; slot migration is delegated to the managed shardAdd Job"
       End
     End
 
@@ -1177,7 +1177,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       End
     End
 
-    Context "when failed to scale out shard reshard"
+    Context "when managed shardAdd owns slot migration after membership converges"
       init_current_comp_default_nodes_for_scale_out() {
         declare -gA scale_out_shard_default_primary_node
         scale_out_shard_default_primary_node["redis-shard-98x-0"]="10.42.0.1:6379"
@@ -1190,7 +1190,11 @@ Describe "Redis Cluster Manage Bash Script Tests"
       }
 
       check_slots_covered() {
-        return 1
+        check_slots_covered_calls=$((check_slots_covered_calls + 1))
+        if [ "$check_slots_covered_calls" -eq 1 ]; then
+          return 1
+        fi
+        return 0
       }
 
       fix_unstable_cluster_and_defer() {
@@ -1221,15 +1225,19 @@ Describe "Redis Cluster Manage Bash Script Tests"
       }
 
       scale_out_shard_reshard() {
-        return 1
+        printf 'unexpected reshard\n' >"$reshard_marker"
+        return 0
       }
 
       get_cluster_nodes_info() {
-         cluster_nodes_info="4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-98x-0.redis-shard-98x-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287"$'\n'"7381c6dca033cd1b321922508553fab869a29e 10.42.0.228:6379@16379,redis-shard-7hy-1.redis-shard-7hy-headless.default.svc slave 4958e6dca033cd1b321922508553fab869a29d 0 1711958289570 4 connected"
+         cluster_nodes_info="4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-98x-0.redis-shard-98x-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287"$'\n'"6381c6dca033cd1b321922508553fab869a29f 10.42.0.229:6379@16379,redis-shard-98x-1.redis-shard-98x-headless.default.svc slave 4958e6dca033cd1b321922508553fab869a29d 0 1711958289570 4 connected"$'\n'"7381c6dca033cd1b321922508553fab869a29e 10.42.0.228:6379@16379,redis-shard-7hy-1.redis-shard-7hy-headless.default.svc slave 4958e6dca033cd1b321922508553fab869a29d 0 1711958289570 4 connected"
          echo "$cluster_nodes_info"
       }
 
       setup() {
+        check_slots_covered_calls=0
+        reshard_marker=$(mktemp -t redis-reshard-marker-XXXXXX)
+        rm -f "$reshard_marker"
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
         export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
         export CURRENT_SHARD_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
@@ -1240,18 +1248,20 @@ Describe "Redis Cluster Manage Bash Script Tests"
       Before "setup"
 
       un_setup() {
+        rm -f "$reshard_marker"
         unset CURRENT_SHARD_COMPONENT_SHORT_NAME
         unset KB_CLUSTER_POD_NAME_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
 
-      It "returns error when failed to scale out shard reshard"
+      It "returns after positive membership closure without reshard mutation"
         When call scale_out_redis_cluster_shard
-        The status should be failure
-        The error should include "Failed to scale out shard reshard"
+        The status should be success
         The error should not include "unexpected check_node_in_cluster port"
         The stdout should include "Redis cluster scale out shard secondary node redis-shard-98x-1 successfully"
+        The stdout should include "membership converged; slot migration is delegated to the managed shardAdd Job"
+        The path "$reshard_marker" should not be exist
       End
     End
   End

@@ -99,7 +99,10 @@ Describe "Redis Cluster6 Manage Script Tests"
 
       check_slots_covered() { return 0; }
 
-      check_current_shard_other_nodes_are_joined() { return 1; }
+      check_current_shard_other_nodes_are_joined() {
+        membership_checks=$((membership_checks + 1))
+        [ "$membership_checks" -gt 1 ]
+      }
 
       check_node_in_cluster() { return 1; }
 
@@ -113,6 +116,7 @@ Describe "Redis Cluster6 Manage Script Tests"
       count_node_slots() { echo "16384"; }
 
       setup() {
+        membership_checks=0
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
         export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
         export CURRENT_SHARD_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
@@ -155,7 +159,10 @@ Describe "Redis Cluster6 Manage Script Tests"
         if [ "$1" = "10.42.0.1:6379" ]; then return 0; else return 1; fi
       }
 
-      check_current_shard_other_nodes_are_joined() { return 1; }
+      check_current_shard_other_nodes_are_joined() {
+        membership_checks=$((membership_checks + 1))
+        [ "$membership_checks" -gt 1 ]
+      }
 
       count_node_slots() { echo "16384"; }
 
@@ -169,6 +176,7 @@ Describe "Redis Cluster6 Manage Script Tests"
       }
 
       setup() {
+        membership_checks=0
         export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
         export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
         export CURRENT_SHARD_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
