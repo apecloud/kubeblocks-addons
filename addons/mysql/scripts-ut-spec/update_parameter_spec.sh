@@ -80,7 +80,7 @@ Describe "MySQL update-parameter Script Tests"
         return 1
       }
       When run source ../scripts/update-parameter.sh no_such_variable 1
-      The status should be failure
+      The status should equal 1
       The stderr should include "Failed to set parameter no_such_variable"
     End
 
@@ -90,7 +90,7 @@ Describe "MySQL update-parameter Script Tests"
         return 1
       }
       When run source ../scripts/update-parameter.sh innodb_flush_log_at_trx_commit 9
-      The status should be failure
+      The status should equal 1
       The stderr should include "Failed to set parameter"
     End
 
@@ -100,7 +100,7 @@ Describe "MySQL update-parameter Script Tests"
         return 1
       }
       When run source ../scripts/update-parameter.sh max_connections 500
-      The status should be failure
+      The status should equal 1
       The stderr should include "Failed to set parameter"
     End
 
@@ -110,7 +110,7 @@ Describe "MySQL update-parameter Script Tests"
         return 1
       }
       When run source ../scripts/update-parameter.sh max_connections 500
-      The status should be failure
+      The status should equal 1
       The stderr should include "Failed to set parameter"
     End
   End
@@ -127,19 +127,61 @@ Describe "MySQL update-parameter Script Tests"
       esac
     }
 
-    It "rejects a removed variable on MySQL 8.4 before SET GLOBAL"
+    It "rejects expire_logs_days with the dedicated exit code before SET GLOBAL"
       mysql() { mock_mysql_version "8.4.8" "$@"; }
       When run source ../scripts/update-parameter.sh expire_logs_days 1
-      The status should be failure
+      The status should equal 64
       The stderr should include "removed in MySQL 8.4"
       # SET GLOBAL must not have been attempted for the removed variable.
       The contents of file "${MOCK_QUERY_FILE}" should not include "SET GLOBAL expire_logs_days"
     End
 
-    It "rejects another removed variable (master_info_repository) on 8.4"
+    It "rejects default_authentication_plugin with the dedicated exit code"
+      mysql() { mock_mysql_version "8.4.8" "$@"; }
+      When run source ../scripts/update-parameter.sh default_authentication_plugin mysql_native_password
+      The status should equal 64
+      The stderr should include "removed in MySQL 8.4"
+    End
+
+    It "rejects binlog_transaction_dependency_tracking with the dedicated exit code"
+      mysql() { mock_mysql_version "8.4.8" "$@"; }
+      When run source ../scripts/update-parameter.sh binlog_transaction_dependency_tracking WRITESET
+      The status should equal 64
+      The stderr should include "removed in MySQL 8.4"
+    End
+
+    It "rejects transaction_write_set_extraction with the dedicated exit code"
+      mysql() { mock_mysql_version "8.4.8" "$@"; }
+      When run source ../scripts/update-parameter.sh transaction_write_set_extraction XXHASH64
+      The status should equal 64
+      The stderr should include "removed in MySQL 8.4"
+    End
+
+    It "rejects slave_rows_search_algorithms with the dedicated exit code"
+      mysql() { mock_mysql_version "8.4.8" "$@"; }
+      When run source ../scripts/update-parameter.sh slave_rows_search_algorithms INDEX_SCAN,HASH_SCAN
+      The status should equal 64
+      The stderr should include "removed in MySQL 8.4"
+    End
+
+    It "rejects master_info_repository with the dedicated exit code"
       mysql() { mock_mysql_version "8.4.8" "$@"; }
       When run source ../scripts/update-parameter.sh master_info_repository TABLE
-      The status should be failure
+      The status should equal 64
+      The stderr should include "removed in MySQL 8.4"
+    End
+
+    It "rejects relay_log_info_repository with the dedicated exit code"
+      mysql() { mock_mysql_version "8.4.8" "$@"; }
+      When run source ../scripts/update-parameter.sh relay_log_info_repository TABLE
+      The status should equal 64
+      The stderr should include "removed in MySQL 8.4"
+    End
+
+    It "rejects log_bin_use_v1_row_events with the dedicated exit code"
+      mysql() { mock_mysql_version "8.4.8" "$@"; }
+      When run source ../scripts/update-parameter.sh log_bin_use_v1_row_events ON
+      The status should equal 64
       The stderr should include "removed in MySQL 8.4"
     End
 
@@ -151,12 +193,38 @@ Describe "MySQL update-parameter Script Tests"
       The contents of file "${MOCK_QUERY_FILE}" should equal "SET GLOBAL max_connections = 500;"
     End
 
+    It "keeps an unlisted unknown variable on the generic exit-code path on MySQL 8.4"
+      mysql() {
+        local q; eval "q=\"\${$#}\""
+        case "$q" in
+          *VERSION*) printf '%s\n' "8.4.8" ;;
+          *) echo "ERROR 1193 (HY000): Unknown system variable 'no_such_variable'" >&2; return 1 ;;
+        esac
+      }
+      When run source ../scripts/update-parameter.sh no_such_variable 1
+      The status should equal 1
+      The stderr should include "Failed to set parameter no_such_variable"
+    End
+
     It "does not reject the removed name on MySQL 8.0 (still a legal 8.0 variable)"
       mysql() { mock_mysql_version "8.0.33" "$@"; }
       When run source ../scripts/update-parameter.sh expire_logs_days 1
       The status should be success
       The stdout should include "Set parameter expire_logs_days"
       The contents of file "${MOCK_QUERY_FILE}" should equal "SET GLOBAL expire_logs_days = 1;"
+    End
+
+    It "keeps a version-probe failure on the generic exit-code path"
+      mysql() {
+        local q; eval "q=\"\${$#}\""
+        case "$q" in
+          *VERSION*) return 1 ;;
+          *) echo "ERROR 1193 (HY000): Unknown system variable 'expire_logs_days'" >&2; return 1 ;;
+        esac
+      }
+      When run source ../scripts/update-parameter.sh expire_logs_days 1
+      The status should equal 1
+      The stderr should include "Failed to set parameter expire_logs_days"
     End
   End
 End

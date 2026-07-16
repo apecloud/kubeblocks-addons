@@ -17,11 +17,16 @@ if echo "${paramName}" | grep -q "^loose_"; then
 fi
 paramName=$(echo "${paramName}" | tr '-' '_')
 
-# MySQL 8.4 removed several system variables. Reject a reconfigure of any of
-# them BEFORE the SET GLOBAL / config write, so it fails explicitly with a
-# clear reason instead of silently landing in my.cnf and crash-looping the
-# instance on the next restart. The SET GLOBAL unknown-variable error below is
-# a backstop; this by-name check makes the rejection deterministic and visible.
+# This list is the sole authority for the dedicated InvalidParameter exit code.
+# MySQL documents every member in its 8.4 removed-features table:
+# https://dev.mysql.com/doc/refman/8.4/en/added-deprecated-removed.html
+# expire_logs_days was removed in 8.2; transaction_write_set_extraction,
+# slave_rows_search_algorithms, master_info_repository,
+# relay_log_info_repository, and log_bin_use_v1_row_events in 8.3; and
+# default_authentication_plugin and binlog_transaction_dependency_tracking in
+# 8.4. Changing the list changes the result-policy contract and requires a
+# dedicated rejection test for every added or removed member.
+readonly INVALID_PARAMETER_EXIT_CODE=64
 mysql_84_removed_vars="expire_logs_days default_authentication_plugin binlog_transaction_dependency_tracking transaction_write_set_extraction slave_rows_search_algorithms master_info_repository relay_log_info_repository log_bin_use_v1_row_events"
 server_version=$(mysql_exec "SELECT VERSION();" 2>/dev/null | head -n1)
 server_major=$(echo "${server_version}" | cut -d. -f1)
@@ -31,7 +36,7 @@ if [[ "${server_major}" =~ ^[0-9]+$ ]] && [[ "${server_minor}" =~ ^[0-9]+$ ]]; t
         for removed in ${mysql_84_removed_vars}; do
             if [ "${paramName}" = "${removed}" ]; then
                 echo "Parameter ${paramName} was removed in MySQL 8.4 and cannot be set on server version ${server_version}; rejecting reconfigure." >&2
-                exit 1
+                exit "${INVALID_PARAMETER_EXIT_CODE}"
             fi
         done
     fi
@@ -84,4 +89,3 @@ if [ $status -ne 0 ]; then
     exit 1
 fi
 echo "Set parameter ${paramName} to value ${paramValue}"
-
