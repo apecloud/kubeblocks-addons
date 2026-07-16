@@ -61,6 +61,8 @@ read_replicas_history() {
   echo "$content"
 }
 
+# Mirrors RustFS 1.0.0-beta.8 parity selection (init.rs).
+# Re-verify on: engine version upgrade, #4801 merge, parity algorithm change.
 default_parity_count() {
   local drives=$1
   case $drives in
@@ -72,9 +74,8 @@ default_parity_count() {
   esac
 }
 
-# RustFS splits each pool into erasure sets whose size is the largest
-# factor of pool_size in [2,16].  Parity is derived from that set size,
-# not from the raw pool drive count.
+# Mirrors RustFS 1.0.0-beta.8 common_set_drive_count() (disks_layout.rs).
+# Re-verify on: engine version upgrade, #4801 merge, SET_SIZES range change.
 drives_per_set() {
   local pool_size=$1
   if [ "$pool_size" -le 16 ]; then
