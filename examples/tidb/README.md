@@ -18,6 +18,7 @@ TiDB is an open-source, cloud-native, distributed, MySQL-Compatible database for
 | 7.5.2  |
 | 7.1.5  |
 | 6.5.12 |
+| 7.1.6-enterprise |
 
 ## Prerequisites
 

@@ -28,7 +28,7 @@ spec:
       # - the regular expression - recommended
       # - the full name - recommended
       # - the name prefix
-      serviceVersion: 8.0.35
+      serviceVersion: 8.0.45
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]

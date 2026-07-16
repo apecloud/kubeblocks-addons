@@ -21,12 +21,12 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 | Component | Service Versions |
 |-----------|------------------|
 | MySQL 5.7 | 5.7.44 |
-| MySQL 8.0 | 8.0.33, 8.0.34, 8.0.35, 8.0.36, 8.0.37, 8.0.38, 8.0.39, 8.0.41, 8.0.44 |
-| MySQL 8.4 | 8.4.0, 8.4.1, 8.4.2, 8.4.3, 8.4.7 |
-| MySQL MGR 8.0 | 8.0.33, 8.0.34, 8.0.35, 8.0.36, 8.0.37, 8.0.38, 8.0.39 |
-| MySQL MGR 8.4 | 8.4.0, 8.4.1, 8.4.2 |
+| MySQL 8.0 | 8.0.45, 8.0.46 |
+| MySQL 8.4 | 8.4.9, 8.4.10 |
+| MySQL MGR 8.0 | 8.0.45, 8.0.46 |
+| MySQL MGR 8.4 | 8.4.9, 8.4.10 |
 | MySQL Orchestrator 5.7 | 5.7.44 |
-| MySQL Orchestrator 8.0 | 8.0.33, 8.0.34, 8.0.35, 8.0.36, 8.0.37, 8.0.38, 8.0.39 |
+| MySQL Orchestrator 8.0 | 8.0.45, 8.0.46 |
 | ProxySQL | 2.4.4 |
 
 ## Prerequisites
@@ -79,8 +79,8 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.33,8.0.34,8.0.35,8.0.36,8.0.37,8.0.38,8.0.39,8.0.41,8.0.44]
-      serviceVersion: 8.0.35
+      # Valid options are: [8.0.45,8.0.46]
+      serviceVersion: 8.0.45
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -132,8 +132,8 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.33,8.0.34,8.0.35,8.0.36,8.0.37,8.0.38,8.0.39,8.0.41,8.0.44]
-      serviceVersion: 8.0.35
+      # Valid options are: [8.0.45,8.0.46]
+      serviceVersion: 8.0.45
 ```
 
 The list of supported versions can be found by following command:
@@ -592,7 +592,7 @@ spec:
   componentSpecs:
     - name: mysql
       componentDef: "mysql-8.0"  # match all CMPD named with 'mysql-8.0-'
-      serviceVersion: 8.0.35
+      serviceVersion: 8.0.45
       disableExporter: false
       replicas: 2
       resources:
@@ -944,7 +944,7 @@ spec:
     - name: mysql
       componentDef: mysql-orc-8.0 # use componentDef: mysql-orc-8.0
       disableExporter: true
-      serviceVersion: "8.0.35"
+      serviceVersion: "8.0.45"
       replicas: 2
       resources:
         limits:
@@ -973,6 +973,7 @@ spec:
             credential:
               component: orchestrator
               name: orchestrator
+
 ```
 
 ```bash
