@@ -192,6 +192,8 @@ spec:
             containerPort: 3361
         command:
           - /tools/syncer
+          - --
+          - /tools/pbm-agent
         env:
           - name: POD_NAME
             valueFrom:
@@ -214,8 +216,6 @@ spec:
             value: mongodb
           - name: KB_WORKLOAD_TYPE
             value: pbm-agent
-          - name: PBM_AGENT_BIN
-            value: /tools/pbm-agent
           - name: SYNCER_IGNORE_HA
             value: "true"
           - name: SYNCER_BACKUP_ENABLED
