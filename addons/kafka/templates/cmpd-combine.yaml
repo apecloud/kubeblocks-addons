@@ -111,7 +111,7 @@ spec:
       exec:
         container: kafka
         command:
-          - /bin/bash
+          - /bin/sh
           - /scripts/kafka-kraft-controller-member-leave.sh
   systemAccounts:
     - name: client

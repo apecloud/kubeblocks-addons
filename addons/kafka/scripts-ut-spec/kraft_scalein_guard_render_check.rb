@@ -18,7 +18,7 @@ expected_names.each do |name|
   action = definition.dig("spec", "lifecycleActions", "memberLeave")
   abort "#{name}: memberLeave action mismatch" unless action == {
     "exec" => {
-      "command" => ["/bin/bash", "/scripts/kafka-kraft-controller-member-leave.sh"],
+      "command" => ["/bin/sh", "/scripts/kafka-kraft-controller-member-leave.sh"],
       "container" => "kafka"
     }
   }

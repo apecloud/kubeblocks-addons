@@ -9,10 +9,12 @@ validate_guard_templates() {
   do
     member_leave_count=$(grep -c '^    memberLeave:$' "$file" || true)
     container_count=$(grep -c '^        container: kafka$' "$file" || true)
+    shell_count=$(grep -c '^          - /bin/sh$' "$file" || true)
     command_count=$(grep -c '^          - /scripts/kafka-kraft-controller-member-leave.sh$' "$file" || true)
     mount_count=$(grep -c '^            mountPath: /scripts/kafka-kraft-controller-member-leave.sh$' "$file" || true)
 
     if [ "$member_leave_count" -ne 1 ] || [ "$container_count" -ne 1 ] || \
+       [ "$shell_count" -ne 1 ] || \
        [ "$command_count" -ne 1 ] || [ "$mount_count" -ne 1 ]; then
       echo "$file: expected one kafka-container memberLeave action and one guard-script mount"
       status=1
@@ -21,6 +23,12 @@ validate_guard_templates() {
 
   if grep -q '^    memberLeave:$' ../templates/cmpd-broker.yaml; then
     echo '../templates/cmpd-broker.yaml: broker-only component must not define memberLeave'
+    status=1
+  fi
+
+  if ! grep -q '^#!/bin/sh$' ../scripts/kafka-kraft-controller-member-leave.sh || \
+     grep -q '/bin/bash' ../scripts/kafka-kraft-controller-member-leave.sh; then
+    echo '../scripts/kafka-kraft-controller-member-leave.sh: guard must use the target image POSIX shell'
     status=1
   fi
 
@@ -89,8 +97,14 @@ validate_rendered_guard_contract() {
 }
 
 Describe "Kafka KRaft controller scale-in guard"
+  It "is valid for the POSIX shell used by the action execution environment"
+    When run sh -n ../scripts/kafka-kraft-controller-member-leave.sh
+    The status should be success
+    The output should be blank
+  End
+
   It "fails once with a stable diagnostic and no stdout"
-    When run script ../scripts/kafka-kraft-controller-member-leave.sh
+    When run /bin/sh ../scripts/kafka-kraft-controller-member-leave.sh
     The status should equal 1
     The stdout should be blank
     The stderr should equal "$expected_guard_error"
