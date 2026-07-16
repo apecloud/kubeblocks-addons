@@ -5,6 +5,13 @@ expected_guard_error='Kafka KRaft controller scale-in is unsupported: this addon
 validate_guard_templates() {
   status=0
 
+  if ! grep -q '^version: 1\.1\.0-alpha\.2$' ../Chart.yaml || \
+     grep -q '1\.1\.0-alpha\.1.*ComponentDefinitions' ../README.md || \
+     ! grep -q '1\.1\.0-alpha\.2.*ComponentDefinitions' ../README.md; then
+    echo '../Chart.yaml and ../README.md: guarded immutable definitions must use the alpha.2 identity'
+    status=1
+  fi
+
   for file in ../templates/cmpd-combine.yaml ../templates/cmpd-controller.yaml
   do
     member_leave_count=$(grep -c '^    memberLeave:$' "$file" || true)

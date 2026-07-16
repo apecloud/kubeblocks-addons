@@ -307,7 +307,7 @@ This guard does not automatically restore the requested replica count after the 
 
 In separated topology, only the `kafka-broker` component is outside this guard. Its positive scale-in support remains pending runtime validation and is not claimed by this README.
 
-Installing this chart creates new `1.1.0-alpha.1` ComponentDefinitions. It does not retrofit the guard into existing Components that still reference an older ComponentDefinition. Before relying on this protection, move those Components through the supported ComponentDefinition upgrade workflow; do not manually edit the immutable definition reference. Updating replicas through the Cluster API does not bypass this requirement and is not supported for `kafka-combine` or `kafka-controller`.
+Installing this chart creates new `1.1.0-alpha.2` ComponentDefinitions. It does not retrofit the guard into existing Components that still reference an older ComponentDefinition. Before relying on this protection, move those Components through the supported ComponentDefinition upgrade workflow; do not manually edit the immutable definition reference. Updating replicas through the Cluster API does not bypass this requirement and is not supported for `kafka-combine` or `kafka-controller`.
 
 ### Vertical scaling
 
