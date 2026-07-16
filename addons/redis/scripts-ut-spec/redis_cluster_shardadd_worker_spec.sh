@@ -12,6 +12,8 @@ Describe "Redis Cluster shardAdd managed-operation worker"
     rm -f "$fake_state"
     cp "${SHELLSPEC_CWD:?}/addons/redis/scripts-ut-spec/fixtures/redis_cluster_shardadd_worker_redis_cli.sh" "$fake_bin/redis-cli"
     chmod +x "$fake_bin/redis-cli"
+    cp "${SHELLSPEC_CWD:?}/addons/redis/scripts-ut-spec/fixtures/redis_cluster_shardadd_worker_getent.sh" "$fake_bin/getent"
+    chmod +x "$fake_bin/getent"
 
     export PATH="$fake_bin:$PATH"
     export FAKE_STATE_FILE="$fake_state"
@@ -30,6 +32,9 @@ Describe "Redis Cluster shardAdd managed-operation worker"
     rm -f "$fake_state" "$fake_log"
     unset FAKE_SCENARIO FAKE_STATE_FILE FAKE_REDIS_CLI_LOG FAKE_REDIS_MAJOR
     unset REDIS_CLUSTER_ENDPOINT REDIS_TARGET_SHARD_COUNT REDIS_NEW_MASTER_IDS
+    unset KB_SHARD_ADD_TOKEN KB_SHARDING_NAME KB_SHARD_ADD_SHARDS KB_SHARD_COUNT
+    unset REDIS_SOURCE_POD_NAME REDIS_SOURCE_COMPONENT_NAME
+    unset REDIS_CLUSTER_NAMESPACE REDIS_CLUSTER_DOMAIN REDIS_SERVICE_PORT
     unset REDIS_DEFAULT_USER REDIS_DEFAULT_PASSWORD
     unset REDIS_TLS_ENABLED REDIS_TLS_CA_FILE REDIS_TLS_CERT_FILE REDIS_TLS_KEY_FILE
     unset REDIS_COMMAND_TIMEOUT_SECONDS REDIS_COMMAND_KILL_GRACE_SECONDS
@@ -45,6 +50,59 @@ Describe "Redis Cluster shardAdd managed-operation worker"
     When call run_worker
     The status should be failure
     The stderr should include "missing REDIS_TARGET_SHARD_COUNT"
+    The contents of file "$fake_log" should be blank
+  End
+
+  It "derives the exact endpoint and new master ID from managed shardAdd inputs"
+    unset REDIS_CLUSTER_ENDPOINT REDIS_TARGET_SHARD_COUNT REDIS_NEW_MASTER_IDS
+    export KB_SHARD_ADD_TOKEN="token-1"
+    export KB_SHARDING_NAME="shard"
+    export KB_SHARD_ADD_SHARDS="redis-shard-new"
+    export KB_SHARD_COUNT="2"
+    export REDIS_SOURCE_POD_NAME="redis-shard-old-0"
+    export REDIS_SOURCE_COMPONENT_NAME="redis-shard-old"
+    export REDIS_CLUSTER_NAMESPACE="default"
+    export REDIS_CLUSTER_DOMAIN="cluster.local"
+    export REDIS_SERVICE_PORT="6379"
+    export FAKE_SCENARIO=managed_stable
+    When call run_worker
+    The status should be success
+    The output should include "already converged"
+    The contents of file "$fake_log" should include "-h redis-shard-old-0.redis-shard-old-headless.default.svc.cluster.local"
+  End
+
+  It "derives the new master ID from headless DNS when Redis 5 reports IP-only nodes"
+    unset REDIS_CLUSTER_ENDPOINT REDIS_TARGET_SHARD_COUNT REDIS_NEW_MASTER_IDS
+    export KB_SHARD_ADD_TOKEN="token-redis5"
+    export KB_SHARDING_NAME="shard"
+    export KB_SHARD_ADD_SHARDS="redis-shard-new"
+    export KB_SHARD_COUNT="2"
+    export REDIS_SOURCE_POD_NAME="redis-shard-old-0"
+    export REDIS_SOURCE_COMPONENT_NAME="redis-shard-old"
+    export REDIS_CLUSTER_NAMESPACE="default"
+    export REDIS_CLUSTER_DOMAIN="cluster.local"
+    export REDIS_SERVICE_PORT="6379"
+    export FAKE_SCENARIO=managed_ip
+    When call run_worker
+    The status should be success
+    The output should include "already converged"
+    The contents of file "$fake_log" should include "-h redis-shard-old-0.redis-shard-old-headless.default.svc.cluster.local"
+  End
+
+  It "rejects malformed managed component lists before redis-cli"
+    unset REDIS_CLUSTER_ENDPOINT REDIS_TARGET_SHARD_COUNT REDIS_NEW_MASTER_IDS
+    export KB_SHARD_ADD_TOKEN="token-1"
+    export KB_SHARDING_NAME="shard"
+    export KB_SHARD_ADD_SHARDS="redis-shard-new,,redis-shard-new"
+    export KB_SHARD_COUNT="3"
+    export REDIS_SOURCE_POD_NAME="redis-shard-old-0"
+    export REDIS_SOURCE_COMPONENT_NAME="redis-shard-old"
+    export REDIS_CLUSTER_NAMESPACE="default"
+    export REDIS_CLUSTER_DOMAIN="cluster.local"
+    export REDIS_SERVICE_PORT="6379"
+    When call run_worker
+    The status should be failure
+    The stderr should include "KB_SHARD_ADD_SHARDS"
     The contents of file "$fake_log" should be blank
   End
 

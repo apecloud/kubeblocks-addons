@@ -21,6 +21,7 @@ Describe "Redis Cluster lifecycle action contract"
       --show-only templates/clusterdefinition.yaml \
       --show-only templates/cmpd-redis-cluster.yaml \
       --show-only templates/paramsdef-redis-cluster.yaml \
+      --show-only templates/opsdefinition-shardadd.yaml \
       --show-only templates/redis-cluster-scripts-template.yaml \
       --show-only templates/shardingdefinition.yaml >"$tmp_render"
   }
@@ -31,7 +32,7 @@ Describe "Redis Cluster lifecycle action contract"
       documents = YAML.load_stream(File.read(ARGV.fetch(0))).compact
       chart = YAML.load_file(ARGV.fetch(1))
       version = chart.fetch("version")
-      expected_version = "1.2.0-alpha.7"
+      expected_version = "1.2.0-alpha.8"
       abort "expected Redis chart version #{expected_version}, got #{version}" unless version == expected_version
 
       expected_cmpds = %w[5 6 7 8].map { |major| "redis-cluster-#{major}-#{version}" }
@@ -72,6 +73,157 @@ Describe "Redis Cluster lifecycle action contract"
       abort "missing managed shardAdd worker in versioned scripts ConfigMap" unless worker&.include?("topology_is_converged")
 
       puts "versioned immutable definition contract passed"
+    ' "$tmp_render" "$(chart_path)/Chart.yaml"
+  }
+
+  validate_managed_shardadd_contract() {
+    render_lifecycle_templates || return $?
+    ruby -ryaml -e '
+      documents = YAML.load_stream(File.read(ARGV.fetch(0))).compact
+      chart = YAML.load_file(ARGV.fetch(1))
+      version = chart.fetch("version")
+
+      sharding = documents.find { |document| document["kind"] == "ShardingDefinition" }
+      abort "missing Redis ShardingDefinition" unless sharding
+      annotations = sharding.dig("metadata", "annotations") || {}
+      abort "managed shardAdd migration must skip the one-time immutable check" unless
+        annotations["apps.kubeblocks.io/skip-immutable-check"] == "true"
+      shard_add = sharding.dig("spec", "lifecycleActions", "shardAdd")
+      expected_name = "redis-cluster-shardadd-#{version}"
+      abort "expected shardAdd to reference #{expected_name}, got #{shard_add.inspect}" unless
+        shard_add == {"opsDefinitionName" => expected_name}
+
+      definition = documents.find do |document|
+        document["kind"] == "OpsDefinition" && document.dig("metadata", "name") == expected_name
+      end
+      abort "missing managed shardAdd OpsDefinition #{expected_name}" unless definition
+      spec = definition.fetch("spec")
+      %w[preConditions componentInfos].each do |field|
+        abort "managed shardAdd OpsDefinition must not define #{field}" if spec.key?(field)
+      end
+      extractors = spec.fetch("podInfoExtractors")
+      abort "managed shardAdd requires exactly one PodInfoExtractor" unless extractors.length == 1
+      extractor = extractors.first
+      extractor_name = "redis-cluster-shardadd-inputs"
+      abort "unexpected managed shardAdd PodInfoExtractor name" unless extractor["name"] == extractor_name
+      abort "managed shardAdd must select any stable shard Pod" unless
+        extractor.dig("podSelector", "multiPodSelectionPolicy") == "Any" &&
+        extractor.dig("podSelector").keys == ["multiPodSelectionPolicy"]
+
+      env_ref = lambda do |name, source_name, optional = false|
+        value = {
+          "name" => name,
+          "valueFrom" => {
+            "envRef" => {
+              "targetContainerName" => "redis-cluster",
+              "envName" => source_name
+            }
+          }
+        }
+        value["optional"] = true if optional
+        value
+      end
+      expected_env = [
+        env_ref.call("REDIS_DEFAULT_USER", "REDIS_DEFAULT_USER"),
+        env_ref.call("REDIS_DEFAULT_PASSWORD", "REDIS_DEFAULT_PASSWORD"),
+        env_ref.call("REDIS_TLS_ENABLED", "TLS_ENABLED", true),
+        {
+          "name" => "REDIS_SOURCE_POD_NAME",
+          "valueFrom" => {"fieldPath" => {"fieldPath" => "metadata.name"}}
+        },
+        env_ref.call("REDIS_SOURCE_COMPONENT_NAME", "CURRENT_SHARD_COMPONENT_NAME"),
+        env_ref.call("REDIS_CLUSTER_NAMESPACE", "CLUSTER_NAMESPACE"),
+        env_ref.call("REDIS_CLUSTER_DOMAIN", "CLUSTER_DOMAIN"),
+        env_ref.call("REDIS_SERVICE_PORT", "SERVICE_PORT")
+      ]
+      abort "managed shardAdd extracted env contract differs: #{extractor["env"].inspect}" unless
+        extractor["env"] == expected_env
+      expected_mounts = [{"name" => "tls", "mountPath" => "/etc/pki/tls", "readOnly" => true}]
+      abort "managed shardAdd TLS mount contract differs: #{extractor["volumeMounts"].inspect}" unless
+        extractor["volumeMounts"] == expected_mounts
+      expected_parameters = %w[KB_SHARD_ADD_TOKEN KB_SHARDING_NAME KB_SHARD_ADD_SHARDS KB_SHARD_COUNT]
+      parameter_schema = spec.dig("parametersSchema", "openAPIV3Schema")
+      abort "managed shardAdd parameter schema must be an object" unless parameter_schema["type"] == "object"
+      abort "managed shardAdd required parameters differ: #{parameter_schema["required"].inspect}" unless
+        parameter_schema["required"] == expected_parameters
+      properties = parameter_schema.fetch("properties")
+      abort "managed shardAdd parameter properties differ: #{properties.keys.inspect}" unless
+        properties.keys == expected_parameters
+      expected_parameters.first(3).each do |parameter|
+        abort "#{parameter} must be a non-empty string" unless
+          properties[parameter] == {"type" => "string", "minLength" => 1}
+      end
+      abort "KB_SHARD_COUNT must be a positive integer" unless
+        properties["KB_SHARD_COUNT"] == {"type" => "integer", "minimum" => 1}
+      actions = spec.fetch("actions")
+      abort "managed shardAdd requires exactly one action" unless actions.length == 1
+      action = actions.first
+      abort "managed shardAdd requires failurePolicy=Fail" unless action["failurePolicy"] == "Fail"
+      abort "managed shardAdd must not define exec/resourceModifier" if
+        action.key?("exec") || action.key?("resourceModifier")
+      abort "managed shardAdd parameters differ: #{action["parameters"].inspect}" unless
+        action["parameters"] == expected_parameters
+      legacy_parameters = %w[shardAddToken shardingName newShardComponentNames targetShardCount]
+      rendered = File.read(ARGV.fetch(0))
+      leaked_legacy_parameters = legacy_parameters.select { |parameter| rendered.include?(parameter) }
+      abort "managed shardAdd render still contains legacy parameters: #{leaked_legacy_parameters.inspect}" unless
+        leaked_legacy_parameters.empty?
+      workload = action.fetch("workload")
+      abort "managed shardAdd requires ManagedJob" unless workload["type"] == "ManagedJob"
+      abort "managed shardAdd requires backoffLimit=0" unless workload["backoffLimit"] == 0
+      abort "managed shardAdd Job must use the exact PodInfoExtractor" unless
+        workload["podInfoExtractorName"] == extractor_name
+      pod_spec = workload.fetch("podSpec")
+      abort "managed shardAdd Job must never restart its worker Pod" unless
+        pod_spec["restartPolicy"] == "Never"
+      abort "managed shardAdd Job must have a bounded 3-hour deadline" unless
+        pod_spec["activeDeadlineSeconds"] == 10800
+      expected_scripts_volume = {
+        "name" => "scripts",
+        "configMap" => {
+          "name" => "redis-cluster-scripts-template-#{version}",
+          "defaultMode" => 365
+        }
+      }
+      abort "managed shardAdd Job must mount the versioned scripts ConfigMap" unless
+        pod_spec.fetch("volumes") == [expected_scripts_volume]
+      containers = workload.dig("podSpec", "containers") || []
+      abort "managed shardAdd requires exactly one worker container" unless containers.length == 1
+      worker_container = containers.first
+      command = Array(worker_container["command"]) + Array(worker_container["args"])
+      abort "managed shardAdd Job does not invoke the versioned worker" unless
+        command.join(" ").include?("/scripts/redis-cluster-shardadd-worker.sh")
+      abort "managed shardAdd worker must mount only the scripts volume directly" unless
+        worker_container.fetch("volumeMounts") == [
+          {"name" => "scripts", "mountPath" => "/scripts", "readOnly" => true}
+        ]
+      worker_env = worker_container.fetch("env").to_h { |item| [item.fetch("name"), item.fetch("value")] }
+      expected_worker_env = {
+        "REDIS_TLS_CA_FILE" => "/etc/pki/tls/ca.crt",
+        "REDIS_TLS_CERT_FILE" => "/etc/pki/tls/tls.crt",
+        "REDIS_TLS_KEY_FILE" => "/etc/pki/tls/tls.key",
+        "REDIS_COMMAND_TIMEOUT_SECONDS" => "7200",
+        "REDIS_COMMAND_KILL_GRACE_SECONDS" => "30"
+      }
+      abort "managed shardAdd worker static env differs: #{worker_env.inspect}" unless
+        worker_env == expected_worker_env
+
+      scripts = documents.find do |document|
+        document["kind"] == "ConfigMap" &&
+          document.dig("metadata", "name") == "redis-cluster-scripts-template-#{version}"
+      end
+      abort "missing versioned Redis Cluster scripts ConfigMap" unless scripts
+      %w[redis-cluster-manage.sh redis-cluster6-manage.sh].each do |script_name|
+        source = scripts.fetch("data").fetch(script_name)
+        scale_out_body = source.split("scale_out_redis_cluster_shard() {", 2).fetch(1)
+          .split("sync_acl_for_redis_cluster_shard() {", 2).fetch(0)
+        abort "#{script_name} still owns shardAdd slot migration" if
+          scale_out_body.include?("scale_out_shard_reshard")
+        abort "#{script_name} does not positively close membership" unless
+          scale_out_body.include?("membership converged; slot migration is delegated to the managed shardAdd Job")
+      end
+
+      puts "managed shardAdd rendered contract passed"
     ' "$tmp_render" "$(chart_path)/Chart.yaml"
   }
 
@@ -164,6 +316,12 @@ Describe "Redis Cluster lifecycle action contract"
     When call validate_versioned_definition_contract
     The status should be success
     The output should include "versioned immutable definition contract passed"
+  End
+
+  It "renders the exact managed shardAdd bridge and Job contract"
+    When call validate_managed_shardadd_contract
+    The status should be success
+    The output should include "managed shardAdd rendered contract passed"
   End
 
   It "replays postProvision failure diagnostics and preserves the manage rc"

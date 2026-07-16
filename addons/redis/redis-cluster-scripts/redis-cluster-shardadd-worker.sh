@@ -12,9 +12,61 @@ require_env() {
   fi
 }
 
+managed_shardadd_inputs=false
+prepare_managed_shardadd_inputs() {
+  if [ -n "${REDIS_CLUSTER_ENDPOINT:-}" ] &&
+     [ -n "${REDIS_TARGET_SHARD_COUNT:-}" ] &&
+     [ -n "${REDIS_NEW_MASTER_IDS:-}" ]; then
+    return 0
+  fi
+  if [ -z "${KB_SHARD_ADD_TOKEN:-}${KB_SHARDING_NAME:-}${KB_SHARD_ADD_SHARDS:-}${KB_SHARD_COUNT:-}" ]; then
+    return 0
+  fi
+
+  require_env KB_SHARD_ADD_TOKEN
+  require_env KB_SHARDING_NAME
+  require_env KB_SHARD_ADD_SHARDS
+  require_env KB_SHARD_COUNT
+  require_env REDIS_SOURCE_POD_NAME
+  require_env REDIS_SOURCE_COMPONENT_NAME
+  require_env REDIS_CLUSTER_NAMESPACE
+  require_env REDIS_CLUSTER_DOMAIN
+  require_env REDIS_SERVICE_PORT
+
+  if [[ "$KB_SHARD_ADD_SHARDS" == ,* ]] ||
+     [[ "$KB_SHARD_ADD_SHARDS" == *, ]] ||
+     [[ "$KB_SHARD_ADD_SHARDS" == *,,* ]]; then
+    printf 'KB_SHARD_ADD_SHARDS contains an empty component name\n' >&2
+    return 1
+  fi
+
+  local component
+  local normalized_components
+  normalized_components=$(printf '%s\n' "$KB_SHARD_ADD_SHARDS" | tr ',' '\n')
+  while IFS= read -r component; do
+    if ! [[ "$component" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]; then
+      printf 'KB_SHARD_ADD_SHARDS contains an invalid component name\n' >&2
+      return 1
+    fi
+  done <<<"$normalized_components"
+  if [ "$(printf '%s\n' "$normalized_components" | LC_ALL=C sort | uniq -d | wc -l | tr -d ' ')" != "0" ]; then
+    printf 'KB_SHARD_ADD_SHARDS contains duplicate component names\n' >&2
+    return 1
+  fi
+  if ! [[ "$REDIS_SERVICE_PORT" =~ ^[1-9][0-9]*$ ]] || [ "$REDIS_SERVICE_PORT" -gt 65535 ]; then
+    printf 'REDIS_SERVICE_PORT must be a valid TCP port\n' >&2
+    return 1
+  fi
+
+  REDIS_CLUSTER_ENDPOINT="${REDIS_SOURCE_POD_NAME}.${REDIS_SOURCE_COMPONENT_NAME}-headless.${REDIS_CLUSTER_NAMESPACE}.svc.${REDIS_CLUSTER_DOMAIN}:${REDIS_SERVICE_PORT}"
+  REDIS_TARGET_SHARD_COUNT=$KB_SHARD_COUNT
+  managed_shardadd_inputs=true
+}
+
+prepare_managed_shardadd_inputs
+
 require_env REDIS_CLUSTER_ENDPOINT
 require_env REDIS_TARGET_SHARD_COUNT
-require_env REDIS_NEW_MASTER_IDS
 
 if ! [[ "$REDIS_TARGET_SHARD_COUNT" =~ ^[1-9][0-9]*$ ]]; then
   printf 'REDIS_TARGET_SHARD_COUNT must be a positive integer\n' >&2
@@ -39,7 +91,10 @@ validate_new_master_ids() {
   fi
 }
 
-validate_new_master_ids
+if [ "$managed_shardadd_inputs" = false ]; then
+  require_env REDIS_NEW_MASTER_IDS
+  validate_new_master_ids
+fi
 
 REDIS_COMMAND_TIMEOUT_SECONDS=${REDIS_COMMAND_TIMEOUT_SECONDS:-300}
 REDIS_COMMAND_KILL_GRACE_SECONDS=${REDIS_COMMAND_KILL_GRACE_SECONDS:-10}
@@ -169,6 +224,86 @@ cluster_info_for_endpoint() {
   parse_endpoint "$endpoint"
   run_redis_cli -h "$PARSED_HOST" -p "$PARSED_PORT" cluster info
 }
+
+healthy_master_ids_for_component() {
+  local nodes=$1
+  local component=$2
+  local service_fqdn
+  local ids
+
+  ids=$(printf '%s\n' "$nodes" | awk -v component="$component" '
+    function node_host(raw, parts, base, announced) {
+      split(raw, parts, ",")
+      announced = parts[2]
+      if (announced != "") {
+        return announced
+      }
+      base = parts[1]
+      sub(/@.*/, "", base)
+      sub(/:[0-9]+$/, "", base)
+      return base
+    }
+    NF >= 8 && $3 ~ /master/ && $3 !~ /(fail|handshake|noaddr)/ {
+      host = node_host($2)
+      if (index(host, "." component "-headless.") > 0) {
+        print $1
+      }
+    }
+  ' | LC_ALL=C sort -u)
+  if [ -n "$ids" ]; then
+    printf '%s\n' "$ids"
+    return 0
+  fi
+
+  command -v getent >/dev/null 2>&1 || return 0
+  service_fqdn="${component}-headless.${REDIS_CLUSTER_NAMESPACE}.svc.${REDIS_CLUSTER_DOMAIN}"
+  local service_ips
+  service_ips=$(getent ahostsv4 "$service_fqdn" 2>/dev/null | awk '{print $1}' | LC_ALL=C sort -u)
+  [ -n "$service_ips" ] || return 0
+  printf '%s\n' "$nodes" | awk -v service_ips="$service_ips" '
+    BEGIN {
+      count = split(service_ips, entries, "\n")
+      for (i = 1; i <= count; i++) {
+        ips[entries[i]] = 1
+      }
+    }
+    NF >= 8 && $3 ~ /master/ && $3 !~ /(fail|handshake|noaddr)/ {
+      split($2, address_parts, ",")
+      address = address_parts[1]
+      sub(/@.*/, "", address)
+      sub(/:[0-9]+$/, "", address)
+      if (ips[address]) {
+        print $1
+      }
+    }
+  ' | LC_ALL=C sort -u
+}
+
+derive_new_master_ids() {
+  local nodes
+  local component
+  local component_ids
+  local component_id
+  local derived_ids=""
+
+  nodes=$(cluster_nodes_for_endpoint "$REDIS_CLUSTER_ENDPOINT")
+  while IFS= read -r component; do
+    [ -n "$component" ] || continue
+    component_ids=$(healthy_master_ids_for_component "$nodes" "$component")
+    if [ "$(printf '%s\n' "$component_ids" | sed '/^$/d' | wc -l | tr -d ' ')" != "1" ]; then
+      printf 'KB_SHARD_ADD_SHARDS component %s does not map to exactly one healthy Redis master\n' "$component" >&2
+      return 1
+    fi
+    component_id=$(printf '%s\n' "$component_ids" | sed -n '1p')
+    derived_ids="${derived_ids}${derived_ids:+,}${component_id}"
+  done < <(printf '%s\n' "$KB_SHARD_ADD_SHARDS" | tr ',' '\n')
+  REDIS_NEW_MASTER_IDS=$derived_ids
+}
+
+if [ "$managed_shardadd_inputs" = true ]; then
+  derive_new_master_ids
+  validate_new_master_ids
+fi
 
 normalize_cluster_nodes() {
   awk '

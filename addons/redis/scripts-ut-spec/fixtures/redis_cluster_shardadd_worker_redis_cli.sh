@@ -78,13 +78,24 @@ emit_nodes() {
     return
   fi
 
-  printf '%s 10.0.0.1:6379@16379,host1 %s - 0 0 1 connected 0-8191\n' "$old_master" "$old_flags"
-  if [ "$scenario" != "missing_new" ]; then
-    printf '%s 10.0.0.2:6379@16379,host2 %s %s 0 0 2 connected 8192-16383\n' "$new_master" "$new_flags" "$new_master_parent"
+  old_hostname=host1
+  new_hostname=host2
+  old_replica_hostname=host3
+  new_replica_hostname=host4
+  if [ "$scenario" = "managed_stable" ]; then
+    old_hostname=redis-shard-old-0.redis-shard-old-headless.default.svc.cluster.local
+    new_hostname=redis-shard-new-0.redis-shard-new-headless.default.svc.cluster.local
+    old_replica_hostname=redis-shard-old-1.redis-shard-old-headless.default.svc.cluster.local
+    new_replica_hostname=redis-shard-new-1.redis-shard-new-headless.default.svc.cluster.local
   fi
-  printf '%s 10.0.0.3:6379@16379,host3 %s %s 0 0 3 connected\n' "$old_replica" "$old_replica_flags" "$old_master"
+
+  printf '%s 10.0.0.1:6379@16379,%s %s - 0 0 1 connected 0-8191\n' "$old_master" "$old_hostname" "$old_flags"
   if [ "$scenario" != "missing_new" ]; then
-    printf '%s 10.0.0.4:6379@16379,host4 %s %s 0 0 4 connected\n' "$new_replica" "$new_replica_flags" "$new_master"
+    printf '%s 10.0.0.2:6379@16379,%s %s %s 0 0 2 connected 8192-16383\n' "$new_master" "$new_hostname" "$new_flags" "$new_master_parent"
+  fi
+  printf '%s 10.0.0.3:6379@16379,%s %s %s 0 0 3 connected\n' "$old_replica" "$old_replica_hostname" "$old_replica_flags" "$old_master"
+  if [ "$scenario" != "missing_new" ]; then
+    printf '%s 10.0.0.4:6379@16379,%s %s %s 0 0 4 connected\n' "$new_replica" "$new_replica_hostname" "$new_replica_flags" "$new_master"
   fi
 }
 
