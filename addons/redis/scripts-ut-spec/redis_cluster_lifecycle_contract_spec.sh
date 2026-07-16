@@ -21,6 +21,7 @@ Describe "Redis Cluster lifecycle action contract"
       --show-only templates/clusterdefinition.yaml \
       --show-only templates/cmpd-redis-cluster.yaml \
       --show-only templates/paramsdef-redis-cluster.yaml \
+      --show-only templates/redis-cluster-scripts-template.yaml \
       --show-only templates/shardingdefinition.yaml >"$tmp_render"
   }
 
@@ -30,7 +31,8 @@ Describe "Redis Cluster lifecycle action contract"
       documents = YAML.load_stream(File.read(ARGV.fetch(0))).compact
       chart = YAML.load_file(ARGV.fetch(1))
       version = chart.fetch("version")
-      abort "Redis chart version must advance past immutable baseline 1.2.0-alpha.0" if version == "1.2.0-alpha.0"
+      expected_version = "1.2.0-alpha.7"
+      abort "expected Redis chart version #{expected_version}, got #{version}" unless version == expected_version
 
       expected_cmpds = %w[5 6 7 8].map { |major| "redis-cluster-#{major}-#{version}" }
       actual_cmpds = documents.map do |document|
@@ -60,6 +62,14 @@ Describe "Redis Cluster lifecycle action contract"
       abort "missing Redis cluster topology" unless cluster_topology
       actual_reference = cluster_topology.fetch("shardings").first.fetch("shardingDef")
       abort "expected cluster topology to reference #{expected_sharding}, got #{actual_reference}" unless actual_reference == expected_sharding
+
+      scripts = documents.find do |document|
+        document["kind"] == "ConfigMap" &&
+          document.dig("metadata", "name") == "redis-cluster-scripts-template-#{version}"
+      end
+      abort "missing versioned Redis Cluster scripts ConfigMap" unless scripts
+      worker = scripts.fetch("data")["redis-cluster-shardadd-worker.sh"]
+      abort "missing managed shardAdd worker in versioned scripts ConfigMap" unless worker&.include?("topology_is_converged")
 
       puts "versioned immutable definition contract passed"
     ' "$tmp_render" "$(chart_path)/Chart.yaml"
