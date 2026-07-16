@@ -106,6 +106,13 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
+  lifecycleActions:
+    memberLeave:
+      exec:
+        container: kafka
+        command:
+          - /bin/sh
+          - /scripts/kafka-kraft-controller-member-leave.sh
   systemAccounts:
     - name: client
       initAccount: true
@@ -235,6 +242,9 @@ spec:
           - name: scripts
             mountPath: /scripts/common.sh
             subPath: common.sh
+          - name: scripts
+            mountPath: /scripts/kafka-kraft-controller-member-leave.sh
+            subPath: kafka-kraft-controller-member-leave.sh
           - name: kafka-config
             mountPath: /scripts/server.properties
             subPath: server.properties

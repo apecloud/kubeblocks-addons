@@ -11,7 +11,9 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 
 | Topology | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |----------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Combined/Separated | Yes          | Yes                   | Yes               | Yes       | Yes        | Yes       | Yes    | N/A   |
+| Combined | Scale-out not verified; controller scale-in blocked | Yes | Yes | Yes | Yes | Yes | Yes | N/A |
+| Separated controller | Scale-out not verified; scale-in blocked | Yes | Yes | Yes | Yes | Yes | Yes | N/A |
+| Separated broker | Scale-out not verified; scale-in pending validation | Yes | Yes | Yes | Yes | Yes | Yes | N/A |
 
 - Combine Mode: KRaft (Controller) and Broker components are combined in the same pod.
 - Separated Mode: KRaft (Controller) and Broker components are deployed in different pods.
@@ -258,8 +260,7 @@ When the cluster creation is done, refer to a secret named `$(CLUSTER_NAME)$-kaf
 ### Horizontal scaling
 
 > [!IMPORTANT]
-> As per the Kafka documentation, the number of KRaft replicas should be odd to avoid split-brain scenarios.
-> Make sure the number of KRaft replicas, i.e. Controller replicas,  is always odd after Horizontal Scaling, either in Separated or Combined mode.
+> The KRaft components in this addon use a static `controller.quorum.voters` list. Scaling in a combined component or a separated controller component is blocked before Pod deletion because the addon cannot safely remove a controller voter online. Keep controller replica counts unchanged. Scaling brokers in separated topology is not blocked by this guard, but its support status still requires positive runtime validation. Scale-out is outside the validated scope of this change.
 
 #### Scale-out
 
@@ -300,48 +301,13 @@ kubectl describe -n demo ops kafka-combined-scale-out
 
 #### Scale-in
 
-Horizontal scaling in  `kafka-combine` component in cluster `kafka-combined-cluster` by deleting ONE replica:
+Do not scale in `kafka-combine` or `kafka-controller`. The KRaft ComponentDefinitions in this chart configure `controller.quorum.voters` statically. The addon returns a diagnostic error from `memberLeave` before KubeBlocks updates the workload, so controller Pods are not intentionally removed through this operation. This guard applies to the KRaft versions exposed by this chart because they share those ComponentDefinitions; direct runtime evidence currently covers only Kafka 3.3.2 in combined topology.
 
-```yaml
-# cat examples/kafka/scale-in.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: kafka-combined-scale-in
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
-  type: HorizontalScaling
-  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
-  horizontalScaling:
-    # Specifies the name of the Component.
-  - componentName: kafka-combine
-    # Specifies the replica changes for scaling in components
-    scaleIn:
-      # Specifies the replica changes for the component.
-      # add one more replica to current component
-      replicaChanges: 1
+This guard does not automatically restore the requested replica count after the OpsRequest times out. A future recovery flow must let the user explicitly choose whether to continue scaling in or cancel and restore replicas; restoring replicas can recreate instances if any Pod was already removed. Do not treat timeout as cancellation or apply an undocumented manual patch.
 
-```
+In separated topology, only the `kafka-broker` component is outside this guard. Its positive scale-in support remains pending runtime validation and is not claimed by this README.
 
-```bash
-kubectl apply -f examples/kafka/scale-in.yaml
-```
-
-#### Scale-in/out using Cluster API
-
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: kafka-combine
-      replicas: 1 # Set the number of replicas to your desired number
-```
+Installing this chart creates new `1.1.0-alpha.2` ComponentDefinitions. It does not retrofit the guard into existing Components that still reference an older ComponentDefinition. Before relying on this protection, move those Components through the supported ComponentDefinition upgrade workflow; do not manually edit the immutable definition reference. Updating replicas through the Cluster API does not bypass this requirement and is not supported for `kafka-combine` or `kafka-controller`.
 
 ### Vertical scaling
 

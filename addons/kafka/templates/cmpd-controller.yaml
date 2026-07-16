@@ -55,6 +55,13 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
+  lifecycleActions:
+    memberLeave:
+      exec:
+        container: kafka
+        command:
+          - /bin/sh
+          - /scripts/kafka-kraft-controller-member-leave.sh
   runtime:
     {{- if .Values.securityContext }}
     securityContext:
@@ -150,6 +157,9 @@ spec:
           - name: scripts
             mountPath: /scripts/common.sh
             subPath: common.sh
+          - name: scripts
+            mountPath: /scripts/kafka-kraft-controller-member-leave.sh
+            subPath: kafka-kraft-controller-member-leave.sh
           - name: scripts
             mountPath: /opt/bitnami/scripts/kafka-env.sh
             subPath: kafka-env.sh

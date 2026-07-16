@@ -22,6 +22,8 @@ data:
     {{- .Files.Get "scripts/kafka-exporter-setup.sh" | nindent 4 }}
   kafka-env.sh: |-
     {{- .Files.Get "scripts/kafka-env.sh" | nindent 4 }}
+  kafka-kraft-controller-member-leave.sh: |-
+    {{- .Files.Get "scripts/kafka-kraft-controller-member-leave.sh" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
