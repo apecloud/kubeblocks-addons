@@ -341,6 +341,11 @@ reconfigure:
 
         /scripts/update-parameter.sh "$1" "$2"
       - --
+  resultPolicy:
+    failureCodes:
+      - execExitCode: 64
+        code: InvalidParameter
+        retry: false
 {{- end -}}
 
 {{- define "mysql.mydumper.image" -}}
