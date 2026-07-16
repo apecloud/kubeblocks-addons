@@ -172,8 +172,6 @@ spec:
             value: /tools/pbm
           - name: PBM_AGENT_BIN
             value: /tools/pbm-agent
-          - name: PBM_RESTORE_AGENT_LOG_PATH
-            value: {{ .Values.dataMountPath }}/tmp/pbm-agent-restore.log
           - name: PBM_DATA_MOUNT_POINT
             value: {{ .Values.dataMountPath }}
           - name: SERVICE_PORT
