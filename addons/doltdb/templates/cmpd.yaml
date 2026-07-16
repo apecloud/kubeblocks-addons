@@ -36,7 +36,7 @@ spec:
       optional: true
       serviceRefDeclarationSpecs:
         - serviceKind: mysql
-          serviceVersion: "^*"
+          serviceVersion: "^.+$"
   volumes:
     - name: data
   configs:
