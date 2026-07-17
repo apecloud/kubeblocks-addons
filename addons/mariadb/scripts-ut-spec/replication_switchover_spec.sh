@@ -203,6 +203,22 @@ EOF
     End
   End
 
+  Describe "resolve_candidate_mode()"
+    It "returns explicit before candidate-name resolution when the API supplied a candidate"
+      export KB_SWITCHOVER_CANDIDATE_NAME="mdb-mariadb-1"
+      When call resolve_candidate_mode
+      The status should be success
+      The output should eq "explicit"
+    End
+
+    It "returns auto before candidate-name resolution when the API candidate is empty"
+      export KB_SWITCHOVER_CANDIDATE_NAME=""
+      When call resolve_candidate_mode
+      The status should be success
+      The output should eq "auto"
+    End
+  End
+
   Describe "main() role guard"
     Context "when KB_SWITCHOVER_ROLE is not 'primary'"
       setup_secondary() {
@@ -216,6 +232,197 @@ EOF
         The output should include "Not the primary"
         The path "${SYNCERCTL_ARGS}" should not be exist
       End
+    End
+  End
+
+  Describe "main() candidate-source freeze"
+    It "captures candidate mode before resolving the candidate name and passes the frozen mode"
+      : > "${TEST_DIR}/calls"
+      export KB_SWITCHOVER_CANDIDATE_NAME="mdb-mariadb-1"
+      setup_mariadb_client_bin() { return 0; }
+      resolve_candidate_mode() {
+        record_call "1-mode"
+        printf '%s' "explicit"
+      }
+      resolve_candidate_name() {
+        record_call "2-name"
+        printf '%s' "mdb-mariadb-1"
+      }
+      resolve_candidate_fqdn() {
+        record_call "3-fqdn:$1"
+        printf '%s' "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+      }
+      run_switchover() {
+        record_call "4-run-mode:$3"
+        return 0
+      }
+
+      When call main
+      The status should be success
+      The contents of file "${TEST_DIR}/calls" should eq "1-mode
+2-name
+3-fqdn:mdb-mariadb-1
+4-run-mode:explicit"
+    End
+  End
+
+  Describe "run_switchover() r25 explicit/auto completion contract"
+    setup_completion_contract() {
+      : > "${TEST_DIR}/calls"
+      prepare_current_primary_for_switchover() { return 0; }
+      wait_candidate_sql_reachable_before_dcs() { return 0; }
+      syncerctl_switchover() { return 0; }
+      fence_current_primary_local_writes_after_dcs() { return 0; }
+    }
+    Before "setup_completion_contract"
+
+    It "fails closed before any stage when candidate mode is missing or unknown"
+      When call run_switchover \
+        "mdb-mariadb-1" \
+        "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+        "unknown"
+      The status should be failure
+      The stderr should include "reason=invalid_candidate_mode"
+      The stderr should include "candidate_mode=unknown"
+      The stderr should include "fail-closed"
+      The contents of file "${TEST_DIR}/calls" should eq ""
+    End
+
+    It "keeps exactly one production caller for each auto-only Stage5 and Stage6 helper"
+      source_file="${SHELLSPEC_CWD:?}/addons/mariadb/scripts/replication-switchover.sh"
+      When call awk '/^run_switchover\(\)/ { in_func=1; next } in_func && /^}/ { print promote_count + 0, ready_count + 0; exit } in_func && /^[[:space:]]*if ! wait_candidate_promoted_via_syncerctl/ { promote_count++ } in_func && /^[[:space:]]*if ! wait_candidate_remote_root_primary_ready/ { ready_count++ }' "${source_file}"
+      The status should be success
+      The output should eq "1 1"
+    End
+
+    It "delegates explicit-candidate convergence after DCS and old-primary fence without calling Stage5 or Stage6"
+      wait_candidate_promoted_via_syncerctl() {
+        record_call "BUG_explicit_stage5_called"
+        return 1
+      }
+      wait_candidate_remote_root_primary_ready() {
+        record_call "BUG_explicit_stage6_called"
+        return 1
+      }
+
+      When call run_switchover \
+        "mdb-mariadb-1" \
+        "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+        "explicit"
+      The status should be success
+      The output should include "candidate_mode=explicit"
+      The output should include "dcs_recorded=true"
+      The output should include "old_primary_fenced=true"
+      The output should include "convergence=delegated"
+      The contents of file "${TEST_DIR}/calls" should not include "BUG_explicit_stage5_called"
+      The contents of file "${TEST_DIR}/calls" should not include "BUG_explicit_stage6_called"
+    End
+
+    It "returns an active-marker retryable conflict without final-state probing or local fencing"
+      syncerctl_switchover() {
+        SWITCHOVER_SYNCERCTL_OUTCOME="retryable_conflict"
+        log_switchover_error "Switchover failed: outcome=retryable_conflict mutation=0 reason=switchover_in_progress"
+        return 1
+      }
+      switchover_final_state_already_reached() {
+        record_call "BUG_active_conflict_final_state_probe"
+        return 1
+      }
+      fence_current_primary_after_uncertain_dcs() {
+        record_call "BUG_active_conflict_fence"
+        return 0
+      }
+
+      When call run_switchover \
+        "mdb-mariadb-1" \
+        "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+        "explicit"
+      The status should be failure
+      The stderr should include "outcome=retryable_conflict"
+      The stderr should include "mutation=0"
+      The contents of file "${TEST_DIR}/calls" should not include "BUG_active_conflict_final_state_probe"
+      The contents of file "${TEST_DIR}/calls" should not include "BUG_active_conflict_fence"
+      The output should not include "Switchover stage fence"
+    End
+
+    It "keeps empty-candidate auto mode fail-closed while the selected candidate remains secondary"
+      wait_candidate_promoted_via_syncerctl() {
+        record_call "auto_stage5_called"
+        return 1
+      }
+      wait_candidate_remote_root_primary_ready() {
+        record_call "BUG_auto_stage6_called_after_stage5_failure"
+        return 1
+      }
+
+      When call run_switchover \
+        "mdb-mariadb-1" \
+        "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+        "auto"
+      The status should be failure
+      The stderr should include "outcome=indeterminate_dcs_in_progress"
+      The stderr should include "mutation=remote-partial"
+      The contents of file "${TEST_DIR}/calls" should include "auto_stage5_called"
+      The contents of file "${TEST_DIR}/calls" should not include "BUG_auto_stage6_called_after_stage5_failure"
+      The output should not include "convergence=delegated"
+      The output should not include "convergence=observed"
+    End
+
+    It "reports observed convergence for auto mode only after Stage5 and Stage6 both close"
+      wait_candidate_promoted_via_syncerctl() {
+        record_call "auto_stage5_called"
+        return 0
+      }
+      wait_candidate_remote_root_primary_ready() {
+        record_call "auto_stage6_called"
+        return 0
+      }
+
+      When call run_switchover \
+        "mdb-mariadb-1" \
+        "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+        "auto"
+      The status should be success
+      The output should include "candidate_mode=auto"
+      The output should include "dcs_recorded=true"
+      The output should include "old_primary_fenced=true"
+      The output should include "convergence=observed"
+      The contents of file "${TEST_DIR}/calls" should include "auto_stage5_called"
+      The contents of file "${TEST_DIR}/calls" should include "auto_stage6_called"
+    End
+  End
+
+  Describe "run_switchover() r25 real external timeout boundary"
+    It "reaps a slow DCS client at the remaining one-second budget, fences uncertain DCS, and never delegates"
+      export SWITCHOVER_DCS_STAGE_BUDGET_SECONDS=1
+      export SYNCERCTL_PER_CALL_TIMEOUT_SECONDS=5
+      : > "${TEST_DIR}/calls"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+sleep 2
+printf '%s\n' "switchover success"
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      prepare_current_primary_for_switchover() { return 0; }
+      wait_candidate_sql_reachable_before_dcs() { return 0; }
+      set_local_read_only() {
+        record_call "set_read_only=$1"
+        return 0
+      }
+      local_read_only_is() { [ "$1" = "1" ]; }
+
+      When call run_switchover \
+        "mdb-mariadb-1" \
+        "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+        "explicit"
+      The status should be failure
+      The stderr should include "reason=syncerctl_timeout"
+      The stderr should include "stage=dcs"
+      The stderr should include "stage_budget=1s"
+      The output should include "uncertain DCS switchover"
+      The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+      The output should not include "convergence=delegated"
+      The output should not include "Switchover stage fence"
     End
   End
 
@@ -270,10 +477,10 @@ Last_SQL_Errno: 0
 Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
 EOF
         }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         The status should be success
         The output should include "Switchover candidate remote root primary-readiness probe converged for mdb-mariadb-1"
-        The output should include "candidate root primary-readiness observed without mutating probe"
+        The output should include "convergence=observed"
       End
 
       It "passes pod names to syncerctl instead of candidate FQDN"
@@ -325,12 +532,13 @@ Last_SQL_Errno: 0
 Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
 EOF
         }
-        run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         When run cat "${SYNCERCTL_ARGS}"
         The status should be success
-        # alpha.79 v2: --force added to bypass syncer's "previous switchover
-        # unfinished" DCS record so same-cluster repeat switchovers proceed.
-        The output should eq "--host 127.0.0.1 --port 3601 switchover --force --primary mdb-mariadb-0 --candidate mdb-mariadb-1"
+        # r25 completion contract: an active DCS operation is never preempted.
+        # The addon must not pass --force; syncer owns the stable retryable
+        # conflict and mutation=0 outcome for an existing marker.
+        The output should eq "--host 127.0.0.1 --port 3601 switchover --primary mdb-mariadb-0 --candidate mdb-mariadb-1"
       End
 
       It "fails before switchover when mariadb client is unavailable"
@@ -399,7 +607,7 @@ EOF
         When call main
         The status should be success
         The output should include "Switchover using mariadb client: ${MYSQL_CLIENT_DIR}/bin/mariadb"
-        The output should include "candidate root primary-readiness observed without mutating probe"
+        The output should include "convergence=observed"
       End
 
       It "alpha.59 contract: never invokes wait_switchover_done / wait_post_switchover_stabilization / wait_primary_service_routes_candidate / current_follows_candidate"
@@ -426,9 +634,9 @@ EOF
         wait_current_secondary_remote_root_fenced() { record_call "BUG_wait_current_secondary_remote_root_fenced_called"; return 0; }
         current_follows_candidate() { record_call "BUG_current_follows_candidate_called"; return 0; }
         primary_service_routes_candidate() { record_call "BUG_primary_service_routes_candidate_called"; return 0; }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         The status should be success
-        The output should include "candidate root primary-readiness observed without mutating probe"
+        The output should include "convergence=observed"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_switchover_done_called"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_post_switchover_stabilization_called"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_primary_service_routes_candidate_called"
@@ -453,7 +661,7 @@ EOF
             "127.0.0.1:SELECT @@global.read_only;"*) echo "1" ;;
           esac
         }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         The status should be failure
         The output should include "Switchover post-DCS guard passed"
         The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
@@ -485,7 +693,7 @@ esac
 exit 0
 EOF
         chmod +x "${MARIADB_CLIENT_BIN}"
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         The status should be failure
         The output should include "Switchover stage candidate_primary_ready budget=1s"
         The stderr should include "candidate_remote_root_explicit_primary_grant_verify"
@@ -495,8 +703,8 @@ EOF
     End
 
     Context "when syncerctl cannot create DCS switchover"
-      # H2 split-brain fix: after syncerctl (invoked with --force under a
-      # timeout(1) wrapper) fails, the DCS record may already be persisted and
+      # H2 split-brain fix: after syncerctl (under a timeout(1) wrapper) fails,
+      # the DCS record may already be persisted and
       # syncer may be promoting the candidate. The current primary must be
       # fenced fail-closed (read_only=1), NOT rolled back to writable — the old
       # rollback path could leave two writable primaries.
@@ -516,7 +724,7 @@ EOF
         local_read_only_is() {
           [ "$1" = "1" ]
         }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         The status should be failure
         The output should include "Switchover: creating syncer DCS switchover"
         The output should include "fencing current primary read_only=1"
@@ -542,7 +750,7 @@ EOF
         local_read_only_is() {
           [ "$1" = "1" ]
         }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         The status should be failure
         The output should include "Switchover syncerctl output: switchover failed: operation precheck failed: mdb-mariadb-0 is not the primary"
         The stderr should include "Switchover failed: syncerctl did not report success"
@@ -561,13 +769,115 @@ EOF
           record_call "set_read_only=$1"
           return 1
         }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         The status should be failure
         The output should include "fencing current primary read_only=1"
         The stderr should include "could not set current primary read_only=1 after uncertain DCS switchover"
         The stderr should include "manual verification required to avoid split-brain"
         The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
         The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
+      End
+
+      It "fails closed when idempotent final-state is reached but the old-primary positive fence cannot close"
+        make_zero_status_failing_syncerctl
+        : > "${TEST_DIR}/calls"
+        prepare_current_primary_for_switchover() { return 0; }
+        wait_candidate_sql_reachable_before_dcs() { return 0; }
+        switchover_final_state_already_reached() { return 0; }
+        set_local_read_only() {
+          record_call "idempotent_set_read_only=$1"
+          return 0
+        }
+        local_read_only_is() { [ "$1" = "1" ]; }
+        revoke_user_facing_root_admin_privileges_for_secondary() {
+          record_call "idempotent_root_bypass_revoke_called"
+          return 0
+        }
+        verify_post_dcs_local_root_write_fenced() {
+          record_call "idempotent_root_bypass_verifier_called"
+          return 1
+        }
+
+        When call run_switchover \
+          "mdb-mariadb-1" \
+          "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+          "explicit"
+        The status should be failure
+        The stderr should include "syncerctl did not report success"
+        The stderr should include "current primary local write fence did not close"
+        The contents of file "${TEST_DIR}/calls" should include "idempotent_set_read_only=ON"
+        The contents of file "${TEST_DIR}/calls" should include "idempotent_root_bypass_revoke_called"
+        The contents of file "${TEST_DIR}/calls" should include "idempotent_root_bypass_verifier_called"
+        The output should not include "convergence=delegated"
+        The output should not include "convergence=observed"
+      End
+
+      It "returns structured delegated success for an explicit idempotent closeout only after the old-primary fence closes"
+        make_zero_status_failing_syncerctl
+        : > "${TEST_DIR}/calls"
+        prepare_current_primary_for_switchover() { return 0; }
+        wait_candidate_sql_reachable_before_dcs() { return 0; }
+        switchover_final_state_already_reached() { return 0; }
+        fence_current_primary_local_writes_after_dcs() {
+          record_call "idempotent_stage4_called"
+          return 0
+        }
+        wait_candidate_promoted_via_syncerctl() {
+          record_call "BUG_explicit_idempotent_stage5_called"
+          return 1
+        }
+        wait_candidate_remote_root_primary_ready() {
+          record_call "BUG_explicit_idempotent_stage6_called"
+          return 1
+        }
+
+        When call run_switchover \
+          "mdb-mariadb-1" \
+          "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+          "explicit"
+        The status should be success
+        The stderr should include "syncerctl did not report success"
+        The output should include "candidate_mode=explicit"
+        The output should include "dcs_recorded=true"
+        The output should include "old_primary_fenced=true"
+        The output should include "convergence=delegated"
+        The contents of file "${TEST_DIR}/calls" should include "idempotent_stage4_called"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_explicit_idempotent_stage5_called"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_explicit_idempotent_stage6_called"
+      End
+
+      It "returns structured observed success for an auto idempotent closeout after final-state proof and old-primary fence"
+        make_zero_status_failing_syncerctl
+        : > "${TEST_DIR}/calls"
+        prepare_current_primary_for_switchover() { return 0; }
+        wait_candidate_sql_reachable_before_dcs() { return 0; }
+        switchover_final_state_already_reached() { return 0; }
+        fence_current_primary_local_writes_after_dcs() {
+          record_call "idempotent_stage4_called"
+          return 0
+        }
+        wait_candidate_promoted_via_syncerctl() {
+          record_call "BUG_auto_idempotent_stage5_called"
+          return 1
+        }
+        wait_candidate_remote_root_primary_ready() {
+          record_call "BUG_auto_idempotent_stage6_called"
+          return 1
+        }
+
+        When call run_switchover \
+          "mdb-mariadb-1" \
+          "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+          "auto"
+        The status should be success
+        The stderr should include "syncerctl did not report success"
+        The output should include "candidate_mode=auto"
+        The output should include "dcs_recorded=true"
+        The output should include "old_primary_fenced=true"
+        The output should include "convergence=observed"
+        The contents of file "${TEST_DIR}/calls" should include "idempotent_stage4_called"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_auto_idempotent_stage5_called"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_auto_idempotent_stage6_called"
       End
 
       It "treats duplicate post-success invocation as idempotent success when final state is already reached"
@@ -608,10 +918,13 @@ EOF
           esac
           return 1
         }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         The status should be success
         The output should include "Switchover syncerctl output: switchover failed: operation precheck failed: mdb-mariadb-0 is not the primary"
         The output should include "Switchover idempotent success: desired final state already reached"
+        The output should include "candidate_mode=auto"
+        The output should include "old_primary_fenced=true"
+        The output should include "convergence=observed"
         The stderr should include "Switchover failed: syncerctl did not report success"
         The contents of file "${TEST_DIR}/calls" should not include "rollback"
       End
@@ -678,7 +991,7 @@ EOF_MOCK
           record_call "rollback"
           return 0
         }
-        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         The status should be failure
         The output should include "Switchover post-DCS guard"
         The stderr should include "Switchover failed: current primary local write fence did not close after DCS switchover"
@@ -2054,7 +2367,7 @@ secondary-other"
         echo "1100" > "${TEST_DIR}/clock_now"
         return 0
       }
-      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" "auto"
       The status should be failure
       The output should include "global deadline"
       The stderr should include "reason=action_deadline_exhausted_prepare"
@@ -2067,7 +2380,7 @@ secondary-other"
         advance_clock 100
         return 0
       }
-      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" "auto"
       The status should be failure
       The output should include "Switchover stage prepare"
       The stderr should include "reason=action_deadline_exhausted_prepare_overrun"
@@ -2081,7 +2394,7 @@ secondary-other"
         advance_clock 100
         return 0
       }
-      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" "auto"
       The status should be failure
       The output should include "Switchover stage dcs"
       The stderr should include "reason=action_deadline_exhausted_dcs_overrun"
@@ -2096,7 +2409,7 @@ secondary-other"
         advance_clock 100
         return 0
       }
-      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" "auto"
       The status should be failure
       The output should include "Switchover stage fence"
       The stderr should include "reason=action_deadline_exhausted_fence_overrun"
@@ -2117,7 +2430,7 @@ secondary-other"
         advance_clock 100
         return 0
       }
-      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" "auto"
       The status should be failure
       The output should include "Switchover stage candidate_promoted"
       The stderr should include "reason=action_deadline_exhausted_promote_overrun"
@@ -2139,7 +2452,7 @@ secondary-other"
         advance_clock 100
         return 0
       }
-      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" "auto"
       The status should be failure
       The output should include "Switchover stage candidate_primary_ready"
       The stderr should include "reason=action_deadline_exhausted_ready_overrun"
@@ -2154,7 +2467,7 @@ secondary-other"
         echo "not-a-number" > "${TEST_DIR}/clock_now"
         return 0
       }
-      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" "auto"
       The status should be failure
       The output should include "Switchover stage prepare"
       The stderr should include "reason=action_deadline_exhausted_prepare_overrun"
@@ -2220,6 +2533,26 @@ EOF
       The output should include "syncerctl output"
       The stderr should include "syncerctl exited with rc=7"
       The stderr should not include "reason=syncerctl_timeout"
+    End
+
+    It "r25: maps an active DCS marker to a stable retryable conflict without claiming a mutation"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "SWITCHOVER_IN_PROGRESS leader=mdb-mariadb-1 candidate=mdb-mariadb-1" >&2
+exit 7
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      timeout() {
+        shift
+        "$@"
+      }
+      When call syncerctl_switchover "mdb-mariadb-0" "mdb-mariadb-1" 3
+      The status should be failure
+      The output should include "Switchover syncerctl output: SWITCHOVER_IN_PROGRESS"
+      The stderr should include "outcome=retryable_conflict"
+      The stderr should include "mutation=0"
+      The stderr should include "reason=switchover_in_progress"
+      The stderr should include "SWITCHOVER_IN_PROGRESS leader=mdb-mariadb-1 candidate=mdb-mariadb-1"
     End
 
     It "alpha.61 v3: returns success when syncerctl reports 'switchover success' within budget"
