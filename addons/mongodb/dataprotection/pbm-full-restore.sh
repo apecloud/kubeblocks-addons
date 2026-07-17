@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 set -o pipefail
-export PATH="$PATH:$DP_DATASAFED_BIN_PATH:$MOUNT_DIR/tmp/bin"
-export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+# syncerctl is delivered through the target data PVC at $MOUNT_DIR/tmp/bin.
+export PATH="$PATH:$MOUNT_DIR/tmp/bin"
 
 set_backup_config_env
 

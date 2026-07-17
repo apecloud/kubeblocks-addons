@@ -26,9 +26,6 @@ function DP_error_log() {
 # Save backup status info file for syncing progress.
 # timeFormat: %Y-%m-%dT%H:%M:%SZ
 function DP_save_backup_status_info() {
-    export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
-    export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
-
     local totalSize=$1
     local startTime=$2
     local stopTime=$3

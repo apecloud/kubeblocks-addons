@@ -6,8 +6,8 @@
 # Ref: https://docs.percona.com/percona-backup-mongodb/usage/pitr-physical.html#post-restore-steps
 set -e
 set -o pipefail
-export PATH="$PATH:$DP_DATASAFED_BIN_PATH:${MOUNT_DIR}/tmp/bin"
-export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+# syncerctl is delivered through the target data PVC at ${MOUNT_DIR}/tmp/bin.
+export PATH="$PATH:${MOUNT_DIR}/tmp/bin"
 
 trap handle_pbm_backup_exit EXIT
 run_pbm_pitr_backup
