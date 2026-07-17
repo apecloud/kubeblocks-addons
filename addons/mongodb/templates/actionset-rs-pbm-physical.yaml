@@ -34,7 +34,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
-          {{- .Files.Get "dataprotection/rs-pbm-full-backup.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/pbm-full-backup.sh" | nindent 10 }}
     preDelete:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
       command:
@@ -52,4 +52,4 @@ spec:
           - -c
           - |
             {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
-            {{- .Files.Get "dataprotection/rs-pbm-full-restore.sh" | nindent 12 }}
+            {{- .Files.Get "dataprotection/pbm-full-restore.sh" | nindent 12 }}

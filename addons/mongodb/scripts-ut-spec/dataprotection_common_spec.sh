@@ -6,8 +6,6 @@ Describe "MongoDB dataprotection common script"
   setup_polling() {
     POLL_STATE_FILE="$(mktemp)"
     echo 0 > "$POLL_STATE_FILE"
-    export SYNCER_PBM_WAIT_MAX_RETRIES=0
-    export SYNCER_RESTORE_WAIT_MAX_RETRIES=0
     export SYNCER_PBM_WAIT_INTERVAL_SECONDS=0
     export SYNCER_RESTORE_WAIT_INTERVAL_SECONDS=0
   }
