@@ -79,8 +79,8 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.45,8.0.46]
-      serviceVersion: 8.0.45
+      # Valid options are: [8.0.45, 8.0.46]
+      serviceVersion: 8.0.46
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -132,8 +132,8 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.45,8.0.46]
-      serviceVersion: 8.0.45
+      # Valid options are: [8.0.45, 8.0.46]
+      serviceVersion: 8.0.46
 ```
 
 The list of supported versions can be found by following command:
@@ -464,6 +464,18 @@ A switchover in database clusters is a planned operation that transfers the prim
 
 Switchover a specified instance as the new primary or leader of the cluster
 
+Check the current roles first:
+
+```bash
+kubectl get pods -n demo \
+  -l app.kubernetes.io/instance=mysql-cluster \
+  -L kubeblocks.io/role
+```
+
+Replace `<CURRENT_PRIMARY>` and `<TARGET_SECONDARY>` in
+`switchover-specified-instance.yaml` with the current primary and the intended
+secondary Pod names, respectively. Then apply the file:
+
 ```yaml
 # cat examples/mysql/switchover-specified-instance.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
@@ -481,11 +493,11 @@ spec:
   - componentName: mysql
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: mysql-cluster-mysql-0
+    instanceName: <CURRENT_PRIMARY>
     # If CandidateName is specified, the role will be transferred to this instance.
     # The name must match one of the pods in the component.
     # Refer to ComponentDefinition's Swtichover lifecycle action for more details.
-    candidateName: mysql-cluster-mysql-1
+    candidateName: <TARGET_SECONDARY>
 
 ```
 
@@ -592,7 +604,7 @@ spec:
   componentSpecs:
     - name: mysql
       componentDef: "mysql-8.0"  # match all CMPD named with 'mysql-8.0-'
-      serviceVersion: 8.0.45
+      serviceVersion: 8.0.46
       disableExporter: false
       replicas: 2
       resources:
@@ -899,10 +911,12 @@ spec:
   services:
     - name: orchestrator
       componentSelector: orchestrator
+      roleSelector: primary
       spec:
         ports:
           - name: orc-http
             port: 80
+            targetPort: orc-http
   componentSpecs:
     - name: orchestrator
       disableExporter: true
@@ -944,7 +958,7 @@ spec:
     - name: mysql
       componentDef: mysql-orc-8.0 # use componentDef: mysql-orc-8.0
       disableExporter: true
-      serviceVersion: "8.0.45"
+      serviceVersion: "8.0.46"
       replicas: 2
       resources:
         limits:

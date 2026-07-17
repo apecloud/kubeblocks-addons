@@ -9,7 +9,7 @@ spec:
     - name: mysql
       componentDef: mysql-orc-8.0 # use componentDef: mysql-orc-8.0
       disableExporter: true
-      serviceVersion: "8.0.45"
+      serviceVersion: "8.0.46"
       replicas: 2
       resources:
         limits:
