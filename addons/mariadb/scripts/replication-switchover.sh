@@ -1247,7 +1247,7 @@ rollback_current_primary_switchover_guard() {
 fence_current_primary_after_uncertain_dcs() {
   # H2 split-brain guard for the Stage-3 (DCS switchover) failure path.
   #
-  # syncerctl_switchover is invoked with --force and wrapped by timeout(1). A
+  # syncerctl_switchover is wrapped by timeout(1). A
   # non-zero or timeout(1) (rc 124/125/137) return does NOT prove the DCS
   # switchover record was never persisted: syncer can accept and persist the
   # switchover request, begin asynchronously promoting the candidate, and then
@@ -1643,31 +1643,25 @@ syncerctl_switchover() {
   local output
   local rc
   local using_timeout=0
+  SWITCHOVER_SYNCERCTL_OUTCOME=""
 
-  # alpha.79 v2 (Helen TL autopilot 22:31 westonnnn `442a5d2e`): pass --force
-  # so syncer overrides any leftover "previous switchover unfinished" DCS
-  # record from a prior successful switchover. n1ad same-cluster repeat axis
-  # (2026-05-14 ~14:54 UTC) exposed this: after the first GREEN switchover
-  # cleared chart-side state and OpsRequest reached Succeed, syncer's DCS
-  # record stayed in "unfinished" state. Repeat switchovers got
-  # `Create switchover failed: there is another switchover
-  # maria-5d-n1ad-mariadb-switchover unfinished`. Using --force on every
-  # invocation is safe: first-time switchovers have no leftover record so
-  # --force is a no-op; repeated switchovers proceed cleanly. This is a
-  # syncer-layer cleanup gap (syncer should mark its own DCS record done
-  # when the switchover protocol completes); --force is a chart-side
-  # workaround until syncer side cleans up properly.
+  # r25 completion contract: the addon never preempts an existing DCS
+  # switchover. `--force` used to delete an unfinished marker without proving
+  # that the previous database/lease/grant side effects had rolled back. A
+  # second request must instead receive syncer's stable
+  # SWITCHOVER_IN_PROGRESS conflict and retry only after the first operation
+  # reaches terminal truth.
   if [ -n "${stage_budget}" ] && [ "${SWITCHOVER_HAS_TIMEOUT}" = "1" ]; then
     local wall="${SYNCERCTL_PER_CALL_TIMEOUT_SECONDS}"
     if [ "${stage_budget}" -lt "${wall}" ]; then wall="${stage_budget}"; fi
     if [ "${wall}" -lt 1 ]; then wall=1; fi
     using_timeout=1
     output=$(timeout "${wall}" "${SYNCERCTL_BIN}" --host "${SYNCERCTL_HOST}" --port "${SYNCERCTL_PORT}" \
-      switchover --force --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
+      switchover --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
     rc=$?
   else
     output=$("${SYNCERCTL_BIN}" --host "${SYNCERCTL_HOST}" --port "${SYNCERCTL_PORT}" \
-      switchover --force --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
+      switchover --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
     rc=$?
   fi
 
@@ -1686,6 +1680,14 @@ syncerctl_switchover() {
         ;;
     esac
   fi
+
+  case "${output}" in
+    *"SWITCHOVER_IN_PROGRESS"*)
+      SWITCHOVER_SYNCERCTL_OUTCOME="retryable_conflict"
+      log_switchover_error "Switchover failed: outcome=retryable_conflict mutation=0 reason=switchover_in_progress detail=${output}; retry after the active DCS operation reaches terminal truth"
+      return 1
+      ;;
+  esac
 
   if [ "${rc}" -ne 0 ]; then
     log_switchover_error "Switchover failed: syncerctl exited with rc=${rc}"
@@ -2307,6 +2309,14 @@ run_switchover() {
   log_switchover_info "Switchover stage dcs budget=${dcs_budget}s remaining_before=$(remaining_action_budget)s primary=${current_name} candidate=${candidate_name}"
   log_switchover_info "Switchover: creating syncer DCS switchover primary=${current_name} candidate=${candidate_name}"
   if ! syncerctl_switchover "${current_name}" "${candidate_name}" "${dcs_budget}"; then
+    if [ "${SWITCHOVER_SYNCERCTL_OUTCOME:-}" = "retryable_conflict" ]; then
+      # The syncer active-marker precheck promises mutation=0. Do not run the
+      # uncertain-DCS final-state/fence path: that path is reserved for calls
+      # where the client cannot prove whether this request persisted remote
+      # side effects. A stable active-marker conflict proves this request did
+      # not mutate DCS and must leave the already-running operation untouched.
+      return 1
+    fi
     if switchover_final_state_already_reached "${current_name}" "${candidate_name}" "${candidate_fqdn}"; then
       # The duplicate call proves that DCS/candidate convergence already
       # reached the requested topology, but read_only=1 alone does not prove
@@ -2315,7 +2325,7 @@ run_switchover() {
       idempotent_final_state_reached="true"
     else
       # H2: do NOT roll the current primary back to writable here. syncerctl runs
-      # with --force under a timeout(1) wrapper, so a non-zero/timeout return
+      # under a timeout(1) wrapper, so a non-zero/timeout return
       # does not prove the DCS switchover record was not persisted — syncer may
       # already be promoting the candidate. Unfencing the current primary would
       # then make two writable primaries (split-brain). Fail closed by fencing
@@ -2382,6 +2392,7 @@ run_switchover() {
   promoted_budget=$(stage_budget_or_exit "promote" "${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS}") || return 1
   log_switchover_info "Switchover stage candidate_promoted budget=${promoted_budget}s remaining_before=$(remaining_action_budget)s"
   if ! wait_candidate_promoted_via_syncerctl "${candidate_name}" "${candidate_fqdn}" "${promoted_budget}"; then
+    log_switchover_error "Switchover failed: outcome=indeterminate_dcs_in_progress mutation=remote-partial stage=candidate_promoted reason=post_dcs_terminal_not_proven; old primary remains fenced and the DCS operation must not be preempted"
     return 1
   fi
   # Post-stage overrun check (mirrors prepare/dcs/fence). The promote loop is
@@ -2401,6 +2412,7 @@ run_switchover() {
   ready_budget=$(stage_budget_or_exit "ready" "${CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS}") || return 1
   log_switchover_info "Switchover stage candidate_primary_ready budget=${ready_budget}s remaining_before=$(remaining_action_budget)s"
   if ! wait_candidate_remote_root_primary_ready "${candidate_name}" "${candidate_fqdn}" "${ready_budget}"; then
+    log_switchover_error "Switchover failed: outcome=indeterminate_dcs_in_progress mutation=remote-partial stage=candidate_primary_ready reason=post_dcs_terminal_not_proven; old primary remains fenced and the DCS operation must not be preempted"
     return 1
   fi
   # Final-stage overrun check, BEFORE the success log/return. ready is the last

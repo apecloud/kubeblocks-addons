@@ -318,6 +318,33 @@ EOF
       The contents of file "${TEST_DIR}/calls" should not include "BUG_explicit_stage6_called"
     End
 
+    It "returns an active-marker retryable conflict without final-state probing or local fencing"
+      syncerctl_switchover() {
+        SWITCHOVER_SYNCERCTL_OUTCOME="retryable_conflict"
+        log_switchover_error "Switchover failed: outcome=retryable_conflict mutation=0 reason=switchover_in_progress"
+        return 1
+      }
+      switchover_final_state_already_reached() {
+        record_call "BUG_active_conflict_final_state_probe"
+        return 1
+      }
+      fence_current_primary_after_uncertain_dcs() {
+        record_call "BUG_active_conflict_fence"
+        return 0
+      }
+
+      When call run_switchover \
+        "mdb-mariadb-1" \
+        "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
+        "explicit"
+      The status should be failure
+      The stderr should include "outcome=retryable_conflict"
+      The stderr should include "mutation=0"
+      The contents of file "${TEST_DIR}/calls" should not include "BUG_active_conflict_final_state_probe"
+      The contents of file "${TEST_DIR}/calls" should not include "BUG_active_conflict_fence"
+      The output should not include "Switchover stage fence"
+    End
+
     It "keeps empty-candidate auto mode fail-closed while the selected candidate remains secondary"
       wait_candidate_promoted_via_syncerctl() {
         record_call "auto_stage5_called"
@@ -333,6 +360,8 @@ EOF
         "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" \
         "auto"
       The status should be failure
+      The stderr should include "outcome=indeterminate_dcs_in_progress"
+      The stderr should include "mutation=remote-partial"
       The contents of file "${TEST_DIR}/calls" should include "auto_stage5_called"
       The contents of file "${TEST_DIR}/calls" should not include "BUG_auto_stage6_called_after_stage5_failure"
       The output should not include "convergence=delegated"
@@ -506,9 +535,10 @@ EOF
         run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" "auto"
         When run cat "${SYNCERCTL_ARGS}"
         The status should be success
-        # alpha.79 v2: --force added to bypass syncer's "previous switchover
-        # unfinished" DCS record so same-cluster repeat switchovers proceed.
-        The output should eq "--host 127.0.0.1 --port 3601 switchover --force --primary mdb-mariadb-0 --candidate mdb-mariadb-1"
+        # r25 completion contract: an active DCS operation is never preempted.
+        # The addon must not pass --force; syncer owns the stable retryable
+        # conflict and mutation=0 outcome for an existing marker.
+        The output should eq "--host 127.0.0.1 --port 3601 switchover --primary mdb-mariadb-0 --candidate mdb-mariadb-1"
       End
 
       It "fails before switchover when mariadb client is unavailable"
@@ -673,8 +703,8 @@ EOF
     End
 
     Context "when syncerctl cannot create DCS switchover"
-      # H2 split-brain fix: after syncerctl (invoked with --force under a
-      # timeout(1) wrapper) fails, the DCS record may already be persisted and
+      # H2 split-brain fix: after syncerctl (under a timeout(1) wrapper) fails,
+      # the DCS record may already be persisted and
       # syncer may be promoting the candidate. The current primary must be
       # fenced fail-closed (read_only=1), NOT rolled back to writable — the old
       # rollback path could leave two writable primaries.
@@ -2503,6 +2533,26 @@ EOF
       The output should include "syncerctl output"
       The stderr should include "syncerctl exited with rc=7"
       The stderr should not include "reason=syncerctl_timeout"
+    End
+
+    It "r25: maps an active DCS marker to a stable retryable conflict without claiming a mutation"
+      cat > "${SYNCERCTL_BIN}" <<'EOF'
+#!/bin/sh
+echo "SWITCHOVER_IN_PROGRESS leader=mdb-mariadb-1 candidate=mdb-mariadb-1" >&2
+exit 7
+EOF
+      chmod +x "${SYNCERCTL_BIN}"
+      timeout() {
+        shift
+        "$@"
+      }
+      When call syncerctl_switchover "mdb-mariadb-0" "mdb-mariadb-1" 3
+      The status should be failure
+      The output should include "Switchover syncerctl output: SWITCHOVER_IN_PROGRESS"
+      The stderr should include "outcome=retryable_conflict"
+      The stderr should include "mutation=0"
+      The stderr should include "reason=switchover_in_progress"
+      The stderr should include "SWITCHOVER_IN_PROGRESS leader=mdb-mariadb-1 candidate=mdb-mariadb-1"
     End
 
     It "alpha.61 v3: returns success when syncerctl reports 'switchover success' within budget"
