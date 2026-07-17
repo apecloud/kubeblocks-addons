@@ -54,7 +54,12 @@ spec:
                 exit 1
             fi
 
-            requested_state="${enableBalancer:-true}"
+            requested_state="$1"
+            unresolved_parameter='$'
+            unresolved_parameter="${unresolved_parameter}(enableBalancer)"
+            if [ -z "$requested_state" ] || [ "$requested_state" = "$unresolved_parameter" ]; then
+                requested_state=true
+            fi
             case "$requested_state" in
                 true)
                     balancer_command="sh.startBalancer()"
@@ -90,3 +95,5 @@ spec:
             fi
 
             echo "$success_message"
+          - toggle-balancer
+          - $(enableBalancer)

@@ -27,6 +27,33 @@ Describe "MongoDB toggle-balancer operation contract"
     ' > "$output_file"
   }
 
+  verify_toggle_balancer_transport() {
+    local chart_dir
+
+    chart_dir=$(cd .. && pwd)
+    # shellcheck disable=SC2016
+    helm template kb-addon-mongodb "$chart_dir" --dependency-update | ruby -ryaml -e '
+      documents = YAML.load_stream($stdin.read).compact
+      ops_definition = documents.find do |document|
+        document["kind"] == "OpsDefinition" &&
+          document.dig("metadata", "name") == "mongodb-shard-toggle-balancer"
+      end
+      abort "toggle-balancer OpsDefinition is missing" unless ops_definition
+
+      action = ops_definition.fetch("spec").fetch("actions").find do |candidate|
+        candidate["name"] == "toggle-balancer"
+      end
+      abort "toggle-balancer action is missing" unless action
+
+      command = action.dig("exec", "command")
+      abort "expected five command elements, got #{command.inspect}" unless command&.length == 5
+      abort "bash -c prefix is missing" unless command[0, 2] == ["bash", "-c"]
+      abort "the script body must not contain the expansion token" if command[2].include?("$(enableBalancer)")
+      abort "the bash -c positional placeholder is missing" unless command[3] == "toggle-balancer"
+      abort "the forwarding argument is missing" unless command[4] == "$(enableBalancer)"
+    '
+  }
+
   run_toggle_balancer() {
     local parameter_mode="$1"
     local observed_state="$2"
@@ -84,13 +111,12 @@ MOCK
     export MONGODB_ROOT_PASSWORD=password
     export PATH="$temp_dir/bin:$PATH"
 
+    unset enableBalancer
     if [[ "$parameter_mode" == "omitted" ]]; then
-      unset enableBalancer
-    else
-      export enableBalancer="$parameter_mode"
+      parameter_mode='$(enableBalancer)'
     fi
 
-    bash "$script_file"
+    bash -c "$(cat "$script_file")" toggle-balancer "$parameter_mode"
     local rc=$?
     rm -rf "$temp_dir"
     return "$rc"
@@ -141,5 +167,10 @@ MOCK
     The output should include "ACTION:start"
     The stderr should include "ERROR: Failed to read balancer state with exit code 19."
     The output should not include "INFO: Balancer is enabled."
+  End
+
+  It "forwards the helper parameter without exposing the token in the target script"
+    When call verify_toggle_balancer_transport
+    The status should be success
   End
 End
