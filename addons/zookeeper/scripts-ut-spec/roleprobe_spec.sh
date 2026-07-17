@@ -122,5 +122,117 @@ Describe "ZooKeeper Startup Bash Script Tests"
       When call get_zk_role
       The output should eq "follower"
     End
+
+    It "returns observer when mode is observer"
+      get_zookeeper_mode() {
+        echo "observer"
+      }
+
+      When call get_zk_role
+      The status should be success
+      The output should eq "observer"
+    End
+  End
+
+  Describe "roleprobe.sh behavior"
+    setup_mock_nc() {
+      roleprobe_mock_bin="$(mktemp -d)"
+      roleprobe_original_path="$PATH"
+      cat > "$roleprobe_mock_bin/nc" <<'EOF'
+#!/bin/sh
+case "${ROLEPROBE_NC_CASE:-}" in
+  standalone|leader|follower|observer|looking)
+    printf 'Mode: %s\n' "$ROLEPROBE_NC_CASE"
+    ;;
+  ambiguous)
+    printf 'Mode: leader\nMode: follower\n'
+    ;;
+  empty)
+    ;;
+  refused)
+    exit 1
+    ;;
+  *)
+    exit 2
+    ;;
+esac
+EOF
+      chmod +x "$roleprobe_mock_bin/nc"
+      export PATH="$roleprobe_mock_bin:$PATH"
+    }
+
+    cleanup_mock_nc() {
+      PATH="$roleprobe_original_path"
+      export PATH
+      rm -rf "$roleprobe_mock_bin"
+      unset roleprobe_mock_bin roleprobe_original_path ROLEPROBE_NC_CASE
+    }
+
+    BeforeEach "setup_mock_nc"
+    AfterEach "cleanup_mock_nc"
+
+    It "maps standalone to leader"
+      export ROLEPROBE_NC_CASE="standalone"
+
+      When run command bash ../scripts/roleprobe.sh
+      The status should be success
+      The output should eq "leader"
+    End
+
+    It "publishes leader"
+      export ROLEPROBE_NC_CASE="leader"
+
+      When run command bash ../scripts/roleprobe.sh
+      The status should be success
+      The output should eq "leader"
+    End
+
+    It "publishes follower"
+      export ROLEPROBE_NC_CASE="follower"
+
+      When run command bash ../scripts/roleprobe.sh
+      The status should be success
+      The output should eq "follower"
+    End
+
+    It "publishes observer"
+      export ROLEPROBE_NC_CASE="observer"
+
+      When run command bash ../scripts/roleprobe.sh
+      The status should be success
+      The output should eq "observer"
+    End
+
+    It "fails closed on empty output"
+      export ROLEPROBE_NC_CASE="empty"
+
+      When run command bash ../scripts/roleprobe.sh
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "fails closed on an uncertain mode"
+      export ROLEPROBE_NC_CASE="looking"
+
+      When run command bash ../scripts/roleprobe.sh
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "fails closed when nc refuses the connection"
+      export ROLEPROBE_NC_CASE="refused"
+
+      When run command bash ../scripts/roleprobe.sh
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "fails closed on ambiguous multi-line mode output"
+      export ROLEPROBE_NC_CASE="ambiguous"
+
+      When run command bash ../scripts/roleprobe.sh
+      The status should be failure
+      The output should eq ""
+    End
   End
 End
