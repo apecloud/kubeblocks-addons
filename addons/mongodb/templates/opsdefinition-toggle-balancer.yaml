@@ -54,10 +54,39 @@ spec:
                 exit 1
             fi
 
-            if [ "$(enableBalancer)" = "true" ]; then
-                $CLUSTER_MONGO "sh.startBalancer()"
-                echo "INFO: Balancer is enabled."
-            else
-                $CLUSTER_MONGO "sh.stopBalancer()"
-                echo "INFO: Balancer is disabled."
+            requested_state="${enableBalancer:-true}"
+            case "$requested_state" in
+                true)
+                    balancer_command="sh.startBalancer()"
+                    success_message="INFO: Balancer is enabled."
+                    ;;
+                false)
+                    balancer_command="sh.stopBalancer()"
+                    success_message="INFO: Balancer is disabled."
+                    ;;
+                *)
+                    echo "ERROR: Invalid enableBalancer value: $requested_state" >&2
+                    exit 2
+                    ;;
+            esac
+
+            $CLUSTER_MONGO "$balancer_command"
+            action_rc=$?
+            if [ $action_rc -ne 0 ]; then
+                echo "ERROR: Balancer command failed with exit code $action_rc." >&2
+                exit $action_rc
             fi
+
+            observed_state=$($CLUSTER_MONGO "sh.getBalancerState()")
+            state_rc=$?
+            if [ $state_rc -ne 0 ]; then
+                echo "ERROR: Failed to read balancer state with exit code $state_rc." >&2
+                exit $state_rc
+            fi
+            observed_state=$(printf '%s' "$observed_state" | tr -d '[:space:]')
+            if [ "$observed_state" != "$requested_state" ]; then
+                echo "ERROR: Balancer state verification failed: requested=$requested_state observed=$observed_state." >&2
+                exit 1
+            fi
+
+            echo "$success_message"
