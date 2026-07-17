@@ -60,7 +60,10 @@ Describe "MySQL MGR version support contract"
   }
 
   assert_user_facing_boundary() {
-    grep -Fq 'MySQL 8.0.46 is not supported with the MGR topology' "$(chart_path)/README.md" || return
+    grep -Fq 'MySQL 8.0.46 with MGR is temporarily unsupported because of an upstream Group Replication defect' "$(chart_path)/README.md" || return
+    grep -Fq 'https://github.com/mysql/mysql-server/issues/696' "$(chart_path)/README.md" || return
+    grep -Fq 'Support will be restored after an upstream-fixed image passes addon validation' "$(chart_path)/README.md" || return
+    grep -Fq 'the MGR 8.0 default now resolves explicitly to 8.0.45' "$(chart_path)/README.md" || return
     grep -Fq 'Other MySQL 8.0.46 topologies remain supported' "$(chart_path)/README.md" || return
     grep -Eq '^[[:space:]]*serviceVersion:[[:space:]]*8\.0\.45([[:space:]]|$)' "${SHELLSPEC_CWD}/examples/mysql/cluster-mgr.yaml" || return
   }
@@ -85,7 +88,7 @@ Describe "MySQL MGR version support contract"
     The output should include "8.0.46"
   End
 
-  It "publishes the unsupported boundary and a supported MGR example"
+  It "publishes the upstream-defect boundary, restoration condition, migration, and a supported MGR example"
     When call assert_user_facing_boundary
     The status should be success
   End

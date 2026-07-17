@@ -25,7 +25,8 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-mgr-8.0",
-      # Valid option is: [8.0.45]. MySQL 8.0.46 is unsupported with MGR.
+      # Valid option is: [8.0.45]. MySQL 8.0.46 with MGR is temporarily
+      # unavailable because of upstream MySQL issue #696.
       serviceVersion: 8.0.45
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
