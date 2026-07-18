@@ -94,13 +94,6 @@ spec:
           optional: true
           host: Required
           loadBalancer: Required
-    - name: LEADER_POD_FQDN
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podFQDNsForRole:
-            role: leader
-            option: Required
     - name: ETCD_COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -167,13 +160,19 @@ spec:
       initialDelaySeconds: 10
       periodSeconds: 5
     memberJoin:
+      timeoutSeconds: 45
       exec:
+        targetPodSelector: Role
+        matchingKey: leader
         command:
           - /bin/bash
           - -c
           - /scripts/member-join.sh > /tmp/member-join.log 2>&1
     memberLeave:
+      timeoutSeconds: 45
       exec:
+        targetPodSelector: Role
+        matchingKey: leader
         command:
           - /bin/bash
           - -c

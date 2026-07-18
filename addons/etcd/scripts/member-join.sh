@@ -120,24 +120,10 @@ classify_member_state() {
   '
 }
 
-read_member_state() {
-  local endpoint="$1"
-  local target_name="$2"
-  local target_peer_url="$3"
-  local member_list
-
-  if ! member_list=$(exec_etcdctl "$endpoint" member list -w fields); then
-    return 1
-  fi
-
-  printf '%s\n' "$member_list" | classify_member_state "$target_name" "$target_peer_url"
-}
-
 validate_member_join_inputs() {
   local missing=""
   local context
 
-  [ -n "${LEADER_POD_FQDN:-}" ] || missing="${missing} LEADER_POD_FQDN"
   [ -n "${KB_JOIN_MEMBER_POD_NAME:-}" ] || missing="${missing} KB_JOIN_MEMBER_POD_NAME"
   [ -n "${KB_JOIN_MEMBER_POD_FQDN:-}" ] || missing="${missing} KB_JOIN_MEMBER_POD_FQDN"
 
@@ -148,22 +134,112 @@ validate_member_join_inputs() {
   fi
 }
 
+build_join_contacts() {
+  local member_list="$1"
+  local target_name="$2"
+  local client_protocol="$3"
+  local peer_protocol="$4"
+  local context="$5"
+  local contacts rc
+
+  if contacts=$(printf '%s\n' "$member_list" | \
+    build_current_contact_candidates "$target_name" "$client_protocol" "" "contacts" "$peer_protocol"); then
+    printf '%s\n' "$contacts"
+    return 0
+  else
+    rc=$?
+  fi
+
+  case "$rc" in
+    2)
+      member_join_diagnose_not_ready "member-list-invalid" "$context" "no"
+      ;;
+    3)
+      member_join_diagnose_not_ready "contact-candidate-over-limit" "$context" "no"
+      ;;
+    4)
+      member_join_diagnose_not_ready "contact-candidate-empty" "$context" "yes"
+      ;;
+    *)
+      member_join_diagnose_not_ready "contact-candidate-build-failed" "$context" "no"
+      ;;
+  esac
+  return 1
+}
+
+classify_join_snapshot() {
+  local member_list="$1"
+  local target_name="$2"
+  local target_peer_url="$3"
+  printf '%s\n' "$member_list" | classify_member_state "$target_name" "$target_peer_url"
+}
+
+validate_join_snapshot() {
+  local member_list="$1"
+  local client_protocol="$2"
+  local peer_protocol="$3"
+  local context="$4"
+
+  if ! printf '%s\n' "$member_list" | \
+    build_current_contact_candidates "" "$client_protocol" "" \
+      "validate-only" "$peer_protocol" >/dev/null; then
+    member_join_diagnose_not_ready "member-list-invalid" "$context" "no"
+    return 1
+  fi
+}
+
+has_target_contact_collision() {
+  local target_host="$1"
+  local contacts="$2"
+
+  printf '%s\n' "$contacts" | awk -v target_host="$target_host" '
+    {
+      count = split($0, values, ",")
+      for (i = 1; i <= count; i++) {
+        host = values[i]
+        sub(/^[^:]+:\/\//, "", host)
+        sub(/:[0-9]+$/, "", host)
+        if (host == target_host) found = 1
+      }
+    }
+    END { exit(found ? 0 : 1) }
+  '
+}
+
 add_member() {
-  local leader_pod_name leader_endpoint join_member_endpoint peer_protocol
-  local target_peer_url member_state context add_rc
+  local local_endpoint="127.0.0.1:2379"
+  local join_member_endpoint peer_protocol client_protocol target_peer_url
+  local member_list contacts member_state context add_rc
 
   validate_member_join_inputs || return 1
 
-  leader_pod_name="${LEADER_POD_FQDN%%.*}"
-  leader_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$leader_pod_name" "$LEADER_POD_FQDN")
-  join_member_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$KB_JOIN_MEMBER_POD_NAME" "$KB_JOIN_MEMBER_POD_FQDN")
+  context=$(printf '  member: %s\n  member-fqdn: %s' \
+    "$KB_JOIN_MEMBER_POD_NAME" "$KB_JOIN_MEMBER_POD_FQDN")
+  if ! validate_local_leader "$local_endpoint"; then
+    member_join_diagnose_not_ready "selected-contact-not-current-leader" "$context" "yes"
+    return 1
+  fi
+
+  if ! join_member_endpoint=$(get_endpoint_adapt_lb \
+    "${PEER_ENDPOINT:-}" "$KB_JOIN_MEMBER_POD_NAME" "$KB_JOIN_MEMBER_POD_FQDN"); then
+    member_join_diagnose_not_ready "target-endpoint-invalid" "$context" "no"
+    return 1
+  fi
   peer_protocol=$(get_protocol "initial-advertise-peer-urls")
+  client_protocol=$(get_protocol "advertise-client-urls")
   target_peer_url="$peer_protocol://$join_member_endpoint:2380"
 
   context=$(printf '  member: %s\n  peer-url: %s' "$KB_JOIN_MEMBER_POD_NAME" "$target_peer_url")
 
-  if ! member_state=$(read_member_state "$leader_endpoint:2379" "$KB_JOIN_MEMBER_POD_NAME" "$target_peer_url"); then
+  if ! member_list=$(exec_bounded_etcdctl "$local_endpoint" member list -w fields); then
     member_join_diagnose_not_ready "member-list-query-failed" "$context" "yes"
+    return 1
+  fi
+  validate_join_snapshot "$member_list" "$client_protocol" "$peer_protocol" \
+    "$context" || return 1
+  if ! member_state=$(classify_join_snapshot "$member_list" \
+    "$KB_JOIN_MEMBER_POD_NAME" "$target_peer_url"); then
+    member_join_diagnose_not_ready "member-list-invalid" "$context" "no"
     return 1
   fi
 
@@ -193,10 +269,17 @@ add_member() {
       ;;
   esac
 
-  log "Adding member $KB_JOIN_MEMBER_POD_NAME to cluster via leader $leader_endpoint"
+  contacts=$(build_join_contacts "$member_list" "$KB_JOIN_MEMBER_POD_NAME" \
+    "$client_protocol" "$peer_protocol" "$context") || return 1
+  if has_target_contact_collision "$join_member_endpoint" "$contacts"; then
+    member_join_diagnose_not_ready "target-address-collision" "$context" "no"
+    return 1
+  fi
+
+  log "Adding member $KB_JOIN_MEMBER_POD_NAME via current contacts $contacts"
   log "Join member peer URL: $target_peer_url"
 
-  if exec_etcdctl "$leader_endpoint:2379" member add "$KB_JOIN_MEMBER_POD_NAME" --peer-urls="$target_peer_url"; then
+  if exec_bounded_etcdctl "$contacts" member add "$KB_JOIN_MEMBER_POD_NAME" --peer-urls="$target_peer_url"; then
     add_rc=0
   else
     add_rc=$?
@@ -205,8 +288,15 @@ add_member() {
   context=$(printf '  member: %s\n  peer-url: %s\n  member-add-rc: %s' \
     "$KB_JOIN_MEMBER_POD_NAME" "$target_peer_url" "$add_rc")
 
-  if ! member_state=$(read_member_state "$leader_endpoint:2379" "$KB_JOIN_MEMBER_POD_NAME" "$target_peer_url"); then
+  if ! member_list=$(exec_bounded_etcdctl "$contacts" member list -w fields); then
     member_join_diagnose_not_ready "member-post-add-query-failed" "$context" "yes"
+    return 1
+  fi
+  validate_join_snapshot "$member_list" "$client_protocol" "$peer_protocol" \
+    "$context" || return 1
+  if ! member_state=$(classify_join_snapshot "$member_list" \
+    "$KB_JOIN_MEMBER_POD_NAME" "$target_peer_url"); then
+    member_join_diagnose_not_ready "member-list-invalid" "$context" "no"
     return 1
   fi
 
