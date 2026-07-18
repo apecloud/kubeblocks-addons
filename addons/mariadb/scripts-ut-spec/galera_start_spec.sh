@@ -16,6 +16,7 @@ Describe "galera-start.sh"
     rm -rf "${TEST_DIR}"
     unset DATA_DIR POD_NAME MARIADB_ROOT_USER MARIADB_ROOT_PASSWORD PEER_FQDNS
     unset GALERA_PRIMARY_PEER_WAIT_SECONDS GALERA_BOOTSTRAP_DEFER_REASON
+    unset GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS
   }
   AfterEach "cleanup"
 
@@ -278,6 +279,560 @@ EOF
       '
       The status should be success
       The output should equal "OK"
+    End
+  End
+
+  Describe "orphan Joining self-heal (C6 E predicate)"
+    setup_orphan() {
+      export SOCK="${TEST_DIR}/mysqld.sock"
+      ORPHAN_RESTART_CALLS=0
+      ORPHAN_OBSERVE_CALLS=0
+      ORPHAN_TEST_TOKEN=""
+      KILL_SIGNALS_FILE="${TEST_DIR}/kill-signals"
+      : > "${KILL_SIGNALS_FILE}"
+    }
+    cleanup_orphan() {
+      unset SOCK GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS
+      unset ORPHAN_RESTART_CALLS ORPHAN_OBSERVE_CALLS ORPHAN_TEST_TOKEN
+      unset ORPHAN_THRESHOLD_SECONDS ORPHAN_THRESHOLD_TICKS ORPHAN_MUTATION_ENABLED
+      unset E_IDENTITY E_TOKEN E_COUNT E_ATTEMPTED_IDENTITY
+      unset ORPHAN_OBS_IDENTITY ORPHAN_OBS_TOKEN ORPHAN_RESTART_RESULT
+      unset ORPHAN_RESTART_MUTATION_ATTEMPTED
+    }
+    BeforeEach setup_orphan
+    AfterEach cleanup_orphan
+
+    exact_joining_status() {
+      cat <<'EOF'
+wsrep_local_state	1
+wsrep_local_state_comment	Joining: receiving State Transfer
+wsrep_cluster_status	Primary
+wsrep_ready	OFF
+wsrep_connected	ON
+wsrep_last_committed	-1
+wsrep_cluster_conf_id	7
+wsrep_incoming_addresses	10.0.0.2:3306, 10.0.0.1:3306
+EOF
+    }
+
+    observe_snapshot() {
+      _orphan_joining_observe
+      rc=$?
+      printf 'identity=%s\ntoken=%s\nstate=%s\ncomment=%s\n' \
+        "${ORPHAN_OBS_IDENTITY:-}" "${ORPHAN_OBS_TOKEN:-}" \
+        "${GALERA_OBS_STATE:-}" "${GALERA_OBS_STATE_COMMENT:-}"
+      return "${rc}"
+    }
+
+    It "reads the eight wsrep keys in one shipped-helper call and canonicalizes Joining/members"
+      mariadb() {
+        printf 'x' >> "${TEST_DIR}/mariadb-calls"
+        printf '%s\n' "$*" > "${TEST_DIR}/mariadb-query-args"
+        exact_joining_status
+      }
+      _galera_socket_present() { return 0; }
+      _mariadbd_identity() { printf '4242:99\n'; return 0; }
+      _galera_sst_process_absent() { return 0; }
+
+      When call observe_snapshot
+      The status should be success
+      The output should include "identity=4242:99"
+      The output should include "comment=Joining"
+      The output should include "ready=OFF|connected=ON|last_committed=-1|conf_id=7|members=10.0.0.1:3306,10.0.0.2:3306"
+      The contents of file "${TEST_DIR}/mariadb-calls" should equal "x"
+      The contents of file "${TEST_DIR}/mariadb-query-args" should include "wsrep_local_state"
+      The contents of file "${TEST_DIR}/mariadb-query-args" should include "wsrep_local_state_comment"
+      The contents of file "${TEST_DIR}/mariadb-query-args" should include "wsrep_cluster_status"
+      The contents of file "${TEST_DIR}/mariadb-query-args" should include "wsrep_ready"
+      The contents of file "${TEST_DIR}/mariadb-query-args" should include "wsrep_connected"
+      The contents of file "${TEST_DIR}/mariadb-query-args" should include "wsrep_last_committed"
+      The contents of file "${TEST_DIR}/mariadb-query-args" should include "wsrep_cluster_conf_id"
+      The contents of file "${TEST_DIR}/mariadb-query-args" should include "wsrep_incoming_addresses"
+    End
+
+    It "treats an incomplete keyed SQL receipt as unknown without leaking partial role state"
+      mariadb() {
+        exact_joining_status \
+          | awk -F '\t' '
+              $1 == "wsrep_local_state" { print $1 "\t4"; next }
+              $1 == "wsrep_local_state_comment" { print $1 "\tSynced"; next }
+              $1 != "wsrep_cluster_conf_id" { print }
+            '
+      }
+      _galera_socket_present() { return 0; }
+
+      incomplete_snapshot() {
+        _orphan_joining_observe
+        rc=$?
+        printf 'state=%s\ncomment=%s\ncluster=%s\nready=%s\nconnected=%s\nlast=%s\nconf=%s\nmembers=%s\n' \
+          "${GALERA_OBS_STATE:-}" "${GALERA_OBS_STATE_COMMENT:-}" \
+          "${GALERA_OBS_CLUSTER_STATUS:-}" "${GALERA_OBS_READY:-}" \
+          "${GALERA_OBS_CONNECTED:-}" "${GALERA_OBS_LAST_COMMITTED:-}" \
+          "${GALERA_OBS_CONF_ID:-}" "${GALERA_OBS_MEMBERS:-}"
+        if [ "${GALERA_OBS_STATE:-}" = "4" ] \
+          && [ "${GALERA_OBS_CLUSTER_STATUS:-}" = "Primary" ]; then
+          touch "${DATA_DIR}/.galera-synced"
+        fi
+        [ ! -e "${DATA_DIR}/.galera-synced" ] || return 1
+        return "${rc}"
+      }
+
+      When call incomplete_snapshot
+      The status should equal 2
+      The output should equal "state=
+comment=
+cluster=
+ready=
+connected=
+last=
+conf=
+members="
+    End
+
+    It "fails closed for each of the eight individually missing receipt keys"
+      missing_key_matrix() {
+        local missing rc
+        while IFS= read -r missing; do
+          mariadb() {
+            exact_joining_status | grep -v "^${missing}"
+          }
+          _orphan_joining_observe >/dev/null 2>&1
+          rc=$?
+          printf '%s:%s:%s:%s\n' "${missing}" "${rc}" \
+            "${GALERA_OBS_STATE:-}" "${GALERA_OBS_CLUSTER_STATUS:-}"
+          [ "${rc}" -eq 2 ] || return 1
+          [ -z "${GALERA_OBS_STATE:-}${GALERA_OBS_CLUSTER_STATUS:-}" ] || return 1
+        done <<'EOF'
+wsrep_local_state
+wsrep_local_state_comment
+wsrep_cluster_status
+wsrep_ready
+wsrep_connected
+wsrep_last_committed
+wsrep_cluster_conf_id
+wsrep_incoming_addresses
+EOF
+      }
+      _galera_socket_present() { return 0; }
+
+      When call missing_key_matrix
+      The status should be success
+      The lines of output should equal 8
+      The output should not include "Primary"
+    End
+
+    It "treats a present but empty required receipt value as unknown"
+      mariadb() {
+        exact_joining_status \
+          | awk -F '\t' '$1 == "wsrep_cluster_conf_id" { print $1 "\t"; next } { print }'
+      }
+      _galera_socket_present() { return 0; }
+      _mariadbd_identity() { printf '4242:99\n'; return 0; }
+      _galera_sst_process_absent() { return 0; }
+
+      When call _orphan_joining_observe
+      The status should equal 2
+    End
+
+    It "accepts only exact numeric-state 1 plus canonical Joining"
+      run_state_matrix() {
+        local state comment expected rc
+        while IFS='|' read -r state comment expected; do
+          mariadb() {
+            exact_joining_status \
+              | awk -F '\t' -v state="${state}" -v comment="${comment}" '
+                  $1 == "wsrep_local_state" { print $1 "\t" state; next }
+                  $1 == "wsrep_local_state_comment" { print $1 "\t" comment; next }
+                  { print }
+                '
+          }
+          _orphan_joining_observe >/dev/null 2>&1
+          rc=$?
+          printf '%s:%s\n' "${state}:${comment}" "${rc}"
+          [ "${rc}" -eq "${expected}" ] || return 1
+        done <<'EOF'
+1|Joining: receiving State Transfer|0
+3|Joined|1
+2|Donor/Desynced|1
+0|Initialized|1
+4|Synced|1
+1|joining: receiving State Transfer|1
+EOF
+      }
+      _galera_socket_present() { return 0; }
+      _mariadbd_identity() { printf '4242:99\n'; return 0; }
+      _galera_sst_process_absent() { return 0; }
+
+      When call run_state_matrix
+      The status should be success
+      The lines of output should equal 6
+    End
+
+    It "does not classify E while the SST marker exists"
+      mariadb() { exact_joining_status; }
+      _galera_socket_present() { return 0; }
+      _mariadbd_identity() { printf '4242:99\n'; return 0; }
+      _galera_sst_process_absent() { return 0; }
+      touch "${DATA_DIR}/sst_in_progress"
+
+      When call _orphan_joining_observe
+      The status should equal 1
+    End
+
+    It "does not classify E while a wsrep_sst helper exists"
+      mariadb() { exact_joining_status; }
+      _galera_socket_present() { return 0; }
+      _mariadbd_identity() { printf '4242:99\n'; return 0; }
+      _galera_sst_process_absent() { return 1; }
+
+      When call _orphan_joining_observe
+      The status should equal 1
+    End
+
+    It "treats pgrep errors as unknown rather than falling back"
+      pgrep() { return 2; }
+      pidof() { printf '4242\n'; return 0; }
+
+      When call _mariadbd_identity
+      The status should equal 2
+      The output should equal ""
+    End
+
+    It "treats multiple mariadbd PIDs as unknown"
+      pgrep() { printf '4242\n4343\n'; return 0; }
+      _read_proc_starttime() { printf '99\n'; }
+
+      When call _mariadbd_identity
+      The status should equal 2
+      The output should equal ""
+    End
+
+    It "treats proc-stat read failure as unknown"
+      pgrep() { printf '4242\n'; return 0; }
+      _read_proc_starttime() { return 1; }
+
+      When call _mariadbd_identity
+      The status should equal 2
+      The output should equal ""
+    End
+
+    It "defaults the threshold to 90s and rounds a positive decimal up to 3s ticks"
+      threshold_matrix() {
+        _orphan_joining_tracker_init || return 1
+        printf '%s:%s:%s\n' "${ORPHAN_THRESHOLD_SECONDS}" "${ORPHAN_THRESHOLD_TICKS}" "${ORPHAN_MUTATION_ENABLED}"
+        GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS=4
+        _orphan_joining_tracker_init || return 1
+        printf '%s:%s:%s\n' "${ORPHAN_THRESHOLD_SECONDS}" "${ORPHAN_THRESHOLD_TICKS}" "${ORPHAN_MUTATION_ENABLED}"
+        GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS=100000000000000000000
+        _orphan_joining_tracker_init || return 1
+        printf '%s:%s:%s\n' "${ORPHAN_THRESHOLD_SECONDS}" "${ORPHAN_THRESHOLD_TICKS}" "${ORPHAN_MUTATION_ENABLED}"
+      }
+
+      When call threshold_matrix
+      The status should be success
+      The line 1 of output should equal "90:30:1"
+      The line 2 of output should equal "4:2:1"
+      The line 3 of output should equal "100000000000000000000:33333333333333333334:1"
+    End
+
+    It "disables E mutation for nonnumeric, zero, and negative thresholds"
+      invalid_threshold_matrix() {
+        local value
+        for value in bad 0 -3; do
+          GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS="${value}"
+          _orphan_joining_tracker_init >/dev/null
+          printf '%s:%s\n' "${value}" "${ORPHAN_MUTATION_ENABLED}"
+          [ "${ORPHAN_MUTATION_ENABLED}" = "0" ] || return 1
+        done
+      }
+
+      When call invalid_threshold_matrix
+      The status should be success
+      The output should include "bad:0"
+      The output should include "0:0"
+      The output should include "-3:0"
+    End
+
+    It "is a behavior OLD RED on parent exact: two 3s-boundary E samples call restart once"
+      two_exact_ticks() {
+        GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS=3
+        E_COUNT=0
+        _orphan_joining_tracker_init || return 1
+        _orphan_joining_observe() {
+          ORPHAN_OBS_IDENTITY='4242:99'
+          ORPHAN_OBS_TOKEN='4242:99|ready=OFF|connected=ON|last_committed=-1|conf_id=7|members=a,b'
+          return 0
+        }
+        _restart_orphan_joiner() {
+          ORPHAN_RESTART_CALLS=$((ORPHAN_RESTART_CALLS + 1))
+          ORPHAN_RESTART_RESULT='restart_effective'
+          ORPHAN_RESTART_MUTATION_ATTEMPTED=1
+          return 0
+        }
+        _orphan_joining_watcher_tick
+        printf 'sample1_calls=%s count=%s\n' "${ORPHAN_RESTART_CALLS}" "${E_COUNT}"
+        [ "${ORPHAN_RESTART_CALLS}" -eq 0 ] || return 1
+        [ "${E_COUNT}" = "0" ] || return 1
+        _orphan_joining_watcher_tick
+        printf 'calls=%s result=%s\n' "${ORPHAN_RESTART_CALLS}" "${ORPHAN_RESTART_RESULT}"
+      }
+
+      When call two_exact_ticks
+      The status should be success
+      The output should include "sample1_calls=0 count=0"
+      The output should include "calls=1 result=restart_effective"
+    End
+
+    It "requires 30 completed 3s intervals: samples 1-30 do not mutate and sample 31 does once"
+      ninety_second_boundary() {
+        GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS=90
+        _orphan_joining_tracker_init || return 1
+        _orphan_joining_observe() {
+          ORPHAN_OBS_IDENTITY='4242:99'
+          ORPHAN_OBS_TOKEN='stable-token'
+          return 0
+        }
+        _restart_orphan_joiner() {
+          ORPHAN_RESTART_CALLS=$((ORPHAN_RESTART_CALLS + 1))
+          ORPHAN_RESTART_RESULT='restart_effective'
+          ORPHAN_RESTART_MUTATION_ATTEMPTED=1
+          return 0
+        }
+        local sample
+        for sample in $(seq 1 30); do
+          _orphan_joining_watcher_tick
+        done
+        printf 'sample30_calls=%s count=%s\n' "${ORPHAN_RESTART_CALLS}" "${E_COUNT}"
+        [ "${ORPHAN_RESTART_CALLS}" -eq 0 ] || return 1
+        _orphan_joining_watcher_tick
+        printf 'sample31_calls=%s\n' "${ORPHAN_RESTART_CALLS}"
+      }
+
+      When call ninety_second_boundary
+      The status should be success
+      The output should include "sample30_calls=0 count=29"
+      The output should include "sample31_calls=1"
+    End
+
+    It "resets the timer when E_TOKEN changes"
+      token_change_resets() {
+        GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS=3
+        _orphan_joining_tracker_init || return 1
+        _orphan_joining_observe() {
+          ORPHAN_OBSERVE_CALLS=$((ORPHAN_OBSERVE_CALLS + 1))
+          ORPHAN_OBS_IDENTITY='4242:99'
+          if [ "${ORPHAN_OBSERVE_CALLS}" -eq 1 ]; then
+            ORPHAN_OBS_TOKEN='token-a'
+          else
+            ORPHAN_OBS_TOKEN='token-b'
+          fi
+          return 0
+        }
+        _restart_orphan_joiner() {
+          ORPHAN_RESTART_CALLS=$((ORPHAN_RESTART_CALLS + 1))
+          ORPHAN_RESTART_RESULT='restart_effective'
+          ORPHAN_RESTART_MUTATION_ATTEMPTED=1
+          return 0
+        }
+        _orphan_joining_watcher_tick
+        _orphan_joining_watcher_tick
+        [ "${ORPHAN_RESTART_CALLS}" -eq 0 ] || return 1
+        _orphan_joining_watcher_tick
+        printf 'calls=%s count=%s token=%s\n' "${ORPHAN_RESTART_CALLS}" "${E_COUNT}" "${E_TOKEN}"
+      }
+
+      When call token_change_resets
+      The status should be success
+      The output should include "calls=1"
+    End
+
+    It "cancels with mutation=0 when action-time identity or predicate changed"
+      _orphan_joining_observe() {
+        ORPHAN_OBS_IDENTITY='5252:100'
+        ORPHAN_OBS_TOKEN='new-token'
+        return 0
+      }
+      kill() { printf '%s\n' "$*" >> "${KILL_SIGNALS_FILE}"; }
+
+      When call _restart_orphan_joiner '4242:99' 'old-token'
+      The status should be success
+      The output should include "action=restart_canceled"
+      The contents of file "${KILL_SIGNALS_FILE}" should equal ""
+    End
+
+    It "cancels with mutation=0 when the action-time progress token changed"
+      _orphan_joining_observe() {
+        ORPHAN_OBS_IDENTITY='4242:99'
+        ORPHAN_OBS_TOKEN='progressed-token'
+        return 0
+      }
+      kill() { printf '%s\n' "$*" >> "${KILL_SIGNALS_FILE}"; }
+
+      When call _restart_orphan_joiner '4242:99' 'stalled-token'
+      The status should be success
+      The output should include "action=restart_canceled"
+      The output should include "predicate_identity_or_token_changed"
+      The contents of file "${KILL_SIGNALS_FILE}" should equal ""
+    End
+
+    It "proves TERM effective only after the old identity disappears"
+      _orphan_joining_observe() {
+        ORPHAN_OBS_IDENTITY='4242:99'
+        ORPHAN_OBS_TOKEN='same-token'
+        return 0
+      }
+      _mariadbd_identity() { return 1; }
+      kill() { printf '%s\n' "$*" >> "${KILL_SIGNALS_FILE}"; return 0; }
+      sleep() { :; }
+
+      When call _restart_orphan_joiner '4242:99' 'same-token'
+      The status should be success
+      The output should include "action=restart_attempted"
+      The output should include "action=restart_effective"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-TERM 4242"
+      The contents of file "${KILL_SIGNALS_FILE}" should not include "-KILL"
+    End
+
+    It "treats same PID with a new proc starttime after TERM as a replaced identity"
+      _orphan_joining_observe() {
+        ORPHAN_OBS_IDENTITY='4242:99'
+        ORPHAN_OBS_TOKEN='same-token'
+        return 0
+      }
+      _mariadbd_identity() { printf '4242:100\n'; return 0; }
+      kill() { printf '%s\n' "$*" >> "${KILL_SIGNALS_FILE}"; return 0; }
+      sleep() { :; }
+
+      When call _restart_orphan_joiner '4242:99' 'same-token'
+      The status should be success
+      The output should include "action=restart_effective"
+      The output should include "signal=TERM"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-TERM 4242"
+      The contents of file "${KILL_SIGNALS_FILE}" should not include "-KILL"
+    End
+
+    It "reports TERM command failure and does not escalate"
+      _orphan_joining_observe() {
+        ORPHAN_OBS_IDENTITY='4242:99'
+        ORPHAN_OBS_TOKEN='same-token'
+        return 0
+      }
+      kill() { printf '%s\n' "$*" >> "${KILL_SIGNALS_FILE}"; return 1; }
+      sleep() { :; }
+
+      When call _restart_orphan_joiner '4242:99' 'same-token'
+      The status should be failure
+      The output should include "reason=term_signal_failed"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-TERM 4242"
+      The contents of file "${KILL_SIGNALS_FILE}" should not include "-KILL"
+    End
+
+    It "proves KILL effective when the old identity survives TERM then changes"
+      _orphan_joining_observe() {
+        ORPHAN_OBS_IDENTITY='4242:99'
+        ORPHAN_OBS_TOKEN='same-token'
+        return 0
+      }
+      _mariadbd_identity() {
+        local count=0
+        [ ! -s "${TEST_DIR}/identity-count" ] || count=$(cat "${TEST_DIR}/identity-count")
+        count=$((count + 1))
+        printf '%s\n' "${count}" > "${TEST_DIR}/identity-count"
+        if [ "${count}" -le 6 ]; then
+          printf '4242:99\n'
+        else
+          printf '4242:100\n'
+        fi
+        return 0
+      }
+      kill() { printf '%s\n' "$*" >> "${KILL_SIGNALS_FILE}"; return 0; }
+      sleep() { :; }
+
+      When call _restart_orphan_joiner '4242:99' 'same-token'
+      The status should be success
+      The output should include "action=restart_effective"
+      The output should include "signal=KILL"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-TERM 4242"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-KILL 4242"
+    End
+
+    It "reports KILL command failure after TERM did not replace the identity"
+      _orphan_joining_observe() {
+        ORPHAN_OBS_IDENTITY='4242:99'
+        ORPHAN_OBS_TOKEN='same-token'
+        return 0
+      }
+      _mariadbd_identity() { printf '4242:99\n'; return 0; }
+      kill() {
+        printf '%s\n' "$*" >> "${KILL_SIGNALS_FILE}"
+        [ "$1" != "-KILL" ]
+      }
+      sleep() { :; }
+
+      When call _restart_orphan_joiner '4242:99' 'same-token'
+      The status should be failure
+      The output should include "reason=kill_signal_failed"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-TERM 4242"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-KILL 4242"
+    End
+
+    It "escalates once to KILL and reports failed when the old identity remains"
+      _orphan_joining_observe() {
+        ORPHAN_OBS_IDENTITY='4242:99'
+        ORPHAN_OBS_TOKEN='same-token'
+        return 0
+      }
+      _mariadbd_identity() { printf '4242:99\n'; return 0; }
+      kill() { printf '%s\n' "$*" >> "${KILL_SIGNALS_FILE}"; return 0; }
+      sleep() { :; }
+
+      When call _restart_orphan_joiner '4242:99' 'same-token'
+      The status should be failure
+      The output should include "action=restart_failed"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-TERM 4242"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-KILL 4242"
+    End
+
+    It "fails closed without KILL when identity becomes unknown after TERM"
+      _orphan_joining_observe() {
+        ORPHAN_OBS_IDENTITY='4242:99'
+        ORPHAN_OBS_TOKEN='same-token'
+        return 0
+      }
+      _mariadbd_identity() { return 2; }
+      kill() { printf '%s\n' "$*" >> "${KILL_SIGNALS_FILE}"; return 0; }
+      sleep() { :; }
+
+      When call _restart_orphan_joiner '4242:99' 'same-token'
+      The status should be failure
+      The output should include "reason=identity_unknown_before_kill"
+      The contents of file "${KILL_SIGNALS_FILE}" should include "-TERM 4242"
+      The contents of file "${KILL_SIGNALS_FILE}" should not include "-KILL"
+    End
+
+    It "latches a failed identity so later exact E ticks do not kill it again"
+      failed_identity_latched() {
+        GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS=3
+        _orphan_joining_tracker_init || return 1
+        _orphan_joining_observe() {
+          ORPHAN_OBS_IDENTITY='4242:99'
+          ORPHAN_OBS_TOKEN='same-token'
+          return 0
+        }
+        _restart_orphan_joiner() {
+          ORPHAN_RESTART_CALLS=$((ORPHAN_RESTART_CALLS + 1))
+          ORPHAN_RESTART_RESULT='restart_failed'
+          ORPHAN_RESTART_MUTATION_ATTEMPTED=1
+          return 1
+        }
+        _orphan_joining_watcher_tick
+        _orphan_joining_watcher_tick
+        printf 'calls=%s latched=%s\n' "${ORPHAN_RESTART_CALLS}" "${E_ATTEMPTED_IDENTITY}"
+      }
+
+      When call failed_identity_latched
+      The status should be success
+      The output should include "calls=1 latched=4242:99"
     End
   End
 

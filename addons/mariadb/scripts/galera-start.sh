@@ -137,15 +137,441 @@ _mariadbd_pids() {
   pidof mariadbd 2>/dev/null || pgrep -x mariadbd 2>/dev/null || true
 }
 
-# Behavior-neutral extension point for one Galera watcher tick.  The current
-# implementation intentionally does nothing; a later change may add an
-# independently tested self-heal predicate without making its OLD behavior a
-# test-only mock.
-_orphan_joining_tracker_init() {
+# Read Linux process starttime (field 22) so a PID is never treated as a stable
+# identity across process reuse. Kept behind a helper for direct unit testing.
+_read_proc_starttime() {
+  local pid="$1"
+  [ -r "/proc/${pid}/stat" ] || return 1
+  awk 'NF >= 22 { print $22; found=1; exit } END { exit(found ? 0 : 1) }' \
+    "/proc/${pid}/stat" 2>/dev/null
+}
+
+# Print exactly one mariadbd identity as pid:starttime.
+# rc=0 exact identity, rc=1 process absent, rc=2 observation unknown.
+# pgrep errors, multiple PIDs and unreadable proc-stat are deliberately unknown:
+# none of them may authorize an orphan-joiner restart.
+_mariadbd_identity() {
+  local pids rc pid starttime
+  pids=$(pgrep -x mariadbd 2>/dev/null)
+  rc=$?
+  case "${rc}" in
+    0) ;;
+    1)
+      pids=$(pidof mariadbd 2>/dev/null)
+      rc=$?
+      case "${rc}" in
+        0) ;;
+        1) return 1 ;;
+        *) return 2 ;;
+      esac
+      ;;
+    *) return 2 ;;
+  esac
+
+  # Word splitting is intentional: exactly one numeric PID is required.
+  set -- ${pids}
+  [ "$#" -eq 1 ] || return 2
+  pid="$1"
+  case "${pid}" in
+    ''|*[!0-9]*) return 2 ;;
+  esac
+  starttime=$(_read_proc_starttime "${pid}") || return 2
+  case "${starttime}" in
+    ''|*[!0-9]*) return 2 ;;
+  esac
+  printf '%s:%s\n' "${pid}" "${starttime}"
+}
+
+_galera_socket_present() {
+  [ -S "${SOCK:-/run/mysqld/mysqld.sock}" ]
+}
+
+# rc=0 no SST helper, rc=1 helper present, rc=2 process observation unknown.
+_galera_sst_process_absent() {
+  pgrep -f '[w]srep_sst_' >/dev/null 2>&1
+  local rc=$?
+  case "${rc}" in
+    0) return 1 ;;
+    1) return 0 ;;
+    *) return 2 ;;
+  esac
+}
+
+_trim_galera_value() {
+  printf '%s\n' "$1" | awk '{ sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print }'
+}
+
+_canonical_galera_members() {
+  printf '%s\n' "$1" \
+    | tr ',' '\n' \
+    | awk '{ sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); if (length) print }' \
+    | sort \
+    | awk 'NR == 1 { out=$0; next } { out=out "," $0 } END { print out }'
+}
+
+# One keyed SQL receipt per watcher tick. The globals are populated only after
+# all eight required keys are present; rc=2 means unknown/incomplete.
+_galera_keyed_observation() {
+  GALERA_OBS_STATE=""
+  GALERA_OBS_STATE_COMMENT=""
+  GALERA_OBS_CLUSTER_STATUS=""
+  GALERA_OBS_READY=""
+  GALERA_OBS_CONNECTED=""
+  GALERA_OBS_LAST_COMMITTED=""
+  GALERA_OBS_CONF_ID=""
+  GALERA_OBS_MEMBERS=""
+
+  local raw
+  if ! raw=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+    -S "${SOCK:-/run/mysqld/mysqld.sock}" -N -s \
+    -e "SHOW STATUS WHERE Variable_name IN ('wsrep_local_state','wsrep_local_state_comment','wsrep_cluster_status','wsrep_ready','wsrep_connected','wsrep_last_committed','wsrep_cluster_conf_id','wsrep_incoming_addresses');" \
+    2>/dev/null); then
+    return 2
+  fi
+
+  # Parse into function-local staging fields.  The watcher publishes role from
+  # GALERA_OBS_* after this helper returns, so writing those globals while the
+  # receipt is still incomplete would turn an rc=2 observation into a stale or
+  # partially valid role publication at the caller.
+  local obs_state="" obs_comment="" obs_cluster="" obs_ready=""
+  local obs_connected="" obs_last="" obs_conf="" obs_members=""
+  local key value
+  local seen_state=0 seen_comment=0 seen_cluster=0 seen_ready=0
+  local seen_connected=0 seen_last=0 seen_conf=0 seen_members=0
+  while IFS=$'\t' read -r key value; do
+    case "${key}" in
+      wsrep_local_state) obs_state="${value}"; seen_state=1 ;;
+      wsrep_local_state_comment) obs_comment="${value}"; seen_comment=1 ;;
+      wsrep_cluster_status) obs_cluster="${value}"; seen_cluster=1 ;;
+      wsrep_ready) obs_ready="${value}"; seen_ready=1 ;;
+      wsrep_connected) obs_connected="${value}"; seen_connected=1 ;;
+      wsrep_last_committed) obs_last="${value}"; seen_last=1 ;;
+      wsrep_cluster_conf_id) obs_conf="${value}"; seen_conf=1 ;;
+      wsrep_incoming_addresses) obs_members="${value}"; seen_members=1 ;;
+    esac
+  done <<EOF
+${raw}
+EOF
+
+  [ "${seen_state}${seen_comment}${seen_cluster}${seen_ready}${seen_connected}${seen_last}${seen_conf}${seen_members}" = "11111111" ] \
+    || return 2
+
+  obs_state=$(_trim_galera_value "${obs_state}")
+  obs_comment=$(_trim_galera_value "${obs_comment%%:*}")
+  obs_cluster=$(_trim_galera_value "${obs_cluster}")
+  obs_ready=$(printf '%s' "$(_trim_galera_value "${obs_ready}")" | tr '[:lower:]' '[:upper:]')
+  obs_connected=$(printf '%s' "$(_trim_galera_value "${obs_connected}")" | tr '[:lower:]' '[:upper:]')
+  obs_last=$(_trim_galera_value "${obs_last}")
+  obs_conf=$(_trim_galera_value "${obs_conf}")
+  obs_members=$(_canonical_galera_members "${obs_members}")
+
+  # A named-but-empty field is still an incomplete receipt.  In particular,
+  # never let a partial `4/Synced + Primary` sample publish primary merely
+  # because all eight labels happened to be printed.
+  [ -n "${obs_state}" ] \
+    && [ -n "${obs_comment}" ] \
+    && [ -n "${obs_cluster}" ] \
+    && [ -n "${obs_ready}" ] \
+    && [ -n "${obs_connected}" ] \
+    && [ -n "${obs_last}" ] \
+    && [ -n "${obs_conf}" ] \
+    && [ -n "${obs_members}" ] \
+    || return 2
+
+  # Atomic commit: caller-visible role state exists only for a complete keyed
+  # receipt from this exact SQL call.
+  GALERA_OBS_STATE="${obs_state}"
+  GALERA_OBS_STATE_COMMENT="${obs_comment}"
+  GALERA_OBS_CLUSTER_STATUS="${obs_cluster}"
+  GALERA_OBS_READY="${obs_ready}"
+  GALERA_OBS_CONNECTED="${obs_connected}"
+  GALERA_OBS_LAST_COMMITTED="${obs_last}"
+  GALERA_OBS_CONF_ID="${obs_conf}"
+  GALERA_OBS_MEMBERS="${obs_members}"
   return 0
 }
 
+# Capture the evidence-backed E predicate.
+# rc=0 exact E, rc=1 known non-E, rc=2 unknown/fail-closed.
+_orphan_joining_observe() {
+  ORPHAN_OBS_IDENTITY=""
+  ORPHAN_OBS_TOKEN=""
+  GALERA_OBS_STATE=""
+  GALERA_OBS_STATE_COMMENT=""
+  GALERA_OBS_CLUSTER_STATUS=""
+  GALERA_OBS_READY=""
+  GALERA_OBS_CONNECTED=""
+  GALERA_OBS_LAST_COMMITTED=""
+  GALERA_OBS_CONF_ID=""
+  GALERA_OBS_MEMBERS=""
+
+  _galera_socket_present || return 1
+  [ ! -f "${DATA_DIR}/.galera-shutting-down" ] || return 1
+  [ ! -f "${DATA_DIR}/sst_in_progress" ] || return 1
+
+  _galera_keyed_observation
+  local observation_rc=$?
+  [ "${observation_rc}" -eq 0 ] || return 2
+
+  [ "${GALERA_OBS_STATE}" = "1" ] || return 1
+  [ "${GALERA_OBS_STATE_COMMENT}" = "Joining" ] || return 1
+  [ "${GALERA_OBS_CLUSTER_STATUS}" = "Primary" ] || return 1
+  [ "${GALERA_OBS_CONNECTED}" = "ON" ] || return 1
+
+  local identity identity_rc sst_rc
+  identity=$(_mariadbd_identity)
+  identity_rc=$?
+  [ "${identity_rc}" -eq 0 ] || return 2
+
+  _galera_sst_process_absent
+  sst_rc=$?
+  case "${sst_rc}" in
+    0) ;;
+    1) return 1 ;;
+    *) return 2 ;;
+  esac
+
+  # Close the small observation window before authorizing E: a graceful marker,
+  # SST marker, or socket change after the first checks cancels this tick.
+  _galera_socket_present || return 1
+  [ ! -f "${DATA_DIR}/.galera-shutting-down" ] || return 1
+  [ ! -f "${DATA_DIR}/sst_in_progress" ] || return 1
+
+  ORPHAN_OBS_IDENTITY="${identity}"
+  ORPHAN_OBS_TOKEN="${identity}|ready=${GALERA_OBS_READY}|connected=${GALERA_OBS_CONNECTED}|last_committed=${GALERA_OBS_LAST_COMMITTED}|conf_id=${GALERA_OBS_CONF_ID}|members=${GALERA_OBS_MEMBERS}"
+  return 0
+}
+
+_orphan_joining_tracker_reset() {
+  E_IDENTITY=""
+  E_TOKEN=""
+  E_COUNT=0
+}
+
+_decimal_increment() {
+  awk -v n="$1" '
+    BEGIN {
+      carry=1; out=""
+      for (i=length(n); i>=1; i--) {
+        digit=substr(n, i, 1) + carry
+        if (digit >= 10) { digit-=10; carry=1 } else { carry=0 }
+        out=digit out
+      }
+      if (carry) out="1" out
+      print out
+    }
+  '
+}
+
+_decimal_ceil_divide_by_three() {
+  awk -v n="$1" '
+    function increment_decimal(s,    i,d,carry,out) {
+      carry=1; out=""
+      for (i=length(s); i>=1; i--) {
+        d=substr(s, i, 1) + carry
+        if (d >= 10) { d-=10; carry=1 } else { carry=0 }
+        out=d out
+      }
+      if (carry) out="1" out
+      return out
+    }
+    BEGIN {
+      remainder=0; quotient=""
+      for (i=1; i<=length(n); i++) {
+        value=remainder * 10 + substr(n, i, 1)
+        digit=int(value / 3)
+        remainder=value % 3
+        if (length(quotient) || digit) quotient=quotient digit
+      }
+      if (!length(quotient)) quotient="0"
+      if (remainder) quotient=increment_decimal(quotient)
+      print quotient
+    }
+  '
+}
+
+_decimal_greater_or_equal() {
+  local left="$1" right="$2"
+  if [ "${#left}" -gt "${#right}" ]; then return 0; fi
+  if [ "${#left}" -lt "${#right}" ]; then return 1; fi
+  [ "${left}" = "${right}" ] || [[ "${left}" > "${right}" ]]
+}
+
+# Initialize the 3-second-tick tracker. Unset/empty means 90s. Invalid values
+# disable only the E mutation path and emit one explicit receipt.
+_orphan_joining_tracker_init() {
+  local seconds="${GALERA_ORPHAN_JOINING_THRESHOLD_SECONDS:-}"
+  [ -n "${seconds}" ] || seconds=90
+
+  ORPHAN_MUTATION_ENABLED=1
+  case "${seconds}" in
+    *[!0-9]*) ORPHAN_MUTATION_ENABLED=0 ;;
+    *)
+      # Strip leading zeroes without invoking octal arithmetic.
+      while [ "${seconds#0}" != "${seconds}" ]; do seconds="${seconds#0}"; done
+      [ -n "${seconds}" ] || ORPHAN_MUTATION_ENABLED=0
+      ;;
+  esac
+
+  if [ "${ORPHAN_MUTATION_ENABLED}" = "0" ]; then
+    ORPHAN_THRESHOLD_SECONDS="invalid"
+    ORPHAN_THRESHOLD_TICKS=0
+    echo "galera_orphan_joining threshold_seconds=${ORPHAN_THRESHOLD_SECONDS} action=disabled mutation=0 reason=invalid_positive_decimal"
+  else
+    ORPHAN_THRESHOLD_SECONDS="${seconds}"
+    # Decimal long division keeps every positive decimal legal without Bash
+    # integer overflow or accidental octal parsing.
+    ORPHAN_THRESHOLD_TICKS=$(_decimal_ceil_divide_by_three "${seconds}")
+  fi
+
+  E_IDENTITY=""
+  E_TOKEN=""
+  E_COUNT=0
+  E_ATTEMPTED_IDENTITY=""
+  ORPHAN_RESTART_RESULT=""
+  ORPHAN_RESTART_MUTATION_ATTEMPTED=0
+  return 0
+}
+
+_old_mariadbd_identity_gone_or_changed() {
+  local expected="$1" current rc
+  current=$(_mariadbd_identity)
+  rc=$?
+  case "${rc}" in
+    0) [ "${current}" != "${expected}" ] ;;
+    1) return 0 ;;
+    *) return 2 ;;
+  esac
+}
+
+# Action-time revalidation plus bounded TERM -> KILL escalation.
+_restart_orphan_joiner() {
+  local expected_identity="$1"
+  local expected_token="$2"
+  local pid="${expected_identity%%:*}"
+  local attempt check_rc
+  ORPHAN_RESTART_RESULT="restart_canceled"
+  ORPHAN_RESTART_MUTATION_ATTEMPTED=0
+
+  _orphan_joining_observe
+  if [ "$?" -ne 0 ] \
+    || [ "${ORPHAN_OBS_IDENTITY:-}" != "${expected_identity}" ] \
+    || [ "${ORPHAN_OBS_TOKEN:-}" != "${expected_token}" ]; then
+    echo "galera_orphan_joining identity=${expected_identity} action=restart_canceled mutation=0 reason=action_time_predicate_identity_or_token_changed"
+    return 0
+  fi
+  case "${pid}" in
+    ''|*[!0-9]*)
+      echo "galera_orphan_joining identity=${expected_identity} action=restart_canceled mutation=0 reason=invalid_expected_identity"
+      return 0
+      ;;
+  esac
+
+  ORPHAN_RESTART_RESULT="restart_attempted"
+  ORPHAN_RESTART_MUTATION_ATTEMPTED=1
+  echo "galera_orphan_joining identity=${expected_identity} action=restart_attempted mutation=1 signal=TERM"
+  if ! kill -TERM "${pid}" 2>/dev/null; then
+    ORPHAN_RESTART_RESULT="restart_failed"
+    echo "galera_orphan_joining identity=${expected_identity} action=restart_failed mutation=1 reason=term_signal_failed"
+    return 1
+  fi
+
+  for attempt in 1 2 3 4 5; do
+    sleep 1
+    _old_mariadbd_identity_gone_or_changed "${expected_identity}"
+    check_rc=$?
+    if [ "${check_rc}" -eq 0 ]; then
+      ORPHAN_RESTART_RESULT="restart_effective"
+      echo "galera_orphan_joining identity=${expected_identity} action=restart_effective mutation=1 signal=TERM verify_attempt=${attempt}"
+      return 0
+    fi
+  done
+
+  # Never send KILL from an unknown identity sample. Confirm the exact old
+  # pid:starttime immediately before escalation; a vanished/changed identity
+  # already proves TERM effective, while unknown must fail closed.
+  _old_mariadbd_identity_gone_or_changed "${expected_identity}"
+  check_rc=$?
+  if [ "${check_rc}" -eq 0 ]; then
+    ORPHAN_RESTART_RESULT="restart_effective"
+    echo "galera_orphan_joining identity=${expected_identity} action=restart_effective mutation=1 signal=TERM verify_attempt=pre_kill"
+    return 0
+  fi
+  if [ "${check_rc}" -eq 2 ]; then
+    ORPHAN_RESTART_RESULT="restart_failed"
+    echo "galera_orphan_joining identity=${expected_identity} action=restart_failed mutation=1 reason=identity_unknown_before_kill"
+    return 1
+  fi
+
+  echo "galera_orphan_joining identity=${expected_identity} action=restart_attempted mutation=1 signal=KILL"
+  if ! kill -KILL "${pid}" 2>/dev/null; then
+    ORPHAN_RESTART_RESULT="restart_failed"
+    echo "galera_orphan_joining identity=${expected_identity} action=restart_failed mutation=1 reason=kill_signal_failed"
+    return 1
+  fi
+
+  for attempt in 1 2 3; do
+    sleep 1
+    _old_mariadbd_identity_gone_or_changed "${expected_identity}"
+    check_rc=$?
+    if [ "${check_rc}" -eq 0 ]; then
+      ORPHAN_RESTART_RESULT="restart_effective"
+      echo "galera_orphan_joining identity=${expected_identity} action=restart_effective mutation=1 signal=KILL verify_attempt=${attempt}"
+      return 0
+    fi
+  done
+
+  ORPHAN_RESTART_RESULT="restart_failed"
+  echo "galera_orphan_joining identity=${expected_identity} action=restart_failed mutation=1 reason=old_identity_still_present_or_unknown"
+  return 1
+}
+
+# Execute exactly one observation tick against the shipped helpers. Token or
+# identity changes reset the timer; one identity receives at most one mutation
+# attempt, including a failed TERM/KILL sequence.
 _orphan_joining_watcher_tick() {
+  _orphan_joining_observe
+  local observe_rc=$?
+
+  if [ "${ORPHAN_MUTATION_ENABLED:-0}" != "1" ]; then
+    _orphan_joining_tracker_reset
+    return 0
+  fi
+  if [ "${observe_rc}" -ne 0 ]; then
+    _orphan_joining_tracker_reset
+    return 0
+  fi
+
+  if [ "${ORPHAN_OBS_IDENTITY}" != "${E_IDENTITY:-}" ] \
+    || [ "${ORPHAN_OBS_TOKEN}" != "${E_TOKEN:-}" ]; then
+    E_IDENTITY="${ORPHAN_OBS_IDENTITY}"
+    E_TOKEN="${ORPHAN_OBS_TOKEN}"
+    # The first exact sample establishes the baseline.  It represents zero
+    # elapsed 3-second intervals; counting it as one would fire a 90-second
+    # threshold after only 87 seconds (and a 1-3s threshold immediately).
+    E_COUNT=0
+    if [ "${E_ATTEMPTED_IDENTITY:-}" != "${E_IDENTITY}" ]; then
+      E_ATTEMPTED_IDENTITY=""
+    fi
+    echo "galera_orphan_joining identity=${E_IDENTITY} state=1:Joining ready=${GALERA_OBS_READY:-unknown} connected=${GALERA_OBS_CONNECTED:-unknown} last_committed=${GALERA_OBS_LAST_COMMITTED:-unknown} conf_id=${GALERA_OBS_CONF_ID:-unknown} members=${GALERA_OBS_MEMBERS:-unknown} count=${E_COUNT} threshold_seconds=${ORPHAN_THRESHOLD_SECONDS} action=reset mutation=0"
+  else
+    E_COUNT=$(_decimal_increment "${E_COUNT}")
+  fi
+
+  [ "${E_ATTEMPTED_IDENTITY:-}" != "${E_IDENTITY}" ] || return 0
+  _decimal_greater_or_equal "${E_COUNT}" "${ORPHAN_THRESHOLD_TICKS}" || return 0
+
+  local attempted_identity="${E_IDENTITY}"
+  local attempted_token="${E_TOKEN}"
+  _restart_orphan_joiner "${attempted_identity}" "${attempted_token}"
+  if [ "${ORPHAN_RESTART_MUTATION_ATTEMPTED:-0}" = "1" ]; then
+    E_ATTEMPTED_IDENTITY="${attempted_identity}"
+  fi
+  case "${ORPHAN_RESTART_RESULT}" in
+    restart_canceled|restart_effective) _orphan_joining_tracker_reset ;;
+    restart_failed) E_COUNT="${ORPHAN_THRESHOLD_TICKS}" ;;
+  esac
+  # A failed restart is latched and logged, but never kills the watcher loop.
   return 0
 }
 
@@ -315,8 +741,10 @@ main() {
   # Self-healing: if wsrep_cluster_status stays non-Primary/Disconnected for
   # 90s after the socket is available, the node is stuck in a dead partition.
   # If mariadbd is running for 90s without creating the local socket, it is
-  # stuck before SQL accept readiness, commonly during a failed SST/join.
-  # In both cases, kill mariadbd so the container restarts and re-evaluates
+  # stuck before SQL accept readiness, commonly during a failed SST/join. A
+  # third exact predicate covers a socket-ready process stuck in Primary /
+  # Joining with no SST marker or helper and no progress-token change.
+  # In all three cases, restart mariadbd so the container re-evaluates
   # whether to join the current Primary component (e.g.
   # pod-1/2 formed a 2-node non-Primary group after losing pod-0 mid-SST
   # during a TOCTOU race in parallel restart). Kill mariadbd to force a
@@ -344,16 +772,12 @@ main() {
       CLUSTER_STATUS=""
       if [ -S "${SOCK}" ]; then
         NO_SOCKET_COUNT=0
-        STATE=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
-          -S "${SOCK}" -N -s \
-          -e "SHOW STATUS LIKE 'wsrep_local_state';" 2>/dev/null \
-          | awk '{print $2}')
-        CLUSTER_STATUS=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
-          -S "${SOCK}" -N -s \
-          -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
-          | awk '{print $2}')
       fi
+      # One keyed receipt drives both role publication and the exact orphan-
+      # Joining tracker. It is never mixed with values from another tick.
       _orphan_joining_watcher_tick
+      STATE="${GALERA_OBS_STATE:-}"
+      CLUSTER_STATUS="${GALERA_OBS_CLUSTER_STATUS:-}"
       if [ "${STATE}" = "4" ] && [ "${CLUSTER_STATUS}" = "Primary" ]; then
         printf "primary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
