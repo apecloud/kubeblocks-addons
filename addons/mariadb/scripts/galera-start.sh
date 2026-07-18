@@ -137,6 +137,18 @@ _mariadbd_pids() {
   pidof mariadbd 2>/dev/null || pgrep -x mariadbd 2>/dev/null || true
 }
 
+# Behavior-neutral extension point for one Galera watcher tick.  The current
+# implementation intentionally does nothing; a later change may add an
+# independently tested self-heal predicate without making its OLD behavior a
+# test-only mock.
+_orphan_joining_tracker_init() {
+  return 0
+}
+
+_orphan_joining_watcher_tick() {
+  return 0
+}
+
 # Watcher start-up initialization: clear stale role/liveness markers left on the
 # PV by a previous container generation, including any .galera-shutting-down the
 # prior graceful shutdown dropped. This is a live container again, so a stale
@@ -322,6 +334,7 @@ main() {
     NON_PRIMARY_THRESHOLD=30  # 30 × 3s = 90s
     NO_SOCKET_COUNT=0
     NO_SOCKET_THRESHOLD="${GALERA_SOCKETLESS_MARIADBD_THRESHOLD:-30}"  # 30 × 3s = 90s
+    _orphan_joining_tracker_init
     while true; do
       # The graceful-shutdown guard lives inside _restart_mariadbd_for_self_heal
       # so every self-heal call site is covered (and unit-testable): while
@@ -340,6 +353,7 @@ main() {
           -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
           | awk '{print $2}')
       fi
+      _orphan_joining_watcher_tick
       if [ "${STATE}" = "4" ] && [ "${CLUSTER_STATUS}" = "Primary" ]; then
         printf "primary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
