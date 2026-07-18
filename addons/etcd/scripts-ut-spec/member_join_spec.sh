@@ -241,6 +241,43 @@ Describe "Etcd Member Join Script Tests"
       The status should be failure
       The output should eq ""
     End
+
+    It "fails closed when the Name value is missing"
+      write_fields '"ID" : 1' '"Name" :' '"PeerURL" : "http://target:2380"' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 http://target:2380
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "fails closed when the Name value is unquoted"
+      write_fields '"ID" : 1' '"Name" : etcd-1' '"PeerURL" : "http://target:2380"' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 http://target:2380
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "fails closed when the PeerURL value is unquoted"
+      write_fields '"ID" : 1' '"Name" : "etcd-1"' '"PeerURL" : http://target:2380' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 http://target:2380
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "fails closed when the member ID is not decimal"
+      write_fields '"ID" : not-decimal' '"Name" : "etcd-1"' \
+        '"PeerURL" : "http://target:2380"' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 http://target:2380
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "fails closed when a member block has duplicate Name fields"
+      write_fields '"ID" : 1' '"Name" : "other"' '"Name" : "etcd-1"' \
+        '"PeerURL" : "http://target:2380"' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 http://target:2380
+      The status should be failure
+      The output should eq ""
+    End
   End
 
   Describe "add_member()"

@@ -26,6 +26,7 @@ classify_member_state() {
     function field_value(line, value) {
       value = line
       sub(/^[^:]*:[[:space:]]*/, "", value)
+      sub(/[[:space:]]*$/, "", value)
       sub(/^"/, "", value)
       sub(/"$/, "", value)
       return value
@@ -65,6 +66,9 @@ classify_member_state() {
       finish_member()
       in_member = 1
       saw_member = 1
+      if ($0 !~ /^"ID"[[:space:]]*:[[:space:]]*[0-9]+[[:space:]]*$/) {
+        malformed = 1
+      }
       next
     }
 
@@ -73,13 +77,23 @@ classify_member_state() {
       next
     }
 
-    in_member && /^"Name"[[:space:]]*:/ {
+    /^"Name"[[:space:]]*:/ {
+      if (!in_member || name_seen ||
+          $0 !~ /^"Name"[[:space:]]*:[[:space:]]*"[^"]*"[[:space:]]*$/) {
+        malformed = 1
+        next
+      }
       member_name = field_value($0)
       name_seen = 1
       next
     }
 
-    in_member && /^"PeerURL"[[:space:]]*:/ {
+    /^"PeerURL"[[:space:]]*:/ {
+      if (!in_member ||
+          $0 !~ /^"PeerURL"[[:space:]]*:[[:space:]]*"[^"]*"[[:space:]]*$/) {
+        malformed = 1
+        next
+      }
       peer_seen = 1
       if (field_value($0) == target_peer_url) {
         peer_matches = 1
