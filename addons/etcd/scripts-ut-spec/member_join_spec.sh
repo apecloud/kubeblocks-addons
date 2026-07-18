@@ -107,6 +107,16 @@ Describe "Etcd Member Join Script Tests"
               '"Name" : ""' \
               '"PeerURL" : "http://etcd-1.etcd-headless.default.svc.cluster.local:2380"' ''
             ;;
+          unstarted-canonical-equivalent)
+            printf '%s\n' \
+              '"ID" : 0' \
+              '"Name" : "etcd-0"' \
+              '"PeerURL" : "http://etcd-0.etcd-headless.default.svc.cluster.local:2380"' \
+              '"ClientURL" : "http://etcd-0.etcd-headless.default.svc.cluster.local:2379"' '' \
+              '"ID" : 1' \
+              '"Name" : ""' \
+              '"PeerURL" : "http://ETCD-1.ETCD-HEADLESS.DEFAULT.SVC.CLUSTER.LOCAL.:2380"' ''
+            ;;
           unstarted-target-only)
             printf '%s\n' \
               '"ID" : 1' \
@@ -270,6 +280,39 @@ Describe "Etcd Member Join Script Tests"
       When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 \
         http://etcd-1.etcd-headless.default.svc.cluster.local:2380
       The output should eq "exact"
+    End
+
+    It "classifies a canonical-equivalent unstarted peer URL as registered"
+      write_fields \
+        '"ID" : 1' \
+        '"Name" : ""' \
+        '"PeerURL" : "http://ETCD-1.ETCD-HEADLESS.DEFAULT.SVC.CLUSTER.LOCAL.:2380"' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 \
+        http://etcd-1.etcd-headless.default.svc.cluster.local:2380
+      The status should be success
+      The output should eq "unstarted-registered"
+    End
+
+    It "classifies a canonical-equivalent started peer URL as exact"
+      write_fields \
+        '"ID" : 1' \
+        '"Name" : "etcd-1"' \
+        '"PeerURL" : "http://ETCD-1.ETCD-HEADLESS.DEFAULT.SVC.CLUSTER.LOCAL.:2380"' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 \
+        http://etcd-1.etcd-headless.default.svc.cluster.local:2380
+      The status should be success
+      The output should eq "exact"
+    End
+
+    It "keeps a genuinely different canonical peer URL as a name conflict"
+      write_fields \
+        '"ID" : 1' \
+        '"Name" : "etcd-1"' \
+        '"PeerURL" : "http://ETCD-OTHER.EXAMPLE.:2380"' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 \
+        http://etcd-1.etcd-headless.default.svc.cluster.local:2380
+      The status should be success
+      The output should eq "name-conflict"
     End
 
     It "classifies the same name with another URL as a name conflict"
@@ -610,6 +653,15 @@ Describe "Etcd Member Join Script Tests"
 
     It "returns success without mutation for an unstarted registered member"
       set_member_states unstarted-registered
+      When call add_member
+      The status should be success
+      The error should include "registered but not started"
+      The contents of file "$MEMBER_JOIN_CALL_LOG" should eq ""
+      The contents of file "$MEMBER_JOIN_READ_COUNT" should eq "1"
+    End
+
+    It "closes canonical-equivalent unstarted replay without a second add"
+      set_member_states unstarted-canonical-equivalent
       When call add_member
       The status should be success
       The error should include "registered but not started"

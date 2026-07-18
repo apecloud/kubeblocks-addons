@@ -32,6 +32,52 @@ classify_member_state() {
       return value
     }
 
+    function canonical_host(host, parts, count, i, result) {
+      sub(/[.]$/, "", host)
+      host = tolower(host)
+      if (host == "" || length(host) > 253) return ""
+      if (host ~ /^[0-9.]+$/) {
+        count = split(host, parts, ".")
+        if (count != 4) return ""
+        result = ""
+        for (i = 1; i <= 4; i++) {
+          if (parts[i] !~ /^[0-9]+$/ || parts[i] + 0 > 255) return ""
+          result = result (i == 1 ? "" : ".") (parts[i] + 0)
+        }
+        return result
+      }
+      count = split(host, parts, ".")
+      for (i = 1; i <= count; i++) {
+        if (length(parts[i]) < 1 || length(parts[i]) > 63 ||
+            parts[i] !~ /^[a-z0-9][a-z0-9-]*$/ || parts[i] ~ /-$/) return ""
+      }
+      return host
+    }
+
+    function canonical_peer_url(value, required_protocol, marker, rest, host, port, protocol) {
+      marker = index(value, "://")
+      if (marker == 0) return ""
+      protocol = substr(value, 1, marker - 1)
+      rest = substr(value, marker + 3)
+      if (protocol != required_protocol || rest !~ /:[0-9]+$/) return ""
+      port = rest
+      sub(/^.*:/, "", port)
+      if (port !~ /^[1-9][0-9]*$/ || port + 0 > 65535) return ""
+      host = rest
+      sub(/:[0-9]+$/, "", host)
+      host = canonical_host(host)
+      if (host == "") return ""
+      return protocol "://" host ":" port
+    }
+
+    BEGIN {
+      target_protocol = target_peer_url
+      sub(/:.*/, "", target_protocol)
+      if (target_protocol != "http" && target_protocol != "https") malformed = 1
+      canonical_target_peer_url = canonical_peer_url(target_peer_url, target_protocol)
+      if (canonical_target_peer_url == "") malformed = 1
+    }
+
     function finish_member() {
       if (!in_member) {
         return
@@ -89,13 +135,19 @@ classify_member_state() {
     }
 
     /^"PeerURL"[[:space:]]*:/ {
+      peer_url = ""
       if (!in_member ||
           $0 !~ /^"PeerURL"[[:space:]]*:[[:space:]]*"[^"]+"[[:space:]]*$/) {
         malformed = 1
         next
       }
+      peer_url = canonical_peer_url(field_value($0), target_protocol)
+      if (peer_url == "") {
+        malformed = 1
+        next
+      }
       peer_seen = 1
-      if (field_value($0) == target_peer_url) {
+      if (peer_url == canonical_target_peer_url) {
         peer_matches = 1
       }
       next
