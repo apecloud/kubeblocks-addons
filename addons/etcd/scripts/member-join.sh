@@ -90,7 +90,7 @@ classify_member_state() {
 
     /^"PeerURL"[[:space:]]*:/ {
       if (!in_member ||
-          $0 !~ /^"PeerURL"[[:space:]]*:[[:space:]]*"[^"]*"[[:space:]]*$/) {
+          $0 !~ /^"PeerURL"[[:space:]]*:[[:space:]]*"[^"]+"[[:space:]]*$/) {
         malformed = 1
         next
       }

@@ -82,6 +82,12 @@ Describe "Etcd Member Join Script Tests"
               '"Name" : "etcd-0"' \
               '"PeerURL" : "http://etcd-0:2380"' ''
             ;;
+          empty-peer-url)
+            printf '%s\n' \
+              '"ID" : 1' \
+              '"Name" : "other"' \
+              '"PeerURL" : ""' ''
+            ;;
           query-failed)
             return 1
             ;;
@@ -263,6 +269,13 @@ Describe "Etcd Member Join Script Tests"
       The output should eq ""
     End
 
+    It "fails closed when the PeerURL value is quoted but empty"
+      write_fields '"ID" : 1' '"Name" : "other"' '"PeerURL" : ""' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 http://target:2380
+      The status should be failure
+      The output should eq ""
+    End
+
     It "fails closed when the member ID is not decimal"
       write_fields '"ID" : not-decimal' '"Name" : "etcd-1"' \
         '"PeerURL" : "http://target:2380"' ''
@@ -329,6 +342,15 @@ Describe "Etcd Member Join Script Tests"
       The error should include "phase: member-peer-url-conflict"
       The error should include "next-retry-safe: no"
       The contents of file "$MEMBER_JOIN_CALL_LOG" should eq ""
+    End
+
+    It "fails closed without mutation for a quoted-empty peer URL"
+      set_member_states empty-peer-url
+      When call add_member
+      The status should be failure
+      The error should include "phase: member-list-query-failed"
+      The contents of file "$MEMBER_JOIN_CALL_LOG" should eq ""
+      The contents of file "$MEMBER_JOIN_READ_COUNT" should eq "1"
     End
 
     It "adds once and accepts an unstarted post-read state"
