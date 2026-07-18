@@ -92,6 +92,7 @@ classify_member_state() {
       }
 
       if (peer_matches) {
+        target_owner_count++
         if (member_name == target_name) {
           exact = 1
         } else if (member_name == "") {
@@ -155,7 +156,7 @@ classify_member_state() {
 
     END {
       finish_member()
-      if (!saw_member || malformed) {
+      if (!saw_member || malformed || target_owner_count > 1) {
         exit 2
       } else if (name_conflict) {
         print "name-conflict"

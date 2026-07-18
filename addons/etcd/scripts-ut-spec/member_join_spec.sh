@@ -117,6 +117,20 @@ Describe "Etcd Member Join Script Tests"
               '"Name" : ""' \
               '"PeerURL" : "http://ETCD-1.ETCD-HEADLESS.DEFAULT.SVC.CLUSTER.LOCAL.:2380"' ''
             ;;
+          duplicate-canonical-owners)
+            printf '%s\n' \
+              '"ID" : 0' \
+              '"Name" : "etcd-0"' \
+              '"PeerURL" : "http://etcd-0.etcd-headless.default.svc.cluster.local:2380"' \
+              '"ClientURL" : "http://etcd-0.etcd-headless.default.svc.cluster.local:2379"' '' \
+              '"ID" : 1' \
+              '"Name" : "etcd-1"' \
+              '"PeerURL" : "http://etcd-1.etcd-headless.default.svc.cluster.local:2380"' \
+              '"ClientURL" : "http://etcd-1.etcd-headless.default.svc.cluster.local:2379"' '' \
+              '"ID" : 2' \
+              '"Name" : ""' \
+              '"PeerURL" : "http://ETCD-1.ETCD-HEADLESS.DEFAULT.SVC.CLUSTER.LOCAL.:2380"' ''
+            ;;
           unstarted-target-only)
             printf '%s\n' \
               '"ID" : 1' \
@@ -315,6 +329,30 @@ Describe "Etcd Member Join Script Tests"
       The output should eq "name-conflict"
     End
 
+    It "fails closed when started and unstarted members share a canonical peer URL"
+      write_fields \
+        '"ID" : 1' '"Name" : "etcd-1"' \
+        '"PeerURL" : "http://etcd-1.example:2380"' '' \
+        '"ID" : 2' '"Name" : ""' \
+        '"PeerURL" : "http://ETCD-1.EXAMPLE.:2380"' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 \
+        http://etcd-1.example:2380
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "fails closed when two unstarted members share a canonical peer URL"
+      write_fields \
+        '"ID" : 1' '"Name" : ""' \
+        '"PeerURL" : "http://etcd-1.example:2380"' '' \
+        '"ID" : 2' '"Name" : ""' \
+        '"PeerURL" : "http://ETCD-1.EXAMPLE.:2380"' ''
+      When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 \
+        http://etcd-1.example:2380
+      The status should be failure
+      The output should eq ""
+    End
+
     It "classifies the same name with another URL as a name conflict"
       write_fields \
         '"ID" : 1' \
@@ -359,12 +397,13 @@ Describe "Etcd Member Join Script Tests"
       The output should eq "name-conflict"
     End
 
-    It "gives an exact member plus same-URL foreign-name ghost a conflict verdict"
+    It "fails closed for exact and foreign-name owners of the same peer URL"
       write_fields \
         '"ID" : 1' '"Name" : "etcd-1"' '"PeerURL" : "http://target:2380"' '' \
         '"ID" : 2' '"Name" : "other"' '"PeerURL" : "http://target:2380"' ''
       When call classify_fixture "$TEST_DIR/member-list.fields" etcd-1 http://target:2380
-      The output should eq "peer-conflict"
+      The status should be failure
+      The output should eq ""
     End
 
     It "accepts an exact member when one of multiple peer URLs matches"
@@ -665,6 +704,16 @@ Describe "Etcd Member Join Script Tests"
       When call add_member
       The status should be success
       The error should include "registered but not started"
+      The contents of file "$MEMBER_JOIN_CALL_LOG" should eq ""
+      The contents of file "$MEMBER_JOIN_READ_COUNT" should eq "1"
+    End
+
+    It "fails closed before mutation when canonical target ownership is ambiguous"
+      set_member_states duplicate-canonical-owners
+      When call add_member
+      The status should be failure
+      The error should include "phase: member-list-invalid"
+      The error should include "next-retry-safe: no"
       The contents of file "$MEMBER_JOIN_CALL_LOG" should eq ""
       The contents of file "$MEMBER_JOIN_READ_COUNT" should eq "1"
     End
