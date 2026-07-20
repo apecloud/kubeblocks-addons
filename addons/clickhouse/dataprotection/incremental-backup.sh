@@ -1,5 +1,5 @@
 #!/bin/bash
-set -exo pipefail
+set -eo pipefail
 trap handle_exit EXIT
 generate_backup_config
 set_clickhouse_backup_config_env
