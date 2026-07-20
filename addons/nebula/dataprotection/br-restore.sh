@@ -13,7 +13,7 @@ endpoint=$(getToolConfigValue endpoint)
 bucket=$(getToolConfigValue root)
 region=$(getToolConfigValue region)
 region_flag=""
-if [ -n "$region" ]; then
+if [ -n "$region" ] && [ "$region" != "=" ]; then
    region_flag="--s3.region=$region"
 fi
 
