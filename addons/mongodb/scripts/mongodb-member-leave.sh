@@ -37,5 +37,5 @@ call_leave() {
   fi
 }
 
-call_leave "$main_port" "mongodb"
 call_leave "$pbm_agent_port" "pbm-agent"
+call_leave "$main_port" "mongodb"
