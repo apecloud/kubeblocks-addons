@@ -18,11 +18,16 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|--------------|
-| 5.7 | 5.7.44  |
-| 8.0 | \[8.0.33 ~ 8.0.44\] |
-| 8.4 | 8.4.0 ~ 8.4.2|
+| Component | Service Versions |
+|-----------|------------------|
+| MySQL 5.7 | 5.7.44 |
+| MySQL 8.0 | 8.0.45, 8.0.46 |
+| MySQL 8.4 | 8.4.9, 8.4.10 |
+| MySQL MGR 8.0 | 8.0.45, 8.0.46 |
+| MySQL MGR 8.4 | 8.4.9, 8.4.10 |
+| MySQL Orchestrator 5.7 | 5.7.44 |
+| MySQL Orchestrator 8.0 | 8.0.45, 8.0.46 |
+| ProxySQL | 2.4.4 |
 
 ## Prerequisites
 
@@ -62,8 +67,8 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.33 to 8.0.44]
-      serviceVersion: 8.0.35
+      # Valid options are: [8.0.45, 8.0.46]
+      serviceVersion: 8.0.46
 ```
 
 The list of supported versions can be found by following command:
@@ -256,6 +261,18 @@ A switchover in database clusters is a planned operation that transfers the prim
 ### [Switchover-specified-instance](switchover-specified-instance.yaml)
 
 Switchover a specified instance as the new primary or leader of the cluster
+
+Check the current roles first:
+
+```bash
+kubectl get pods -n demo \
+  -l app.kubernetes.io/instance=mysql-cluster \
+  -L kubeblocks.io/role
+```
+
+Replace `<CURRENT_PRIMARY>` and `<TARGET_SECONDARY>` in
+`switchover-specified-instance.yaml` with the current primary and the intended
+secondary Pod names, respectively. Then apply the file:
 
 ```bash
 kubectl apply -f examples/mysql/switchover-specified-instance.yaml

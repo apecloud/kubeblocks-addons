@@ -21,7 +21,8 @@ KubeBlocks supports creating a **shared-nothing** StarRocks cluster.
 
 | Major Versions | Description |
 |----------------|-------------|
-| 3.3.x          | 3.3.0, 3.3.2|
+| 3.2.x          | 3.2.2 |
+| 3.3.x          | 3.3.0 |
 
 ## Prerequisites
 

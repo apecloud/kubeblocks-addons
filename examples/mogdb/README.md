@@ -154,14 +154,6 @@ MogDB defines the switchover operation in the `mogdb-switchover` OpsDefinition. 
    - New pod has role: Primary/primary/leader/master
    - Exits with 0 on success, 1 on failure
 
-### [Reconfigure](configure.yaml)
-
-Configure parameters with the specified components in the cluster
-
-```bash
-kubectl apply -f examples/mogdb/configure.yaml
-```
-
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster

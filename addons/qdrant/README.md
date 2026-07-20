@@ -24,6 +24,10 @@ Qdrant is an open source (Apache-2.0 licensed), vector similarity search engine 
 | 1.7 | 1.7.3 |
 | 1.8 | 1.8.1,1.8.4 |
 | 1.10| 1.10.0 |
+| 1.13| 1.13.4 |
+| 1.15| 1.15.4 |
+| 1.16| 1.16.3 |
+| 1.17| 1.17.1 |
 
 ## Prerequisites
 
@@ -70,7 +74,7 @@ spec:
     - name: qdrant
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [1.10.0,1.5.0,1.7.3,1.8.1,1.8.4]
+      # Valid options are: [1.5.0,1.7.3,1.8.1,1.8.4,1.10.0,1.13.4,1.15.4,1.16.3,1.17.1]
       serviceVersion: 1.10.0
       # Update `replicas` to your need.
       # Recommended values are: [3,5,7]
@@ -107,9 +111,46 @@ spec:
 kubectl apply -f examples/qdrant/cluster.yaml
 ```
 
-#### Create with API key
+### Create with API key
 
-Create a Qdrant cluster with `service.api_key` set through `QDRANT__SERVICE__API_KEY`:
+Create a Qdrant cluster with `service.api_key` set through `QDRANT__SERVICE__API_KEY`.
+
+```yaml
+# cat examples/qdrant/cluster-with-api-key.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: qdrant-api-key-cluster
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: qdrant
+  topology: cluster
+  componentSpecs:
+    - name: qdrant
+      serviceVersion: 1.10.0
+      env:
+        - name: QDRANT__SERVICE__API_KEY
+          value: my-key-123456
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+
+```
 
 ```bash
 kubectl apply -f examples/qdrant/cluster-with-api-key.yaml
@@ -132,9 +173,9 @@ configs:
       service_api_key: my-key-123456
 ```
 
-Qdrant environment variables have higher priority than `config.yaml`. Backup and restore scripts follow the same order: they use `QDRANT__SERVICE__API_KEY` when that env is present in the action container, then fall back to `service.api_key` from the mounted `config.yaml`.
+Qdrant environment variables have higher priority than `config.yaml`. The backup/restore helper follows the same order: it uses `QDRANT__SERVICE__API_KEY` when that env is present in the action container, then falls back to `service.api_key` from the mounted `config.yaml`.
 
-#### Configure telemetry
+### Configure telemetry
 
 Qdrant telemetry is disabled by default in `config.yaml`. You can override it through the KubeBlocks configuration variables API:
 
@@ -145,17 +186,94 @@ configs:
       telemetry_disabled: "false"
 ```
 
-#### Create with TLS
+### Create with TLS
 
-Create a Qdrant cluster with TLS enabled by the KubeBlocks Cluster TLS API:
+Create a Qdrant cluster with TLS enabled by the KubeBlocks Cluster TLS API.
+
+```yaml
+# cat examples/qdrant/cluster-with-tls.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: qdrant-tls-cluster
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: qdrant
+  topology: cluster
+  componentSpecs:
+    - name: qdrant
+      serviceVersion: 1.10.0
+      tls: true
+      issuer:
+        name: KubeBlocks
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+
+```
 
 ```bash
 kubectl apply -f examples/qdrant/cluster-with-tls.yaml
 ```
 
-#### Create with TLS and API key
+### Create with TLS and API key
 
-Create a Qdrant cluster with TLS enabled and `service.api_key` set through `QDRANT__SERVICE__API_KEY`:
+Create a Qdrant cluster with TLS enabled and `service.api_key` set through `QDRANT__SERVICE__API_KEY`.
+
+```yaml
+# cat examples/qdrant/cluster-with-tls-and-api-key.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: qdrant-tls-api-key-cluster
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: qdrant
+  topology: cluster
+  componentSpecs:
+    - name: qdrant
+      serviceVersion: 1.10.0
+      tls: true
+      issuer:
+        name: KubeBlocks
+      env:
+        - name: QDRANT__SERVICE__API_KEY
+          value: my-key-123456
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+
+```
 
 ```bash
 kubectl apply -f examples/qdrant/cluster-with-tls-and-api-key.yaml

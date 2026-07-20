@@ -66,7 +66,7 @@ spec:
       # The serviceVersion is used to determine the version of the Cluster. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.8.34,3.9.29,3.10.25,3.11.28,3.12.14,3.13.7,4.0.9,4.1.6,4.2.1,4.3.1]
+      # Valid options are: [4.3.1,4.2.1,4.1.6,4.0.9,3.13.7,3.12.14,3.11.28,3.10.25,3.9.29,3.8.34]
       serviceVersion: 3.13.7
       # Recommended to set `replicas` to [3,5,7]
       # All data/state is replicated across all replicas.
@@ -497,56 +497,6 @@ cloud.google.com/l4-rbs: "enabled" # for internet
 ```
 
 Please consult your cloud provider for more accurate and update-to-date information.
-
-### Reconfigure
-
-A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability. The reconfiguration can be either:
-
-- Dynamic: Applied without restart
-- Static: Requires database restart
-
-Reconfigure parameters with the specified components in the cluster
-
-```yaml
-# cat examples/rabbitmq/reconfigure.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: rabbitmq-reconfiguring
-  namespace: demo
-spec:
-  # Specifies the type of this operation.
-  type: Reconfiguring
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mycluster
-  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
-  force: false
-  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
-  reconfigures:
-    # Specifies the name of the Component.
-  - componentName: rabbitmq
-    parameters:
-      # Represents the name of the parameter that is to be updated.
-      # `channel_max` is a static parameter in rabbitmq
-    - key: ssl_handshake_timeout
-      # Represents the parameter values that are to be updated.
-      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-      value: "2000"
-```
-
-```bash
-kubectl apply -f examples/rabbitmq/reconfigure.yaml
-```
-
-This example will change the `channel_max` to `2000`.
-
-> In RabbitMQ, the `channel_max` parameter is used to set the maximum number of channels that a client can open on a single connection. It is a static parameter, so the change will take effect after restarting the database.
-
-To verify the change, you may login to any replica and run the following command:
-
-```bash
-rabbitmq-diagnostics environment
-```
 
 ### Observability
 

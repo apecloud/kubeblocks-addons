@@ -28,10 +28,10 @@ Optional components include:
 
 ### Versions
 
-| Major Versions | Versions |
-|----------|-------|
-| 2.11.x   | 2.11.2 |
-| 3.0.x    | 3.0.2 |
+| Component | Service Versions |
+|-----------|------------------|
+| Broker / BookKeeper / Proxy / Recovery | 2.11.2, 3.0.2, 4.0.6 |
+| ZooKeeper | 2.11.2, 3.0.2 |
 
 ## Prerequisites
 

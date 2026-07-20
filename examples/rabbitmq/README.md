@@ -14,12 +14,16 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 
 | Major Versions | Description |
 |---------------|-------------|
-| 3.8 | 3.8.14|
+| 3.8 | 3.8.34|
 | 3.9 | 3.9.29|
 | 3.10 | 3.10.25|
 | 3.11 | 3.11.28|
 | 3.12 | 3.12.14|
 | 3.13 | 3.13.7|
+| 4.0 | 4.0.9|
+| 4.1 | 4.1.6|
+| 4.2 | 4.2.1|
+| 4.3 | 4.3.1|
 
 ## Prerequisites
 
@@ -240,29 +244,6 @@ cloud.google.com/l4-rbs: "enabled" # for internet
 ```
 
 Please consult your cloud provider for more accurate and update-to-date information.
-
-### [Reconfigure](reconfigure.yaml)
-
-A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability. The reconfiguration can be either:
-
-- Dynamic: Applied without restart
-- Static: Requires database restart
-
-Reconfigure parameters with the specified components in the cluster
-
-```bash
-kubectl apply -f examples/rabbitmq/reconfigure.yaml
-```
-
-This example will change the `channel_max` to `2000`.
-
-> In RabbitMQ, the `channel_max` parameter is used to set the maximum number of channels that a client can open on a single connection. It is a static parameter, so the change will take effect after restarting the database.
-
-To verify the change, you may login to any replica and run the following command:
-
-```bash
-rabbitmq-diagnostics environment
-```
 
 ### Observability
 

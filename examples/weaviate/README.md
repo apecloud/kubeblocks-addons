@@ -10,7 +10,7 @@ In Weaviate, metadata replication and data replication are separate. For the met
 
 | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| No                     | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | N/A      |
+| No                     | Yes                   | Yes              | Yes       | Yes        | No        | Yes    | N/A      |
 
 ### Versions
 
@@ -93,16 +93,6 @@ Start the stopped cluster
 ```bash
 kubectl apply -f examples/weaviate/start.yaml
 ```
-
-### [Configure](configure.yaml)
-
-Configure parameters with the specified components in the cluster:
-
-```bash
-kubectl apply -f examples/weaviate/configure.yaml
-```
-
-It sets `QUERY_DEFAULTS_LIMIT` to 150, and all pods will be restarted to apply the new configuration.
 
 ### Delete
 

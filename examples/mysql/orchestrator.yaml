@@ -10,10 +10,12 @@ spec:
   services:
     - name: orchestrator
       componentSelector: orchestrator
+      roleSelector: primary
       spec:
         ports:
           - name: orc-http
             port: 80
+            targetPort: orc-http
   componentSpecs:
     - name: orchestrator
       disableExporter: true

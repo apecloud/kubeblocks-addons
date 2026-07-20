@@ -8,7 +8,7 @@ Apache Zookeeper is a centralized service for maintaining configuration informat
 
 | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | No      |
+| Yes                    | Yes                   | Yes              | Yes       | Yes        | No        | Yes    | No      |
 
 ### Backup and Restore
 
@@ -20,7 +20,7 @@ Apache Zookeeper is a centralized service for maintaining configuration informat
 
 | Versions |
 |----------|
-|3.6.4,3.7.2,3.8.4,3.9.2 |
+| 3.6.4, 3.7.2, 3.8.4, 3.9.2, 3.9.4 |
 
 ## Prerequisites
 
@@ -63,7 +63,7 @@ spec:
       componentDef: zookeeper
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.6.4,3.7.2,3.8.4,3.9.2]
+      # Valid options are: [3.6.4,3.7.2,3.8.4,3.9.2,3.9.4]
       serviceVersion: "3.9.2"
       # Update `replicas` to your need.
       replicas: 3
@@ -447,53 +447,6 @@ spec:
       componentDef: zookeeper
       stop: false  # set to `false` (or remove this field) to start the component
       replicas: 3
-```
-
-### Reconfigure
-
-Configure parameters with the specified components in the cluster:
-
-```yaml
-# cat examples/zookeeper/configure.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: zookeeper-reconfiguring
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: zookeeper-cluster
-  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
-  force: false
-  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
-  reconfigures:
-    # Specifies the name of the Component.
-  - componentName: zookeeper
-    parameters:
-      # Represents the name of the parameter that is to be updated.
-    - key: syncLimit
-      # Represents the parameter values that are to be updated.
-      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-      value: '10'
-  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
-  preConditionDeadlineSeconds: 0
-  type: Reconfiguring
-
-```
-
-```bash
-kubectl apply -f examples/zookeeper/configure.yaml
-```
-
-`syncLimit` is a configuration parameter that defines the maximum number of ticks a Zookeeper follower can lag behind the leader before it's considered out of sync and must resync with the leader.
-
-In this example updates `syncLimit` to `10` (default to `5` ticks). Increase it for slower networks or larger clusters, and decrease for tighter consistency requirements. Its common range: 2-10 ticks.
-
-To verify the changes, you may log into an Zookeeper instance to check the configuration changes:
-
-```bash
-# 2181 is the clientPort
-echo "conf" | nc localhost 2181
 ```
 
 ### Backup

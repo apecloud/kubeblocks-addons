@@ -20,9 +20,10 @@ Please refer to the ApeCloud MySQL Documentation[^1] for more information.
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|--------------|
-| 8.0           | 8.0.30       |
+| Component | Service Versions |
+|-----------|------------------|
+| ApeCloud MySQL | 8.0.30 |
+| WeScale | 0.2.7 |
 
 ## Prerequisites
 

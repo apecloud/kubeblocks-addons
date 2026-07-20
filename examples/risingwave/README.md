@@ -23,7 +23,7 @@ Such architecture allows RisingWave to provide real-time analytics and high-conc
 
 | Major Versions |
 |---------------|
-| 1.0           |
+| v1.0.0        |
 
 ## Prerequisites
 

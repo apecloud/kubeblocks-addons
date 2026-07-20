@@ -19,12 +19,13 @@ MongoDB is a document database designed for ease of application development and 
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|--------------|
-| 4.0 | 4.0.28,4.2.24,4.4.29 |
-| 5.0 | 5.0.28 |
-| 6.0 | 6.0.16 |
-| 7.0 | 7.0.12 |
+| Major Versions | Service Versions |
+|---------------|------------------|
+| 4.x | 4.0.28, 4.4.29 |
+| 5.x | 5.0.29 |
+| 6.x | 6.0.27 |
+| 7.x | 7.0.28 |
+| 8.x | 8.0.17 |
 
 ## Prerequisites
 
@@ -67,8 +68,8 @@ spec:
     - name: mongodb
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [4.0.28,4.2.24,4.4.29,5.0.28,6.0.16,7.0.1]
-      serviceVersion: "7.0.1"
+      # Valid options are: [8.0.17,7.0.28,6.0.27,5.0.29,4.4.29,4.0.28]
+      serviceVersion: "6.0.27"
 ```
 
 The list of supported versions can be found by following command:

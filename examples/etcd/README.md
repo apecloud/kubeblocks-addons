@@ -18,9 +18,9 @@ etcd is a distributed, highly available key-value store designed to securely sto
 
 ### Versions
 
-| Major Versions | Description  |
-| -------------- | ------------ |
-| 3.5.x          | 3.5.6,3.5.15 |
+| Major Versions | Service Versions |
+| -------------- | ---------------- |
+| 3.x            | 3.5.6, 3.5.15, 3.6.1 |
 
 ## Prerequisites
 

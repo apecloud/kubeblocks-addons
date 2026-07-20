@@ -37,7 +37,7 @@ Milvus is an open source (Apache-2.0 licensed) vector database built to power em
 
 | Versions |
 |----------|
-| 2.3.2 |
+| v2.3.2, 2.5.13 |
 
 ## Prerequisites
 

@@ -8,7 +8,7 @@ Apache Zookeeper is a centralized service for maintaining configuration informat
 
 | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | No      |
+| Yes                    | Yes                   | Yes              | Yes       | Yes        | No        | Yes    | No      |
 
 ### Backup and Restore
 
@@ -20,7 +20,7 @@ Apache Zookeeper is a centralized service for maintaining configuration informat
 
 | Versions |
 |----------|
-|3.6.4,3.7.2,3.8.4,3.9.2 |
+| 3.6.4, 3.7.2, 3.8.4, 3.9.2, 3.9.4 |
 
 ## Prerequisites
 
@@ -242,25 +242,6 @@ spec:
       componentDef: zookeeper
       stop: false  # set to `false` (or remove this field) to start the component
       replicas: 3
-```
-
-### [Reconfigure](configure.yaml)
-
-Configure parameters with the specified components in the cluster:
-
-```bash
-kubectl apply -f examples/zookeeper/configure.yaml
-```
-
-`syncLimit` is a configuration parameter that defines the maximum number of ticks a Zookeeper follower can lag behind the leader before it's considered out of sync and must resync with the leader.
-
-In this example updates `syncLimit` to `10` (default to `5` ticks). Increase it for slower networks or larger clusters, and decrease for tighter consistency requirements. Its common range: 2-10 ticks.
-
-To verify the changes, you may log into an Zookeeper instance to check the configuration changes:
-
-```bash
-# 2181 is the clientPort
-echo "conf" | nc localhost 2181
 ```
 
 ### [Backup](backup.yaml)

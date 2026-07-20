@@ -24,6 +24,10 @@ Qdrant is an open source (Apache-2.0 licensed), vector similarity search engine 
 | 1.7 | 1.7.3 |
 | 1.8 | 1.8.1,1.8.4 |
 | 1.10| 1.10.0 |
+| 1.13| 1.13.4 |
+| 1.15| 1.15.4 |
+| 1.16| 1.16.3 |
+| 1.17| 1.17.1 |
 
 ## Prerequisites
 

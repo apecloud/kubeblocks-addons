@@ -18,11 +18,16 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|--------------|
-| 5.7 | 5.7.44  |
-| 8.0 | 8.0.45, 8.0.46 |
-| 8.4 | 8.4.9, 8.4.10 |
+| Component | Service Versions |
+|-----------|------------------|
+| MySQL 5.7 | 5.7.44 |
+| MySQL 8.0 | 8.0.45, 8.0.46 |
+| MySQL 8.4 | 8.4.9, 8.4.10 |
+| MySQL MGR 8.0 | 8.0.45, 8.0.46 |
+| MySQL MGR 8.4 | 8.4.9, 8.4.10 |
+| MySQL Orchestrator 5.7 | 5.7.44 |
+| MySQL Orchestrator 8.0 | 8.0.45, 8.0.46 |
+| ProxySQL | 2.4.4 |
 
 ## Prerequisites
 
@@ -107,6 +112,7 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
+
 ```
 
 ```bash
@@ -458,6 +464,18 @@ A switchover in database clusters is a planned operation that transfers the prim
 
 Switchover a specified instance as the new primary or leader of the cluster
 
+Check the current roles first:
+
+```bash
+kubectl get pods -n demo \
+  -l app.kubernetes.io/instance=mysql-cluster \
+  -L kubeblocks.io/role
+```
+
+Replace `<CURRENT_PRIMARY>` and `<TARGET_SECONDARY>` in
+`switchover-specified-instance.yaml` with the current primary and the intended
+secondary Pod names, respectively. Then apply the file:
+
 ```yaml
 # cat examples/mysql/switchover-specified-instance.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
@@ -475,11 +493,11 @@ spec:
   - componentName: mysql
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: mysql-cluster-mysql-0
+    instanceName: <CURRENT_PRIMARY>
     # If CandidateName is specified, the role will be transferred to this instance.
     # The name must match one of the pods in the component.
     # Refer to ComponentDefinition's Swtichover lifecycle action for more details.
-    candidateName: mysql-cluster-mysql-1
+    candidateName: <TARGET_SECONDARY>
 
 ```
 
@@ -893,10 +911,12 @@ spec:
   services:
     - name: orchestrator
       componentSelector: orchestrator
+      roleSelector: primary
       spec:
         ports:
           - name: orc-http
             port: 80
+            targetPort: orc-http
   componentSpecs:
     - name: orchestrator
       disableExporter: true
@@ -967,6 +987,7 @@ spec:
             credential:
               component: orchestrator
               name: orchestrator
+
 ```
 
 ```bash
