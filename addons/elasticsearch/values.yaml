@@ -119,15 +119,15 @@ exporter:
   service:
     port: 9114
 
-# Elasticsearch 9.x stays disabled until every immutable release input is
-# pinned. The release workflow enables it only after all digests are readable.
+# Elasticsearch 9.x is enabled only after every immutable release input is
+# pinned and readable for all supported platforms.
 es9:
-  enabled: false
+  enabled: true
   serviceVersion: "9.3.2"
   images:
     elasticsearch: "docker.io/library/elasticsearch@sha256:56282e41f1d9c8dc437e4c99d132cf9f154def73b6ea8a25ac969a28c2f529c6"
     kibana: "docker.io/apecloud/kibana@sha256:cbf27174cf03e9d59505510c540a3e1ac69718fc863728280f316a93248cead9"
-    plugin: ""
+    plugin: "docker.io/apecloud/elasticsearch-plugins@sha256:61939bf8cd186b99db51abae632ebeeb5e8ba3e64dd0d30ed239ce564b98df63"
     exporter: "docker.io/prometheuscommunity/elasticsearch-exporter@sha256:4786d49bef9ec045c155d5544abc420e6f58394170db7b6a05c5e7a5f15fb9ed"
     tools: "docker.io/apecloud/curl-jq@sha256:c13c8973db9bd23b7c3b77654ba18105f3882fb6f655f7b313145154e401a672"
     agent: "docker.io/apecloud/elasticsearch-agent@sha256:4aea14decbbd4ca0b1453e17031c5087668b2dcab607b1076ff8418c29e73c8d"
