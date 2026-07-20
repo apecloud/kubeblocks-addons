@@ -4,20 +4,25 @@ WORKDIR /plugins
 
 # Elasticsearch 9.x plugin artifacts are release inputs. Verify the frozen
 # upstream bytes before extracting them so a changed ZIP fails the image build.
+COPY verify-and-unpack.sh /usr/local/bin/verify-and-unpack-plugin
+
 RUN set -e && \
     version=9.3.2 && \
     ik_zip="elasticsearch-analysis-ik-${version}.zip" && \
     pinyin_zip="elasticsearch-analysis-pinyin-${version}.zip" && \
     wget -q "https://release.infinilabs.com/analysis-ik/stable/${ik_zip}" && \
-    printf '%s  %s\n' '804758ddd632fb460ca09bdd04f3c0aa70da878e03cbb53ae122137e4f18b2c5' "${ik_zip}" | sha256sum -c - && \
-    mkdir -p "./${version}/ik" && \
-    unzip -q "${ik_zip}" -d "./${version}/ik/" && \
+    /usr/local/bin/verify-and-unpack-plugin \
+      "${ik_zip}" \
+      '804758ddd632fb460ca09bdd04f3c0aa70da878e03cbb53ae122137e4f18b2c5' \
+      "./${version}/ik" && \
     rm "${ik_zip}" && \
     wget -q "https://release.infinilabs.com/analysis-pinyin/stable/${pinyin_zip}" && \
-    printf '%s  %s\n' 'e418aa3a410257520c3480a0a741a7e388e3e69832a8c52cd7c190872c0abe99' "${pinyin_zip}" | sha256sum -c - && \
-    mkdir -p "./${version}/pinyin" && \
-    unzip -q "${pinyin_zip}" -d "./${version}/pinyin/" && \
-    rm "${pinyin_zip}"
+    /usr/local/bin/verify-and-unpack-plugin \
+      "${pinyin_zip}" \
+      'e418aa3a410257520c3480a0a741a7e388e3e69832a8c52cd7c190872c0abe99' \
+      "./${version}/pinyin" && \
+    rm "${pinyin_zip}" && \
+    rm /usr/local/bin/verify-and-unpack-plugin
 
 FROM es9-plugins
 
