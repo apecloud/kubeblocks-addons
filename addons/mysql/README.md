@@ -21,8 +21,16 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 | Major Versions | Description |
 |---------------|--------------|
 | 5.7 | 5.7.44  |
-| 8.0 | \[8.0.33 ~ 8.0.44\] |
-| 8.4 | 8.4.0 ~ 8.4.8 |
+| 8.0 | 8.0.45, 8.0.46 |
+| 8.4 | 8.4.9, 8.4.10 |
+
+MySQL 8.0.46 with MGR is temporarily unsupported because of an upstream Group Replication defect
+([MySQL issue #696](https://github.com/mysql/mysql-server/issues/696)) that can abort the server in
+the IP allowlist path. Support will be restored after an upstream-fixed image passes addon validation.
+Existing MGR users who explicitly selected 8.0.46 should set `serviceVersion: 8.0.45` before their next
+reconcile or upgrade; the MGR 8.0 default now resolves explicitly to 8.0.45. MySQL 8.4.9 and 8.4.10
+also remain available for MGR. Other MySQL 8.0.46 topologies remain supported, including standalone,
+replication, and Orchestrator deployments.
 
 ## Prerequisites
 
@@ -74,8 +82,8 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.33~8.0.44]
-      serviceVersion: 8.0.35
+      # Valid options are: [8.0.45, 8.0.46]
+      serviceVersion: 8.0.46
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -126,8 +134,8 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.33 to 8.0.44]
-      serviceVersion: 8.0.35
+      # Valid options are: [8.0.45, 8.0.46]
+      serviceVersion: 8.0.46
 ```
 
 The list of supported versions can be found by following command:
@@ -587,13 +595,12 @@ spec:
       name: mysql-cluster-backup
       namespace: demo
     parameters:
-      dataprotection.kubeblocks.io/source-target-name: mysql
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   componentSpecs:
     - name: mysql
       componentDef: "mysql-8.0"  # match all CMPD named with 'mysql-8.0-'
-      serviceVersion: 8.0.35
+      serviceVersion: 8.0.46
       disableExporter: false
       replicas: 2
       resources:
@@ -945,7 +952,7 @@ spec:
     - name: mysql
       componentDef: mysql-orc-8.0 # use componentDef: mysql-orc-8.0
       disableExporter: true
-      serviceVersion: "8.0.35"
+      serviceVersion: "8.0.46"
       replicas: 2
       resources:
         limits:

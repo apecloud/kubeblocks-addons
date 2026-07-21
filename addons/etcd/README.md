@@ -146,7 +146,6 @@ spec:
             resources:
               requests:
                 storage: 20Gi
-
 ```
 
 ```bash
@@ -722,7 +721,6 @@ spec:
       name: etcd-cluster-backup
       namespace: demo
     parameters:
-      dataprotection.kubeblocks.io/source-target-name: etcd
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   componentSpecs:
@@ -747,7 +745,6 @@ spec:
             resources:
               requests:
                 storage: 20Gi
-
 ```
 
 ```bash
