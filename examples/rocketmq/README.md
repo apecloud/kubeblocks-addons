@@ -151,7 +151,7 @@ spec:
                 storage: 30Gi
 ```
 
-### [Restart](restart.yaml)
+### [Restart](restart-namesrv.yaml)
 
 Restart the specified components in the cluster:
 
