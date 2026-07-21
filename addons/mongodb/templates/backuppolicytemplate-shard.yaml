@@ -13,6 +13,9 @@ spec:
     account: root
   backupMethods:
     - name: dump
+      target:
+        role: primary
+        account: root
       snapshotVolumes: false
       actionSetName: mongodb-shard-pbm-logical
       env:
@@ -30,6 +33,9 @@ spec:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
     - name: pbm-physical
+      target:
+        role: primary
+        account: root
       snapshotVolumes: false
       actionSetName: mongodb-shard-pbm-physical
       env:
@@ -47,6 +53,9 @@ spec:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
     - name: pbm-pitr
+      target:
+        role: primary
+        account: root
       snapshotVolumes: false
       actionSetName: mongodb-shard-pbm-pitr
       env:
