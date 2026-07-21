@@ -11,9 +11,9 @@ image:
 
 ## @param versions RustFS versions configuration
 versions:
-  - version: "1.0.0-beta.8"
-    tag: "1.0.0-beta.8"
-    serviceVersion: "1.0.0-beta.8"
+  - version: "1.0.0-beta.10"
+    tag: "1.0.0-beta.10"
+    serviceVersion: "1.0.0-beta.10"
     isDefault: true
 
 ## Internal port number for RustFS S3 API
