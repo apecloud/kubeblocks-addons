@@ -237,7 +237,7 @@ EOF
 
 function getToolConfigValue() {
     local var=$1
-    cat $toolConfig | grep "$var[[:space:]]*=" | awk '{print $NF}'
+    cat $toolConfig | grep "${var}[[:space:]]*=" | awk '{print $NF}'
 }
 
 function configure_clickhouse_backup_custom_storage_if_encrypted() {
