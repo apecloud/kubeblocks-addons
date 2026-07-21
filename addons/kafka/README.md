@@ -136,6 +136,7 @@ spec:
         requests:
           cpu: "0.1"
           memory: "0.2Gi"
+
 ```
 
 ```bash
@@ -263,13 +264,12 @@ When the cluster creation is done, refer to a secret named `$(CLUSTER_NAME)$-kaf
 
 > [!IMPORTANT]
 > As per the Kafka documentation, the number of KRaft replicas should be odd to avoid split-brain scenarios.
-> Make sure the number of KRaft replicas, i.e. Controller replicas,  is always odd after Horizontal Scaling, either in Separated or Combined mode.
+> Make sure the number of KRaft replicas, i.e. Controller replicas, is always odd after Horizontal Scaling.
+> Combined KRaft mode (`kafka-combine`) rejects online scale-out and scale-in because quorum voter add/remove convergence is not implemented in this addon. Use separated topology and scale broker-only components for online horizontal scaling.
 
 #### Scale-out
 
-> **Warning**: Combined KRaft mode (`kafka-combine`) does **not** support online horizontal scale-out for serviceVersion 3.3.2. Adding a combined node requires the Kafka controller quorum membership and per-broker metadata view to converge; this addon does not implement that workflow yet. The `memberJoin` action will reject combined-mode scale-out. Use separated topology and scale broker-only components when you need online broker scale-out.
-
-Horizontal scaling out the broker-only `kafka-broker` component in cluster `kafka-separated-cluster` by adding ONE more replica:
+Horizontal scaling out the `kafka-broker` component in separated-topology cluster `kafka-separated-cluster` by adding ONE more replica:
 
 ```yaml
 # cat examples/kafka/scale-out.yaml
@@ -306,9 +306,11 @@ kubectl describe -n demo ops kafka-broker-scale-out
 
 #### Scale-in
 
-> **Warning**: Combined KRaft mode (`kafka-combine`) does **not** support scale-in. The `memberLeave` action will reject the request because quorum voter removal is not yet implemented — scaling in a combined node that is both broker and controller would break the KRaft quorum. Only broker-only components support scale-in.
+> [!WARNING]
+> Combined KRaft mode (`kafka-combine`) does not support scale-in because quorum voter removal is not implemented.
+> Use a separated-topology cluster with broker-only components for scale-in.
 
-The following example scales in a **broker-only** component in a **separated-topology** cluster. Combined mode clusters reject online scale-in and scale-out; use separated topology when online horizontal scaling is required.
+Horizontal scaling in `kafka-broker` component in cluster `kafka-separated-cluster` by deleting ONE replica:
 
 ```yaml
 # cat examples/kafka/scale-in.yaml
@@ -318,12 +320,22 @@ metadata:
   name: kafka-broker-scale-in
   namespace: demo
 spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  # NOTE: Combined KRaft mode (kafka-combine) does NOT support scale-in.
+  # Use a separated-topology cluster with broker-only components for scale-in.
   clusterName: kafka-separated-cluster
   type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
+    # Specifies the name of the Component.
+    # Only broker-only components support scale-in; combined (broker+controller) nodes cannot be removed
+    # because quorum voter removal is not yet implemented.
   - componentName: kafka-broker
+    # Specifies the replica changes for scaling in components
     scaleIn:
+      # Specifies the replica changes for the component.
       replicaChanges: 1
+
 ```
 
 ```bash
@@ -332,17 +344,12 @@ kubectl apply -f examples/kafka/scale-in.yaml
 
 #### Scale-in/out using Cluster API
 
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
-
-> **Note**: For combined KRaft mode (`kafka-combine`), online scale-out and scale-in are both rejected by lifecycle actions because quorum voter add/remove convergence is not implemented in this addon. Use separated topology and scale broker-only components for online horizontal scaling.
+Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number. Use a broker-only component such as `kafka-broker`; combined KRaft mode (`kafka-combine`) rejects online scale-in and scale-out.
 
 ```yaml
-# snippet of cluster-separated.yaml — broker-only example
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-separated-cluster
-  namespace: demo
 spec:
   componentSpecs:
     - name: kafka-broker

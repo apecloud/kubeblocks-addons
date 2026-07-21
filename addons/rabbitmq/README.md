@@ -14,16 +14,12 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 
 | Major Versions | Description |
 |---------------|-------------|
-| 3.8 | 3.8.34|
+| 3.8 | 3.8.14|
 | 3.9 | 3.9.29|
 | 3.10 | 3.10.25|
 | 3.11 | 3.11.28|
 | 3.12 | 3.12.14|
 | 3.13 | 3.13.7|
-| 4.0 | 4.0.9|
-| 4.1 | 4.1.6|
-| 4.2 | 4.2.1|
-| 4.3 | 4.3.1|
 
 ## Prerequisites
 
@@ -66,7 +62,7 @@ spec:
       # The serviceVersion is used to determine the version of the Cluster. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.8.34,3.9.29,3.10.25,3.11.28,3.12.14,3.13.7,4.0.9,4.1.6,4.2.1,4.3.1]
+      # Valid options are: [3.10.25,3.11.28,3.12.14,3.13.7,3.8.14,3.9.29]
       serviceVersion: 3.13.7
       # Recommended to set `replicas` to [3,5,7]
       # All data/state is replicated across all replicas.
@@ -527,7 +523,7 @@ spec:
   - componentName: rabbitmq
     parameters:
       # Represents the name of the parameter that is to be updated.
-      # `channel_max` is a static parameter in rabbitmq
+      # `channel_max` is a static parameter in rabbitmq (requires restart)
     - key: channel_max
       # Represents the parameter values that are to be updated.
       # If set to nil, the parameter defined by the Key field will be removed from the configuration file.

@@ -678,6 +678,7 @@ spec:
       name: mongo-cluster-backup
       namespace: demo
     parameters:
+      dataprotection.kubeblocks.io/source-target-name: mongodb
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: mongodb
@@ -702,6 +703,7 @@ spec:
             resources:
               requests:
                 storage: 20Gi
+
 ```
 
 ```bash

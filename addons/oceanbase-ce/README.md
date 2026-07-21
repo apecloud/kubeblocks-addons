@@ -548,6 +548,7 @@ spec:
       name: ob-cluster-backup
       namespace: demo
     parameters:
+      dataprotection.kubeblocks.io/source-target-name: oceanbase
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: oceanbase-ce

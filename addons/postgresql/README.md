@@ -785,6 +785,7 @@ spec:
       name: pg-cluster-pg-basebackup
       namespace: demo
     parameters:
+      dataprotection.kubeblocks.io/source-target-name: postgresql
       dataprotection.kubeblocks.io/volume-restore-policy: Parallel
   terminationPolicy: Delete
   clusterDef: postgresql
@@ -810,6 +811,7 @@ spec:
             resources:
               requests:
                 storage: 20Gi
+
 ```
 
 ```bash
