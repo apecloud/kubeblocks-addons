@@ -25,7 +25,7 @@ maintainers:
 annotations:
   category: Database
   licenses: Apache-2.0
-  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/kubeblocks-version: ">1.0.2"
   addon.kubeblocks.io/model: "time-series"
 
 dependencies:

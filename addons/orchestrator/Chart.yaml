@@ -22,7 +22,7 @@ sources:
 - https://github.com/apecloud/kubeblocks/
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+  addon.kubeblocks.io/kubeblocks-version: ">1.0.2"
   addon.kubeblocks.io/model: "HA"
   addon.kubeblocks.io/provider: "community"
 
