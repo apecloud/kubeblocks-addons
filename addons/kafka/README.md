@@ -48,7 +48,11 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 
 ### Create
 
-Create a Kafka cluster with combined controller and broker components
+Create a Kafka cluster with combined controller and broker components.
+For `combined_monitor`, `2Gi` memory is the recommended minimum for the
+`kafka-combine` component when broker, controller, exporter validation, and
+in-pod workload tools share the same pod memory budget; smaller limits are not
+recommended for this topology.
 
 ```yaml
 # cat examples/kafka/cluster-combined.yaml
@@ -83,9 +87,9 @@ spec:
     - name: kafka-combine
       env:
         - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
           # Whether to enable direct Pod IP address access mode.
           # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
           # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN.
@@ -97,10 +101,10 @@ spec:
       resources:
         limits:
           cpu: "1"
-          memory: "1Gi"
+          memory: "2Gi"
         requests:
           cpu: "0.5"
-          memory: "0.5Gi"
+          memory: "2Gi"
       # Specifies a list of PersistentVolumeClaim templates that define the storage
       # requirements for the Component.
       volumeClaimTemplates:
@@ -188,9 +192,9 @@ spec:
           memory: "0.5Gi"
       env:
         - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
           # Whether to enable direct Pod IP address access mode.
           # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
           # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN
@@ -653,9 +657,9 @@ spec:
           memory: "0.5Gi"
       env:
         - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
           # Whether to enable direct Pod IP address access mode.
           # - If set to 'true', Kafka clients will connect to Brokers using the Pod IP address directly.
           # - If set to 'false', Kafka clients will connect to Brokers using the Headless Service's FQDN
@@ -859,9 +863,9 @@ spec:
       replicas: 1
       env:
         - name: KB_KAFKA_BROKER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_BROKER_DIRECT_POD_ACCESS # set KB_BROKER_DIRECT_POD_ACCESS to FALSE to disable direct pod access
           value: "false"
 ```

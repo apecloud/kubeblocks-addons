@@ -48,7 +48,11 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 
 ### Create
 
-Create a Kafka cluster with combined controller and broker components
+Create a Kafka cluster with combined controller and broker components.
+For `combined_monitor`, `2Gi` memory is the recommended minimum for the
+`kafka-combine` component when broker, controller, exporter validation, and
+in-pod workload tools share the same pod memory budget; smaller limits are not
+recommended for this topology.
 
 ```bash
 kubectl apply -f examples/kafka/cluster-combined.yaml
@@ -352,9 +356,9 @@ spec:
       replicas: 1
       env:
         - name: KB_KAFKA_BROKER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_KAFKA_CONTROLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=75 -Ddepth=64"
         - name: KB_BROKER_DIRECT_POD_ACCESS # set KB_BROKER_DIRECT_POD_ACCESS to FALSE to disable direct pod access
           value: "false"
 ```
