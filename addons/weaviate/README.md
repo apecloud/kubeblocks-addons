@@ -10,7 +10,7 @@ In Weaviate, metadata replication and data replication are separate. For the met
 
 | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| No                     | Yes                   | Yes              | Yes       | Yes        | No        | Yes    | N/A      |
+| No                     | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | N/A      |
 
 ### Versions
 
@@ -87,6 +87,143 @@ spec:
 kubectl apply -f examples/weaviate/cluster.yaml
 ```
 
+### Create with a custom configuration file
+
+Starting with KubeBlocks 1.0, Weaviate configuration is managed through the
+`Cluster.spec.componentSpecs[].configs` Configuration API. The previous
+`ParametersDefinition` and `ParamConfigRenderer` resources are no longer used.
+
+The example supplies a complete `conf.yaml` template through a ConfigMap and
+sets `query_defaults.limit` to `100` when the cluster is created:
+
+Replace `<your-weaviate-component-definition>` in the example with the
+ComponentDefinition installed for the Weaviate version you want to run.
+
+```yaml
+# cat examples/weaviate/cluster-with-config-template.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-weaviate-config-template
+  namespace: demo
+data:
+  conf.yaml: |-
+    ---
+    authentication:
+      anonymous_access:
+        enabled: true
+    authorization:
+      admin_list:
+        enabled: false
+    query_defaults:
+      limit: {{ .query_defaults_limit }}
+    debug: false
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: weaviate-cluster-with-config
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: weaviate
+      componentDef: weaviate
+      serviceVersion: 1.19.6
+      replicas: 1
+      configs:
+        # The name must match ComponentDefinition.spec.configs[].name.
+        - name: weaviate-config-template
+          configMap:
+            name: custom-weaviate-config-template
+          variables:
+            query_defaults_limit: "100"
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: "0.5"
+          memory: 512Mi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+
+```
+
+```bash
+kubectl apply -f examples/weaviate/cluster-with-config-template.yaml
+```
+
+The config name `weaviate-config-template` must match the corresponding entry
+in `ComponentDefinition.spec.configs`. The ConfigMap contains the file template,
+while `variables` contains the values rendered into that template.
+
+#### Discover available configurations
+
+Configuration does not provide the parameter schema or value discovery that
+was previously supplied by `ParametersDefinition` and `ParamConfigRenderer`.
+Use the following sources to determine what can be configured.
+
+List the configuration files exposed by the Weaviate ComponentDefinition:
+
+```bash
+WEAVIATE_COMPONENT_DEFINITION="<your-weaviate-component-definition>"
+kubectl get cmpd "${WEAVIATE_COMPONENT_DEFINITION}" \
+  -o jsonpath='{range .spec.configs[*]}{.name}{"\t"}{.template}{"\t"}{.namespace}{"\n"}{end}'
+```
+
+Inspect the default file templates:
+
+```bash
+kubectl get configmap weaviate-config-template -n kb-system \
+  -o go-template='{{ index .data "conf.yaml" }}'
+
+kubectl get configmap weaviate-env-config-template -n kb-system \
+  -o go-template='{{ index .data "envs" }}'
+```
+
+For a custom ConfigMap, the placeholders in the file template define the
+variable names accepted under `configs[].variables`. For example,
+`{{ .query_defaults_limit }}` in this example defines the
+`query_defaults_limit` variable. KubeBlocks renders the supplied string value
+but does not validate its type or allowed range.
+
+Refer to the [Weaviate environment variable reference][weaviate-env-vars] for
+the engine settings, value formats, and defaults. Check that each setting is
+supported by Weaviate 1.19.6 because the latest documentation also describes
+settings introduced by newer releases.
+
+Inspect the files actually consumed by a running Pod to confirm the effective
+rendered values:
+
+```bash
+kubectl exec -n demo weaviate-cluster-with-config-weaviate-0 \
+  -- cat /weaviate-config/conf.yaml
+
+kubectl exec -n demo weaviate-cluster-with-config-weaviate-0 \
+  -- cat /weaviate-env/envs
+```
+
+### Update the custom configuration
+
+Update the Configuration variable directly on the Cluster:
+
+```bash
+kubectl patch cluster weaviate-cluster-with-config -n demo \
+  --type=json \
+  --patch-file=examples/weaviate/configure.json
+```
+
+This changes `query_defaults.limit` from `100` to `150`. Weaviate 1.19.6 loads
+this file at startup, so KubeBlocks restarts the component Pods after rendering
+the changed file. This workflow does not create a Reconfiguring OpsRequest.
+
 ### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
@@ -137,20 +274,20 @@ If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volum
 To increase size of volume storage with the specified components in the cluster
 
 ```yaml
-# cat examples/postgresql/volumeexpand.yaml
+# cat examples/weaviate/volumeexpand.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: pg-volumeexpansion
+  name: weaviate-volumeexpansion
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: pg-cluster
+  clusterName: weaviate-cluster
   type: VolumeExpansion
   # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
   volumeExpansion:
     # Specifies the name of the Component.
-  - componentName: postgresql
+  - componentName: weaviate
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
     volumeClaimTemplates:
     - name: data
@@ -159,7 +296,7 @@ spec:
 ```
 
 ```bash
-kubectl apply -f examples/postgresql/volumeexpand.yaml
+kubectl apply -f examples/weaviate/volumeexpand.yaml
 ```
 
 ### Restart
@@ -245,3 +382,5 @@ kubectl delete cluster -n demo weaviate-cluster
 ## References
 
 [^1]: Weaviate Cluster Architecture, <https://weaviate.io/developers/weaviate/concepts/replication-architecture/cluster-architecture#metadata-replication-raft>
+
+[weaviate-env-vars]: https://docs.weaviate.io/deploy/configuration/env-vars
