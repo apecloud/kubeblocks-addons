@@ -1,4 +1,4 @@
-# shellcheck disable=SC2148
+# shellcheck shell=bash
 # use datasafed and default config
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
