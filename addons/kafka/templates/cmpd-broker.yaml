@@ -203,7 +203,6 @@ spec:
           - name: KB_KAFKA_CONTAINER_MEMORY_LIMIT_MIB
             valueFrom:
               resourceFieldRef:
-                containerName: kafka
                 resource: limits.memory
                 divisor: 1Mi
           - name: SERVER_PROP_FILE
