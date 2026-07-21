@@ -141,7 +141,7 @@ It sets up the `PodMonitor` to monitor this StarRocks cluster and scrapes the me
 
 ##### Access the Grafana Dashboard
 
-Login to the Grafana dashboard and import the dashboard provided in this example `./examples/starrocks-ce/dashboard/starrocks.json`.
+Login to the Grafana dashboard and import the dashboard provided in this example `./examples/starrocks-ce/grafana/starrocks.json`.
 
 You may refer to following links for more information:
 - StarRocks Overview provided by StarRocks team: [StarRocks Overview](https://github.com/StarRocks/starrocks/blob/main/extra/grafana/kubernetes/StarRocks-Overview-kubernetes-3.0.json)
