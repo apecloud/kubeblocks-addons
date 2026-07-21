@@ -91,7 +91,7 @@ NAME                 VERSIONS                                      STATUS      A
 vanilla-postgresql   12.15.0,14.7.0,15.7.0,15.6.1-138               Available   Xd
 ```
 
-### [Horizontal scaling](horizontalscale.yaml)
+### Horizontal scaling
 
 #### [Scale-out](scale-out.yaml)
 
