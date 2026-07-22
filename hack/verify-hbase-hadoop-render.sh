@@ -8,7 +8,7 @@ trap 'rm -rf "${TMP_DIR}"' EXIT
 assert_contains() {
   local file="$1"
   local needle="$2"
-  if ! grep -Fq "$needle" "$file"; then
+  if ! grep -Fq -- "$needle" "$file"; then
     echo "missing expected content: $needle" >&2
     return 1
   fi
@@ -17,7 +17,7 @@ assert_contains() {
 assert_not_contains() {
   local file="$1"
   local needle="$2"
-  if grep -Fq "$needle" "$file"; then
+  if grep -Fq -- "$needle" "$file"; then
     echo "unexpected content found: $needle" >&2
     return 1
   fi
@@ -240,12 +240,15 @@ assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" '<name>
 assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" '<value>org.apache.hadoop.hbase.io.compress.lz4.Lz4Codec</value>'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'name: HDFS_NAMENODE_POD_FQDNS_DEFAULT'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'name: HDFS_NAMENODE_POD_FQDNS'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'podFQDNs: Optional'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'podFQDNs: Optional'
+assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-env.sh.tpl" '-Dhbase.regionserver.hostname=${POD_FQDN:-$(hostname -f 2>/dev/null || hostname)}'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'optional: true'
-assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'podFQDNs: Required'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'podFQDNs: Optional'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'name: HDFS_NAMENODE_POD_FQDNS_DEFAULT'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'name: HDFS_NAMENODE_POD_FQDNS'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'optional: true'
-assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'podFQDNs: Required'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'podFQDNs: Optional'
 assert_not_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'name: HDFS_NAMENODE_HOSTS'
 assert_not_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'name: HDFS_NAMENODE_RPC_ENDPOINTS'
 assert_not_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'name: HDFS_NAMENODE_HOSTS'

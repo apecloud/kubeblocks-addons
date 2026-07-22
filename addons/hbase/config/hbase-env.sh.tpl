@@ -9,7 +9,7 @@ export CLIENT_GC_OPTS="-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps"
 
 export HBASE_JMX_BASE="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false -Djava.rmi.server.hostname=127.0.0.1"
 export HBASE_MASTER_OPTS="$HBASE_MASTER_OPTS $HBASE_JMX_BASE -Dcom.sun.management.jmxremote.port={{ .HBASE_MASTER_JMX_PORT }} -Dcom.sun.management.jmxremote.rmi.port={{ .HBASE_MASTER_JMX_PORT }} -Xms{{ .HBASE_MASTER_HEAP_SIZE }} -Xmx{{ .HBASE_MASTER_HEAP_SIZE }}"
-export HBASE_REGIONSERVER_OPTS="$HBASE_REGIONSERVER_OPTS $HBASE_JMX_BASE -Dcom.sun.management.jmxremote.port={{ .HBASE_REGIONSERVER_JMX_PORT }} -Dcom.sun.management.jmxremote.rmi.port={{ .HBASE_REGIONSERVER_JMX_PORT }} -Dhbase.regionserver.hostname=${POD_FQDN} -Xms{{ .HBASE_REGIONSERVER_HEAP_SIZE }} -Xmx{{ .HBASE_REGIONSERVER_HEAP_SIZE }}"
+export HBASE_REGIONSERVER_OPTS="$HBASE_REGIONSERVER_OPTS $HBASE_JMX_BASE -Dcom.sun.management.jmxremote.port={{ .HBASE_REGIONSERVER_JMX_PORT }} -Dcom.sun.management.jmxremote.rmi.port={{ .HBASE_REGIONSERVER_JMX_PORT }} -Dhbase.regionserver.hostname=${POD_FQDN:-$(hostname -f 2>/dev/null || hostname)} -Xms{{ .HBASE_REGIONSERVER_HEAP_SIZE }} -Xmx{{ .HBASE_REGIONSERVER_HEAP_SIZE }}"
 export HBASE_HEAPSIZE={{ .HBASE_HEAP_SIZE }}
 
 export HBASE_DISABLE_HADOOP_CLASSPATH_LOOKUP=true

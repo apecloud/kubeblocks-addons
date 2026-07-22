@@ -91,6 +91,11 @@ spec:
             value: {{ .Values.runtime.hbasePidDir }}
           - name: HMASTER_INFO_PORT
             value: {{ .Values.ports.hmaster.info | quote }}
+          - name: POD_FQDN
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
+                apiVersion: v1
         ports:
           - containerPort: {{ .Values.ports.hmaster.rpc }}
             name: hmaster
@@ -252,7 +257,7 @@ spec:
         serviceRefVarRef:
           name: hdfs-namenode
           optional: true
-          podFQDNs: Required
+          podFQDNs: Optional
       expression: {{ `{{ if index . "HDFS_NAMENODE_POD_FQDNS" }}{{ .HDFS_NAMENODE_POD_FQDNS }}{{ else }}{{ .HDFS_NAMENODE_POD_FQDNS_DEFAULT }}{{ end }}` | toYaml }}
     - name: HDFS_NAMENODE_RPC_PORT
       value: {{ .Values.hdfs.namenodeRpcPort | quote }}
@@ -264,11 +269,6 @@ spec:
       value: {{ .Values.hdfs.replication | quote }}
     - name: HDFS_PERMISSIONS_ENABLED
       value: "false"
-    - name: POD_FQDN
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
-          apiVersion: v1
   configs:
     - name: hbase-config
       template: hbase-cluster-config-template

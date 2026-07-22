@@ -49,7 +49,7 @@ ports:
 
 jvm:
   hmasterHeapSize: 3g
-  hregionserverHeapSize: 4g
+  hregionserverHeapSize: 3g
   hbasestandaloneHeapSize: 512m
 
 hbase:
