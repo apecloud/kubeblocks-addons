@@ -130,7 +130,7 @@
             HDFS_PERMISSIONS_SUPERUSERGROUP: {{ .Values.hdfs.permissions.superusergroup | quote }}
             HDFS_REGISTRATION_IP_HOSTNAME_CHECK: {{ .Values.hdfs.registration.ipHostnameCheck | quote }}
             HDFS_NAMENODE_WEBHDFS_ENABLED: {{ .Values.hdfs.namenode.webhdfsEnabled | quote }}
-            HDFS_NAMENODE_RESOURCE_DU_RESERVED: {{ .Values.hdfs.namenode.resourceDuReserved | quote }}
+            HDFS_NAMENODE_RESOURCE_DU_RESERVED: {{ printf "%.0f" (float64 .Values.hdfs.namenode.resourceDuReserved) | quote }}
             HDFS_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.retryPolicyEnabled | quote }}
             HDFS_CLIENT_RETRY_POLICY_SPEC: {{ .Values.hdfs.client.retryPolicySpec | quote }}
 {{- if $isCluster }}
@@ -216,7 +216,7 @@
             HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.ports.namenode.http | quote }}
             HDFS_DATANODE_HANDLER_COUNT: {{ .Values.hdfs.datanode.handlerCount | quote }}
             HDFS_DATANODE_FAILED_VOLUMES_TOLERATED: {{ .Values.hdfs.datanode.failedVolumesTolerated | quote }}
-            HDFS_DATANODE_DU_RESERVED: {{ .Values.hdfs.datanode.duReserved | quote }}
+            HDFS_DATANODE_DU_RESERVED: {{ printf "%.0f" (float64 .Values.hdfs.datanode.duReserved) | quote }}
             HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissions.enabled | quote }}
             HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
             HDFS_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.retryPolicyEnabled | quote }}

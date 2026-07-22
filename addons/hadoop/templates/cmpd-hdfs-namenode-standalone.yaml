@@ -103,6 +103,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
+          - name: POD_FQDN
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
           - name: HADOOP_HOME
             value: {{ .Values.runtime.hadoopHome }}
           - name: HADOOP_CONF_DIR
@@ -167,6 +171,8 @@ spec:
           - name: namenode-config
             mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
             subPath: hdfs-site.xml
+          - name: lifecycle
+            mountPath: /lifecycle
           - name: hadoop-logs
             mountPath: {{ .Values.runtime.hadoopLogDir }}
           - name: scripts
@@ -207,6 +213,8 @@ spec:
       fsGroup: {{ .Values.securityContext.fsGroup }}
     volumes:
       - name: hadoop-common
+        emptyDir: {}
+      - name: lifecycle
         emptyDir: {}
       - name: hadoop-logs
         emptyDir: {}

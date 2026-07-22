@@ -217,8 +217,8 @@
             HBASE_REGIONSERVER_HANDLER_COUNT: {{ .Values.hbase.standalone.regionserverHandlerCount | quote }}
             HBASE_HSTORE_FLUSHER_COUNT: {{ .Values.hbase.standalone.hstoreFlusherCount | quote }}
             HBASE_CLIENT_SCANNER_CACHING: {{ .Values.hbase.common.clientScannerCaching | quote }}
-            HBASE_HREGION_MAX_FILESIZE: {{ .Values.hbase.standalone.regionMaxFileSize | quote }}
-            HBASE_HREGION_MEMSTORE_FLUSH_SIZE: {{ .Values.hbase.common.regionMemstoreFlushSize | quote }}
+            HBASE_HREGION_MAX_FILESIZE: {{ printf "%.0f" (float64 .Values.hbase.standalone.regionMaxFileSize) | quote }}
+            HBASE_HREGION_MEMSTORE_FLUSH_SIZE: {{ printf "%.0f" (float64 .Values.hbase.common.regionMemstoreFlushSize) | quote }}
             HBASE_PROCEDURE_STORE_WAL_USE_HSYNC: {{ .Values.hbase.standalone.procedureStoreWalUseHsync | quote }}
             HBASE_REPLICATION_ENABLED: {{ .Values.hbase.standalone.replicationEnabled | quote }}
             HBASE_SECURITY_AUTHENTICATION: {{ .Values.hbase.security.authentication | quote }}

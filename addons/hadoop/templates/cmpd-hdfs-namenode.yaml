@@ -145,6 +145,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
+          - name: POD_FQDN
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
           - name: HADOOP_HOME
             value: {{ .Values.runtime.hadoopHome }}
           - name: HADOOP_CONF_DIR

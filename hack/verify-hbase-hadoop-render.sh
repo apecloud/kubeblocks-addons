@@ -129,6 +129,10 @@ helm template test addons-cluster/hbase \
   --set serviceRefs.hdfsNamenode.clusterServiceSelector.cluster=external-hdfs-cluster \
   > "${TMP_DIR}/hbase-cluster-serviceref-default-ns.yaml"
 
+helm template test addons-cluster/hbase \
+  --set topology=standalone \
+  > "${TMP_DIR}/hbase-cluster-standalone.yaml"
+
 assert_contains "${TMP_DIR}/hadoop-addon.yaml" "kind: ParamConfigRenderer"
 assert_contains "${TMP_DIR}/hadoop-addon.yaml" "name: hdfs-namenode-config-renderer"
 assert_contains "${TMP_DIR}/hadoop-addon.yaml" "refresh-decommission-state.sh: |-"
@@ -146,6 +150,10 @@ assert_contains "${TMP_DIR}/hadoop-cluster.yaml" 'name: test-hdfs-decommission-s
 assert_contains "${TMP_DIR}/hadoop-cluster.yaml" 'name: test-hdfs-decommission-state-editor'
 assert_contains "${TMP_DIR}/hadoop-cluster-custom-state.yaml" 'name: custom-decommission-state'
 assert_contains "${TMP_DIR}/hadoop-cluster-custom-state.yaml" 'name: custom-decommission-state-editor'
+assert_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_NAMENODE_RESOURCE_DU_RESERVED: "1073741824"'
+assert_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_DATANODE_DU_RESERVED: "1073741824"'
+assert_not_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_NAMENODE_RESOURCE_DU_RESERVED: "1.073741824e+09"'
+assert_not_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_DATANODE_DU_RESERVED: "1.073741824e+09"'
 
 assert_contains "${TMP_DIR}/hbase-addon.yaml" "check-hmaster-live.sh: |-"
 assert_contains "${TMP_DIR}/hbase-addon.yaml" "check-hmaster-ready.sh: |-"
@@ -163,6 +171,10 @@ assert_contains "${TMP_DIR}/hbase-cluster-fallback.yaml" 'HDFS_NAMENODE_HTTP_POR
 assert_not_contains "${TMP_DIR}/hbase-cluster-fallback.yaml" "name: hdfs-namenode"
 assert_contains "${TMP_DIR}/hbase-cluster-serviceref.yaml" "name: hdfs-namenode"
 assert_contains "${TMP_DIR}/hbase-cluster-serviceref-default-ns.yaml" 'HDFS_NAMESERVICE: "external-ns"'
+assert_contains "${TMP_DIR}/hbase-cluster-standalone.yaml" 'HBASE_HREGION_MAX_FILESIZE: "10737418240"'
+assert_contains "${TMP_DIR}/hbase-cluster-standalone.yaml" 'HBASE_HREGION_MEMSTORE_FLUSH_SIZE: "134217728"'
+assert_not_contains "${TMP_DIR}/hbase-cluster-standalone.yaml" 'HBASE_HREGION_MAX_FILESIZE: "1.073741824e+10"'
+assert_not_contains "${TMP_DIR}/hbase-cluster-standalone.yaml" 'HBASE_HREGION_MEMSTORE_FLUSH_SIZE: "1.34217728e+08"'
 
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/check-name-status.sh" '_NN_HTTP_PORT="${HDFS_NAMENODE_HTTP_PORT:-9870}"'
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/check-journal-status.sh" '_PORTS="${HDFS_JOURNALNODE_HTTP_PORT:-8480}"'
@@ -228,6 +240,8 @@ assert_not_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode-stan
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode.yaml" 'HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode.yaml" 'HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode-standalone.yaml" 'HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode-standalone.yaml" 'name: lifecycle'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode-standalone.yaml" 'mountPath: /lifecycle'
 assert_contains "${ROOT_DIR}/addons-cluster/hadoop/templates/decommission-state-configmap.yaml" 'stateConfigMapName'
 assert_contains "${ROOT_DIR}/addons-cluster/hadoop/templates/decommission-rbac.yaml" 'stateConfigMapName'
 assert_contains "${ROOT_DIR}/addons-cluster/hadoop/templates/decommission-rbac.yaml" '      - create'
@@ -242,6 +256,8 @@ assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'name: HD
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'name: HDFS_NAMENODE_POD_FQDNS'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'podFQDNs: Optional'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'podFQDNs: Optional'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode.yaml" "fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']"
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode-standalone.yaml" "fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']"
 assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-env.sh.tpl" '-Dhbase.regionserver.hostname=${POD_FQDN:-$(hostname -f 2>/dev/null || hostname)}'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'optional: true'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'podFQDNs: Optional'
