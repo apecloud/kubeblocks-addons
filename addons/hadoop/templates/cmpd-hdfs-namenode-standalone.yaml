@@ -1,0 +1,295 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hdfs-namenode-standalone
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.apiVersion" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hdfs-namenode-standalone
+  exporter:
+    containerName: jmx-exporter
+    scrapePath: /metrics
+  {{- include "hadoop.decommissionPolicyRules" . | nindent 2 }}
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: fs
+            port: {{ .Values.hdfs.ports.namenode.rpc }}
+          - name: http
+            port: {{ .Values.hdfs.ports.namenode.http }}
+  runtime:
+    terminationGracePeriodSeconds: 120
+    initContainers:
+      - name: hadoop-common
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: {{ .Values.securityContext.initRunAsUser }}
+        command:
+          - /bin/bash
+        args:
+          - -ec
+          - |
+            cp -r {{ .Values.runtime.hadoopSoftwareDir }}/* {{ .Values.runtime.hadoopHome }}
+            mkdir -p {{ .Values.hdfs.paths.namenodeMetadataDir }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} /hadoop
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.runtime.hadoopHome }}
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: metadata-dir
+            mountPath: /hadoop
+      - name: init-namenode-format
+        image: {{ include "hadoop.initNameNodeFormatImage" . | quote }}
+        imagePullPolicy: {{ default .Values.nameNode.image.pullPolicy .Values.nameNode.initImages.initNameNodeFormat.pullPolicy }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/init-namenode-format.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: metadata-dir
+            mountPath: /hadoop
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.include
+            subPath: dfs.include
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
+            subPath: dfs.exclude
+          - name: namenode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+    containers:
+      - name: hdfs-namenode
+        image: {{ include "hadoop.nameNodeImage" . | quote }}
+        imagePullPolicy: {{ .Values.nameNode.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/start-namenode.sh
+        env:
+          - name: DEBUG_MODEL
+            value: {{ .Values.runtime.debug | quote }}
+          - name: CURRENT_POD
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_FQDN
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+          - name: HADOOP_LOG_DIR
+            value: {{ .Values.runtime.hadoopLogDir }}
+        ports:
+          - containerPort: {{ .Values.hdfs.ports.namenode.rpc }}
+            name: fs
+          - containerPort: {{ .Values.hdfs.ports.namenode.http }}
+            name: http
+        startupProbe:
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-name-status.sh
+        livenessProbe:
+          failureThreshold: {{ .Values.probes.namenode.liveness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.namenode.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.namenode.liveness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.namenode.liveness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-name-status.sh
+        readinessProbe:
+          failureThreshold: {{ .Values.probes.namenode.readiness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.namenode.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.namenode.readiness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.namenode.readiness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-name-status.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: metadata-dir
+            mountPath: /hadoop
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.include
+            subPath: dfs.include
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
+            subPath: dfs.exclude
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/log4j.properties
+            subPath: log4j.properties
+          - name: namenode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: lifecycle
+            mountPath: /lifecycle
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          privileged: {{ .Values.securityContext.privileged }}
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          capabilities:
+{{ toYaml .Values.securityContext.capabilities | nindent 12 }}
+          seccompProfile:
+{{ toYaml .Values.securityContext.seccompProfile | nindent 12 }}
+      - name: jmx-exporter
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: {{ .Values.exporter.securityContext.runAsNonRoot }}
+          runAsUser: {{ .Values.exporter.securityContext.runAsUser }}
+        command:
+          - java
+        args:
+          - -XX:MaxRAMPercentage=100
+          - -XshowSettings:vm
+          - -jar
+          - jmx_prometheus_httpserver.jar
+          - {{ .Values.jmxExporter.port | quote }}
+          - /etc/jmx-exporter/hdfs-jmx-exporter.yaml
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.jmxExporter.port }}
+        volumeMounts:
+          - name: hdfs-common-config
+            mountPath: /etc/jmx-exporter/hdfs-jmx-exporter.yaml
+            subPath: hdfs-jmx-exporter.yaml
+    securityContext:
+      fsGroupChangePolicy: {{ .Values.securityContext.fsGroupChangePolicy }}
+      fsGroup: {{ .Values.securityContext.fsGroup }}
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+      - name: lifecycle
+        emptyDir: {}
+      - name: hadoop-logs
+        emptyDir: {}
+  updateStrategy: {{ .Values.updateStrategy }}
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.extra.clusterDomain }}
+    - name: HDFS_CONF_DIR
+      value: {{ .Values.runtime.configDir }}
+    - name: HDFS_JMX_PORT
+      value: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+    - name: HDFS_NAMENODE_JMX_PORT
+      value: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+    - name: HDFS_DATANODE_JMX_PORT
+      value: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+    - name: HDFS_JOURNALNODE_JMX_PORT
+      value: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+    - name: HDFS_ZKFC_JMX_PORT
+      value: {{ .Values.hdfs.ports.zkfc.jmx | quote }}
+    - name: HDFS_NAMENODE_NAME_DIR
+      value: {{ .Values.hdfs.paths.namenodeMetadataDir | quote }}
+    - name: HDFS_NAMENODE_RPC_PORT
+      value: {{ .Values.hdfs.ports.namenode.rpc | quote }}
+    - name: HDFS_NAMENODE_HTTP_PORT
+      value: {{ .Values.hdfs.ports.namenode.http | quote }}
+    - name: HDFS_PERMISSIONS_ENABLED
+      value: {{ .Values.hdfs.permissions.enabled | quote }}
+    - name: HDFS_REGISTRATION_IP_HOSTNAME_CHECK
+      value: {{ .Values.hdfs.registration.ipHostnameCheck | quote }}
+    - name: HDFS_REPLICATION
+      value: "1"
+    - name: HDFS_REPLICATION_MAX
+      value: "1"
+    - name: HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY
+      value: "NEVER"
+    - name: HDFS_NAMENODE_HANDLER_COUNT
+      value: {{ .Values.hdfs.namenode.handlerCount | quote }}
+    - name: HDFS_DECOMMISSION_ENABLED
+      value: {{ .Values.decommission.enabled | quote }}
+    - name: HDFS_DECOMMISSION_TIMEOUT_SECONDS
+      value: {{ .Values.decommission.timeoutSeconds | quote }}
+    - name: HDFS_DECOMMISSION_POLL_INTERVAL_SECONDS
+      value: {{ .Values.decommission.pollIntervalSeconds | quote }}
+    - name: HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT
+      value: {{ .Values.decommission.stateConfigMapName | quote }}
+    - name: HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME
+      expression: {{ `{{ if index . "HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT" }}{{ .HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT }}{{ else }}{{ .CLUSTER_NAME }}-hdfs-decommission-state{{ end }}` | toYaml }}
+    - name: HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE
+      value: {{ printf "%s/dfs.exclude.dynamic" .Values.runtime.configDir | quote }}
+  configs:
+    - name: hdfs-common-config
+      template: hdfs-common-standalone-config-template
+      volumeName: hdfs-common-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.config.defaultMode }}
+    - name: namenode-config
+      template: namenode-standalone-config-template
+      volumeName: namenode-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.config.defaultMode }}
+  scripts:
+    - name: hadoop-scripts
+      template: hadoop-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.scripts.defaultMode }}

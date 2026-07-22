@@ -1,0 +1,246 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hbase-hregionserver-2.5
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hbase.apiVersion" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hbase-hregionserver
+  serviceVersion: 2.5.6
+  updateStrategy: BestEffortParallel
+  exporter:
+    containerName: jmx-exporter
+    scrapePath: /metrics
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: hregionserver
+            port: {{ .Values.ports.hregionserver.rpc }}
+          - name: http
+            port: {{ .Values.ports.hregionserver.info }}
+  serviceRefDeclarations:
+    - name: hbase-zookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
+    - name: hdfs-namenode
+      serviceRefDeclarationSpecs:
+        - serviceKind: hdfs-namenode
+          serviceVersion: "^*"
+      optional: true
+  runtime:
+    terminationGracePeriodSeconds: 300
+    containers:
+      - name: hbase-hregionserver
+        imagePullPolicy: {{ default "IfNotPresent" .Values.hregionserver.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/start-hregionserver.sh
+        env:
+          - name: HBASE_CONF_DIR
+            value: {{ .Values.runtime.hbaseConfDir }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.hbaseConfDir }}
+          - name: HBASE_HOME
+            value: {{ .Values.runtime.hbaseHome }}
+          - name: HBASE_LOG_DIR
+            value: {{ .Values.runtime.hbaseLogDir }}
+          - name: HBASE_PID_DIR
+            value: {{ .Values.runtime.hbasePidDir }}
+          - name: REGIONSERVER_INFO_PORT
+            value: {{ .Values.ports.hregionserver.info | quote }}
+          - name: POD_FQDN
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
+                apiVersion: v1
+        ports:
+          - containerPort: {{ .Values.ports.hregionserver.rpc }}
+            name: hregionserver
+          - containerPort: {{ .Values.ports.hregionserver.info }}
+            name: http
+        startupProbe:
+          failureThreshold: 30
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-hregionserver-live.sh
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-hregionserver-live.sh
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-hregionserver-ready.sh
+        volumeMounts:
+          - name: hbase-config
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/hbase-site.xml
+            subPath: hbase-site.xml
+          - name: hbase-config
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hbase-config
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: hbase-config
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/hbase-env.sh
+            subPath: hbase-env.sh
+          - name: hbase-config
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/log4j.properties
+            subPath: log4j.properties
+          - name: hbase-scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+          - name: hbase-logs
+            mountPath: {{ .Values.runtime.hbaseLogDir }}
+          - name: hbase-tmp
+            mountPath: {{ .Values.runtime.hbaseTmpDir }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+          seccompProfile:
+            type: "RuntimeDefault"
+      - name: jmx-exporter
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: {{ .Values.exporter.securityContext.runAsNonRoot }}
+          runAsUser: {{ .Values.exporter.securityContext.runAsUser }}
+        command:
+          - java
+        args:
+          - -XX:MaxRAMPercentage=100
+          - -XshowSettings:vm
+          - -jar
+          - jmx_prometheus_httpserver.jar
+          - {{ .Values.jmxExporter.port | quote }}
+          - /etc/jmx-exporter/hbase-jmx-exporter.yaml
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.jmxExporter.port }}
+        volumeMounts:
+          - name: hbase-config
+            mountPath: /etc/jmx-exporter/hbase-jmx-exporter.yaml
+            subPath: hbase-jmx-exporter.yaml
+    securityContext:
+      fsGroupChangePolicy: Always
+      fsGroup: {{ .Values.securityContext.fsGroup }}
+    volumes:
+      - name: hbase-logs
+        emptyDir: {}
+      - name: hbase-tmp
+        emptyDir: {}
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.extra.clusterDomain }}
+    - name: HBASE_CONF_DIR
+      value: {{ .Values.runtime.hbaseConfDir }}
+    - name: HBASE_LOG_DIR
+      value: {{ .Values.runtime.hbaseLogDir }}
+    - name: HBASE_PID_DIR
+      value: {{ .Values.runtime.hbasePidDir }}
+    - name: HBASE_TMP_DIR
+      value: {{ .Values.runtime.hbaseTmpDir }}
+    - name: HADOOP_NATIVE_LIB_PATH
+      value: {{ .Values.runtime.hadoopNativeLibPath }}
+    - name: HBASE_MASTER_HEAP_SIZE
+      value: {{ .Values.jvm.hmasterHeapSize | quote }}
+    - name: HBASE_JMX_PORT
+      value: {{ .Values.ports.hregionserver.jmx | quote }}
+    - name: HBASE_REGIONSERVER_HEAP_SIZE
+      value: {{ .Values.jvm.hregionserverHeapSize | quote }}
+    - name: HBASE_MASTER_JMX_PORT
+      value: {{ .Values.ports.hmaster.jmx | quote }}
+    - name: HBASE_MASTER_PORT
+      value: {{ .Values.ports.hmaster.rpc | quote }}
+    - name: HBASE_MASTER_INFO_PORT
+      value: {{ .Values.ports.hmaster.info | quote }}
+    - name: HBASE_REGIONSERVER_PORT
+      value: {{ .Values.ports.hregionserver.rpc | quote }}
+    - name: HBASE_REGIONSERVER_INFO_PORT
+      value: {{ .Values.ports.hregionserver.info | quote }}
+    - name: HBASE_REGIONSERVER_JMX_PORT
+      value: {{ .Values.ports.hregionserver.jmx | quote }}
+    - name: HBASE_HEAP_SIZE
+      value: {{ .Values.jvm.hregionserverHeapSize | quote }}
+    - name: ZOOKEEPER_QUORUM
+      valueFrom:
+        serviceRefVarRef:
+          name: hbase-zookeeper
+          host: Required
+    - name: ZOOKEEPER_CLIENT_PORT
+      value: {{ .Values.hbase.zkClientPort | quote }}
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hbase-zookeeper
+          endpoint: Required
+    - name: HBASE_ROOT_DIR
+      value: {{ .Values.hbase.rootDir | quote }}
+    - name: HBASE_ZK_PARENT
+      value: {{ .Values.hbase.zkParent | quote }}
+    - name: HDFS_NAMESERVICE
+      value: {{ .Values.hdfs.nameservice | quote }}
+    - name: HDFS_NAMENODE_NODES
+      value: {{ .Values.hdfs.namenodeNodes | quote }}
+    - name: HDFS_NAMENODE_POD_FQDNS_DEFAULT
+      value: {{ .Values.hdfs.namenodePodFQDNs | quote }}
+    - name: HDFS_NAMENODE_POD_FQDNS
+      valueFrom:
+        serviceRefVarRef:
+          name: hdfs-namenode
+          optional: true
+          podFQDNs: Optional
+      expression: {{ `{{ if index . "HDFS_NAMENODE_POD_FQDNS" }}{{ .HDFS_NAMENODE_POD_FQDNS }}{{ else }}{{ .HDFS_NAMENODE_POD_FQDNS_DEFAULT }}{{ end }}` | toYaml }}
+    - name: HDFS_NAMENODE_RPC_PORT
+      value: {{ .Values.hdfs.namenodeRpcPort | quote }}
+    - name: HDFS_NAMENODE_HTTP_PORT
+      value: {{ .Values.hdfs.namenodeHttpPort | quote }}
+    - name: HDFS_HA_ZK_PARENT
+      value: {{ .Values.hdfs.haZkParent | quote }}
+    - name: HDFS_REPLICATION
+      value: {{ .Values.hdfs.replication | quote }}
+    - name: HDFS_PERMISSIONS_ENABLED
+      value: "false"
+  configs:
+    - name: hbase-config
+      template: hbase-cluster-config-template
+      volumeName: hbase-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  scripts:
+    - name: hbase-scripts
+      template: hbase-scripts
+      volumeName: hbase-scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755

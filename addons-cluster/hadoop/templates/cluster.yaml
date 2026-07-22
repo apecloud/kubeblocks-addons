@@ -1,0 +1,261 @@
+{{- $isCluster := eq .Values.topology "cluster" }}
+{{- $isStandalone := eq .Values.topology "standalone" }}
+{{- $haNameNodeIds := splitList "," .Values.hdfs.ha.nameNodeIds }}
+{{- if not (or $isCluster $isStandalone) }}
+{{- fail "topology must be either 'cluster' or 'standalone'" }}
+{{- end }}
+{{- if and $isCluster (ne (.Values.replicas.namenode | int) 2) }}
+{{- fail "cluster topology requires replicas.namenode = 2; this addon currently supports only active/standby NameNode HA" }}
+{{- end }}
+{{- if and $isCluster (ne (len $haNameNodeIds) 2) }}
+{{- fail "cluster topology requires exactly 2 hdfs.ha.nameNodeIds entries while active/standby NameNode HA is enforced" }}
+{{- end }}
+{{- include "hadoop-cluster.clusterCommon" . }}
+  clusterDef: hadoop
+  topology: {{ .Values.topology }}
+  componentSpecs:
+{{- if $isCluster }}
+    - name: journalnode
+      componentDef: hdfs-journalnode
+      configs:
+        - name: hdfs-common-config
+          variables:
+            HDFS_TRASH_INTERVAL: {{ .Values.hdfs.trash.interval | quote }}
+            HDFS_HADOOP_TMP_DIR: {{ .Values.hdfs.core.hadoopTmpDir | quote }}
+            HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
+            HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_JMX_PORT: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+            HDFS_NAMENODE_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+            HDFS_DATANODE_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+            HDFS_JOURNALNODE_JMX_PORT: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+            HDFS_ZKFC_JMX_PORT: {{ .Values.hdfs.ports.zkfc.jmx | quote }}
+            HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
+            HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
+            HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
+            HDFS_ZKFC_HEAP: {{ .Values.hdfs.jvm.zkfcHeapSize | quote }}
+            HDFS_HA_ZOOKEEPER_SESSION_TIMEOUT_MS: {{ .Values.hdfs.ha.zookeeper.sessionTimeoutMs | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_MAX_IDLE_TIME_MS: {{ .Values.hdfs.ipc.clientConnectionMaxIdleTimeMs | quote }}
+            HDFS_IPC_CLIENT_CONNECT_TIMEOUT_MS: {{ .Values.hdfs.ipc.clientConnectTimeoutMs | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_POOL_SIZE: {{ .Values.hdfs.ipc.clientConnectionPoolSize | quote }}
+            HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS: {{ .Values.hdfs.ipc.clientConnectRetryIntervalMs | quote }}
+            HDFS_IPC_CLIENT_PING: {{ .Values.hdfs.ipc.clientPing | quote }}
+            HDFS_IPC_PING_INTERVAL_MS: {{ .Values.hdfs.ipc.pingIntervalMs | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
+        - name: journalnode-config
+          variables:
+            HDFS_JOURNALNODE_EDITS_DIR: {{ .Values.hdfs.paths.journalnodeEditsDir | quote }}
+            HDFS_JOURNALNODE_RPC_PORT: {{ .Values.hdfs.ports.journalnode.rpc | quote }}
+            HDFS_JOURNALNODE_HTTP_PORT: {{ .Values.hdfs.ports.journalnode.http | quote }}
+            HDFS_JOURNALNODE_ENABLE_SYNC: {{ .Values.hdfs.journalnode.enableSync | quote }}
+            HDFS_JOURNALNODE_EDIT_CACHE_SIZE_BYTES: {{ .Values.hdfs.journalnode.editCacheSizeBytes | quote }}
+            HDFS_JOURNALNODE_SYNC_INTERVAL_MS: {{ .Values.hdfs.journalnode.syncIntervalMs | quote }}
+      replicas: {{ .Values.replicas.journalnode }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.journalnode.requests.cpu | quote }}
+          memory: {{ .Values.resources.journalnode.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.journalnode.limits.cpu | quote }}
+          memory: {{ .Values.resources.journalnode.limits.memory }}
+      schedulingPolicy:
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                apps.kubeblocks.io/component-name: journalnode
+      volumeClaimTemplates:
+        - name: edits-dir
+          spec:
+            accessModes:
+{{ toYaml .Values.storage.journalnode.accessModes | indent 14 }}
+            resources:
+              requests:
+                storage: {{ .Values.storage.journalnode.size }}
+{{- if .Values.storage.journalnode.storageClassName }}
+            storageClassName: {{ .Values.storage.journalnode.storageClassName }}
+{{- end }}
+{{- end }}
+    - name: namenode
+      componentDef: {{ ternary "hdfs-namenode" "hdfs-namenode-standalone" $isCluster }}
+{{- if $isCluster }}
+      serviceRefs:
+        - name: hadoopZookeeper
+          namespace: {{ .Values.serviceRefs.hadoopZookeeper.namespace }}
+          clusterServiceSelector:
+            cluster: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.cluster }}
+            service:
+              component: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.component }}
+              service: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.service }}
+              port: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.port }}
+{{- end }}
+      configs:
+        - name: hdfs-common-config
+          variables:
+            HDFS_TRASH_INTERVAL: {{ .Values.hdfs.trash.interval | quote }}
+            HDFS_HADOOP_TMP_DIR: {{ .Values.hdfs.core.hadoopTmpDir | quote }}
+            HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
+            HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+            HDFS_NAMENODE_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+            HDFS_DATANODE_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+            HDFS_JOURNALNODE_JMX_PORT: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+            HDFS_ZKFC_JMX_PORT: {{ .Values.hdfs.ports.zkfc.jmx | quote }}
+            HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
+            HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
+            HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
+            HDFS_ZKFC_HEAP: {{ .Values.hdfs.jvm.zkfcHeapSize | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_MAX_IDLE_TIME_MS: {{ .Values.hdfs.ipc.clientConnectionMaxIdleTimeMs | quote }}
+            HDFS_IPC_CLIENT_CONNECT_TIMEOUT_MS: {{ .Values.hdfs.ipc.clientConnectTimeoutMs | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_POOL_SIZE: {{ .Values.hdfs.ipc.clientConnectionPoolSize | quote }}
+            HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS: {{ .Values.hdfs.ipc.clientConnectRetryIntervalMs | quote }}
+            HDFS_IPC_CLIENT_PING: {{ .Values.hdfs.ipc.clientPing | quote }}
+            HDFS_IPC_PING_INTERVAL_MS: {{ .Values.hdfs.ipc.pingIntervalMs | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
+{{- if $isCluster }}
+            HDFS_HA_ZOOKEEPER_SESSION_TIMEOUT_MS: {{ .Values.hdfs.ha.zookeeper.sessionTimeoutMs | quote }}
+{{- else }}
+            HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.ports.namenode.rpc | quote }}
+{{- end }}
+        - name: namenode-config
+          variables:
+            HDFS_NAMENODE_NAME_DIR: {{ .Values.hdfs.paths.namenodeMetadataDir | quote }}
+            HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.ports.namenode.rpc | quote }}
+            HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.ports.namenode.http | quote }}
+            HDFS_NAMENODE_HANDLER_COUNT: {{ .Values.hdfs.namenode.handlerCount | quote }}
+            HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissions.enabled | quote }}
+            HDFS_PERMISSIONS_SUPERUSERGROUP: {{ .Values.hdfs.permissions.superusergroup | quote }}
+            HDFS_REGISTRATION_IP_HOSTNAME_CHECK: {{ .Values.hdfs.registration.ipHostnameCheck | quote }}
+            HDFS_NAMENODE_WEBHDFS_ENABLED: {{ .Values.hdfs.namenode.webhdfsEnabled | quote }}
+            HDFS_NAMENODE_RESOURCE_DU_RESERVED: {{ printf "%.0f" (float64 .Values.hdfs.namenode.resourceDuReserved) | quote }}
+            HDFS_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.retryPolicyEnabled | quote }}
+            HDFS_CLIENT_RETRY_POLICY_SPEC: {{ .Values.hdfs.client.retryPolicySpec | quote }}
+{{- if $isCluster }}
+            HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
+            HDFS_REPLICATION_MAX: {{ .Values.hdfs.replicationMax | quote }}
+            HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY: {{ .Values.hdfs.client.replaceDatanodeOnFailurePolicy | quote }}
+            HDFS_JOURNALNODE_RPC_PORT: {{ .Values.hdfs.ports.journalnode.rpc | quote }}
+            HDFS_HA_AUTOMATIC_FAILOVER_ENABLED: {{ .Values.hdfs.ha.automaticFailoverEnabled | quote }}
+            HDFS_HA_FENCING_METHODS: {{ .Values.hdfs.ha.fencingMethods | quote }}
+            HDFS_HA_FENCING_SSH_CONNECT_TIMEOUT_MS: {{ .Values.hdfs.ha.fencingSshConnectTimeoutMs | quote }}
+            HDFS_HA_ZOOKEEPER_SESSION_TIMEOUT_MS: {{ .Values.hdfs.ha.zookeeper.sessionTimeoutMs | quote }}
+            HDFS_HA_ZOOKEEPER_OPERATION_RETRIES: {{ .Values.hdfs.ha.zookeeper.operationRetries | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
+            HDFS_HA_LOG_ROLL_PERIOD: {{ .Values.hdfs.namenode.haLogRollPeriod | quote }}
+            HDFS_HA_TAIL_EDITS_PERIOD: {{ .Values.hdfs.namenode.haTailEditsPeriod | quote }}
+{{- else }}
+            HDFS_REPLICATION: "1"
+            HDFS_REPLICATION_MAX: "1"
+            HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY: "NEVER"
+{{- end }}
+      replicas: {{ ternary (.Values.replicas.namenode | int) 1 $isCluster }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.namenode.requests.cpu | quote }}
+          memory: {{ .Values.resources.namenode.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.namenode.limits.cpu | quote }}
+          memory: {{ .Values.resources.namenode.limits.memory }}
+{{- if $isCluster }}
+      schedulingPolicy:
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                apps.kubeblocks.io/component-name: namenode
+{{- end }}
+      volumeClaimTemplates:
+        - name: metadata-dir
+          spec:
+            accessModes:
+{{ toYaml .Values.storage.namenode.accessModes | indent 14 }}
+            resources:
+              requests:
+                storage: {{ .Values.storage.namenode.size }}
+{{- if .Values.storage.namenode.storageClassName }}
+            storageClassName: {{ .Values.storage.namenode.storageClassName }}
+{{- end }}
+    - name: datanode
+      componentDef: {{ ternary "hdfs-datanode" "hdfs-datanode-standalone" $isCluster }}
+      configs:
+        - name: hdfs-common-config
+          variables:
+            HDFS_TRASH_INTERVAL: {{ .Values.hdfs.trash.interval | quote }}
+            HDFS_HADOOP_TMP_DIR: {{ .Values.hdfs.core.hadoopTmpDir | quote }}
+            HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
+            HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+            HDFS_NAMENODE_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+            HDFS_DATANODE_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+            HDFS_JOURNALNODE_JMX_PORT: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+            HDFS_ZKFC_JMX_PORT: {{ .Values.hdfs.ports.zkfc.jmx | quote }}
+            HDFS_NAMENODE_HEAP: {{ .Values.hdfs.jvm.namenodeHeapSize | quote }}
+            HDFS_DATANODE_HEAP: {{ .Values.hdfs.jvm.datanodeHeapSize | quote }}
+            HDFS_JOURNALNODE_HEAP: {{ .Values.hdfs.jvm.journalnodeHeapSize | quote }}
+            HDFS_ZKFC_HEAP: {{ .Values.hdfs.jvm.zkfcHeapSize | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_MAX_IDLE_TIME_MS: {{ .Values.hdfs.ipc.clientConnectionMaxIdleTimeMs | quote }}
+            HDFS_IPC_CLIENT_CONNECT_TIMEOUT_MS: {{ .Values.hdfs.ipc.clientConnectTimeoutMs | quote }}
+            HDFS_IPC_CLIENT_CONNECTION_POOL_SIZE: {{ .Values.hdfs.ipc.clientConnectionPoolSize | quote }}
+            HDFS_IPC_CLIENT_CONNECT_RETRY_INTERVAL_MS: {{ .Values.hdfs.ipc.clientConnectRetryIntervalMs | quote }}
+            HDFS_IPC_CLIENT_PING: {{ .Values.hdfs.ipc.clientPing | quote }}
+            HDFS_IPC_PING_INTERVAL_MS: {{ .Values.hdfs.ipc.pingIntervalMs | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
+{{- if not $isCluster }}
+            HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.ports.namenode.rpc | quote }}
+{{- end }}
+        - name: datanode-config
+          variables:
+            HDFS_DATANODE_DATA_DIR: {{ .Values.hdfs.paths.datanodeDataDir | quote }}
+            HDFS_NAMENODE_RPC_PORT: {{ .Values.hdfs.ports.namenode.rpc | quote }}
+            HDFS_NAMENODE_HTTP_PORT: {{ .Values.hdfs.ports.namenode.http | quote }}
+            HDFS_DATANODE_HANDLER_COUNT: {{ .Values.hdfs.datanode.handlerCount | quote }}
+            HDFS_DATANODE_FAILED_VOLUMES_TOLERATED: {{ .Values.hdfs.datanode.failedVolumesTolerated | quote }}
+            HDFS_DATANODE_DU_RESERVED: {{ printf "%.0f" (float64 .Values.hdfs.datanode.duReserved) | quote }}
+            HDFS_PERMISSIONS_ENABLED: {{ .Values.hdfs.permissions.enabled | quote }}
+            HDFS_HA_NAMENODE_IDS: {{ .Values.hdfs.ha.nameNodeIds | quote }}
+            HDFS_CLIENT_RETRY_POLICY_ENABLED: {{ .Values.hdfs.client.retryPolicyEnabled | quote }}
+            HDFS_CLIENT_RETRY_POLICY_SPEC: {{ .Values.hdfs.client.retryPolicySpec | quote }}
+{{- if $isCluster }}
+            HDFS_REPLICATION: {{ .Values.hdfs.replication | quote }}
+            HDFS_REPLICATION_MAX: {{ .Values.hdfs.replicationMax | quote }}
+            HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY: {{ .Values.hdfs.client.replaceDatanodeOnFailurePolicy | quote }}
+{{- else }}
+            HDFS_REPLICATION: "1"
+            HDFS_REPLICATION_MAX: "1"
+            HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY: "NEVER"
+{{- end }}
+      replicas: {{ ternary (.Values.replicas.datanode | int) 1 $isCluster }}
+      resources:
+        requests:
+          cpu: {{ .Values.resources.datanode.requests.cpu | quote }}
+          memory: {{ .Values.resources.datanode.requests.memory }}
+        limits:
+          cpu: {{ .Values.resources.datanode.limits.cpu | quote }}
+          memory: {{ .Values.resources.datanode.limits.memory }}
+{{- if $isCluster }}
+      schedulingPolicy:
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                apps.kubeblocks.io/component-name: datanode
+{{- end }}
+      volumeClaimTemplates:
+        - name: hdfs-data-0
+          spec:
+            accessModes:
+{{ toYaml .Values.storage.datanode.accessModes | indent 14 }}
+            resources:
+              requests:
+                storage: {{ .Values.storage.datanode.size }}
+{{- if .Values.storage.datanode.storageClassName }}
+            storageClassName: {{ .Values.storage.datanode.storageClassName }}
+{{- end }}

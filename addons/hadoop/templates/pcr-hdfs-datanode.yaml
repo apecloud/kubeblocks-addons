@@ -1,0 +1,20 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: hdfs-datanode-config-renderer
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.annotations" . | nindent 4 }}
+spec:
+  componentDef: hdfs-datanode
+  parametersDefs:
+    - hdfs-common-config-constraints
+    - datanode-config-constraints
+  configs:
+    - name: core-site.xml
+      fileFormatConfig:
+        format: xml
+    - name: hdfs-site.xml
+      fileFormatConfig:
+        format: xml

@@ -1,0 +1,43 @@
+{{- if .Values.decommission.enabled }}
+{{- $stateConfigMapName := .Values.decommission.stateConfigMapName | default (printf "%s-hdfs-decommission-state" (include "kblib.clusterName" .)) }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $stateConfigMapName }}-editor
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "kblib.clusterLabels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - {{ $stateConfigMapName }}
+    verbs:
+      - get
+      - patch
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $stateConfigMapName }}-editor
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "kblib.clusterLabels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $stateConfigMapName }}-editor
+{{- end }}

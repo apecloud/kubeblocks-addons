@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hbase-standalone-config-template
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+data:
+  hbase-site.xml: |-
+    {{- .Files.Get "config/hbase-site-standalone.tpl" | nindent 4 }}
+  hbase-env.sh: |-
+    {{- .Files.Get "config/hbase-env.sh.tpl" | nindent 4 }}
+  hbase-jmx-exporter.yaml: |-
+    {{- .Files.Get "config/hbase-jmx-exporter.yaml.tpl" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}

@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "decommission": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 300
+        },
+        "pollIntervalSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5
+        },
+        "stateConfigMapName": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+releases:
+  - version: 1.1.0-alpha.0
+    notes:
+      en: >
+        Minimum supported KubeBlocks version is 1.1.0.
+      zh: >
+        最低支持的 KubeBlocks 版本为 1.1.0。

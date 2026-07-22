@@ -1,0 +1,10 @@
+releases:
+- version: 1.1.0
+  released_at: '2026-05-21'
+  status: stable
+  git_branch: release-1.1
+  git_tag: v1.1.0
+  commit_sha: ''
+  notes:
+    en: Minimum supported KubeBlocks version is 1.1.0.
+    zh: 最低支持的 KubeBlocks 版本为 1.1.0。

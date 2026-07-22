@@ -1,0 +1,249 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hdfs-datanode-standalone
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.apiVersion" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hdfs-datanode-standalone
+  exporter:
+    containerName: jmx-exporter
+    scrapePath: /metrics
+  {{- include "hadoop.decommissionPolicyRules" . | nindent 2 }}
+  lifecycleActions:
+    memberLeave:
+      exec:
+        targetPodSelector: Any
+        container: hdfs-datanode
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/datanode-decommission.sh
+  runtime:
+    hostNetwork: {{ .Values.runtime.datanode.hostNetwork }}
+    hostPID: {{ .Values.runtime.datanode.hostPID }}
+    dnsPolicy: {{ .Values.runtime.datanode.dnsPolicy }}
+    terminationGracePeriodSeconds: 120
+    initContainers:
+      - name: hadoop-common
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: {{ .Values.securityContext.initRunAsUser }}
+        command:
+          - /bin/bash
+        args:
+          - -ec
+          - |
+            cp -r {{ .Values.runtime.hadoopSoftwareDir }}/* {{ .Values.runtime.hadoopHome }}
+            mkdir -p {{ .Values.hdfs.paths.datanodeDataDir }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.runtime.hadoopHome }}
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} {{ .Values.hdfs.paths.datanodeDataDir }}
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: hdfs-data-0
+            mountPath: {{ .Values.hdfs.paths.datanodeDataDir }}
+            subPath: data0
+    containers:
+      - name: hdfs-datanode
+        image: {{ include "hadoop.dataNodeImage" . | quote }}
+        imagePullPolicy: {{ .Values.dataNode.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - {{ .Values.runtime.scriptsDir }}/start-datanode.sh
+        env:
+          - name: DEBUG_MODEL
+            value: {{ .Values.runtime.debug | quote }}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_FQDN
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
+          - name: HADOOP_HOME
+            value: {{ .Values.runtime.hadoopHome }}
+          - name: HADOOP_CONF_DIR
+            value: {{ .Values.runtime.configDir }}
+          - name: HADOOP_LOG_DIR
+            value: {{ .Values.runtime.hadoopLogDir }}
+        ports:
+          - containerPort: {{ .Values.hdfs.ports.datanode.data }}
+            name: data
+          - containerPort: {{ .Values.hdfs.ports.datanode.ipc }}
+            name: ipc
+          - containerPort: {{ .Values.hdfs.ports.datanode.http }}
+            name: http
+        startupProbe:
+          failureThreshold: 30
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-data-status.sh
+        livenessProbe:
+          failureThreshold: {{ .Values.probes.datanode.liveness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.datanode.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.datanode.liveness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.datanode.liveness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-data-status.sh
+        readinessProbe:
+          failureThreshold: {{ .Values.probes.datanode.readiness.failureThreshold }}
+          initialDelaySeconds: {{ .Values.probes.datanode.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.datanode.readiness.periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .Values.probes.datanode.readiness.timeoutSeconds }}
+          exec:
+            command:
+              - /bin/bash
+              - {{ .Values.runtime.scriptsDir }}/check-data-status.sh
+        volumeMounts:
+          - name: hadoop-common
+            mountPath: {{ .Values.runtime.hadoopHome }}
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/core-site.xml
+            subPath: core-site.xml
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/hadoop-env.sh
+            subPath: hadoop-env.sh
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.include
+            subPath: dfs.include
+          - name: hdfs-common-config
+            mountPath: {{ .Values.runtime.configDir }}/dfs.exclude
+            subPath: dfs.exclude
+          - name: datanode-config
+            mountPath: {{ .Values.runtime.configDir }}/hdfs-site.xml
+            subPath: hdfs-site.xml
+          - name: datanode-config
+            mountPath: {{ .Values.runtime.configDir }}/log4j.properties
+            subPath: log4j.properties
+          - name: hdfs-data-0
+            mountPath: {{ .Values.hdfs.paths.datanodeDataDir }}
+            subPath: data0
+          - name: hadoop-logs
+            mountPath: {{ .Values.runtime.hadoopLogDir }}
+          - name: scripts
+            mountPath: {{ .Values.runtime.scriptsDir }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          privileged: {{ .Values.securityContext.privileged }}
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          capabilities:
+{{ toYaml .Values.securityContext.capabilities | nindent 12 }}
+          seccompProfile:
+{{ toYaml .Values.securityContext.seccompProfile | nindent 12 }}
+      - name: jmx-exporter
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: {{ .Values.exporter.securityContext.runAsNonRoot }}
+          runAsUser: {{ .Values.exporter.securityContext.runAsUser }}
+        command:
+          - java
+        args:
+          - -XX:MaxRAMPercentage=100
+          - -XshowSettings:vm
+          - -jar
+          - jmx_prometheus_httpserver.jar
+          - {{ .Values.jmxExporter.port | quote }}
+          - /etc/jmx-exporter/hdfs-jmx-exporter.yaml
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.jmxExporter.port }}
+        volumeMounts:
+          - name: hdfs-common-config
+            mountPath: /etc/jmx-exporter/hdfs-jmx-exporter.yaml
+            subPath: hdfs-jmx-exporter.yaml
+    securityContext:
+      fsGroupChangePolicy: {{ .Values.securityContext.fsGroupChangePolicy }}
+      fsGroup: {{ .Values.securityContext.fsGroup }}
+    volumes:
+      - name: hadoop-common
+        emptyDir: {}
+      - name: hadoop-logs
+        emptyDir: {}
+  updateStrategy: {{ .Values.updateStrategy }}
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.extra.clusterDomain }}
+    - name: HDFS_CONF_DIR
+      value: {{ .Values.runtime.configDir }}
+    - name: HDFS_JMX_PORT
+      value: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+    - name: HDFS_NAMENODE_JMX_PORT
+      value: {{ .Values.hdfs.ports.namenode.jmx | quote }}
+    - name: HDFS_DATANODE_JMX_PORT
+      value: {{ .Values.hdfs.ports.datanode.jmx | quote }}
+    - name: HDFS_JOURNALNODE_JMX_PORT
+      value: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
+    - name: HDFS_ZKFC_JMX_PORT
+      value: {{ .Values.hdfs.ports.zkfc.jmx | quote }}
+    - name: HDFS_DATANODE_DATA_DIR
+      value: {{ .Values.hdfs.paths.datanodeDataDir | quote }}
+    - name: HDFS_DATANODE_HANDLER_COUNT
+      value: {{ .Values.hdfs.datanode.handlerCount | quote }}
+    - name: HDFS_DATANODE_DATA_PORT
+      value: {{ .Values.hdfs.ports.datanode.data | quote }}
+    - name: HDFS_DATANODE_HTTP_PORT
+      value: {{ .Values.hdfs.ports.datanode.http | quote }}
+    - name: HDFS_DATANODE_IPC_PORT
+      value: {{ .Values.hdfs.ports.datanode.ipc | quote }}
+    - name: HDFS_NAMENODE_RPC_PORT
+      value: {{ .Values.hdfs.ports.namenode.rpc | quote }}
+    - name: HDFS_NAMENODE_HTTP_PORT
+      value: {{ .Values.hdfs.ports.namenode.http | quote }}
+    - name: HDFS_REPLICATION
+      value: "1"
+    - name: HDFS_CLIENT_REPLACE_DATANODE_ON_FAILURE_POLICY
+      value: "NEVER"
+    - name: HDFS_PERMISSIONS_ENABLED
+      value: {{ .Values.hdfs.permissions.enabled | quote }}
+    - name: HDFS_DECOMMISSION_ENABLED
+      value: {{ .Values.decommission.enabled | quote }}
+    - name: HDFS_DECOMMISSION_TIMEOUT_SECONDS
+      value: {{ .Values.decommission.timeoutSeconds | quote }}
+    - name: HDFS_DECOMMISSION_POLL_INTERVAL_SECONDS
+      value: {{ .Values.decommission.pollIntervalSeconds | quote }}
+    - name: HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT
+      value: {{ .Values.decommission.stateConfigMapName | quote }}
+    - name: HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME
+      expression: {{ `{{ if index . "HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT" }}{{ .HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT }}{{ else }}{{ .CLUSTER_NAME }}-hdfs-decommission-state{{ end }}` | toYaml }}
+    - name: HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE
+      value: {{ printf "%s/dfs.exclude.dynamic" .Values.runtime.configDir | quote }}
+  configs:
+    - name: hdfs-common-config
+      template: hdfs-common-standalone-config-template
+      volumeName: hdfs-common-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.config.defaultMode }}
+    - name: datanode-config
+      template: datanode-standalone-config-template
+      volumeName: datanode-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.config.defaultMode }}
+  scripts:
+    - name: hadoop-scripts
+      template: hadoop-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: {{ .Values.scripts.defaultMode }}
