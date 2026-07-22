@@ -93,12 +93,16 @@ Describe "ORC switchover script tests"
       export MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS=1
       export MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS=1
       VERIFY_COUNTER_FILE=$(mktemp)
+      CLIENT_RELEASE_FILE=$(mktemp)
+      CLIENT_DONE_FILE=$(mktemp)
       export VERIFY_COUNTER_FILE
+      export CLIENT_RELEASE_FILE
+      export CLIENT_DONE_FILE
       printf '0\n' > "$VERIFY_COUNTER_FILE"
     }
 
     cleanup_switchover_verify() {
-      rm -f "${VERIFY_COUNTER_FILE:-}"
+      rm -f "${VERIFY_COUNTER_FILE:-}" "${CLIENT_RELEASE_FILE:-}" "${CLIENT_DONE_FILE:-}"
       unset KB_SWITCHOVER_CURRENT_NAME
       unset KB_SWITCHOVER_CANDIDATE_NAME
       unset MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS
@@ -108,6 +112,8 @@ Describe "ORC switchover script tests"
       unset MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS
       unset MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS
       unset VERIFY_COUNTER_FILE
+      unset CLIENT_RELEASE_FILE
+      unset CLIENT_DONE_FILE
       unset ORC_SWITCHOVER_CLIENT_PID
       unset ORC_SWITCHOVER_CLIENT_OUTPUT_FILE
       unset ORC_SWITCHOVER_CLIENT_RC_FILE
@@ -139,7 +145,7 @@ Describe "ORC switchover script tests"
 
       When call verify_switchover_closed_or_defer
       The status should be success
-      The output should include "Switchover verified"
+      The output should include "Switchover closure observed"
     End
 
     It "uses raw parallel readback output for closure checks"
@@ -193,6 +199,68 @@ Describe "ORC switchover script tests"
       The status should be success
       The output should include "Switchover command returned non-zero (124) but post-check observed the target topology."
       The output should include "client timed out"
+    End
+
+    It "performs a final closure readback after the orchestrator client returns"
+      export MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS=1
+
+      run_orchestrator_client_with_budget() {
+        while [ ! -s "$CLIENT_RELEASE_FILE" ]; do
+          sleep 0.01
+        done
+        printf 'done\n' > "$CLIENT_DONE_FILE"
+        printf 'mysql-1:3306\n'
+      }
+
+      mysql_read_flags() {
+        local host="$1"
+        if [ "$host" = "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
+          if [ -s "$CLIENT_DONE_FILE" ]; then
+            printf '0 0\n'
+          else
+            printf 'release\n' > "$CLIENT_RELEASE_FILE"
+            printf '1 1\n'
+          fi
+          return 0
+        fi
+        printf '1 1\n'
+      }
+
+      When call run_switchover_client_and_verify 40 -c graceful-master-takeover-auto -i "$KB_SWITCHOVER_CURRENT_NAME" -d "$KB_SWITCHOVER_CANDIDATE_NAME"
+      The status should be success
+      The output should include "Switchover verified after orchestrator client completion"
+    End
+
+    It "rejects closure that regresses before the orchestrator client returns"
+      export MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS=1
+
+      run_orchestrator_client_with_budget() {
+        while [ ! -s "$CLIENT_RELEASE_FILE" ]; do
+          sleep 0.01
+        done
+        printf 'done\n' > "$CLIENT_DONE_FILE"
+        printf 'mysql-1:3306\n'
+      }
+
+      mysql_read_flags() {
+        local host="$1"
+        if [ "$host" = "$KB_SWITCHOVER_CANDIDATE_NAME" ]; then
+          if [ -s "$CLIENT_DONE_FILE" ]; then
+            printf '1 1\n'
+          else
+            printf 'release\n' > "$CLIENT_RELEASE_FILE"
+            printf '0 0\n'
+          fi
+          return 0
+        fi
+        printf '1 1\n'
+      }
+
+      When call run_switchover_client_and_verify 40 -c graceful-master-takeover-auto -i "$KB_SWITCHOVER_CURRENT_NAME" -d "$KB_SWITCHOVER_CANDIDATE_NAME"
+      The status should be failure
+      The output should include "Switchover closure observed"
+      The error should include "phase: post-switchover-not-converged"
+      The error should include "attempt post-client"
     End
 
     It "keeps unclosed readback retry-safe with orchestrator client diagnostics"

@@ -125,7 +125,8 @@ roleProbe:
 switchover:
   # kbagent caps positive action timeouts at 60s; keep a buffer for diagnostics.
   # Worst-case budget includes each command's 1s TERM-to-KILL grace:
-  # 2*(3s+1s) prechecks + max(40s+1s ORC CLI, 20*1s parallel SQL probes + 19*1s intervals) = 49s.
+  # 2*(3s+1s) prechecks + max(40s+1s ORC CLI, 20*1s parallel SQL probes + 19*1s intervals)
+  # + one 1s post-client parallel SQL readback = 50s.
   timeoutSeconds: 55
   precheckTimeoutSeconds: 3
   clientTimeoutSeconds: 40

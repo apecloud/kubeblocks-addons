@@ -321,7 +321,7 @@ verify_switchover_closed_window() {
       break
     fi
     if verify_switchover_closed_once; then
-      mysql_note "Switchover verified: candidate is writable and previous primary is read-only."
+      mysql_note "Switchover closure observed in bounded verification window."
       return 0
     fi
     append_switchover_verify_history "$i"
@@ -363,6 +363,17 @@ run_switchover_client_and_verify() {
     verify_rc=1
   fi
   finish_orchestrator_client_background
+
+  # The client can still mutate topology after an earlier positive readback,
+  # and fast SQL reads can exhaust verifyAttempts before a slower client exits.
+  # Always make the success decision from one final read after joining it.
+  if verify_switchover_closed_once; then
+    mysql_note "Switchover verified after orchestrator client completion: candidate is writable and previous primary is read-only."
+    verify_rc=0
+  else
+    append_switchover_verify_history "post-client"
+    verify_rc=1
+  fi
 
   if [ "$verify_rc" -eq 0 ]; then
     if [ "${ORC_SWITCHOVER_CLIENT_RC:-0}" != "0" ]; then
