@@ -410,11 +410,6 @@ spec:
       expression: {{ `{{ if index . "HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT" }}{{ .HDFS_DECOMMISSION_STATE_CONFIGMAP_NAME_DEFAULT }}{{ else }}{{ .CLUSTER_NAME }}-hdfs-decommission-state{{ end }}` | toYaml }}
     - name: HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE
       value: {{ printf "%s/dfs.exclude.dynamic" .Values.runtime.configDir | quote }}
-    - name: POD_FQDN
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.annotations['kubeblocks.io/pod-fqdn']
-          apiVersion: v1
   configs:
     - name: hdfs-common-config
       template: hdfs-common-config-template
