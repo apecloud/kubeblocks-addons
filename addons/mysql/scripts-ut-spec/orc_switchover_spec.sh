@@ -4,6 +4,57 @@
 Describe "ORC switchover script tests"
   Include ../scripts/orc-switchover.sh
 
+  Describe "Bounded command execution"
+    cleanup_timeout_stub() {
+      unset -f timeout
+    }
+
+    After 'cleanup_timeout_stub'
+
+    It "adds a one-second TERM-to-KILL bound to native timeout"
+      timeout() {
+        printf '%s\n' "$*"
+        return 124
+      }
+
+      When call run_command_with_budget 3 printf hello
+      The status should equal 124
+      The output should equal "-k 1s 3s printf hello"
+    End
+  End
+
+  Describe "Precheck deferral classification"
+    setup_precheck_context() {
+      export KB_SWITCHOVER_CURRENT_NAME="mysql-0"
+      export KB_SWITCHOVER_CANDIDATE_NAME="mysql-1"
+    }
+
+    cleanup_precheck_context() {
+      unset KB_SWITCHOVER_CURRENT_NAME
+      unset KB_SWITCHOVER_CANDIDATE_NAME
+    }
+
+    Before 'setup_precheck_context'
+    After 'cleanup_precheck_context'
+
+    It "classifies a bounded current-master precheck failure as retry-safe"
+      When call defer_switchover_precheck "precheck-current-master-failed" 124 "client timed out"
+      The status should be failure
+      The error should include "action: switchover"
+      The error should include "phase: precheck-current-master-failed"
+      The error should include "rc: 124"
+      The error should include "client timed out"
+      The error should include "next-retry-safe: yes"
+    End
+
+    It "classifies a bounded instance-list precheck failure as retry-safe"
+      When call defer_switchover_precheck "precheck-cluster-instances-failed" 1 "lookup failed"
+      The status should be failure
+      The error should include "phase: precheck-cluster-instances-failed"
+      The error should include "next-retry-safe: yes"
+    End
+  End
+
   Describe "MySQL read flag parsing"
     It "recognizes writable flags after mysql client stderr noise"
       output=$(printf '%s\n%s\n' \

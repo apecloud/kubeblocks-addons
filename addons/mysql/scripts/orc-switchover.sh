@@ -34,7 +34,7 @@ run_command_with_budget() {
   local budget="$1"
   shift
   if command -v timeout >/dev/null 2>&1; then
-    timeout "${budget}s" "$@"
+    timeout -k 1s "${budget}s" "$@"
     return $?
   fi
 
@@ -65,6 +65,15 @@ run_command_with_budget() {
   fi
   rm -rf "${temp_dir}"
   return $rc
+}
+
+defer_switchover_precheck() {
+  local phase="$1"
+  local rc="$2"
+  local output="$3"
+  switchover_diagnose_not_ready "${phase}" \
+    "$(printf '  rc: %s\n  output:\n%s' "${rc}" "${output:-<empty>}")" "yes"
+  return 1
 }
 
 run_orchestrator_client_with_budget() {
@@ -391,7 +400,8 @@ precheck_budget="${MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS:-3}"
 master_from_orc=$(run_orchestrator_client_with_budget "${precheck_budget}" -c which-cluster-master -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
 rc=$?
 if [ $rc -ne 0 ] || [ -z "$master_from_orc" ]; then
-  mysql_error "Could not determine current master from Orchestrator (rc=${rc}): ${master_from_orc}"
+  defer_switchover_precheck "precheck-current-master-failed" "$rc" "$master_from_orc"
+  exit 1
 fi
 
 if [ "${KB_SWITCHOVER_CURRENT_NAME}" != "${master_from_orc%%:*}" ]; then
@@ -403,7 +413,8 @@ fi
 instances=$(run_orchestrator_client_with_budget "${precheck_budget}" -c which-cluster-instances -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
 rc=$?
 if [ $rc -ne 0 ]; then
-  mysql_error "Could not list cluster instances from Orchestrator (rc=${rc}): ${instances}"
+  defer_switchover_precheck "precheck-cluster-instances-failed" "$rc" "$instances"
+  exit 1
 fi
 instance_count=$(printf '%s\n' "$instances" | sed '/^$/d' | wc -l)
 if [ "$instance_count" -le 1 ]; then
