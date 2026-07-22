@@ -27,11 +27,11 @@ spec:
     - name: hbase-zookeeper
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
-          serviceVersion: "^*"
+          serviceVersion: "^.*$"
     - name: hdfs-namenode
       serviceRefDeclarationSpecs:
         - serviceKind: hdfs-namenode
-          serviceVersion: "^*"
+          serviceVersion: "^.*$"
       optional: true
   runtime:
     terminationGracePeriodSeconds: 120

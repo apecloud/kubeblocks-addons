@@ -21,7 +21,7 @@ for p in "${PATHS[@]}"; do
         echo "[$(date)] Path ${p} already exists, skipping."
     else
         echo "[$(date)] Creating ${p}..."
-        timeout 30 ${HBASE_HOME}/bin/hbase org.apache.hadoop.fs.FsShell -mkdir -p "${p}" || true
+        timeout 30 ${HBASE_HOME}/bin/hbase org.apache.hadoop.fs.FsShell -mkdir -p "${p}"
     fi
 done
 

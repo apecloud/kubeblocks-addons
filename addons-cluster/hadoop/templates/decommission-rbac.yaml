@@ -12,6 +12,12 @@ rules:
       - ""
     resources:
       - configmaps
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
     resourceNames:
       - {{ $stateConfigMapName }}
     verbs:

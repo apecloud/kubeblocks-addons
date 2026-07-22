@@ -13,20 +13,52 @@ mkdir -p "${HADOOP_LOG_DIR}" "${HADOOP_PID_DIR}"
 
 USER=$(whoami)
 LOG_FILE="${HADOOP_LOG_DIR}/hadoop-${USER}-datanode-$(hostname).log"
+UNREGISTER_RETRY_PID=""
 
 shutdown() {
   echo "[$(date)] Stopping DataNode..."
+  if [[ -n "${UNREGISTER_RETRY_PID}" ]]; then
+    kill "${UNREGISTER_RETRY_PID}" >/dev/null 2>&1 || true
+  fi
   "${HADOOP_HOME}/bin/hdfs" --daemon stop datanode || true
   exit 0
 }
+
+# Function: Retry DataNode unregister in background so transient control-plane failures do not leave the node stuck in decommission state.
+# Args: None.
+# Returns: 0 when unregister succeeds immediately or the background retry loop is started.
+start_unregister_retry_loop() {
+  [[ "${HDFS_DECOMMISSION_ENABLED:-true}" == "true" ]] || return 0
+
+  local retry_interval script_path
+  retry_interval="${HDFS_DECOMMISSION_POLL_INTERVAL_SECONDS:-5}"
+  script_path="$(dirname "$0")/datanode-decommission.sh"
+
+  if "${script_path}" unregister; then
+    return 0
+  fi
+
+  echo "[$(date)] initial unregister failed, retrying in background every ${retry_interval}s..."
+  (
+    while true; do
+      sleep "${retry_interval}"
+      if "${script_path}" unregister; then
+        echo "[$(date)] background unregister succeeded"
+        exit 0
+      fi
+      echo "[$(date)] background unregister failed, retrying in ${retry_interval}s..."
+    done
+  ) &
+  UNREGISTER_RETRY_PID=$!
+}
+
 trap shutdown SIGTERM SIGINT
 
-if [[ "${HDFS_DECOMMISSION_ENABLED:-true}" == "true" ]]; then
-  # ponytail: 启动前清理残留 decommission 状态属于幂等善后，不该因为控制面瞬时抖动阻塞 DataNode 拉起；若后续需要强一致，可改为带退避的预检查。
-  "$(dirname "$0")/datanode-decommission.sh" unregister || true
-fi
-
+start_unregister_retry_loop
 echo "[$(date)] Starting DataNode..."
 "${HADOOP_HOME}/bin/hdfs" datanode 2>&1 | tee -a "$LOG_FILE" &
 DN_PID=$!
 wait $DN_PID
+if [[ -n "${UNREGISTER_RETRY_PID}" ]]; then
+  kill "${UNREGISTER_RETRY_PID}" >/dev/null 2>&1 || true
+fi

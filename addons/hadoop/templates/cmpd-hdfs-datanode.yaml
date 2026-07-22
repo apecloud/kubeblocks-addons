@@ -16,6 +16,8 @@ spec:
   {{- include "hadoop.decommissionPolicyRules" . | nindent 2 }}
   lifecycleActions:
     memberLeave:
+      # 不由 KubeBlocks 超时杀掉，交给脚本自己的 300 秒等待逻辑控制。
+      timeoutSeconds: -1
       exec:
         targetPodSelector: Any
         container: hdfs-datanode
