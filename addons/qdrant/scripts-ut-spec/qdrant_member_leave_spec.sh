@@ -79,6 +79,27 @@ Describe "Qdrant Member Leave Bash Script Tests"
     End
   End
 
+  Describe "qdrant_shard_on_leaving_peer()"
+    It "does not attribute a surviving peer local shard to the leaving peer"
+      collection_info='{"result":{"peer_id":2,"local_shards":[{"shard_id":7}],"remote_shards":[],"shard_transfers":[]}}'
+      When call qdrant_shard_on_leaving_peer "$collection_info" "7" "1"
+      The status should be failure
+    End
+
+    It "attributes a local shard using the serving peer identity"
+      collection_info='{"result":{"peer_id":1,"local_shards":[{"shard_id":7}],"remote_shards":[],"shard_transfers":[]}}'
+      When call qdrant_shard_on_leaving_peer "$collection_info" "7" "1"
+      The status should be success
+    End
+
+    It "fails closed when a matching local shard has no serving peer identity"
+      collection_info='{"result":{"local_shards":[{"shard_id":7}],"remote_shards":[],"shard_transfers":[]}}'
+      When call qdrant_shard_on_leaving_peer "$collection_info" "7" "1"
+      The status should eq 2
+      The stderr should include "local shard without peer_id"
+    End
+  End
+
   Describe "memberLeave action-wide deadline"
     cleanup_deadline() {
       unset QDRANT_MEMBER_LEAVE_ACTION_SECONDS QDRANT_MEMBER_LEAVE_CURL_TIMEOUT
@@ -199,6 +220,28 @@ Describe "Qdrant Member Leave Bash Script Tests"
       When call qdrant_submit_shard_move_if_needed "demo" "7" "$initial_info"
       The status should be success
       The output should include "already moving after failed submit"
+    End
+
+    It "treats a failed move submit as success when replay sees the shard local to a surviving peer"
+      initial_info='{"result":{"peer_id":2,"local_shards":[],"remote_shards":[{"shard_id":7,"peer_id":1}],"shard_transfers":[]}}'
+      qdrant_curl() {
+        last_arg="${*: -1}"
+        case "$last_arg" in
+          "http://control/collections/demo/cluster")
+            if [ "$1" = "-sf" ] && [ "$4" = "-X" ]; then
+              return 1
+            fi
+            echo '{"result":{"peer_id":2,"local_shards":[{"shard_id":7}],"remote_shards":[],"shard_transfers":[]}}'
+            ;;
+          *)
+            return 1
+            ;;
+        esac
+      }
+
+      When call qdrant_submit_shard_move_if_needed "demo" "7" "$initial_info"
+      The status should be success
+      The output should include "moved off peer 1 after failed submit"
     End
 
     It "submits the move to an unused peer instead of an existing replica"

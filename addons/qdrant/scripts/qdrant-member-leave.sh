@@ -98,15 +98,40 @@ qdrant_shard_on_leaving_peer() {
   local shard_id="$2"
   local peer_id="$3"
   local jq_bin="${JQ:-jq}"
+  local ownership
 
-  echo "$collection_cluster_info" | "$jq_bin" -e \
+  ownership="$(echo "$collection_cluster_info" | "$jq_bin" -er \
     --argjson shard "$shard_id" \
     --argjson peer "$peer_id" \
-    '((.result.remote_shards // [])
-      | any(.peer_id == $peer and .shard_id == $shard))
-     or
-     ((.result.local_shards // [])
-      | any((.peer_id? // $peer) == $peer and .shard_id == $shard))' >/dev/null
+    'if ((.result.remote_shards // [])
+        | any(.peer_id == $peer and .shard_id == $shard)) then
+       "on-leaving-peer"
+     elif ((.result.local_shards // [])
+           | any(.shard_id == $shard)) then
+       if (.result.peer_id | type) == "number" then
+         if .result.peer_id == $peer then "on-leaving-peer" else "off-leaving-peer" end
+       else
+         "unknown-local-peer"
+       end
+     else
+       "off-leaving-peer"
+     end')" || {
+    echo "ERROR: failed to determine shard ${shard_id} ownership from collection cluster info" >&2
+    return 2
+  }
+
+  case "$ownership" in
+    "on-leaving-peer")
+      return 0
+      ;;
+    "off-leaving-peer")
+      return 1
+      ;;
+    *)
+      echo "ERROR: local shard without peer_id for shard ${shard_id}; refusing to infer ownership" >&2
+      return 2
+      ;;
+  esac
 }
 
 qdrant_remaining_on_leaving_count() {
@@ -351,16 +376,25 @@ qdrant_collection_cluster_info_for_leaving_shard() {
   local fallback_info=""
   local control_endpoint_uri
   local control_endpoint_uris="${control_uris:-$control_uri}"
+  local shard_owner_rc
 
   for control_endpoint_uri in $control_endpoint_uris; do
     col_cluster_info="$(qdrant_collection_cluster_info_from_uri "$control_endpoint_uri" "$col_name")" || return 1
     if [ -z "$fallback_info" ]; then
       fallback_info="$col_cluster_info"
     fi
-    if qdrant_shard_transfer_exists "$col_cluster_info" "$shard_id" "$leave_peer_id" ||
-        qdrant_shard_on_leaving_peer "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+    if qdrant_shard_transfer_exists "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
       printf "%s\n" "$col_cluster_info"
       return 0
+    fi
+    if qdrant_shard_on_leaving_peer "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+      printf "%s\n" "$col_cluster_info"
+      return 0
+    else
+      shard_owner_rc=$?
+      if [ "$shard_owner_rc" -ne 1 ]; then
+        return 1
+      fi
     fi
   done
 
@@ -373,15 +407,22 @@ qdrant_submit_shard_move_if_needed() {
   local col_cluster_info="$3"
   local move_target_peer_id
   local move_payload
+  local shard_owner_rc
 
   if qdrant_shard_transfer_exists "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
     echo "INFO: shard ${shard_id} in ${col_name} is already moving from peer ${leave_peer_id}"
     return 0
   fi
 
-  if ! qdrant_shard_on_leaving_peer "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
-    echo "INFO: shard ${shard_id} in ${col_name} is already off peer ${leave_peer_id}"
-    return 0
+  if qdrant_shard_on_leaving_peer "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+    :
+  else
+    shard_owner_rc=$?
+    if [ "$shard_owner_rc" -eq 1 ]; then
+      echo "INFO: shard ${shard_id} in ${col_name} is already off peer ${leave_peer_id}"
+      return 0
+    fi
+    return 1
   fi
 
   move_target_peer_id="$(qdrant_select_target_peer_id_for_shard \
@@ -410,9 +451,15 @@ qdrant_submit_shard_move_if_needed() {
     echo "INFO: shard ${shard_id} in ${col_name} is already moving after failed submit"
     return 0
   fi
-  if ! qdrant_shard_on_leaving_peer "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
-    echo "INFO: shard ${shard_id} in ${col_name} moved off peer ${leave_peer_id} after failed submit"
-    return 0
+  if qdrant_shard_on_leaving_peer "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+    :
+  else
+    shard_owner_rc=$?
+    if [ "$shard_owner_rc" -eq 1 ]; then
+      echo "INFO: shard ${shard_id} in ${col_name} moved off peer ${leave_peer_id} after failed submit"
+      return 0
+    fi
+    return 1
   fi
 
   echo "ERROR: failed to initiate shard ${shard_id} move in ${col_name}"
