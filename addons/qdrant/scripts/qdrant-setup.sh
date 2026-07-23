@@ -29,6 +29,57 @@ qdrant_has_existing_raft_state() {
   [ -s "${qdrant_storage_path}/raft_state.json" ]
 }
 
+qdrant_bootstrap_owner_file() {
+  qdrant_storage_path="${QDRANT_STORAGE_PATH:-/qdrant/storage}"
+  printf "%s" "${QDRANT_BOOTSTRAP_OWNER_FILE:-${qdrant_storage_path}/.kubeblocks-bootstrap-owner}"
+}
+
+qdrant_record_existing_cluster() {
+  qdrant_owner_file="$(qdrant_bootstrap_owner_file)"
+  qdrant_owner_tmp="${qdrant_owner_file}.tmp.$$"
+
+  if ! (umask 077 && printf '%s\n' "existing-cluster" > "$qdrant_owner_tmp" && mv -f "$qdrant_owner_tmp" "$qdrant_owner_file"); then
+    rm -f "$qdrant_owner_tmp"
+    echo "ERROR: cannot persist the existing-cluster bootstrap marker at ${qdrant_owner_file}." >&2
+    return 1
+  fi
+}
+
+qdrant_claim_initial_bootstrap() {
+  qdrant_pod_uid="${CURRENT_POD_UID:-}"
+  if [ -z "$qdrant_pod_uid" ]; then
+    echo "ERROR: CURRENT_POD_UID is required to claim initial Qdrant bootstrap ownership." >&2
+    return 1
+  fi
+
+  qdrant_owner_file="$(qdrant_bootstrap_owner_file)"
+  if [ -e "$qdrant_owner_file" ]; then
+    qdrant_bootstrap_owner="$(cat "$qdrant_owner_file" 2>/dev/null || true)"
+    echo "INFO: initial bootstrap was already claimed by ${qdrant_bootstrap_owner:-an unknown pod}; pod UID ${qdrant_pod_uid} will wait to join." >&2
+    return 1
+  fi
+
+  qdrant_storage_path="${QDRANT_STORAGE_PATH:-/qdrant/storage}"
+  qdrant_existing_entry="$(find "$qdrant_storage_path" -mindepth 1 -maxdepth 1 ! -name lost+found -print -quit 2>/dev/null || true)"
+  if [ -n "$qdrant_existing_entry" ]; then
+    echo "INFO: bootstrap marker is absent but Qdrant storage is not empty; waiting to join the existing cluster." >&2
+    return 1
+  fi
+
+  if (set -o noclobber; umask 077; printf 'bootstrap-attempt:%s\n' "$qdrant_pod_uid" > "$qdrant_owner_file") 2>/dev/null; then
+    return 0
+  fi
+
+  if [ ! -e "$qdrant_owner_file" ]; then
+    echo "ERROR: cannot persist the initial bootstrap claim at ${qdrant_owner_file}." >&2
+    return 1
+  fi
+
+  qdrant_bootstrap_owner="$(cat "$qdrant_owner_file" 2>/dev/null || true)"
+  echo "INFO: initial bootstrap was concurrently claimed by ${qdrant_bootstrap_owner:-an unknown pod}; pod UID ${qdrant_pod_uid} will wait to join." >&2
+  return 1
+}
+
 qdrant_bootstrap_service_available() {
   bootstrap_service_http_uri="$1"
   qdrant_curl -sf --max-time "${QDRANT_BOOTSTRAP_SERVICE_CHECK_TIMEOUT:-3}" \
@@ -60,21 +111,28 @@ qdrant_start_mode() {
   bootstrap_service_http_uri="$1"
 
   if qdrant_has_existing_raft_state; then
+    qdrant_record_existing_cluster || return 1
     echo "restart"
     return 0
   fi
 
   if qdrant_bootstrap_service_available "$bootstrap_service_http_uri"; then
+    qdrant_record_existing_cluster || return 1
     echo "join"
     return 0
   fi
 
   if qdrant_should_self_bootstrap; then
     if qdrant_existing_bootstrap_service_observed "$bootstrap_service_http_uri"; then
+      qdrant_record_existing_cluster || return 1
       echo "join"
       return 0
     fi
-    echo "bootstrap"
+    if qdrant_claim_initial_bootstrap; then
+      echo "bootstrap"
+      return 0
+    fi
+    echo "join"
     return 0
   fi
 

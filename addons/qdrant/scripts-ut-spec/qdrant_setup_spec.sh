@@ -59,6 +59,7 @@ Describe "Qdrant Setup Bash Script Tests"
   Describe "qdrant_start_mode()"
     setup() {
       export QDRANT_STORAGE_PATH="./qdrant-test-storage"
+      export CURRENT_POD_UID="pod-uid-initial"
       rm -rf "$QDRANT_STORAGE_PATH"
       mkdir -p "$QDRANT_STORAGE_PATH"
       qdrant_curl_call_count=0
@@ -76,6 +77,7 @@ Describe "Qdrant Setup Bash Script Tests"
     cleanup_storage() {
       rm -rf "$QDRANT_STORAGE_PATH"
       unset BOOTSTRAP_SERVICE_AVAILABLE BOOTSTRAP_SERVICE_SUCCEEDS_ON_ATTEMPT QDRANT_STORAGE_PATH
+      unset CURRENT_POD_UID QDRANT_BOOTSTRAP_OWNER_FILE
       unset QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_SLEEP_SECONDS
     }
     After "cleanup_storage"
@@ -87,6 +89,63 @@ Describe "Qdrant Setup Bash Script Tests"
       When call qdrant_start_mode "http://qdrant-provision-qdrant-qdrant.default.svc.cluster.local:6333"
       The status should be success
       The output should eq "bootstrap"
+      The contents of file "$QDRANT_STORAGE_PATH/.kubeblocks-bootstrap-owner" should eq "bootstrap-attempt:pod-uid-initial"
+    End
+
+    It "does not repeat bootstrap after a container restart of the same pod"
+      CURRENT_POD_NAME="qdrant-provision-qdrant-0"
+      BOOTSTRAP_SERVICE_AVAILABLE=false
+      QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS=1
+      printf 'bootstrap-attempt:%s\n' "$CURRENT_POD_UID" > "$QDRANT_STORAGE_PATH/.kubeblocks-bootstrap-owner"
+      When call qdrant_start_mode "http://qdrant-provision-qdrant-qdrant.default.svc.cluster.local:6333"
+      The status should be success
+      The output should eq "join"
+      The stderr should include "initial bootstrap was already claimed"
+    End
+
+    It "does not bootstrap a recreated ordinal zero during a service outage"
+      CURRENT_POD_NAME="qdrant-provision-qdrant-0"
+      CURRENT_POD_UID="pod-uid-recreated"
+      BOOTSTRAP_SERVICE_AVAILABLE=false
+      QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS=1
+      printf '%s\n' "bootstrap-attempt:pod-uid-original" > "$QDRANT_STORAGE_PATH/.kubeblocks-bootstrap-owner"
+      When call qdrant_start_mode "http://qdrant-provision-qdrant-qdrant.default.svc.cluster.local:6333"
+      The status should be success
+      The output should eq "join"
+      The stderr should include "initial bootstrap was already claimed"
+    End
+
+    It "fails closed when the pod UID needed for an initial bootstrap claim is missing"
+      CURRENT_POD_NAME="qdrant-provision-qdrant-0"
+      unset CURRENT_POD_UID
+      BOOTSTRAP_SERVICE_AVAILABLE=false
+      QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS=1
+      When call qdrant_start_mode "http://qdrant-provision-qdrant-qdrant.default.svc.cluster.local:6333"
+      The status should be success
+      The output should eq "join"
+      The stderr should include "CURRENT_POD_UID is required"
+    End
+
+    It "fails closed for legacy non-empty storage without raft state or a bootstrap marker"
+      CURRENT_POD_NAME="qdrant-provision-qdrant-0"
+      BOOTSTRAP_SERVICE_AVAILABLE=false
+      QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS=1
+      mkdir -p "$QDRANT_STORAGE_PATH/collections"
+      When call qdrant_start_mode "http://qdrant-provision-qdrant-qdrant.default.svc.cluster.local:6333"
+      The status should be success
+      The output should eq "join"
+      The stderr should include "storage is not empty"
+    End
+
+    It "fails closed when the initial bootstrap claim cannot be persisted"
+      CURRENT_POD_NAME="qdrant-provision-qdrant-0"
+      QDRANT_BOOTSTRAP_OWNER_FILE="$QDRANT_STORAGE_PATH/missing/owner"
+      BOOTSTRAP_SERVICE_AVAILABLE=false
+      QDRANT_BOOTSTRAP_SERVICE_DISCOVERY_ATTEMPTS=1
+      When call qdrant_start_mode "http://qdrant-provision-qdrant-qdrant.default.svc.cluster.local:6333"
+      The status should be success
+      The output should eq "join"
+      The stderr should include "cannot persist the initial bootstrap claim"
     End
 
     It "joins when a reused empty ordinal zero observes an existing service during discovery"
@@ -98,6 +157,7 @@ Describe "Qdrant Setup Bash Script Tests"
       When call qdrant_start_mode "http://qdrant-rollout-replace-qdrant-qdrant.default.svc.cluster.local:6333"
       The status should be success
       The output should eq "join"
+      The contents of file "$QDRANT_STORAGE_PATH/.kubeblocks-bootstrap-owner" should eq "existing-cluster"
     End
 
     It "joins an existing cluster even when KubeBlocks reuses ordinal zero"
@@ -106,6 +166,17 @@ Describe "Qdrant Setup Bash Script Tests"
       When call qdrant_start_mode "http://qdrant-rollout-replace-qdrant-qdrant.default.svc.cluster.local:6333"
       The status should be success
       The output should eq "join"
+      The contents of file "$QDRANT_STORAGE_PATH/.kubeblocks-bootstrap-owner" should eq "existing-cluster"
+    End
+
+    It "fails closed when an observed existing cluster cannot be recorded"
+      CURRENT_POD_NAME="qdrant-rollout-replace-qdrant-0"
+      QDRANT_BOOTSTRAP_OWNER_FILE="$QDRANT_STORAGE_PATH/missing/owner"
+      BOOTSTRAP_SERVICE_AVAILABLE=true
+      When call qdrant_start_mode "http://qdrant-rollout-replace-qdrant-qdrant.default.svc.cluster.local:6333"
+      The status should be failure
+      The output should eq ""
+      The stderr should include "cannot persist the existing-cluster bootstrap marker"
     End
 
     It "restarts from durable raft state instead of rejoining"
@@ -115,6 +186,7 @@ Describe "Qdrant Setup Bash Script Tests"
       When call qdrant_start_mode "http://qdrant-provision-qdrant-qdrant.default.svc.cluster.local:6333"
       The status should be success
       The output should eq "restart"
+      The contents of file "$QDRANT_STORAGE_PATH/.kubeblocks-bootstrap-owner" should eq "existing-cluster"
     End
 
     It "waits to join for non-zero pods when the bootstrap service is not ready"

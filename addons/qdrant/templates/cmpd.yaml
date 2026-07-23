@@ -182,6 +182,11 @@ spec:
           fieldRef:
             apiVersion: v1
             fieldPath: metadata.name
+      - name: CURRENT_POD_UID
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.uid
     dnsPolicy: ClusterFirst
     enableServiceLinks: true
     volumes:
