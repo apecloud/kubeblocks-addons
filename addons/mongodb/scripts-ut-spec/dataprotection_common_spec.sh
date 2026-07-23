@@ -6,8 +6,9 @@ Describe "MongoDB dataprotection common script"
   setup_polling() {
     POLL_STATE_FILE="$(mktemp)"
     TERM_IGNORING_CHILD_PID_FILE="$(mktemp)"
+    SHELLSPEC_RUNNER_PGID=$(ps -o pgid= -p "$$" | tr -d " ")
     echo 0 > "$POLL_STATE_FILE"
-    export TERM_IGNORING_CHILD_PID_FILE
+    export TERM_IGNORING_CHILD_PID_FILE SHELLSPEC_RUNNER_PGID
     export SYNCER_PBM_WAIT_MAX_ATTEMPTS=3
     export SYNCER_RESTORE_WAIT_MAX_ATTEMPTS=3
     export SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS=1
@@ -20,10 +21,28 @@ Describe "MongoDB dataprotection common script"
   }
   BeforeEach 'setup_polling'
 
+  is_canonical_process_id() {
+    [[ "$1" =~ ^[1-9][0-9]*$ ]]
+  }
+
   cleanup_polling() {
+    local child_pid=""
+    local child_pgid=""
+    local live_child_pgid=""
     if [ -s "$TERM_IGNORING_CHILD_PID_FILE" ]; then
-      read -r child_pid child_pgid <"$TERM_IGNORING_CHILD_PID_FILE"
-      kill -KILL -- "-$child_pgid" 2>/dev/null || kill -KILL "$child_pid" 2>/dev/null || true
+      read -r child_pid child_pgid <"$TERM_IGNORING_CHILD_PID_FILE" || true
+      if is_canonical_process_id "$child_pid" &&
+        [ "$child_pid" != "$$" ] &&
+        is_canonical_process_id "$child_pgid" &&
+        is_canonical_process_id "$SHELLSPEC_RUNNER_PGID" &&
+        [ "$child_pgid" != "$SHELLSPEC_RUNNER_PGID" ]; then
+        live_child_pgid=$(ps -o pgid= -p "$child_pid" 2>/dev/null | tr -d " ")
+        if [ "$live_child_pgid" = "$child_pgid" ]; then
+          kill -KILL -- "-$child_pgid" 2>/dev/null ||
+            kill -KILL "$child_pid" 2>/dev/null ||
+            true
+        fi
+      fi
     fi
     rm -f "$POLL_STATE_FILE" "$TERM_IGNORING_CHILD_PID_FILE"
   }
@@ -137,6 +156,8 @@ Describe "MongoDB dataprotection common script"
     local child_pid
     local child_pgid
     local request_rc
+    local recorded_identity_valid=false
+    local dedicated_process_group=false
     local child_reaped=false
     local process_group_reaped=false
     local reap_checks=0
@@ -147,11 +168,22 @@ Describe "MongoDB dataprotection common script"
     finished_at=$(date +%s)
     elapsed=$((finished_at - started_at))
     read -r child_pid child_pgid <"$TERM_IGNORING_CHILD_PID_FILE"
+    if is_canonical_process_id "$child_pid" &&
+      [ "$child_pid" != "$$" ] &&
+      is_canonical_process_id "$child_pgid"; then
+      recorded_identity_valid=true
+      if is_canonical_process_id "$SHELLSPEC_RUNNER_PGID" &&
+        [ "$child_pgid" != "$SHELLSPEC_RUNNER_PGID" ]; then
+        dedicated_process_group=true
+      fi
+    fi
     while [ "$reap_checks" -lt 20 ]; do
-      if ! kill -0 "$child_pid" 2>/dev/null; then
+      if [ "$recorded_identity_valid" = "true" ] &&
+        ! kill -0 "$child_pid" 2>/dev/null; then
         child_reaped=true
       fi
-      if ! kill -0 -- "-$child_pgid" 2>/dev/null; then
+      if [ "$dedicated_process_group" = "true" ] &&
+        ! kill -0 -- "-$child_pgid" 2>/dev/null; then
         process_group_reaped=true
       fi
       if [ "$child_reaped" = "true" ] && [ "$process_group_reaped" = "true" ]; then
@@ -161,6 +193,8 @@ Describe "MongoDB dataprotection common script"
       reap_checks=$((reap_checks + 1))
     done
     echo "forced_kill_within_6_seconds=$([ "$elapsed" -lt 6 ] && echo true || echo false)"
+    echo "recorded_process_identity_valid=$recorded_identity_valid"
+    echo "dedicated_process_group=$dedicated_process_group"
     echo "term_ignoring_child_reaped=$child_reaped"
     echo "term_ignoring_process_group_reaped=$process_group_reaped"
     return "$request_rc"
@@ -172,6 +206,8 @@ Describe "MongoDB dataprotection common script"
     The status should be failure
     The output should include "syncerctl status request timed out after 1 seconds"
     The output should include "forced_kill_within_6_seconds=true"
+    The output should include "recorded_process_identity_valid=true"
+    The output should include "dedicated_process_group=true"
     The output should include "term_ignoring_child_reaped=true"
     The output should include "term_ignoring_process_group_reaped=true"
     The contents of file "$POLL_STATE_FILE" should equal 1
