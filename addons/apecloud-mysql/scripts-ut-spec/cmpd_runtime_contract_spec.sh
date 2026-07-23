@@ -8,7 +8,8 @@ Describe "ApeCloud MySQL ComponentDefinition runtime render contract"
     local -a helm_args
 
     chart_dir=$(cd .. && pwd)
-    helm_args=(template kb-addon-apecloud-mysql "$chart_dir" --dependency-update)
+    helm dependency build "$chart_dir" >/dev/null || return 1
+    helm_args=(template kb-addon-apecloud-mysql "$chart_dir")
     case "$mode" in
       enabled)
         helm_args+=(--set logCollector.enabled=true)
