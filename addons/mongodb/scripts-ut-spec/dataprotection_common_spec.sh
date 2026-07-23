@@ -129,8 +129,38 @@ Describe "MongoDB dataprotection common script"
     SYNCER_PBM_WAIT_MAX_ATTEMPTS=0
     When call wait_for_syncer_backup_completion "backup-1"
     The status should be failure
-    The output should include "SYNCER_PBM_WAIT_MAX_ATTEMPTS must be a positive integer"
+    The output should include "SYNCER_PBM_WAIT_MAX_ATTEMPTS must be an integer in range 1..9999999"
     The contents of file "$POLL_STATE_FILE" should equal 0
+  End
+
+  It "rejects an oversized backup attempt budget before polling"
+    SYNCER_PBM_WAIT_MAX_ATTEMPTS=999999999999999999999999999999999999
+    When call wait_for_syncer_backup_completion "backup-1"
+    The status should be failure
+    The output should include "SYNCER_PBM_WAIT_MAX_ATTEMPTS must be an integer in range 1..9999999"
+    The contents of file "$POLL_STATE_FILE" should equal 0
+  End
+
+  It "rejects an invalid restore attempt budget before polling"
+    SYNCER_RESTORE_WAIT_MAX_ATTEMPTS=invalid
+    When call wait_for_syncer_restore_completion "request-1"
+    The status should be failure
+    The output should include "SYNCER_RESTORE_WAIT_MAX_ATTEMPTS must be an integer in range 1..9999999"
+    The contents of file "$POLL_STATE_FILE" should equal 0
+  End
+
+  It "rejects an oversized restore attempt budget before polling"
+    SYNCER_RESTORE_WAIT_MAX_ATTEMPTS=999999999999999999999999999999999999
+    When call wait_for_syncer_restore_completion "request-1"
+    The status should be failure
+    The output should include "SYNCER_RESTORE_WAIT_MAX_ATTEMPTS must be an integer in range 1..9999999"
+    The contents of file "$POLL_STATE_FILE" should equal 0
+  End
+
+  It "accepts the maximum shell-safe polling attempt budget"
+    When call require_poll_attempt_budget "TEST_WAIT_MAX_ATTEMPTS" 9999999
+    The status should be success
+    The output should equal ""
   End
 
   It "prefers the API-provided target host even when a target Pod name is present"

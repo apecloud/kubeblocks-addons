@@ -10,6 +10,12 @@ Describe "MongoDB mongos service variable contract"
     helm template kb-addon-mongodb "$chart_dir" | ruby -ryaml -e '
       documents = YAML.load_stream($stdin.read).compact
       names = %w[mongo-config-server mongo-shard]
+      mongos = documents.find do |document|
+        document["kind"] == "ComponentDefinition" &&
+          document.dig("metadata", "name").start_with?("mongo-mongos")
+      end
+      abort "missing mongo-mongos ComponentDefinition" unless mongos
+      mongos_comp_def = mongos.dig("metadata", "name")
 
       names.each do |prefix|
         definition = documents.find do |document|
@@ -22,15 +28,21 @@ Describe "MongoDB mongos service variable contract"
         abort "#{prefix}: stale MONGOS_INTERNAL_SVC_NAME" if vars.key?("MONGOS_INTERNAL_SVC_NAME")
 
         host = vars.fetch("MONGOS_INTERNAL_HOST")
-        host_ref = host.dig("valueFrom", "serviceVarRef")
-        abort "#{prefix}: MONGOS_INTERNAL_HOST is not a serviceVarRef" unless host_ref
-        abort "#{prefix}: wrong service name" unless host_ref["name"] == "internal"
-        abort "#{prefix}: host is not required" unless host_ref["host"] == "Required"
-        abort "#{prefix}: hard-coded host value remains" if host.key?("value")
+        port = vars.fetch("MONGOS_INTERNAL_PORT")
+        { "MONGOS_INTERNAL_HOST" => host, "MONGOS_INTERNAL_PORT" => port }.each do |name, item|
+          ref = item.dig("valueFrom", "serviceVarRef")
+          abort "#{prefix}: #{name} is not a serviceVarRef" unless ref
+          abort "#{prefix}: #{name} wrong service name" unless ref["name"] == "internal"
+          abort "#{prefix}: #{name} wrong compDef" unless ref["compDef"] == mongos_comp_def
+          abort "#{prefix}: #{name} must set optional:false" unless ref["optional"] == false
+          abort "#{prefix}: #{name} has a direct value" if item.key?("value")
+        end
 
-        port = vars.fetch("MONGOS_INTERNAL_PORT").dig("valueFrom", "serviceVarRef")
-        abort "#{prefix}: MONGOS_INTERNAL_PORT is not a serviceVarRef" unless port
-        abort "#{prefix}: wrong port name" unless port.dig("port", "name") == "mongos"
+        host_ref = host.dig("valueFrom", "serviceVarRef")
+        abort "#{prefix}: host is not required" unless host_ref["host"] == "Required"
+
+        port_ref = port.dig("valueFrom", "serviceVarRef")
+        abort "#{prefix}: wrong port name" unless port_ref.dig("port", "name") == "mongos"
       end
 
       puts "mongos host and port use serviceVarRef for 2 ComponentDefinitions"

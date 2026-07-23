@@ -204,11 +204,11 @@ function prepare_restore_storage_config() {
   export RESTORE_STORAGE_CONFIG_FILE RESTORE_STORAGE_CONFIG_TOKEN RESTORE_REQUEST_ACCEPTED RESTORE_COMPLETED
 }
 
-function require_positive_integer() {
+function require_poll_attempt_budget() {
   local name=$1
   local value=$2
-  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
-    echo "ERROR: $name must be a positive integer, got '$value'"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]] || [ "${#value}" -gt 7 ]; then
+    echo "ERROR: $name must be an integer in range 1..9999999, got '$value'"
     return 1
   fi
 }
@@ -218,7 +218,7 @@ function wait_for_syncer_backup_completion() {
   local max_attempts=${SYNCER_PBM_WAIT_MAX_ATTEMPTS:-720}
   local retry_interval=${SYNCER_PBM_WAIT_INTERVAL_SECONDS:-5}
   local attempt=0
-  require_positive_integer SYNCER_PBM_WAIT_MAX_ATTEMPTS "$max_attempts" || return 1
+  require_poll_attempt_budget SYNCER_PBM_WAIT_MAX_ATTEMPTS "$max_attempts" || return 1
   describe_result=""
   while true; do
     if ! describe_result=$(syncerctl_cmd backup status --option "op_id=$backup_name" 2>&1); then
@@ -272,7 +272,7 @@ function wait_for_syncer_restore_completion() {
     echo "ERROR: Syncer restore start did not return request_id."
     exit 1
   fi
-  require_positive_integer SYNCER_RESTORE_WAIT_MAX_ATTEMPTS "$max_attempts" || return 1
+  require_poll_attempt_budget SYNCER_RESTORE_WAIT_MAX_ATTEMPTS "$max_attempts" || return 1
   while true; do
     local restore_status
     set +e
