@@ -188,23 +188,3 @@ Define config server component definition name prefix
 {{- define "cfgServer.componentDefNamePrefix" -}}
 {{- printf "mongo-config-server-" -}}
 {{- end -}}
-
-{{/*
-Define the ParametersDefinition name prefix. ParametersDefinition is
-cluster-scoped, so its name must follow both chart isolation dimensions.
-*/}}
-{{- define "mongodb.parametersDefinitionNamePrefix" -}}
-{{- if ne (len .Values.resourceNamePrefix) 0 -}}
-{{ .Values.resourceNamePrefix }}-
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define the ParametersDefinition version suffix shared with ComponentDefinitions.
-*/}}
-{{- define "mongodb.parametersDefinitionVersion" -}}
-{{- if ne (len .Values.cmpdVersionPrefix) 0 -}}
-{{ .Values.cmpdVersionPrefix }}-
-{{- end -}}
-{{ .Chart.Version }}
-{{- end -}}

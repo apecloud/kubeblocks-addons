@@ -2,7 +2,7 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ printf "%smongodb-config-pd-%s" (include "mongodb.parametersDefinitionNamePrefix" .) (include "mongodb.parametersDefinitionVersion" .) }}
+  name: {{ printf "mongodb-config-pd-%s" .Chart.Version }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
   annotations:
@@ -31,7 +31,7 @@ spec:
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ printf "%smongos-config-pd-%s" (include "mongodb.parametersDefinitionNamePrefix" .) (include "mongodb.parametersDefinitionVersion" .) }}
+  name: {{ printf "mongos-config-pd-%s" .Chart.Version }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
   annotations:
