@@ -19,6 +19,31 @@ function get_backup_total_size() {
     datasafed stat / | awk '/TotalSize/ {print $2; exit}'
 }
 
+function is_non_negative_int64() {
+    local value="$1"
+    local normalized
+    local max_int64="9223372036854775807"
+
+    case "$value" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+
+    normalized="$value"
+    while [ "${normalized#0}" != "$normalized" ]; do
+        normalized="${normalized#0}"
+    done
+    [ -n "$normalized" ] || normalized=0
+
+    if [ "${#normalized}" -gt 19 ]; then
+        return 1
+    fi
+    # Compare equal-width decimal strings without overflowing Bash 3.2 integers.
+    # shellcheck disable=SC2071
+    if [ "${#normalized}" -eq 19 ] && [[ "$normalized" > "$max_int64" ]]; then
+        return 1
+    fi
+}
+
 function save_backup_status() {
     local res start_time_str checkpoint_time_str start_time checkpoint_time total_size
 
@@ -42,8 +67,16 @@ function save_backup_status() {
         echo "ERROR: invalid log backup checkpoint time: $checkpoint_time_str" >&2
         return 1
     fi
+    if [ "$start_time" \> "$checkpoint_time" ]; then
+        echo "ERROR: log backup start time is later than checkpoint" >&2
+        return 1
+    fi
     if ! total_size=$(get_backup_total_size) || [ -z "$total_size" ]; then
         echo "ERROR: failed to read log backup size" >&2
+        return 1
+    fi
+    if ! is_non_negative_int64 "$total_size"; then
+        echo "ERROR: log backup size must be a non-negative decimal integer within int64 range" >&2
         return 1
     fi
 
@@ -52,8 +85,8 @@ function save_backup_status() {
 }
 
 function save_backup_status_with_retry() {
-    local attempts="${PITR_STATUS_RETRY_ATTEMPTS:-3}"
-    local interval="${PITR_STATUS_RETRY_INTERVAL_SECONDS:-2}"
+    local attempts="${PITR_STATUS_RETRY_ATTEMPTS-3}"
+    local interval="${PITR_STATUS_RETRY_INTERVAL_SECONDS-2}"
     local attempt=1
 
     case "$attempts" in

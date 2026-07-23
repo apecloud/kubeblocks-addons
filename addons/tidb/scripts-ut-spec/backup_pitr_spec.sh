@@ -20,6 +20,7 @@ Describe "TiDB continuous backup PITR monitor"
 
     STATUS_MODE="success"
     START_RC=0
+    TOTAL_SIZE="128"
     TEST_LEDGER="${SHELLSPEC_TMPBASE}/backup-pitr-ledger-${SHELLSPEC_SPECFILE_ID}"
     TEST_STATUS_COUNT="${TEST_LEDGER}.status-count"
     : > "${TEST_LEDGER}"
@@ -39,10 +40,40 @@ Describe "TiDB continuous backup PITR monitor"
             echo "[PD:client:ErrClientGetTSO] get TSO failed, tso client is nil" >&2
             return 1
           fi
-          if [ "${STATUS_MODE}" = "malformed" ]; then
-            echo "start: 2026-07-23 00:00:00 +0000"
-            return 0
-          fi
+          case "${STATUS_MODE}" in
+            malformed)
+              echo "start: 2026-07-23 00:00:00 +0000"
+              return 0
+              ;;
+            invalid-start)
+              cat <<'STATUS'
+    start: not-a-time
+    checkpoint[global]: 2026-07-23 00:05:00 +0000; gap=1m
+STATUS
+              return 0
+              ;;
+            invalid-checkpoint)
+              cat <<'STATUS'
+    start: 2026-07-23 00:00:00 +0000
+    checkpoint[global]: not-a-time; gap=1m
+STATUS
+              return 0
+              ;;
+            inverted-range)
+              cat <<'STATUS'
+    start: 2026-07-23 00:05:00 +0000
+    checkpoint[global]: 2026-07-23 00:00:00 +0000; gap=1m
+STATUS
+              return 0
+              ;;
+            fractional)
+              cat <<'STATUS'
+    start: 2026-07-23 00:00:00.123456789 +0000
+    checkpoint[global]: 2026-07-23 00:05:00.987654321 +0000; gap=1m
+STATUS
+              return 0
+              ;;
+          esac
           cat <<'STATUS'
               start: 2026-07-23 00:00:00 +0000
     checkpoint[global]: 2026-07-23 00:05:00 +0000; gap=1m
@@ -61,12 +92,14 @@ STATUS
       case "$1" in
         "2026-07-23 00:00:00 +0000") echo "2026-07-23T00:00:00Z" ;;
         "2026-07-23 00:05:00 +0000") echo "2026-07-23T00:05:00Z" ;;
+        "2026-07-23 00:00:00.123456789 +0000") echo "2026-07-23T00:00:00Z" ;;
+        "2026-07-23 00:05:00.987654321 +0000") echo "2026-07-23T00:05:00Z" ;;
         *) return 1 ;;
       esac
     }
 
     get_backup_total_size() {
-      echo "128"
+      echo "${TOTAL_SIZE}"
     }
 
     DP_save_backup_status_info() {
@@ -194,6 +227,52 @@ STATUS
     The stderr should include "must be a positive integer"
   End
 
+  run_empty_retry_config_case() {
+    local field="$1"
+    if [ "${field}" = "attempts" ]; then
+      PITR_STATUS_RETRY_ATTEMPTS=""
+    else
+      PITR_STATUS_RETRY_INTERVAL_SECONDS=""
+    fi
+    ensure_log_backup_started
+    local rc=$?
+    echo "status_calls=$(ledger_count '^br log status')"
+    echo "start_calls=$(ledger_count '^br log start')"
+    return "${rc}"
+  }
+
+  It "rejects an explicitly empty retry-attempt count before probing or starting"
+    When call run_empty_retry_config_case attempts
+    The status should equal 2
+    The stdout should include "status_calls=0"
+    The stdout should include "start_calls=0"
+    The stderr should include "must be a positive integer"
+  End
+
+  It "rejects an explicitly empty retry interval before probing or starting"
+    When call run_empty_retry_config_case interval
+    The status should equal 2
+    The stdout should include "status_calls=0"
+    The stdout should include "start_calls=0"
+    The stderr should include "must be a non-negative integer"
+  End
+
+  run_unset_retry_config_case() {
+    unset PITR_STATUS_RETRY_ATTEMPTS PITR_STATUS_RETRY_INTERVAL_SECONDS
+    ensure_log_backup_started
+    local rc=$?
+    echo "status_calls=$(ledger_count '^br log status')"
+    echo "start_calls=$(ledger_count '^br log start')"
+    return "${rc}"
+  }
+
+  It "uses bounded defaults only when retry configuration is absent"
+    When call run_unset_retry_config_case
+    The status should be success
+    The stdout should include "status_calls=1"
+    The stdout should include "start_calls=0"
+  End
+
   run_malformed_status_case() {
     STATUS_MODE="malformed"
     save_backup_status
@@ -207,6 +286,75 @@ STATUS
     The status should be failure
     The stdout should include "save_calls=0"
     The stderr should include "missing start or global checkpoint"
+  End
+
+  run_status_validation_case() {
+    STATUS_MODE="$1"
+    TOTAL_SIZE="${2:-128}"
+    save_backup_status
+    local rc=$?
+    echo "save_calls=$(ledger_count '^save ')"
+    return "${rc}"
+  }
+
+  It "rejects a non-empty invalid start time before writing status"
+    When call run_status_validation_case invalid-start
+    The status should be failure
+    The stdout should include "save_calls=0"
+    The stderr should include "invalid log backup start time"
+  End
+
+  It "rejects a non-empty invalid checkpoint time before writing status"
+    When call run_status_validation_case invalid-checkpoint
+    The status should be failure
+    The stdout should include "save_calls=0"
+    The stderr should include "invalid log backup checkpoint time"
+  End
+
+  It "rejects a start time later than the checkpoint before writing status"
+    When call run_status_validation_case inverted-range
+    The status should be failure
+    The stdout should include "save_calls=0"
+    The stderr should include "later than checkpoint"
+  End
+
+  It "rejects a non-decimal backup size before writing status"
+    When call run_status_validation_case success NaN
+    The status should be failure
+    The stdout should include "save_calls=0"
+    The stderr should include "non-negative decimal integer"
+  End
+
+  It "rejects a negative backup size before writing status"
+    When call run_status_validation_case success -1
+    The status should be failure
+    The stdout should include "save_calls=0"
+    The stderr should include "non-negative decimal integer"
+  End
+
+  It "rejects a backup size above the non-negative int64 range before writing status"
+    When call run_status_validation_case success 9223372036854775808
+    The status should be failure
+    The stdout should include "save_calls=0"
+    The stderr should include "within int64 range"
+  End
+
+  It "accepts a zero backup size"
+    When call run_status_validation_case success 0
+    The status should be success
+    The stdout should include "save_calls=1"
+  End
+
+  It "accepts the maximum non-negative int64 backup size"
+    When call run_status_validation_case success 9223372036854775807
+    The status should be success
+    The stdout should include "save_calls=1"
+  End
+
+  It "accepts the fractional timestamp shape emitted by BR v8.4"
+    When call run_status_validation_case fractional
+    The status should be success
+    The stdout should include "save_calls=1"
   End
 
   run_abnormal_exit_case() {
