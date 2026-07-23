@@ -10,6 +10,9 @@ spec:
   provider: kubeblocks.io
   description: MongoDB is a document database designed for ease of application development and scaling.
   serviceKind: mongodb
+  volumes:
+    - name: data
+      needSnapshot: true
   services:
     - name: default
       serviceName: mongodb

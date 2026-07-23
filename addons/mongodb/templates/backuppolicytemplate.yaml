@@ -6,7 +6,7 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   serviceKind: MongoDB
-  compDefs: [mongodb]
+  compDefs: [{{ include "mongodb.componentDefNamePrefix" . }}]
   target:
     role: secondary
     fallbackRole: primary
