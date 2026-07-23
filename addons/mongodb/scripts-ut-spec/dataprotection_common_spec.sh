@@ -8,6 +8,7 @@ Describe "MongoDB dataprotection common script"
     echo 0 > "$POLL_STATE_FILE"
     export SYNCER_PBM_WAIT_MAX_ATTEMPTS=3
     export SYNCER_RESTORE_WAIT_MAX_ATTEMPTS=3
+    export SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS=1
     export SYNCER_PBM_WAIT_INTERVAL_SECONDS=0
     export SYNCER_RESTORE_WAIT_INTERVAL_SECONDS=0
     POLL_MODE=eventual
@@ -41,6 +42,10 @@ Describe "MongoDB dataprotection common script"
         backup-empty)
           echo '{}'
           ;;
+        backup-hang)
+          command sleep 2
+          echo '{"found":true,"status":"running"}'
+          ;;
         *)
           if [ "$count" -lt 3 ]; then
             echo '{"found":true,"status":"running"}'
@@ -58,6 +63,10 @@ Describe "MongoDB dataprotection common script"
         return 17
         ;;
       restore-running)
+        echo '{"status":"running","phase":"in-restore"}'
+        ;;
+      restore-hang)
+        command sleep 2
         echo '{"status":"running","phase":"in-restore"}'
         ;;
       *)
@@ -101,6 +110,14 @@ Describe "MongoDB dataprotection common script"
     The contents of file "$POLL_STATE_FILE" should equal 3
   End
 
+  It "bounds a single backup status request by wall-clock time"
+    POLL_MODE=backup-hang
+    When call wait_for_syncer_backup_completion "backup-1"
+    The status should be failure
+    The output should include "syncerctl status request timed out after 1 seconds"
+    The contents of file "$POLL_STATE_FILE" should equal 1
+  End
+
   It "waits for restore completion within the configured attempt budget"
     When call wait_for_syncer_restore_completion "request-1"
     The status should be success
@@ -123,6 +140,15 @@ Describe "MongoDB dataprotection common script"
     The output should include "status endpoint unavailable"
     The output should include "Restore request request-1 did not complete after 3 attempts"
     The contents of file "$POLL_STATE_FILE" should equal 3
+  End
+
+  It "bounds each restore status request by wall-clock time"
+    POLL_MODE=restore-hang
+    When call wait_for_syncer_restore_completion "request-1"
+    The status should be failure
+    The output should include "syncerctl status request timed out after 1 seconds"
+    The output should include "Failed to read restore request request-1 status"
+    The contents of file "$POLL_STATE_FILE" should equal 1
   End
 
   It "rejects an invalid polling attempt budget before polling"
@@ -159,6 +185,28 @@ Describe "MongoDB dataprotection common script"
 
   It "accepts the maximum shell-safe polling attempt budget"
     When call require_poll_attempt_budget "TEST_WAIT_MAX_ATTEMPTS" 9999999
+    The status should be success
+    The output should equal ""
+  End
+
+  It "rejects an invalid request timeout before polling"
+    SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS=0
+    When call wait_for_syncer_backup_completion "backup-1"
+    The status should be failure
+    The output should include "SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS must be an integer in range 1..300"
+    The contents of file "$POLL_STATE_FILE" should equal 0
+  End
+
+  It "rejects an invalid restore request timeout before polling"
+    SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS=invalid
+    When call wait_for_syncer_restore_completion "request-1"
+    The status should be failure
+    The output should include "SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS must be an integer in range 1..300"
+    The contents of file "$POLL_STATE_FILE" should equal 0
+  End
+
+  It "accepts the maximum request timeout"
+    When call require_status_request_timeout 300
     The status should be success
     The output should equal ""
   End

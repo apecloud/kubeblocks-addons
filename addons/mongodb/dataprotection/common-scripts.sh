@@ -213,15 +213,86 @@ function require_poll_attempt_budget() {
   fi
 }
 
+function require_status_request_timeout() {
+  local value=$1
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]] || [ "${#value}" -gt 3 ] || [ "$value" -gt 300 ]; then
+    echo "ERROR: SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS must be an integer in range 1..300, got '$value'"
+    return 1
+  fi
+}
+
+function syncerctl_status_cmd() {
+  local timeout_seconds=${SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS:-30}
+  local output_file
+  local timeout_marker
+  local command_pid
+  local watchdog_pid
+  local command_rc
+  local monitor_was_enabled=false
+
+  require_status_request_timeout "$timeout_seconds" || return 1
+  output_file=$(mktemp "${TMPDIR:-/tmp}/mongodb-syncerctl-status.XXXXXX") || {
+    echo "ERROR: Failed to create syncerctl status output file"
+    return 1
+  }
+  timeout_marker="${output_file}.timeout"
+
+  # Isolate the shell wrapper and syncerctl child so a timeout reaps both.
+  case $- in
+    *m*) monitor_was_enabled=true ;;
+  esac
+  set -m
+  syncerctl_cmd "$@" >"$output_file" 2>&1 &
+  command_pid=$!
+  if [ "$monitor_was_enabled" != "true" ]; then
+    set +m
+  fi
+  # The watchdog is outside the request process group and escalates TERM to KILL.
+  (
+    watchdog_sleep_pid=""
+    trap 'kill -TERM "$watchdog_sleep_pid" 2>/dev/null || true; wait "$watchdog_sleep_pid" 2>/dev/null || true; exit 0' TERM INT HUP
+    command sleep "$timeout_seconds" &
+    watchdog_sleep_pid=$!
+    wait "$watchdog_sleep_pid" || exit 0
+    watchdog_sleep_pid=""
+    if kill -0 -- "-$command_pid" 2>/dev/null && kill -TERM -- "-$command_pid" 2>/dev/null; then
+      : >"$timeout_marker"
+      command sleep 1
+      if kill -0 -- "-$command_pid" 2>/dev/null; then
+        kill -KILL -- "-$command_pid" 2>/dev/null || true
+      fi
+    fi
+  ) &
+  watchdog_pid=$!
+
+  if wait "$command_pid"; then
+    command_rc=0
+  else
+    command_rc=$?
+  fi
+  kill -TERM "$watchdog_pid" 2>/dev/null || true
+  wait "$watchdog_pid" 2>/dev/null || true
+
+  cat "$output_file"
+  if [ -f "$timeout_marker" ]; then
+    echo "ERROR: syncerctl status request timed out after $timeout_seconds seconds" >&2
+    command_rc=124
+  fi
+  rm -f "$output_file" "$timeout_marker"
+  return "$command_rc"
+}
+
 function wait_for_syncer_backup_completion() {
   local backup_name=$1
   local max_attempts=${SYNCER_PBM_WAIT_MAX_ATTEMPTS:-720}
   local retry_interval=${SYNCER_PBM_WAIT_INTERVAL_SECONDS:-5}
+  local request_timeout=${SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS:-30}
   local attempt=0
   require_poll_attempt_budget SYNCER_PBM_WAIT_MAX_ATTEMPTS "$max_attempts" || return 1
+  require_status_request_timeout "$request_timeout" || return 1
   describe_result=""
   while true; do
-    if ! describe_result=$(syncerctl_cmd backup status --option "op_id=$backup_name" 2>&1); then
+    if ! describe_result=$(syncerctl_status_cmd backup status --option "op_id=$backup_name" 2>&1); then
       echo "ERROR: Failed to read backup $backup_name status: $describe_result"
       return 1
     fi
@@ -266,6 +337,7 @@ function wait_for_syncer_restore_completion() {
   local request_id=$1
   local max_attempts=${SYNCER_RESTORE_WAIT_MAX_ATTEMPTS:-7200}
   local retry_interval=${SYNCER_RESTORE_WAIT_INTERVAL_SECONDS:-1}
+  local request_timeout=${SYNCER_STATUS_REQUEST_TIMEOUT_SECONDS:-30}
   local attempt=0
   local last_phase=""
   if [ -z "$request_id" ]; then
@@ -273,13 +345,17 @@ function wait_for_syncer_restore_completion() {
     exit 1
   fi
   require_poll_attempt_budget SYNCER_RESTORE_WAIT_MAX_ATTEMPTS "$max_attempts" || return 1
+  require_status_request_timeout "$request_timeout" || return 1
   while true; do
     local restore_status
     set +e
-    restore_status=$(syncerctl_cmd restore status --option "request_id=$request_id" 2>&1)
+    restore_status=$(syncerctl_status_cmd restore status --option "request_id=$request_id" 2>&1)
     local status_exit=$?
     set -e
-    if [ $status_exit -eq 0 ]; then
+    if [ $status_exit -eq 124 ]; then
+      echo "ERROR: Failed to read restore request $request_id status: $restore_status"
+      return 1
+    elif [ $status_exit -eq 0 ]; then
       local status
       local phase
       status=$(echo "$restore_status" | jq -r '.status // empty')
