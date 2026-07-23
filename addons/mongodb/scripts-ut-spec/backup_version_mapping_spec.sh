@@ -6,7 +6,8 @@ Describe "MongoDB backup version mapping contract"
     local chart_dir
 
     chart_dir=${MONGODB_CHART_DIR:-$(cd .. && pwd)}
-    helm template kb-addon-mongodb "$chart_dir" --dependency-update | ruby -ryaml -e '
+    helm dependency build "$chart_dir" >/dev/null || return
+    helm template kb-addon-mongodb "$chart_dir" | ruby -ryaml -e '
       def mapping_for(method, env_name)
         env = Array(method["env"]).find { |item| item["name"] == env_name }
         env&.dig("valueFrom", "versionMapping") || []
