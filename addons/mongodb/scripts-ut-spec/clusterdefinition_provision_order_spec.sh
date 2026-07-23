@@ -23,8 +23,9 @@ Describe "MongoDB sharding topology provision order"
       abort "expected one MongoDB ClusterDefinition, got #{definitions.length}" unless definitions.length == 1
 
       topologies = definitions.first.dig("spec", "topologies") || []
-      sharding = topologies.find { |topology| topology["name"] == "sharding" }
-      abort "MongoDB sharding topology is missing" unless sharding
+      shardings = topologies.select { |topology| topology["name"] == "sharding" }
+      abort "expected one MongoDB sharding topology, got #{shardings.length}" unless shardings.length == 1
+      sharding = shardings.first
 
       component_names = (sharding["components"] || []).map { |component| component["name"] }
       sharding_names = (sharding["shardings"] || []).map { |entry| entry["name"] }
@@ -87,6 +88,52 @@ FAKE_HELM
     return "$test_status"
   }
 
+  verify_duplicate_sharding_topology_is_rejected() {
+    local fake_bin test_status
+
+    fake_bin=$(mktemp -d)
+    cat > "$fake_bin/helm" <<'FAKE_HELM'
+#!/bin/sh
+cat <<'YAML'
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: mongodb
+spec:
+  topologies:
+    - name: sharding
+      components:
+        - name: mongos
+        - name: config-server
+      shardings:
+        - name: shard
+      orders:
+        provision:
+          - config-server
+          - mongos
+          - shard
+        terminate:
+          - shard
+          - mongos,config-server
+        update:
+          - mongos,config-server
+          - shard
+    - name: sharding
+      components:
+        - name: unexpected
+      orders:
+        provision:
+          - unexpected
+YAML
+FAKE_HELM
+    chmod +x "$fake_bin/helm"
+
+    PATH="$fake_bin:$PATH" verify_sharding_provision_order
+    test_status=$?
+    rm -rf "$fake_bin"
+    return "$test_status"
+  }
+
   It "provisions config server, mongos, then shards"
     When call verify_sharding_provision_order
     The status should be success
@@ -96,5 +143,11 @@ FAKE_HELM
     When call verify_renderer_failure_is_propagated
     The stderr should include "helm template failed with status 42"
     The status should equal 42
+  End
+
+  It "rejects duplicate sharding topologies"
+    When call verify_duplicate_sharding_topology_is_rejected
+    The stderr should include "expected one MongoDB sharding topology, got 2"
+    The status should be failure
   End
 End
