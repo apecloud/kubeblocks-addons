@@ -175,6 +175,11 @@ Describe "RustFS startup bash script tests"
       The status should be success
     End
 
+    It "treats an explicit zero erasure set drive count as automatic layout"
+      When call validate_with_erasure_set_drive_count "0" "4,8"
+      The status should be success
+    End
+
     It "accepts the leading plus syntax accepted by Rust usize parsing"
       When call validate_with_erasure_set_drive_count "+3" "12,15"
       The status should be success
@@ -194,6 +199,16 @@ Describe "RustFS startup bash script tests"
 
     It "accepts a numeric erasure set override in single-node mode where RustFS ignores the layout override"
       When call validate_with_erasure_set_drive_count "4" "1"
+      The status should be success
+    End
+
+    It "accepts erasure set drive count one after parsing in single-node mode"
+      When call validate_with_erasure_set_drive_count "1" "1"
+      The status should be success
+    End
+
+    It "accepts the largest 64-bit erasure set drive count after parsing in single-node mode"
+      When call validate_with_erasure_set_drive_count "18446744073709551615" "1"
       The status should be success
     End
 
@@ -223,6 +238,16 @@ Describe "RustFS startup bash script tests"
 
     It "uses configured STANDARD parity instead of the default parity"
       When call validate_with_standard_storage_class "EC:1" "4,6"
+      The status should be success
+    End
+
+    It "accepts zero STANDARD parity"
+      When call validate_with_standard_storage_class "EC:0" "4,5"
+      The status should be success
+    End
+
+    It "accepts STANDARD parity equal to half of the first set"
+      When call validate_with_standard_storage_class "EC:2" "4,8"
       The status should be success
     End
 
