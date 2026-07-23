@@ -33,26 +33,49 @@ Describe "Qdrant Member Leave Bash Script Tests"
     End
   End
 
-  Describe "qdrant_select_target_peer_id()"
+  Describe "qdrant_select_target_peer_id_for_shard()"
     cluster_info='{"result":{"peers":{"1":{"uri":"http://qdrant-0:6335/"},"2":{"uri":"http://qdrant-1:6335/"},"3":{"uri":"http://qdrant-2:6335/"}}}}'
 
-    It "keeps the raft leader as the shard target when the leader is not leaving"
-      When call qdrant_select_target_peer_id "$cluster_info" "1" "2"
+    It "uses the raft leader when it does not already own the shard"
+      collection_info='{"result":{"peer_id":3,"local_shards":[{"shard_id":8}],"remote_shards":[{"shard_id":7,"peer_id":1}],"shard_transfers":[]}}'
+      When call qdrant_select_target_peer_id_for_shard "$cluster_info" "$collection_info" "1" "2" "7"
       The status should be success
       The output should eq "2"
     End
 
-    It "selects a surviving peer when the leaving peer is the raft leader"
-      When call qdrant_select_target_peer_id "$cluster_info" "1" "1"
+    It "skips a leader that owns the shard as a remote replica"
+      collection_info='{"result":{"peer_id":3,"local_shards":[{"shard_id":8}],"remote_shards":[{"shard_id":7,"peer_id":1},{"shard_id":7,"peer_id":2}],"shard_transfers":[]}}'
+      When call qdrant_select_target_peer_id_for_shard "$cluster_info" "$collection_info" "1" "2" "7"
       The status should be success
-      The output should eq "2"
+      The output should eq "3"
     End
 
-    It "returns empty when there is no surviving peer"
-      single_peer_cluster='{"result":{"peers":{"1":{"uri":"http://qdrant-0:6335/"}}}}'
-      When call qdrant_select_target_peer_id "$single_peer_cluster" "1" "1"
+    It "skips a leader that owns the shard locally"
+      collection_info='{"result":{"peer_id":2,"local_shards":[{"shard_id":7}],"remote_shards":[{"shard_id":7,"peer_id":1}],"shard_transfers":[]}}'
+      When call qdrant_select_target_peer_id_for_shard "$cluster_info" "$collection_info" "1" "2" "7"
+      The status should be success
+      The output should eq "3"
+    End
+
+    It "skips an in-flight transfer destination for the shard"
+      collection_info='{"result":{"peer_id":3,"local_shards":[{"shard_id":8}],"remote_shards":[{"shard_id":7,"peer_id":1}],"shard_transfers":[{"shard_id":7,"from":3,"to":2}]}}'
+      When call qdrant_select_target_peer_id_for_shard "$cluster_info" "$collection_info" "1" "2" "7"
+      The status should be success
+      The output should eq "3"
+    End
+
+    It "returns empty when every surviving peer already owns the shard"
+      collection_info='{"result":{"peer_id":2,"local_shards":[{"shard_id":7}],"remote_shards":[{"shard_id":7,"peer_id":1},{"shard_id":7,"peer_id":3}],"shard_transfers":[]}}'
+      When call qdrant_select_target_peer_id_for_shard "$cluster_info" "$collection_info" "1" "2" "7"
       The status should be success
       The output should eq ""
+    End
+
+    It "fails closed when a local shard has no serving peer identity"
+      collection_info='{"result":{"local_shards":[{"shard_id":7}],"remote_shards":[{"shard_id":7,"peer_id":1}],"shard_transfers":[]}}'
+      When call qdrant_select_target_peer_id_for_shard "$cluster_info" "$collection_info" "1" "2" "7"
+      The status should be failure
+      The stderr should include "local shard without peer_id"
     End
   End
 
@@ -138,7 +161,8 @@ Describe "Qdrant Member Leave Bash Script Tests"
       control_uri="http://control"
       leave_peer_uri="http://leaving"
       leave_peer_id="1"
-      target_peer_id="2"
+      leader_peer_id="2"
+      cluster_info='{"result":{"peers":{"1":{"uri":"http://qdrant-0:6335/"},"2":{"uri":"http://qdrant-1:6335/"},"3":{"uri":"http://qdrant-2:6335/"}}}}'
       qdrant_member_leave_deadline=$((SECONDS + 50))
     }
     Before "setup_replay_state"
@@ -175,6 +199,31 @@ Describe "Qdrant Member Leave Bash Script Tests"
       When call qdrant_submit_shard_move_if_needed "demo" "7" "$initial_info"
       The status should be success
       The output should include "already moving after failed submit"
+    End
+
+    It "submits the move to an unused peer instead of an existing replica"
+      replicated_info='{"result":{"peer_id":3,"local_shards":[{"shard_id":8}],"remote_shards":[{"shard_id":7,"peer_id":1},{"shard_id":7,"peer_id":2}],"shard_transfers":[]}}'
+      qdrant_curl() {
+        printf '%s\n' "$*"
+      }
+
+      When call qdrant_submit_shard_move_if_needed "demo" "7" "$replicated_info"
+      The status should be success
+      The output should include '"to_peer_id":3'
+      The output should not include '"to_peer_id":2'
+    End
+
+    It "does not submit a move when every surviving peer already owns the shard"
+      replicated_info='{"result":{"peer_id":2,"local_shards":[{"shard_id":7}],"remote_shards":[{"shard_id":7,"peer_id":1},{"shard_id":7,"peer_id":3}],"shard_transfers":[]}}'
+      qdrant_curl() {
+        echo "unexpected qdrant_curl call" >&2
+        return 99
+      }
+
+      When call qdrant_submit_shard_move_if_needed "demo" "7" "$replicated_info"
+      The status should be failure
+      The stderr should include "refusing to reduce replica count"
+      The stderr should not include "unexpected qdrant_curl call"
     End
 
     It "discovers remaining shards from the control endpoint when the leaving endpoint is unavailable"

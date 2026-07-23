@@ -1,22 +1,54 @@
 #!/usr/bin/env bash
 
-qdrant_select_target_peer_id() {
+qdrant_select_target_peer_id_for_shard() {
   local cluster_info="$1"
-  local leave_peer_id="$2"
-  local leader_peer_id="$3"
+  local collection_cluster_info="$2"
+  local leave_peer_id="$3"
+  local leader_peer_id="$4"
+  local shard_id="$5"
   local jq_bin="${JQ:-jq}"
 
-  if [ -n "$leader_peer_id" ] && [ "$leader_peer_id" != "null" ] && [ "$leader_peer_id" != "$leave_peer_id" ]; then
-    echo "$leader_peer_id"
-    return 0
-  fi
-
   echo "$cluster_info" | "$jq_bin" -r \
+    --argjson collection "$collection_cluster_info" \
     --arg leave "$leave_peer_id" \
-    '.result.peers
-     | to_entries
-     | map(select(.key != $leave))
-     | .[0].key // ""'
+    --arg leader "$leader_peer_id" \
+    --argjson shard "$shard_id" \
+    '.result.peers as $peers
+     | ($collection.result // {}) as $distribution
+     | if (((($distribution.local_shards // [])
+              | map(select(.shard_id == $shard))
+              | length) > 0)
+           and (($distribution.peer_id // null) == null))
+       then error("collection cluster response has a local shard without peer_id")
+       else .
+       end
+     | ([
+          (($distribution.local_shards // [])[]?
+           | select(.shard_id == $shard)
+           | $distribution.peer_id),
+          (($distribution.remote_shards // [])[]?
+           | select(.shard_id == $shard)
+           | .peer_id),
+          (($distribution.shard_transfers // [])[]?
+           | select(.shard_id == $shard)
+           | .to)
+        ]
+        | map(select(. != null) | tostring)
+        | unique) as $occupied
+     | def eligible($peer):
+         ($peer != ""
+          and $peer != "null"
+          and $peer != $leave
+          and ($peers | has($peer))
+          and (($occupied | index($peer)) == null));
+       if eligible($leader)
+       then $leader
+       else ($peers
+             | to_entries
+             | map(.key)
+             | map(select(eligible(.)))
+             | .[0] // "")
+       end'
 }
 
 qdrant_peer_id_for_pod() {
@@ -339,6 +371,7 @@ qdrant_submit_shard_move_if_needed() {
   local col_name="$1"
   local shard_id="$2"
   local col_cluster_info="$3"
+  local move_target_peer_id
   local move_payload
 
   if qdrant_shard_transfer_exists "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
@@ -351,9 +384,19 @@ qdrant_submit_shard_move_if_needed() {
     return 0
   fi
 
-  echo "INFO: move shard ${shard_id} in ${col_name} from peer ${leave_peer_id} to peer ${target_peer_id}"
+  move_target_peer_id="$(qdrant_select_target_peer_id_for_shard \
+    "$cluster_info" "$col_cluster_info" "$leave_peer_id" "$leader_peer_id" "$shard_id")" || {
+    echo "ERROR: failed to select a safe target for shard ${shard_id} in ${col_name}" >&2
+    return 1
+  }
+  if [ -z "$move_target_peer_id" ]; then
+    echo "ERROR: no surviving peer without shard ${shard_id} in ${col_name}; refusing to reduce replica count" >&2
+    return 1
+  fi
+
+  echo "INFO: move shard ${shard_id} in ${col_name} from peer ${leave_peer_id} to peer ${move_target_peer_id}"
   move_payload="$(printf '{"move_shard":{"shard_id":%s,"to_peer_id":%s,"from_peer_id":%s}}' \
-    "$shard_id" "$target_peer_id" "$leave_peer_id")"
+    "$shard_id" "$move_target_peer_id" "$leave_peer_id")"
 
   if qdrant_member_leave_curl -X POST -H "Content-Type: application/json" \
       -d "$move_payload" \
@@ -561,16 +604,9 @@ qdrant_load_cluster_state() {
   fi
 
   leader_peer_id="$(echo "$cluster_info" | "$JQ" -r .result.raft_info.leader)"
-  target_peer_id="$(qdrant_select_target_peer_id "$cluster_info" "$leave_peer_id" "$leader_peer_id")"
-  if [ -z "$target_peer_id" ]; then
-    echo "ERROR: no surviving qdrant peer is available as shard move target for leaving peer ${leave_peer_id}"
-    return 1
-  fi
-
   leave_peer_uri="${SCHEME}://${KB_LEAVE_MEMBER_POD_FQDN}:6333"
   echo "INFO: leaving peer=${KB_LEAVE_MEMBER_POD_NAME}, peer_id=${leave_peer_id}, uri=${leave_peer_uri}"
   echo "INFO: leader peer_id=${leader_peer_id}"
-  echo "INFO: target peer_id=${target_peer_id}"
   echo "INFO: control endpoint=${control_uri}"
   echo "INFO: control endpoints:"
   printf "%s\n" "$control_uris" | sed 's/^/INFO: - /'
