@@ -146,7 +146,7 @@ EOF
 }
 
 function target_syncer_host() {
-  if [ -n "${DP_DB_HOST:-}" ] && [ -z "${DP_TARGET_POD_NAME:-}" ]; then
+  if [ -n "${DP_DB_HOST:-}" ]; then
     echo "$DP_DB_HOST"
     return
   fi
@@ -204,12 +204,27 @@ function prepare_restore_storage_config() {
   export RESTORE_STORAGE_CONFIG_FILE RESTORE_STORAGE_CONFIG_TOKEN RESTORE_REQUEST_ACCEPTED RESTORE_COMPLETED
 }
 
+function require_positive_integer() {
+  local name=$1
+  local value=$2
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ERROR: $name must be a positive integer, got '$value'"
+    return 1
+  fi
+}
+
 function wait_for_syncer_backup_completion() {
   local backup_name=$1
+  local max_attempts=${SYNCER_PBM_WAIT_MAX_ATTEMPTS:-720}
   local retry_interval=${SYNCER_PBM_WAIT_INTERVAL_SECONDS:-5}
+  local attempt=0
+  require_positive_integer SYNCER_PBM_WAIT_MAX_ATTEMPTS "$max_attempts" || return 1
   describe_result=""
   while true; do
-    describe_result=$(syncerctl_cmd backup status --option "op_id=$backup_name")
+    if ! describe_result=$(syncerctl_cmd backup status --option "op_id=$backup_name" 2>&1); then
+      echo "ERROR: Failed to read backup $backup_name status: $describe_result"
+      return 1
+    fi
     local found
     local status
     found=$(echo "$describe_result" | jq -r '.found // false')
@@ -221,6 +236,11 @@ function wait_for_syncer_backup_completion() {
     if [ "$status" = "error" ] || [ "$status" = "failed" ]; then
       echo "ERROR: Backup $backup_name failed: $(echo "$describe_result" | jq -r '.error // empty')"
       exit 1
+    fi
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      echo "ERROR: Backup $backup_name did not complete after $max_attempts attempts"
+      return 1
     fi
     sleep "$retry_interval"
   done
@@ -244,12 +264,15 @@ function save_syncer_backup_info() {
 
 function wait_for_syncer_restore_completion() {
   local request_id=$1
+  local max_attempts=${SYNCER_RESTORE_WAIT_MAX_ATTEMPTS:-7200}
   local retry_interval=${SYNCER_RESTORE_WAIT_INTERVAL_SECONDS:-1}
+  local attempt=0
   local last_phase=""
   if [ -z "$request_id" ]; then
     echo "ERROR: Syncer restore start did not return request_id."
     exit 1
   fi
+  require_positive_integer SYNCER_RESTORE_WAIT_MAX_ATTEMPTS "$max_attempts" || return 1
   while true; do
     local restore_status
     set +e
@@ -274,6 +297,11 @@ function wait_for_syncer_restore_completion() {
       fi
     else
       echo "INFO: Waiting for syncer restore status: $restore_status"
+    fi
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      echo "ERROR: Restore request $request_id did not complete after $max_attempts attempts"
+      return 1
     fi
     sleep "$retry_interval"
   done

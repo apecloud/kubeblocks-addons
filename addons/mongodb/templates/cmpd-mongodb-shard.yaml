@@ -355,13 +355,6 @@ spec:
           name: root
           optional: false
           password: Required
-    - name: MONGOS_INTERNAL_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          name: internal
-          compDef: {{ include "mongos.compDefName" . }}
-          optional: false
-          host: Required
     - name: MONGOS_INTERNAL_PORT
       valueFrom:
         serviceVarRef:
@@ -371,7 +364,12 @@ spec:
           port:
             name: mongos
     - name: MONGOS_INTERNAL_HOST
-      value: "$(MONGOS_INTERNAL_SVC_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+      valueFrom:
+        serviceVarRef:
+          name: internal
+          compDef: {{ include "mongos.compDefName" . }}
+          optional: false
+          host: Required
     - name: MONGODB_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
