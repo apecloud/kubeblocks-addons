@@ -18,23 +18,12 @@ Describe "Mongodb Startup Script Tests"
     export MONGODB_ROOT=${DATA_VOLUME:-/data/mongodb}
     POD_NAME="cluster-mongodb-0"
 
-    # Create the directory for the dependency script the main script will 'source'.
-    MOCK_SCRIPTS_DIR="./mock_scripts"
-    mkdir -p "$MOCK_SCRIPTS_DIR"
-    # Define a mock 'process_restore_signal' function in our mock common.sh file.
-    cat > "$MOCK_SCRIPTS_DIR/mongodb-common.sh" <<'EOF'
-process_restore_signal() {
-  echo "Mocked process_restore_signal called with: $2"
-}
-EOF
-    SCRIPTS_BASE_PATH="$MOCK_SCRIPTS_DIR"
   }
   BeforeAll "init"
 
   # Global cleanup.
   cleanup() {
     rm -rf "$DATA_VOLUME"
-    rm -rf "$MOCK_SCRIPTS_DIR"
     unset MONGODB_ROOT
   }
   AfterAll 'cleanup'
@@ -139,48 +128,6 @@ EOF
       # Assert that after the restore, it proceeds to the normal exec startup
       The file "$DATA_VOLUME/exec_cmd.log" should be file
       The contents of file "$DATA_VOLUME/exec_cmd.log" should equal "mongod --bind_ip_all --port 27017 --replSet cluster-mongodb --config /etc/mongodb/mongodb.conf"
-      The status should be success
-    End
-  End
-
-  # Test Case 3: Restore from PBM backup (mongodb_pbm.backup exists).
-  Describe "start replicaset with a PBM backup file for restore"
-    PBM_BACKUPFILE="$MONGODB_ROOT/tmp/mongodb_pbm.backup"
-
-    # In this scenario, create the backup file and mock pbm-agent and mongod.
-    setup_restore_mocks() {
-      touch "$PBM_BACKUPFILE"
-      # Mock pbm-agent-entrypoint.
-      pbm-agent-entrypoint() {
-        # echo "Mocked pbm-agent-entrypoint started"
-        return 0
-      }
-      # Mock mongod (this time it's not called via 'exec', but in the background with '&').
-      mongod() {
-        # shellcheck disable=SC2145
-        echo "Mocked mongod started with: $@"
-      }
-    }
-    Before 'setup_restore_mocks'
-
-    # Clean up the backup file and mock functions.
-    cleanup_restore_mocks() {
-      rm -f "$PBM_BACKUPFILE"
-      unset -f pbm-agent-entrypoint
-      unset -f mongod
-    }
-    After 'cleanup_restore_mocks'
-
-    It "should start pbm-agent, mongod, and call restore signals"
-      When run source ../scripts/replicaset-setup.tpl
-
-      # Assert the output from all mock functions to confirm the correct execution flow.
-      The output should include "INFO: Startup backup agent for restore."
-      # The output should include "Mocked pbm-agent-entrypoint started"
-      The output should include "INFO: Start mongodb for restore."
-      The output should include "Mocked mongod started with: --bind_ip_all --port 27017 --replSet cluster-mongodb --config /etc/mongodb/mongodb.conf"
-      The output should include "Mocked process_restore_signal called with: start"
-      The output should include "Mocked process_restore_signal called with: end"
       The status should be success
     End
   End

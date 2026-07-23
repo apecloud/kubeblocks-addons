@@ -7,8 +7,6 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   env:
-    - name: DATA_DIR
-      value: {{ .Values.dataMountPath }}/db
     - name: MOUNT_DIR
       value: {{ .Values.dataMountPath }}
     - name: PBM_BACKUP_DIR_NAME
@@ -21,8 +19,6 @@ spec:
       value: "4"
     - name: PBM_IMAGE_TAG
       value: {{ .Values.image.percona.backup.tag }}
-    - name: PSM_IMAGE_TAG
-      value: {{ .Values.image.tag }}
   backupType: Full
   backup:
     preBackup: []
@@ -38,7 +34,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
-          {{- .Files.Get "dataprotection/rs-pbm-full-backup.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/pbm-full-backup.sh" | nindent 10 }}
     preDelete:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
       command:
@@ -47,13 +43,6 @@ spec:
         - |
           {{- .Files.Get "dataprotection/pbm-backup-delete.sh" | nindent 10 }}
   restore:
-    prepareData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
-      command:
-      - bash
-      - -c
-      - |
-        {{- .Files.Get "dataprotection/rs-pbm-restore-prepare.sh" | nindent 8 }}
     postReady:
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
@@ -63,4 +52,4 @@ spec:
           - -c
           - |
             {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
-            {{- .Files.Get "dataprotection/rs-pbm-full-restore.sh" | nindent 12 }}
+            {{- .Files.Get "dataprotection/pbm-full-restore.sh" | nindent 12 }}

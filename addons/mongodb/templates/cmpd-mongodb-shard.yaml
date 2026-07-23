@@ -89,6 +89,7 @@ spec:
           - /bin/sh
           - -c
           - /scripts/mongodb-member-leave.sh > /tmp/member-leave.log 2>&1
+      timeoutSeconds: -1
     switchover:
       exec:
         container: mongodb
@@ -106,6 +107,7 @@ spec:
         targetPodSelector: Role
         matchingKey: primary
       preCondition: RuntimeReady
+      timeoutSeconds: -1
       retryPolicy:
         maxRetries: 10
   runtime:
@@ -114,27 +116,18 @@ spec:
       runAsUser: 0
     initContainers:
       - command:
-          - cp
-          - -r
-          - /bin/syncer
-          - /bin/syncerctl
-          - /tools/
+          - sh
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
+            cp -r /bin/syncer /bin/syncerctl /tools/
+            cp -r /bin/syncerctl {{ .Values.dataMountPath }}/tmp/bin
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
         volumeMounts:
           - mountPath: /tools
             name: tools
-      - command:
-          - sh
-          - -c
-          - |
-            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
-            cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        name: init-kubectl
-        volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
       - command:
@@ -143,7 +136,6 @@ spec:
           - |
             cp -r /usr/bin/pbm /tools
             cp -r /usr/bin/pbm-agent /tools
-            cp -r /usr/bin/pbm-agent-entrypoint /tools
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-pbm-agent
@@ -190,6 +182,14 @@ spec:
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mongodb
+          - name: SYNCER_BACKUP_ENABLED
+            value: "true"
+          - name: PBM_BIN
+            value: /tools/pbm
+          - name: PBM_AGENT_BIN
+            value: /tools/pbm-agent
+          - name: PBM_DATA_MOUNT_POINT
+            value: {{ .Values.dataMountPath }}
           - name: SERVICE_PORT
             value: $(KB_SERVICE_PORT)
           - name: MONGODB_ROOT_USER
@@ -202,14 +202,6 @@ spec:
             value: $(MONGODB_ADMIN_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
             value: $(MONGODB_ADMIN_PASSWORD)
-          - name: PBM_MONGODB_REPLICA_SET
-            value: $(CLUSTER_COMPONENT_NAME)
-          - name: PBM_AGENT_SIDECAR
-            value: "true"
-          - name: PBM_AGENT_SIDECAR_SLEEP
-            value: "5"
-          - name: SHARDED
-            value: "TRUE"
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
           # syncer uses the env to wait dns ready
@@ -231,34 +223,51 @@ spec:
       - name: mongodb-backup-agent
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: pbm-agent-ha
+            protocol: TCP
+            containerPort: 3361
         command:
-          - /bin/bash
-          - -c
-          - /scripts/backup-agent-setup.sh
+          - /tools/syncer
+          - --
+          - /tools/pbm-agent
         env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mongodb
+          - name: KB_WORKLOAD_TYPE
+            value: pbm-agent
+          - name: SYNCER_IGNORE_HA
+            value: "true"
+          - name: SYNCER_BACKUP_ENABLED
+            value: "true"
+          - name: SYNCER_SERVICE_PORT
+            value: "3361"
           - name: PBM_AGENT_MONGODB_USERNAME
             value: $(MONGODB_ADMIN_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
             value: $(MONGODB_ADMIN_PASSWORD)
-          - name: PBM_MONGODB_REPLICA_SET
-            value: $(CLUSTER_COMPONENT_NAME)
-          - name: PBM_AGENT_SIDECAR
-            value: "true"
-          - name: PBM_AGENT_SIDECAR_SLEEP
-            value: "5"
-          - name: SHARDED
-            value: "TRUE"
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
-          - name: PBM_DATA_MOUNT_POINT
-            value: {{ .Values.dataMountPath }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
-          - name: scripts
-            mountPath: /scripts
           - mountPath: /tools
             name: tools
       - name: exporter
@@ -346,13 +355,6 @@ spec:
           name: root
           optional: false
           password: Required
-    - name: MONGOS_INTERNAL_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          name: internal
-          compDef: {{ include "mongos.compDefName" . }}
-          optional: false
-          host: Required
     - name: MONGOS_INTERNAL_PORT
       valueFrom:
         serviceVarRef:
@@ -362,7 +364,12 @@ spec:
           port:
             name: mongos
     - name: MONGOS_INTERNAL_HOST
-      value: "$(MONGOS_INTERNAL_SVC_NAME).$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+      valueFrom:
+        serviceVarRef:
+          name: internal
+          compDef: {{ include "mongos.compDefName" . }}
+          optional: false
+          host: Required
     - name: MONGODB_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
