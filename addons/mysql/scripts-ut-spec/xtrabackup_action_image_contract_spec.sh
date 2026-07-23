@@ -205,7 +205,7 @@ printf '%s' \"\${lock_per_table_ddl}\""
         for service_version in 5.7.44 8.0.46 8.4.10; do
           case "$service_version" in
             5.7.44) expected="docker.io/apecloud/percona-xtrabackup:2.4" ;;
-            8.0.46) expected="docker.io/apecloud/percona-xtrabackup:8.0" ;;
+            8.0.46) expected="docker.io/apecloud/percona-xtrabackup:8.0@sha256:72ef9231ecc7dc1e323e0e7a45d2a93ff2b6fbdb685d6e28570dea9a26f15d6a" ;;
             8.4.10) expected="docker.io/apecloud/percona-xtrabackup:8.4" ;;
           esac
           actual=$(mapped_xtrabackup_image "$template" "$method" "$service_version") || return 1
@@ -249,7 +249,7 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
   It "resolves the exact MySQL 8.0 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.0.46
     The status should be success
-    The output should equal "docker.io/apecloud/percona-xtrabackup:8.0"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:8.0@sha256:72ef9231ecc7dc1e323e0e7a45d2a93ff2b6fbdb685d6e28570dea9a26f15d6a"
   End
 
   It "resolves the exact MySQL 8.4 full-backup Job image"
@@ -261,7 +261,7 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
   It "uses the exact MySQL 8.0 image for incremental backup Jobs"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup-inc actionset-xtrabackup-inc-v2.yaml 8.0.46
     The status should be success
-    The output should equal "docker.io/apecloud/percona-xtrabackup:8.0"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:8.0@sha256:72ef9231ecc7dc1e323e0e7a45d2a93ff2b6fbdb685d6e28570dea9a26f15d6a"
   End
 
   It "uses the exact MySQL 8.4 image for ORC full-backup Jobs"
@@ -281,7 +281,13 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
       --set image.xtraBackup.registry=registry.example.com \
       --set image.xtraBackup.repository=team/xtrabackup
     The status should be success
-    The output should equal "registry.example.com/team/xtrabackup:8.0"
+    The output should equal "registry.example.com/team/xtrabackup:8.0@sha256:72ef9231ecc7dc1e323e0e7a45d2a93ff2b6fbdb685d6e28570dea9a26f15d6a"
+  End
+
+  It "fails closed when the immutable MySQL 8.0 image digest is empty"
+    When call render_template backuppolicytemplate.yaml --set-string image.xtraBackup.digest80=
+    The status should be failure
+    The error should include "image.xtraBackup.digest80 is required"
   End
 
   It "preserves the legacy-image override in the final MySQL 5.7 Job image"

@@ -25,7 +25,7 @@ spec:
             mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:8.4"
           - serviceVersions:
             - "8.0"
-            mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:8.0"
+            mappedValue: "{{ include "mysql.xtrabackup.image80" . }}"
           - serviceVersions:
             - "5.7"
             mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:2.4"
@@ -58,7 +58,7 @@ spec:
             mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:8.4"
           - serviceVersions:
             - "8.0"
-            mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:8.0"
+            mappedValue: "{{ include "mysql.xtrabackup.image80" . }}"
           - serviceVersions:
             - "5.7"
             mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:2.4"

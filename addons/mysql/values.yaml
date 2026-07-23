@@ -14,6 +14,8 @@ image:
     # if the value of image.xtraBackup.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
     repository: apecloud/percona-xtrabackup
+    # Multi-architecture 8.0 index; both runnable manifests contain XtraBackup 8.0.35-31.1.
+    digest80: sha256:72ef9231ecc7dc1e323e0e7a45d2a93ff2b6fbdb685d6e28570dea9a26f15d6a
     minimalRepository: apecloud/xtrabackup-minimal
   syncer:
     repository: apecloud/syncer

@@ -322,6 +322,10 @@ mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.regi
 {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}
 {{- end -}}
 
+{{- define "mysql.xtrabackup.image80" -}}
+{{ include "mysql.xtrabackup.repository" . }}:8.0@{{ required "image.xtraBackup.digest80 is required" .Values.image.xtraBackup.digest80 }}
+{{- end -}}
+
 {{- define "mysql.xtrabackup.minimalRepository" -}}
 {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.minimalRepository }}
 {{- end -}}
