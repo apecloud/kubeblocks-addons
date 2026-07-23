@@ -67,7 +67,7 @@ spec:
 
   lifecycleActions:
     memberLeave:
-      timeoutSeconds: 30
+      timeoutSeconds: 60
       exec:
         command:
           - /bin/bash

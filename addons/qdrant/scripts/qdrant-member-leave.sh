@@ -105,6 +105,84 @@ qdrant_unique_lines() {
   awk 'NF && !seen[$0]++'
 }
 
+qdrant_initialize_member_leave_deadline() {
+  local action_seconds="${QDRANT_MEMBER_LEAVE_ACTION_SECONDS:-50}"
+
+  case "$action_seconds" in
+    ''|*[!0-9]*|0)
+      echo "ERROR: QDRANT_MEMBER_LEAVE_ACTION_SECONDS must be an integer between 1 and 50" >&2
+      return 1
+      ;;
+  esac
+  if [ "$action_seconds" -gt 50 ]; then
+    echo "ERROR: QDRANT_MEMBER_LEAVE_ACTION_SECONDS must be an integer between 1 and 50" >&2
+    return 1
+  fi
+
+  qdrant_member_leave_deadline=$((SECONDS + action_seconds))
+}
+
+qdrant_initialize_member_leave_drain_deadline() {
+  local drain_seconds="${QDRANT_MEMBER_LEAVE_WAIT_SECONDS:-20}"
+  local finalize_seconds="${QDRANT_MEMBER_LEAVE_FINALIZE_SECONDS:-10}"
+  local latest_drain_deadline
+  local requested_drain_deadline
+
+  case "$drain_seconds" in
+    ''|*[!0-9]*)
+      echo "ERROR: QDRANT_MEMBER_LEAVE_WAIT_SECONDS must be a non-negative integer" >&2
+      return 1
+      ;;
+  esac
+  case "$finalize_seconds" in
+    ''|*[!0-9]*|0)
+      echo "ERROR: QDRANT_MEMBER_LEAVE_FINALIZE_SECONDS must be a positive integer" >&2
+      return 1
+      ;;
+  esac
+
+  latest_drain_deadline=$((qdrant_member_leave_deadline - finalize_seconds))
+  requested_drain_deadline=$((SECONDS + drain_seconds))
+  if [ "$latest_drain_deadline" -le "$SECONDS" ]; then
+    echo "ERROR: memberLeave action has no budget left for shard drain before peer finalization" >&2
+    return 1
+  fi
+  if [ "$requested_drain_deadline" -lt "$latest_drain_deadline" ]; then
+    qdrant_member_leave_phase_deadline="$requested_drain_deadline"
+  else
+    qdrant_member_leave_phase_deadline="$latest_drain_deadline"
+  fi
+}
+
+qdrant_member_leave_curl() {
+  local curl_timeout="${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}"
+  local deadline
+  local remaining_seconds
+
+  case "$curl_timeout" in
+    ''|*[!0-9]*|0)
+      echo "ERROR: QDRANT_MEMBER_LEAVE_CURL_TIMEOUT must be a positive integer" >&2
+      return 1
+      ;;
+  esac
+  if [ -z "${qdrant_member_leave_deadline:-}" ]; then
+    echo "ERROR: memberLeave action deadline is not initialized" >&2
+    return 1
+  fi
+
+  deadline="${qdrant_member_leave_phase_deadline:-$qdrant_member_leave_deadline}"
+  remaining_seconds=$((deadline - SECONDS))
+  if [ "$remaining_seconds" -le 0 ]; then
+    echo "ERROR: memberLeave action budget exhausted before Qdrant API call" >&2
+    return 124
+  fi
+  if [ "$curl_timeout" -gt "$remaining_seconds" ]; then
+    curl_timeout="$remaining_seconds"
+  fi
+
+  qdrant_curl -sf --max-time "$curl_timeout" "$@"
+}
+
 qdrant_control_uris_from_cluster_info() {
   local cluster_info="$1"
   local jq_bin="${JQ:-jq}"
@@ -128,8 +206,7 @@ qdrant_collection_cluster_info_from_uri() {
   local control_endpoint_uri="$1"
   local col_name="$2"
 
-  qdrant_curl -sf --max-time "${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}" \
-    "${control_endpoint_uri}/collections/${col_name}/cluster"
+  qdrant_member_leave_curl "${control_endpoint_uri}/collections/${col_name}/cluster"
 }
 
 qdrant_collection_cluster_info_from_control() {
@@ -141,8 +218,7 @@ qdrant_collection_cluster_info_from_control() {
 qdrant_collection_cluster_info_from_leaving() {
   local col_name="$1"
 
-  qdrant_curl -sf --max-time "${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}" \
-    "${leave_peer_uri}/collections/${col_name}/cluster"
+  qdrant_member_leave_curl "${leave_peer_uri}/collections/${col_name}/cluster"
 }
 
 qdrant_leaving_shards_for_collection() {
@@ -279,8 +355,7 @@ qdrant_submit_shard_move_if_needed() {
   move_payload="$(printf '{"move_shard":{"shard_id":%s,"to_peer_id":%s,"from_peer_id":%s}}' \
     "$shard_id" "$target_peer_id" "$leave_peer_id")"
 
-  if qdrant_curl -sf --max-time "${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}" \
-      -X POST -H "Content-Type: application/json" \
+  if qdrant_member_leave_curl -X POST -H "Content-Type: application/json" \
       -d "$move_payload" \
       "${control_uri}/collections/${col_name}/cluster"; then
     return 0
@@ -305,10 +380,17 @@ qdrant_wait_for_collection_drained() {
   local col_name="$1"
   local deadline
   local remaining
+  local remaining_seconds
+  local sleep_seconds
   local transfers
 
-  deadline="${qdrant_member_leave_deadline:-$((SECONDS + ${QDRANT_MEMBER_LEAVE_WAIT_SECONDS:-20}))}"
+  deadline="${qdrant_member_leave_phase_deadline:-${qdrant_member_leave_deadline:-$((SECONDS + ${QDRANT_MEMBER_LEAVE_WAIT_SECONDS:-20}))}}"
   while true; do
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "ERROR: timed out waiting for ${col_name} to drain from peer ${leave_peer_id} before the next state observation"
+      return 1
+    fi
+
     remaining="$(qdrant_remaining_on_leaving_count_from_all_views "$col_name")" || return 1
     transfers="$(qdrant_transfers_from_leaving_count_from_all_controls "$col_name")" || return 1
 
@@ -322,8 +404,13 @@ qdrant_wait_for_collection_drained() {
       return 1
     fi
 
+    remaining_seconds=$((deadline - SECONDS))
+    sleep_seconds="${QDRANT_MEMBER_LEAVE_POLL_SECONDS:-2}"
+    if [ "$sleep_seconds" -gt "$remaining_seconds" ]; then
+      sleep_seconds="$remaining_seconds"
+    fi
     echo "INFO: waiting for ${col_name} drain from peer ${leave_peer_id}; remaining=${remaining}, transfers=${transfers}"
-    sleep "${QDRANT_MEMBER_LEAVE_POLL_SECONDS:-2}"
+    sleep "$sleep_seconds"
   done
 }
 
@@ -336,7 +423,7 @@ qdrant_move_shards() {
   local shard_id
   local col_cluster_info
 
-  if ! cols="$(qdrant_curl -sf --max-time "${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}" "${control_uri}/collections")"; then
+  if ! cols="$(qdrant_member_leave_curl "${control_uri}/collections")"; then
     echo "ERROR: failed to list collections from ${control_uri}"
     return 1
   fi
@@ -368,20 +455,19 @@ qdrant_move_shards() {
 qdrant_remove_peer() {
   local latest_cluster_info
 
-  latest_cluster_info="$(qdrant_curl -sf --max-time "${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}" "${control_uri}/cluster")" || return 1
+  latest_cluster_info="$(qdrant_member_leave_curl "${control_uri}/cluster")" || return 1
   if ! qdrant_peer_exists "$latest_cluster_info" "$leave_peer_id"; then
     echo "INFO: peer ${leave_peer_id} is already absent from cluster"
     return 0
   fi
 
   echo "INFO: remove peer ${leave_peer_id} from cluster"
-  if qdrant_curl -sf --max-time "${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}" \
-      -XDELETE "${control_uri}/cluster/peer/${leave_peer_id}"; then
+  if qdrant_member_leave_curl -XDELETE "${control_uri}/cluster/peer/${leave_peer_id}"; then
     echo "INFO: peer ${leave_peer_id} removed successfully"
     return 0
   fi
 
-  latest_cluster_info="$(qdrant_curl -sf --max-time "${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}" "${control_uri}/cluster")" || return 1
+  latest_cluster_info="$(qdrant_member_leave_curl "${control_uri}/cluster")" || return 1
   if ! qdrant_peer_exists "$latest_cluster_info" "$leave_peer_id"; then
     echo "INFO: peer ${leave_peer_id} is absent after failed delete response"
     return 0
@@ -428,7 +514,7 @@ qdrant_load_cluster_state() {
   control_host="$(qdrant_bootstrap_service_host)"
   control_uri="${SCHEME}://${control_host}:6333"
 
-  if ! cluster_info="$(qdrant_curl -sf --max-time "${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}" "${control_uri}/cluster")" ||
+  if ! cluster_info="$(qdrant_member_leave_curl "${control_uri}/cluster")" ||
       [ -z "$cluster_info" ]; then
     echo "ERROR: failed to query cluster info from ${control_uri}"
     return 1
@@ -441,7 +527,7 @@ qdrant_load_cluster_state() {
   fi
 
   qdrant_select_control_endpoint "$cluster_info"
-  if ! cluster_info="$(qdrant_curl -sf --max-time "${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}" "${control_uri}/cluster")" ||
+  if ! cluster_info="$(qdrant_member_leave_curl "${control_uri}/cluster")" ||
       [ -z "$cluster_info" ]; then
     echo "ERROR: failed to query cluster info from selected control peer ${control_uri}"
     return 1
@@ -492,8 +578,9 @@ qdrant_load_cluster_state() {
 
 qdrant_leave_member() {
   echo "INFO: scaling in: move local shards and remove peer from cluster"
-  qdrant_member_leave_deadline=$((SECONDS + ${QDRANT_MEMBER_LEAVE_WAIT_SECONDS:-20}))
+  qdrant_initialize_member_leave_drain_deadline
   qdrant_move_shards
+  unset qdrant_member_leave_phase_deadline
   qdrant_remove_peer
 }
 
@@ -509,6 +596,7 @@ qdrant_member_leave_main() {
   fi
   qdrant_load_common_library
   qdrant_configure_client
+  qdrant_initialize_member_leave_deadline
 
   set +o errexit
   qdrant_load_cluster_state

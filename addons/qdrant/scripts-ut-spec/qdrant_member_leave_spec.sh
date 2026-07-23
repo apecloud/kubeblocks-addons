@@ -12,6 +12,7 @@ Describe "Qdrant Member Leave Bash Script Tests"
 
   cleanup() {
     unset QDRANT_MEMBER_LEAVE_UNIT_TEST KB_LEAVE_MEMBER_POD_NAME
+    unset qdrant_member_leave_deadline qdrant_member_leave_phase_deadline
   }
   After "cleanup"
 
@@ -55,6 +56,82 @@ Describe "Qdrant Member Leave Bash Script Tests"
     End
   End
 
+  Describe "memberLeave action-wide deadline"
+    cleanup_deadline() {
+      unset QDRANT_MEMBER_LEAVE_ACTION_SECONDS QDRANT_MEMBER_LEAVE_CURL_TIMEOUT
+      unset QDRANT_MEMBER_LEAVE_WAIT_SECONDS QDRANT_MEMBER_LEAVE_FINALIZE_SECONDS
+      unset qdrant_member_leave_deadline qdrant_member_leave_phase_deadline
+    }
+    After "cleanup_deadline"
+
+    It "starts one shared deadline before preflight work"
+      SECONDS=7
+      QDRANT_MEMBER_LEAVE_ACTION_SECONDS=50
+      When call qdrant_initialize_member_leave_deadline
+      The status should be success
+      The variable qdrant_member_leave_deadline should eq 57
+    End
+
+    It "rejects a script budget that consumes the kbagent safety buffer"
+      QDRANT_MEMBER_LEAVE_ACTION_SECONDS=51
+      When call qdrant_initialize_member_leave_deadline
+      The status should be failure
+      The stderr should include "between 1 and 50"
+    End
+
+    It "reserves finalization time inside the shared action budget"
+      SECONDS=10
+      qdrant_member_leave_deadline=60
+      QDRANT_MEMBER_LEAVE_WAIT_SECONDS=100
+      QDRANT_MEMBER_LEAVE_FINALIZE_SECONDS=10
+
+      When call qdrant_initialize_member_leave_drain_deadline
+      The status should be success
+      The variable qdrant_member_leave_phase_deadline should eq 50
+    End
+
+    It "clips each curl call to the remaining action budget"
+      SECONDS=10
+      qdrant_member_leave_deadline=13
+      QDRANT_MEMBER_LEAVE_CURL_TIMEOUT=5
+      qdrant_curl() {
+        printf '%s\n' "$*"
+      }
+
+      When call qdrant_member_leave_curl "http://control/cluster"
+      The status should be success
+      The output should eq "-sf --max-time 3 http://control/cluster"
+    End
+
+    It "fails before a curl when the shared action budget is exhausted"
+      SECONDS=10
+      qdrant_member_leave_deadline=10
+      qdrant_curl() {
+        echo "unexpected qdrant_curl call" >&2
+        return 99
+      }
+
+      When call qdrant_member_leave_curl "http://control/cluster"
+      The status should be failure
+      The stderr should include "memberLeave action budget exhausted"
+      The stderr should not include "unexpected qdrant_curl call"
+    End
+
+    It "does not reset the deadline after preflight"
+      qdrant_member_leave_deadline=12345
+      qdrant_move_shards() {
+        echo "deadline=${qdrant_member_leave_deadline}"
+      }
+      qdrant_remove_peer() {
+        return 0
+      }
+
+      When call qdrant_leave_member
+      The status should be success
+      The output should include "deadline=12345"
+    End
+  End
+
   Describe "memberLeave replay safety"
     setup_replay_state() {
       export JQ="${JQ:-jq}"
@@ -62,6 +139,7 @@ Describe "Qdrant Member Leave Bash Script Tests"
       leave_peer_uri="http://leaving"
       leave_peer_id="1"
       target_peer_id="2"
+      qdrant_member_leave_deadline=$((SECONDS + 50))
     }
     Before "setup_replay_state"
 
@@ -151,6 +229,7 @@ Describe "Qdrant Member Leave Bash Script Tests"
 
     It "returns failure when shards are not drained within the bounded action window"
       export QDRANT_MEMBER_LEAVE_WAIT_SECONDS=0
+      qdrant_member_leave_deadline="$SECONDS"
       qdrant_curl() {
         last_arg="${*: -1}"
         case "$last_arg" in
