@@ -34,6 +34,9 @@ spec:
             - serviceVersions:
               - "4.4"
               mappedValue: "4.4.29-multi"
+            - serviceVersions:
+              - "4.0"
+              mappedValue: "4.0.28"
     - name: datafile
       snapshotVolumes: false
       actionSetName: mongodb-physical-br
