@@ -41,7 +41,7 @@ kind: ActionSet
 metadata:
   name: mongodb-volume-snapshot
   labels:
-    clusterdefinition.kubeblocks.io/name: apecloud-mysql
+    clusterdefinition.kubeblocks.io/name: mongodb
 spec:
   backupType: Full
   env:
