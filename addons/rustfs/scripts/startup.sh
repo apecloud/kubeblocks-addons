@@ -61,7 +61,8 @@ read_replicas_history() {
   echo "$content"
 }
 
-# Mirrors RustFS 1.0.0-beta.8 parity selection (init.rs).
+# Mirrors RustFS 1.0.0-beta.8 (64c0ede) parity selection
+# in crates/ecstore/src/config/storageclass.rs.
 # Re-verify on: engine version upgrade, #4801 merge, parity algorithm change.
 default_parity_count() {
   local drives=$1
@@ -74,10 +75,120 @@ default_parity_count() {
   esac
 }
 
-# Mirrors RustFS 1.0.0-beta.8 common_set_drive_count() (disks_layout.rs).
+parse_nonnegative_decimal() {
+  local value=$1
+  local name=$2
+  local original=$value
+  case "$value" in
+    +*) value=${value#+} ;;
+  esac
+  case "$value" in
+    ''|*[!0-9]*)
+      echo "FATAL: $name must be a non-negative decimal integer, got '$original'." >&2
+      return 1
+      ;;
+  esac
+
+  while [ "${value#0}" != "$value" ]; do
+    value=${value#0}
+  done
+  value=${value:-0}
+
+  if [ "${#value}" -gt 20 ]; then
+    echo "FATAL: $name is outside the supported 64-bit unsigned integer range, got '$original'." >&2
+    return 1
+  fi
+  if [ "${#value}" -eq 20 ]; then
+    local first_digit
+    local remaining_digits
+    first_digit=${value%"${value#?}"}
+    remaining_digits=${value#?}
+    if [ "$first_digit" != "1" ] || [ "$remaining_digits" -gt 8446744073709551615 ]; then
+      echo "FATAL: $name is outside the supported 64-bit unsigned integer range, got '$original'." >&2
+      return 1
+    fi
+  fi
+  echo "$value"
+}
+
+configured_set_drive_count() {
+  if [ "${RUSTFS_ERASURE_SET_DRIVE_COUNT+x}" != "x" ]; then
+    # RustFS uses 0 as the explicit automatic-layout sentinel when unset.
+    echo 0
+    return 0
+  fi
+  parse_nonnegative_decimal "$RUSTFS_ERASURE_SET_DRIVE_COUNT" "RUSTFS_ERASURE_SET_DRIVE_COUNT"
+}
+
+# Mirrors lookup_config() and parse_storage_class() in the same beta.8
+# storageclass.rs: empty selects the default; non-empty must be EC:<parity>.
+standard_parity_count() {
+  local set_size=$1
+  local storage_class
+  storage_class=${RUSTFS_STORAGE_CLASS_STANDARD-}
+  if [ -z "$storage_class" ]; then
+    default_parity_count "$set_size"
+    return 0
+  fi
+
+  case "$storage_class" in
+    EC:*) ;;
+    *)
+      echo "FATAL: RUSTFS_STORAGE_CLASS_STANDARD has unsupported format '$storage_class'; expected EC:<parity>." >&2
+      return 1
+      ;;
+  esac
+
+  local parity
+  parity=$(parse_nonnegative_decimal "${storage_class#EC:}" "RUSTFS_STORAGE_CLASS_STANDARD parity") || return 1
+  local max_parity
+  max_parity=$((set_size / 2))
+  case "$parity" in
+    0|1|2|3|4|5|6|7|8)
+      if [ "$parity" -gt "$max_parity" ]; then
+        echo "FATAL: RUSTFS_STORAGE_CLASS_STANDARD parity $parity should be less than or equal to $max_parity for drives_per_set=$set_size." >&2
+        return 1
+      fi
+      ;;
+    *)
+      echo "FATAL: RUSTFS_STORAGE_CLASS_STANDARD parity $parity should be less than or equal to $max_parity for drives_per_set=$set_size." >&2
+      return 1
+      ;;
+  esac
+  echo "$parity"
+}
+
+# Mirrors RustFS 1.0.0-beta.8 (64c0ede) DisksLayout::new() and
+# common_set_drive_count() in crates/ecstore/src/disks_layout.rs.
 # Re-verify on: engine version upgrade, #4801 merge, SET_SIZES range change.
 drives_per_set() {
   local pool_size=$1
+  local configured
+  configured=$(configured_set_drive_count) || return 1
+
+  if [ "$pool_size" -eq 1 ]; then
+    echo 1
+    return 0
+  fi
+
+  case "$configured" in
+    0) ;;
+    2|3|4|5|6|7|8|9|10|11|12|13|14|15|16)
+      if [ $((pool_size % configured)) -ne 0 ]; then
+        echo "FATAL: pool has $pool_size drives but RUSTFS_ERASURE_SET_DRIVE_COUNT=$configured is not a supported divisor in [2,16]." >&2
+        echo 0
+        return 1
+      fi
+      echo "$configured"
+      return 0
+      ;;
+    *)
+      echo "FATAL: pool has $pool_size drives but RUSTFS_ERASURE_SET_DRIVE_COUNT=$configured is not a supported divisor in [2,16]." >&2
+      echo 0
+      return 1
+      ;;
+  esac
+
   if [ "$pool_size" -le 16 ]; then
     echo "$pool_size"
     return 0
@@ -110,7 +221,10 @@ validate_pool_sizes() {
       return 1
     }
     if [ $pool_index -eq 0 ]; then
-      first_pool_parity=$(default_parity_count "$set_size")
+      first_pool_parity=$(standard_parity_count "$set_size") || {
+        IFS="$old_ifs"
+        return 1
+      }
     fi
     if [ "$set_size" -le "$first_pool_parity" ]; then
       echo "FATAL: erasure pool $pool_index has drives_per_set=$set_size but inherited parity is $first_pool_parity (from pool 0)." >&2

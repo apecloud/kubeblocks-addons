@@ -9,6 +9,22 @@ fi
 Describe "RustFS startup bash script tests"
   Include ../scripts/startup.sh
 
+  validate_with_erasure_set_drive_count() {
+    export RUSTFS_ERASURE_SET_DRIVE_COUNT="$1"
+    validate_pool_sizes "$2"
+    status=$?
+    unset RUSTFS_ERASURE_SET_DRIVE_COUNT
+    return "$status"
+  }
+
+  validate_with_standard_storage_class() {
+    export RUSTFS_STORAGE_CLASS_STANDARD="$1"
+    validate_pool_sizes "$2"
+    status=$?
+    unset RUSTFS_STORAGE_CLASS_STANDARD
+    return "$status"
+  }
+
   Describe "default_parity_count()"
     It "returns 0 for 1 drive"
       When call default_parity_count 1
@@ -152,6 +168,96 @@ Describe "RustFS startup bash script tests"
     It "passes for 16,32 (pool0 dps=16 parity=4, pool1=16 dps=16, data=12)"
       When call validate_pool_sizes "16,32"
       The status should be success
+    End
+
+    It "uses the configured erasure set drive count for every pool"
+      When call validate_with_erasure_set_drive_count "3" "12,15"
+      The status should be success
+    End
+
+    It "accepts the leading plus syntax accepted by Rust usize parsing"
+      When call validate_with_erasure_set_drive_count "+3" "12,15"
+      The status should be success
+    End
+
+    It "fails the same history without the configured erasure set drive count"
+      When call validate_pool_sizes "12,15"
+      The status should be failure
+      The error should include "TooFewDataShards"
+    End
+
+    It "rejects an erasure set drive count that cannot divide a later pool"
+      When call validate_with_erasure_set_drive_count "4" "8,10"
+      The status should be failure
+      The error should include "RUSTFS_ERASURE_SET_DRIVE_COUNT=4"
+    End
+
+    It "accepts a numeric erasure set override in single-node mode where RustFS ignores the layout override"
+      When call validate_with_erasure_set_drive_count "4" "1"
+      The status should be success
+    End
+
+    It "rejects a set drive count outside the 64-bit Rust usize range before the single-node bypass"
+      When call validate_with_erasure_set_drive_count "18446744073709551616" "1"
+      The status should be failure
+      The error should include "outside the supported 64-bit unsigned integer range"
+    End
+
+    It "rejects an empty erasure set drive count before single-node startup"
+      When call validate_with_erasure_set_drive_count "" "1"
+      The status should be failure
+      The error should include "must be a non-negative decimal integer"
+    End
+
+    It "rejects an unsupported erasure set drive count"
+      When call validate_with_erasure_set_drive_count "1" "4"
+      The status should be failure
+      The error should include "supported divisor in [2,16]"
+    End
+
+    It "rejects an oversized erasure set drive count before shell arithmetic"
+      When call validate_with_erasure_set_drive_count "18446744073709551615" "4"
+      The status should be failure
+      The error should include "supported divisor in [2,16]"
+    End
+
+    It "uses configured STANDARD parity instead of the default parity"
+      When call validate_with_standard_storage_class "EC:1" "4,6"
+      The status should be success
+    End
+
+    It "accepts STANDARD parity with the Rust usize leading plus syntax"
+      When call validate_with_standard_storage_class "EC:+1" "4,6"
+      The status should be success
+    End
+
+    It "accepts STANDARD parity with leading zeroes"
+      When call validate_with_standard_storage_class "EC:01" "4,6"
+      The status should be success
+    End
+
+    It "treats an empty STANDARD value as default parity"
+      When call validate_with_standard_storage_class "" "4,6"
+      The status should be failure
+      The error should include "TooFewDataShards"
+    End
+
+    It "rejects malformed STANDARD storage class values"
+      When call validate_with_standard_storage_class "RS:1" "4,6"
+      The status should be failure
+      The error should include "RUSTFS_STORAGE_CLASS_STANDARD"
+    End
+
+    It "rejects STANDARD parity larger than half of the first set"
+      When call validate_with_standard_storage_class "EC:3" "4,8"
+      The status should be failure
+      The error should include "less than or equal to 2"
+    End
+
+    It "rejects STANDARD parity outside the 64-bit Rust usize range before shell arithmetic"
+      When call validate_with_standard_storage_class "EC:18446744073709551616" "4,8"
+      The status should be failure
+      The error should include "outside the supported 64-bit unsigned integer range"
     End
   End
 End
