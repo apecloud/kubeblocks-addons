@@ -120,7 +120,11 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 Define mongodb component definition name prefix
 */}}
 {{- define "mongodb.componentDefNamePrefix" -}}
-{{- printf "mongodb-" -}}
+{{- if eq (len .Values.cmpdVersionPrefix) 0 -}}
+mongodb-
+{{- else -}}
+{{ .Values.cmpdVersionPrefix }}-
+{{- end -}}
 {{- end -}}
 
 {{/*
