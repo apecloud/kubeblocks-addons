@@ -8,7 +8,7 @@ metadata:
   annotations:
     {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
-  componentDef: {{ printf "^(%s|%s|%s)$" (include "mongodb.compDefName" .) (include "mongodbShard.compDefName" .) (include "cfgServer.compDefName" .) | quote }}
+  componentDef: {{ printf "^(%s|%s|%s)$" (include "mongodb.compDefName" . | regexQuoteMeta) (include "mongodbShard.compDefName" . | regexQuoteMeta) (include "cfgServer.compDefName" . | regexQuoteMeta) | quote }}
   templateName: mongodb-config
   fileName: mongodb.conf
   fileFormatConfig:
@@ -37,7 +37,7 @@ metadata:
   annotations:
     {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
-  componentDef: {{ printf "^%s$" (include "mongos.compDefName" .) | quote }}
+  componentDef: {{ printf "^%s$" (include "mongos.compDefName" . | regexQuoteMeta) | quote }}
   templateName: mongodb-config
   fileName: mongos.conf
   fileFormatConfig:
