@@ -59,7 +59,7 @@ case "$1" in
           } ;;
       esac
     fi
-    echo '2026-07-03 00:00:00 UTC a/'
+    echo '2026-07-03 00:00:00 UTC aaa/'
     exit 0 ;;
   find)
     if [ "${FAKE_MC_FIND_FAIL:-}" = "1" ]; then
@@ -68,15 +68,15 @@ case "$1" in
     fi
     target="$2"
     case "${target}" in
-      rustfs*) echo 'rustfs/a/hello.txt' ;;
+      rustfs*) echo 'rustfs/aaa/hello.txt' ;;
       */rustfs-backup/objects)
         echo "${target}"
-        echo "${target}/a"
-        echo "${target}/a/hello.txt" ;;
+        echo "${target}/aaa"
+        echo "${target}/aaa/hello.txt" ;;
       */rustfs-restore/objects)
         echo "${target}"
-        echo "${target}/a"
-        echo "${target}/a/hello.txt" ;;
+        echo "${target}/aaa"
+        echo "${target}/aaa/hello.txt" ;;
     esac
     exit 0 ;;
   mirror)
@@ -84,8 +84,8 @@ case "$1" in
     dst="$4"
     case "${src}" in
       rustfs/*|rustfs)
-        mkdir -p "${dst}/a"
-        printf hello > "${dst}/a/hello.txt" ;;
+        mkdir -p "${dst}/aaa"
+        printf hello > "${dst}/aaa/hello.txt" ;;
     esac
     exit 0 ;;
   mb)
@@ -183,6 +183,39 @@ export MC_CONFIG_DIR="${TMP_ROOT}/mc-config"
 export RUSTFS_TLS_CA_FILE="${TMP_ROOT}/tls/ca.crt"
 mkdir -p "${TMPDIR}" "$(dirname "${RUSTFS_TLS_CA_FILE}")"
 printf '%s\n' 'rustfs-test-ca' > "${RUSTFS_TLS_CA_FILE}"
+
+assert_restore_rejects_manifest() {
+  case_name="$1"
+  manifest_file="$2"
+  expected_error="$3"
+  case_mc_log="${TMP_ROOT}/mc-${case_name}.log"
+  case_stdout="${TMP_ROOT}/${case_name}.stdout"
+  case_stderr="${TMP_ROOT}/${case_name}.stderr"
+
+  cp "${manifest_file}" "${FAKE_STORE}/rustfs-test/manifest.txt"
+  : > "${case_mc_log}"
+  if (
+    export FAKE_MC_LOG="${case_mc_log}"
+    # shellcheck disable=SC1091
+    . "${ROOT_DIR}/dataprotection/common.sh"
+    # shellcheck disable=SC1091
+    . "${ROOT_DIR}/dataprotection/restore.sh"
+  ) > "${case_stdout}" 2> "${case_stderr}"; then
+    echo "restore accepted invalid manifest case ${case_name}" >&2
+    exit 1
+  fi
+  grep -Fq "${expected_error}" "${case_stderr}" || {
+    echo "restore case ${case_name} did not report expected error: ${expected_error}" >&2
+    cat "${case_stderr}" >&2
+    exit 1
+  }
+  if grep -Eq '^mc .* (mb|mirror)( |$)' "${case_mc_log}"; then
+    echo "restore case ${case_name} mutated target buckets or objects" >&2
+    cat "${case_mc_log}" >&2
+    exit 1
+  fi
+  cat "${case_stderr}" >&2
+}
 
 if (
   export RUSTFS_SCHEME=ftp
@@ -309,7 +342,7 @@ fi
   echo "missing manifest.txt artifact" >&2
   exit 1
 }
-[ -f "${FAKE_STORE}/rustfs-test/objects/a/hello.txt" ] || {
+[ -f "${FAKE_STORE}/rustfs-test/objects/aaa/hello.txt" ] || {
   echo "missing object artifact" >&2
   exit 1
 }
@@ -334,11 +367,11 @@ grep -q '^objectCount=1$' "${FAKE_STORE}/rustfs-test/manifest.txt" || {
   echo "manifest object count missing" >&2
   exit 1
 }
-grep -q '^bucket:a$' "${FAKE_STORE}/rustfs-test/manifest.txt" || {
+grep -q '^bucket:aaa$' "${FAKE_STORE}/rustfs-test/manifest.txt" || {
   echo "manifest bucket list missing" >&2
   exit 1
 }
-grep -q '^object:a/hello.txt$' "${FAKE_STORE}/rustfs-test/manifest.txt" || {
+grep -q '^object:aaa/hello.txt$' "${FAKE_STORE}/rustfs-test/manifest.txt" || {
   echo "manifest object list missing" >&2
   exit 1
 }
@@ -351,7 +384,7 @@ grep -q 'mirror --overwrite rustfs/' "${FAKE_MC_LOG}" || {
   echo "backup mirror command was not called" >&2
   exit 1
 }
-grep -q 'mb --ignore-existing rustfs/a' "${FAKE_MC_LOG}" || {
+grep -q 'mb --ignore-existing rustfs/aaa' "${FAKE_MC_LOG}" || {
   echo "restore bucket creation command was not called" >&2
   exit 1
 }
@@ -373,13 +406,82 @@ fi
 }
 
 cp "${FAKE_STORE}/rustfs-test/manifest.txt" "${TMP_ROOT}/manifest.good"
-cp "${FAKE_STORE}/rustfs-test/objects/a/hello.txt" "${TMP_ROOT}/hello.good"
+cp "${FAKE_STORE}/rustfs-test/objects/aaa/hello.txt" "${TMP_ROOT}/hello.good"
+mkdir -p "${FAKE_STORE}/rustfs-test/objects/b"
+printf hello > "${FAKE_STORE}/rustfs-test/objects/b/hello.txt"
+
+cat > "${TMP_ROOT}/manifest-empty-bucket" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=0
+bucket:
+MANIFEST
+assert_restore_rejects_manifest empty-bucket "${TMP_ROOT}/manifest-empty-bucket" \
+  "backup manifest contains an empty bucket name"
+
+cat > "${TMP_ROOT}/manifest-duplicate-bucket" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=2
+objectCount=0
+bucket:aaa
+bucket:aaa
+MANIFEST
+assert_restore_rejects_manifest duplicate-bucket "${TMP_ROOT}/manifest-duplicate-bucket" \
+  "backup manifest contains duplicate bucket aaa"
+
+cat > "${TMP_ROOT}/manifest-duplicate-object" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=2
+bucket:aaa
+object:aaa/hello.txt
+object:aaa/hello.txt
+MANIFEST
+mkdir -p "${FAKE_STORE}/rustfs-test/objects/aaa"
+printf hello > "${FAKE_STORE}/rustfs-test/objects/aaa/hello.txt"
+assert_restore_rejects_manifest duplicate-object "${TMP_ROOT}/manifest-duplicate-object" \
+  "backup manifest contains duplicate object aaa/hello.txt"
+
+cat > "${TMP_ROOT}/manifest-unsafe-bucket" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=0
+bucket:../escape
+MANIFEST
+assert_restore_rejects_manifest unsafe-bucket "${TMP_ROOT}/manifest-unsafe-bucket" \
+  "backup manifest contains invalid bucket name ../escape"
+
+cat > "${TMP_ROOT}/manifest-object-bucket-mismatch" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=1
+bucket:aaa
+object:b/hello.txt
+MANIFEST
+assert_restore_rejects_manifest object-bucket-mismatch "${TMP_ROOT}/manifest-object-bucket-mismatch" \
+  "backup object b/hello.txt does not belong to a declared bucket"
+
+cat > "${TMP_ROOT}/manifest-duplicate-scalar" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=0
+objectCount=0
+MANIFEST
+assert_restore_rejects_manifest duplicate-scalar "${TMP_ROOT}/manifest-duplicate-scalar" \
+  "backup manifest must contain formatVersion exactly once"
+
 cat > "${FAKE_STORE}/rustfs-test/manifest.txt" <<'MANIFEST'
 formatVersion=rustfs-s3-full.v1
 method=s3-full
 bucketCount=1
 objectCount=1
-bucket:a
+bucket:aaa
 object:../escape
 MANIFEST
 printf escape > "${FAKE_STORE}/rustfs-test/escape"
@@ -397,10 +499,11 @@ fi
   exit 1
 }
 cp "${TMP_ROOT}/manifest.good" "${FAKE_STORE}/rustfs-test/manifest.txt"
-cp "${TMP_ROOT}/hello.good" "${FAKE_STORE}/rustfs-test/objects/a/hello.txt"
-rm -f "${FAKE_STORE}/rustfs-test/escape"
+cp "${TMP_ROOT}/hello.good" "${FAKE_STORE}/rustfs-test/objects/aaa/hello.txt"
+rm -f "${FAKE_STORE}/rustfs-test/escape" "${FAKE_STORE}/rustfs-test/objects/b/hello.txt" \
+  "${FAKE_STORE}/rustfs-test/objects/aaa/hello.txt"
 
-rm -f "${FAKE_STORE}/rustfs-test/objects/a/hello.txt"
+rm -f "${FAKE_STORE}/rustfs-test/objects/aaa/hello.txt"
 if (
   # shellcheck disable=SC1091
   . "${ROOT_DIR}/dataprotection/common.sh"

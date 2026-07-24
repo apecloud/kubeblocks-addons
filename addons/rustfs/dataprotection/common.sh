@@ -123,6 +123,36 @@ rustfs_validate_relative_artifact_path() {
   esac
 }
 
+rustfs_file_contains_exact_line() {
+  rustfs_expected_line="$1"
+  rustfs_lines_file="$2"
+  while IFS= read -r rustfs_actual_line; do
+    [ "${rustfs_actual_line}" = "${rustfs_expected_line}" ] && return 0
+  done < "${rustfs_lines_file}"
+  return 1
+}
+
+rustfs_validate_bucket_name() {
+  rustfs_bucket_name="$1"
+  rustfs_bucket_length="${#rustfs_bucket_name}"
+  [ "${rustfs_bucket_length}" -ge 3 ] && [ "${rustfs_bucket_length}" -le 63 ] || \
+    rustfs_fail "backup manifest contains invalid bucket name ${rustfs_bucket_name:-<empty>}"
+  case "${rustfs_bucket_name}" in
+    *[!a-z0-9.-]*|.*|-*|*.|*-|*..*|*.-*|*-.)
+      rustfs_fail "backup manifest contains invalid bucket name ${rustfs_bucket_name}" ;;
+  esac
+}
+
+rustfs_validate_nonnegative_integer() {
+  rustfs_integer_name="$1"
+  rustfs_integer_value="$2"
+  [ -n "${rustfs_integer_value}" ] || \
+    rustfs_fail "backup manifest ${rustfs_integer_name} is empty"
+  case "${rustfs_integer_value}" in
+    *[!0-9]*) rustfs_fail "backup manifest ${rustfs_integer_name} is not a non-negative integer: ${rustfs_integer_value}" ;;
+  esac
+}
+
 rustfs_save_backup_size() {
   : "${DP_BACKUP_INFO_FILE:?missing DP_BACKUP_INFO_FILE}"
   total_size=""
