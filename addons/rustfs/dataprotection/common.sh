@@ -138,9 +138,12 @@ rustfs_validate_bucket_name() {
   [ "${rustfs_bucket_length}" -ge 3 ] && [ "${rustfs_bucket_length}" -le 63 ] || \
     rustfs_fail "backup manifest contains invalid bucket name ${rustfs_bucket_name:-<empty>}"
   case "${rustfs_bucket_name}" in
-    *[!a-z0-9.-]*|.*|-*|*.|*-|*..*|*.-*|*-.)
+    rustfs|*[!a-z0-9.-]*|.*|-*|*.|*-|*..*|*.-*|*-.*)
       rustfs_fail "backup manifest contains invalid bucket name ${rustfs_bucket_name}" ;;
   esac
+  if printf '%s\n' "${rustfs_bucket_name}" | grep -Eq '^([0-9]+\.){3}[0-9]+$'; then
+    rustfs_fail "backup manifest contains invalid bucket name ${rustfs_bucket_name}"
+  fi
 }
 
 rustfs_validate_nonnegative_integer() {
