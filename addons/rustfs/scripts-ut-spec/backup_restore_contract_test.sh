@@ -62,6 +62,10 @@ case "$1" in
     echo '2026-07-03 00:00:00 UTC a/'
     exit 0 ;;
   find)
+    if [ "${FAKE_MC_FIND_FAIL:-}" = "1" ]; then
+      echo "fake mc find failed" >&2
+      exit 1
+    fi
     target="$2"
     case "${target}" in
       rustfs*) echo 'rustfs/a/hello.txt' ;;
@@ -108,6 +112,14 @@ case "${cmd}" in
     mkdir -p "$(dirname "${dest_path}")"
     cp "${src}" "${dest_path}" ;;
   stat)
+    if [ "${FAKE_DATASAFED_STAT_FAIL:-}" = "1" ]; then
+      echo "fake datasafed stat failed" >&2
+      exit 1
+    fi
+    if [ "${FAKE_DATASAFED_STAT_MISSING_TOTAL:-}" = "1" ]; then
+      echo "ObjectCount: 1"
+      exit 0
+    fi
     echo "TotalSize: 11" ;;
   list)
     if [ "${1:-}" = "-f" ]; then
@@ -171,6 +183,52 @@ export MC_CONFIG_DIR="${TMP_ROOT}/mc-config"
 export RUSTFS_TLS_CA_FILE="${TMP_ROOT}/tls/ca.crt"
 mkdir -p "${TMPDIR}" "$(dirname "${RUSTFS_TLS_CA_FILE}")"
 printf '%s\n' 'rustfs-test-ca' > "${RUSTFS_TLS_CA_FILE}"
+
+if (
+  export RUSTFS_SCHEME=ftp
+  export MC_CONFIG_DIR="${TMP_ROOT}/mc-invalid-scheme"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/common.sh"
+  rustfs_prepare_mc
+); then
+  echo "RustFS alias accepted an unsupported endpoint scheme" >&2
+  exit 1
+fi
+
+if (
+  export FAKE_DATASAFED_STAT_FAIL=1
+  export DP_BACKUP_INFO_FILE="${TMP_ROOT}/backup-info-stat-fail.json"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/common.sh"
+  rustfs_save_backup_size
+); then
+  echo "backup size capture succeeded after datasafed stat failed" >&2
+  exit 1
+fi
+
+if (
+  export FAKE_DATASAFED_STAT_MISSING_TOTAL=1
+  export DP_BACKUP_INFO_FILE="${TMP_ROOT}/backup-info-missing-total.json"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/common.sh"
+  rustfs_save_backup_size
+); then
+  echo "backup size capture succeeded without TotalSize" >&2
+  exit 1
+fi
+
+if (
+  export FAKE_MC_FIND_FAIL=1
+  export DP_BACKUP_NAME=rustfs-find-fail
+  export DP_BACKUP_INFO_FILE="${TMP_ROOT}/backup-info-find-fail.json"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/common.sh"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/backup.sh"
+); then
+  echo "backup succeeded after mc find failed" >&2
+  exit 1
+fi
 
 (
   export RUSTFS_TLS_CA_FILE="${TMP_ROOT}/tls/http-does-not-mount-ca.crt"
@@ -313,6 +371,34 @@ fi
   echo "RustFS CA was not installed into the mc trust directory" >&2
   exit 1
 }
+
+cp "${FAKE_STORE}/rustfs-test/manifest.txt" "${TMP_ROOT}/manifest.good"
+cp "${FAKE_STORE}/rustfs-test/objects/a/hello.txt" "${TMP_ROOT}/hello.good"
+cat > "${FAKE_STORE}/rustfs-test/manifest.txt" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=1
+bucket:a
+object:../escape
+MANIFEST
+printf escape > "${FAKE_STORE}/rustfs-test/escape"
+if (
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/common.sh"
+  # shellcheck disable=SC1091
+  . "${ROOT_DIR}/dataprotection/restore.sh"
+); then
+  echo "restore accepted a path-traversing object artifact" >&2
+  exit 1
+fi
+[ ! -e "${TMPDIR}/rustfs-restore/escape" ] || {
+  echo "restore wrote a path-traversing object outside the objects directory" >&2
+  exit 1
+}
+cp "${TMP_ROOT}/manifest.good" "${FAKE_STORE}/rustfs-test/manifest.txt"
+cp "${TMP_ROOT}/hello.good" "${FAKE_STORE}/rustfs-test/objects/a/hello.txt"
+rm -f "${FAKE_STORE}/rustfs-test/escape"
 
 rm -f "${FAKE_STORE}/rustfs-test/objects/a/hello.txt"
 if (

@@ -37,7 +37,7 @@ while IFS= read -r line; do
   printf '%s\n' "${bucket_name}" >> "${work_dir}/buckets.txt"
 done < "${work_dir}/buckets.raw"
 
-rustfs_mc find "${RUSTFS_ALIAS}/" --name "*" > "${work_dir}/objects.txt" || true
+rustfs_mc find "${RUSTFS_ALIAS}/" --name "*" > "${work_dir}/objects.txt"
 
 if [ -s "${work_dir}/buckets.txt" ]; then
   echo "INFO: Mirroring RustFS buckets to local staging directory"
@@ -52,11 +52,12 @@ datasafed push "${work_dir}/objects.txt" "${backup_prefix}/objects.txt"
 
 object_count=0
 : > "${work_dir}/expected-objects.txt"
-rustfs_mc find "${objects_dir}" --name "*" > "${work_dir}/local-files.txt" || true
+rustfs_mc find "${objects_dir}" --name "*" > "${work_dir}/local-files.txt"
 while IFS= read -r local_file; do
   [ -f "${local_file}" ] || continue
   relative_path="${local_file#"${objects_dir}"/}"
   [ -n "${relative_path}" ] || continue
+  rustfs_validate_relative_artifact_path "${relative_path}"
   object_count=$((object_count + 1))
   printf '%s\n' "${relative_path}" >> "${work_dir}/expected-objects.txt"
   datasafed push "${local_file}" "${backup_prefix}/objects/${relative_path}"

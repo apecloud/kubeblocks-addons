@@ -30,9 +30,11 @@ rustfs_prepare_mc() {
 
   mkdir -p "${MC_CONFIG_DIR}"
   if [ -n "${RUSTFS_SCHEME:-}" ]; then
-    if [ "${RUSTFS_SCHEME}" = "https" ]; then
-      rustfs_prepare_mc_trust
-    fi
+    case "${RUSTFS_SCHEME}" in
+      http) ;;
+      https) rustfs_prepare_mc_trust ;;
+      *) rustfs_fail "unsupported RUSTFS_SCHEME=${RUSTFS_SCHEME}; expected http or https" ;;
+    esac
     rustfs_configure_mc_alias "${RUSTFS_SCHEME}" "${rustfs_access_key}" "${rustfs_secret_key}" || \
       rustfs_fail "failed to configure RustFS S3 alias with RUSTFS_SCHEME=${RUSTFS_SCHEME}"
     return
@@ -103,15 +105,40 @@ rustfs_count_lines() {
   printf '%s\n' "${rustfs_count}"
 }
 
+rustfs_require_datasafed_object() {
+  rustfs_object="$1"
+  rustfs_list_file="${TMPDIR:-/tmp}/rustfs-datasafed-list.txt"
+  if ! datasafed list "${rustfs_object}" > "${rustfs_list_file}" 2> "${rustfs_list_file}.stderr"; then
+    rustfs_fail "failed to inspect backup artifact ${rustfs_object}"
+  fi
+  [ "$(cat "${rustfs_list_file}")" = "${rustfs_object}" ] || \
+    rustfs_fail "backup artifact ${rustfs_object} not found"
+}
+
+rustfs_validate_relative_artifact_path() {
+  rustfs_path="$1"
+  case "${rustfs_path}" in
+    ""|.|..|/*|../*|*/../*|*/..)
+      rustfs_fail "unsafe backup artifact path ${rustfs_path:-<empty>}" ;;
+  esac
+}
+
 rustfs_save_backup_size() {
   : "${DP_BACKUP_INFO_FILE:?missing DP_BACKUP_INFO_FILE}"
-  total_size=0
-  datasafed stat / 2>/dev/null > "${TMPDIR:-/tmp}/rustfs-datasafed-stat.txt" || true
+  total_size=""
+  stat_file="${TMPDIR:-/tmp}/rustfs-datasafed-stat.txt"
+  if ! datasafed stat / > "${stat_file}" 2> "${stat_file}.stderr"; then
+    rustfs_fail "failed to read backup size from datasafed"
+  fi
   while IFS=' ' read -r key value _; do
     if [ "${key}" = "TotalSize:" ] && [ -n "${value}" ]; then
       total_size="${value}"
       break
     fi
-  done < "${TMPDIR:-/tmp}/rustfs-datasafed-stat.txt"
+  done < "${stat_file}"
+  [ -n "${total_size}" ] || rustfs_fail "datasafed stat did not report TotalSize"
+  case "${total_size}" in
+    *[!0-9]*) rustfs_fail "datasafed TotalSize is not numeric: ${total_size}" ;;
+  esac
   printf '{"totalSize":"%s"}' "${total_size}" > "${DP_BACKUP_INFO_FILE}"
 }

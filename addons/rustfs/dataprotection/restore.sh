@@ -11,9 +11,7 @@ objects_dir="${work_dir}/objects"
 rm -rf "${work_dir}"
 mkdir -p "${work_dir}"
 
-if [ "$(datasafed list "${backup_prefix}/manifest.txt" 2>/dev/null || true)" != "${backup_prefix}/manifest.txt" ]; then
-  rustfs_fail "backup manifest ${backup_prefix}/manifest.txt not found"
-fi
+rustfs_require_datasafed_object "${backup_prefix}/manifest.txt"
 
 echo "INFO: Pulling RustFS logical backup ${backup_prefix}"
 datasafed pull "${backup_prefix}/manifest.txt" "${work_dir}/manifest.txt"
@@ -59,10 +57,9 @@ mkdir -p "${objects_dir}"
 pulled_count=0
 while IFS= read -r relative_path; do
   [ -n "${relative_path}" ] || continue
+  rustfs_validate_relative_artifact_path "${relative_path}"
   remote_object="${backup_prefix}/objects/${relative_path}"
-  if [ "$(datasafed list "${remote_object}" 2>/dev/null || true)" != "${remote_object}" ]; then
-    rustfs_fail "backup object artifact ${remote_object} not found"
-  fi
+  rustfs_require_datasafed_object "${remote_object}"
   local_file="${objects_dir}/${relative_path}"
   mkdir -p "$(dirname "${local_file}")"
   datasafed pull "${remote_object}" "${local_file}"
@@ -78,7 +75,7 @@ while IFS= read -r bucket; do
   rustfs_mc mb --ignore-existing "${RUSTFS_ALIAS}/${bucket}"
 done < "${work_dir}/buckets.txt"
 
-rustfs_mc find "${objects_dir}" --name "*" > "${work_dir}/local-objects.txt" || true
+rustfs_mc find "${objects_dir}" --name "*" > "${work_dir}/local-objects.txt"
 if [ -s "${work_dir}/local-objects.txt" ]; then
   rustfs_mc mirror --overwrite "${objects_dir}" "${RUSTFS_ALIAS}/"
 fi
