@@ -162,7 +162,7 @@ if [ "${__SOURCED__:+x}" ]; then
 fi
 
 
-log "$MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT"
+log "INFO" "backend user=$MYSQL_ROOT_USER server=$BACKEND_SERVER port=$MYSQL_PORT"
 wait_for_mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT
 
 writable_mysql_server=$(get_writable_mysql_server)
@@ -177,7 +177,7 @@ mysql_version=$(mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $writable_mysql
 #     log "Unsupported mysql version"
 # fi
 
-log "connecting to mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $writable_mysql_server $MYSQL_PORT"
+log "INFO" "connecting to mysql user=$MYSQL_ROOT_USER server=$writable_mysql_server port=$MYSQL_PORT"
 if is_group_replication_backend "$writable_mysql_server"; then
     init_group_replication_monitor_view "$writable_mysql_server"
 fi
@@ -204,7 +204,8 @@ select * from runtime_proxysql_servers;
 mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "$configuration_sql"
 
 mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "delete from mysql_query_rules;insert into mysql_query_rules (rule_id,active,match_digest,destination_hostgroup,apply,re_modifiers) values (1,1,'^SELECT.*FOR UPDATE$',1,1,'CASELESS'),(2,1,'^SELECT',2,1,'CASELESS');LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;"
-mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "insert or replace into mysql_users (username,password,default_hostgroup) values ('$MYSQL_ROOT_USER','$MYSQL_ROOT_PASSWORD',1);LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"
+# no -vvv here: the statement carries the MySQL root password and must not be echoed to stdout
+mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -e "insert or replace into mysql_users (username,password,default_hostgroup) values ('$MYSQL_ROOT_USER','$MYSQL_ROOT_PASSWORD',1);LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"
 if is_group_replication_backend "$writable_mysql_server"; then
     mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "insert or replace into mysql_group_replication_hostgroups (writer_hostgroup,backup_writer_hostgroup,reader_hostgroup,offline_hostgroup,active,max_writers,writer_is_also_reader,max_transactions_behind,comment) values (1,4,2,3,1,1,0,100,'proxy');LOAD MYSQL SERVERS TO RUNTIME;SAVE MYSQL SERVERS TO DISK;"
     mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "select * from runtime_mysql_group_replication_hostgroups; select * from mysql_group_replication_hostgroups;"
