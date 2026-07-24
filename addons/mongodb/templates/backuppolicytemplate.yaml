@@ -60,6 +60,9 @@ spec:
       snapshotVolumes: false
       actionSetName: mongodb-pitr
     - name: pbm-physical
+      target:
+        role: primary
+        account: root
       snapshotVolumes: false
       actionSetName: mongodb-rs-pbm-physical
       env:
@@ -77,6 +80,9 @@ spec:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
     - name: pbm-pitr
+      target:
+        role: primary
+        account: root
       snapshotVolumes: false
       actionSetName: mongodb-rs-pbm-pitr
       env:
