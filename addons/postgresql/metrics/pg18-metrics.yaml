@@ -20,6 +20,49 @@ pg_replication:
         usage: "GAUGE"
         description: "Instance is master or slave"
 
+pg_stat_bgwriter:
+  query: |
+    /*kb-monitor*/SELECT
+      checkpointer.num_timed AS checkpoints_timed_total,
+      checkpointer.num_requested AS checkpoints_req_total,
+      checkpointer.write_time AS checkpoint_write_time_total,
+      checkpointer.sync_time AS checkpoint_sync_time_total,
+      checkpointer.buffers_written AS buffers_checkpoint_total,
+      bgwriter.buffers_clean AS buffers_clean_total,
+      bgwriter.maxwritten_clean AS maxwritten_clean_total,
+      bgwriter.buffers_alloc AS buffers_alloc_total,
+      bgwriter.stats_reset AS stats_reset_total
+    FROM pg_catalog.pg_stat_bgwriter AS bgwriter
+    CROSS JOIN pg_catalog.pg_stat_checkpointer AS checkpointer
+  metrics:
+    - checkpoints_timed_total:
+        usage: "COUNTER"
+        description: "Number of scheduled checkpoints that have been performed"
+    - checkpoints_req_total:
+        usage: "COUNTER"
+        description: "Number of requested checkpoints that have been performed"
+    - checkpoint_write_time_total:
+        usage: "COUNTER"
+        description: "Total time spent writing files during checkpoint processing, in milliseconds"
+    - checkpoint_sync_time_total:
+        usage: "COUNTER"
+        description: "Total time spent synchronizing files during checkpoint processing, in milliseconds"
+    - buffers_checkpoint_total:
+        usage: "COUNTER"
+        description: "Number of buffers written during checkpoints and restartpoints"
+    - buffers_clean_total:
+        usage: "COUNTER"
+        description: "Number of buffers written by the background writer"
+    - maxwritten_clean_total:
+        usage: "COUNTER"
+        description: "Number of times the background writer stopped after writing too many buffers"
+    - buffers_alloc_total:
+        usage: "COUNTER"
+        description: "Number of buffers allocated"
+    - stats_reset_total:
+        usage: "GAUGE"
+        description: "Time at which the background writer statistics were last reset"
+
 pg_stat_user_tables:
   query: |
     /*kb-monitor*/SELECT

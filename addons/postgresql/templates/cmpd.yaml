@@ -508,6 +508,13 @@ spec:
         imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         args:
           - "--extend.query-path=/opt/conf/custom-metrics.yaml"
+          {{- if or (eq .major "17") (eq .major "18") }}
+          # postgres-exporter v0.15 queries checkpoint columns from
+          # pg_stat_bgwriter, but PostgreSQL 17 moved them to
+          # pg_stat_checkpointer. The version-specific custom query below
+          # preserves the existing metric names across that catalog split.
+          - "--no-collector.stat_bgwriter"
+          {{- end }}
           - "--web.listen-address=:{{ $.Values.metrics.service.port }}"
           - "--log.level=info"
         env:
