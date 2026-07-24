@@ -27,6 +27,16 @@ function config_wal_g_for_fetch_wal_log() {
     fi
 }
 
+# Retry guard: the final step of a successful run is `mv DATA_DIR DATA_DIR.old`.
+# On a Job re-run after that point DATA_DIR no longer exists, so the very next
+# command (touch into DATA_DIR) fails under set -e — and keeps failing on every
+# retry, wedging the restore permanently. The fully-staged state is exactly
+# ".old populated + DATA_DIR absent": all work below is already done.
+if [[ -d ${DATA_DIR}.old ]] && [[ ! -d ${DATA_DIR} ]]; then
+  echo "restore already staged in ${DATA_DIR}.old; nothing to do"
+  exit 0
+fi
+
 # 1. config restore script
 touch ${DATA_DIR}/recovery.signal;
 mkdir -p ${RESTORE_SCRIPT_DIR}
@@ -81,11 +91,14 @@ if [[ -d "${DATA_DIR}.old" ]]; then
     echo "Restoring data from ${DATA_DIR}.old..."
     mkdir -p "${DATA_DIR}"
     mv -f ${DATA_DIR}.old/* ${DATA_DIR}/
-    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
+    # Durability barrier BEFORE removing the signal: the signal is the retry
+    # marker for this hook, so it must be the FINAL commit action. If sync
+    # (or the mv) fails, the signal survives and the bootstrap re-runs the
+    # hook instead of losing the restore marker with a half-durable DATA_DIR.
+    sync
+    rm -f ${RESTORE_SCRIPT_DIR}/kb_restore.signal
     echo "Data restore completed successfully"
 fi
-
-sync
 EOF
 
 # Replace variables in the generated script
