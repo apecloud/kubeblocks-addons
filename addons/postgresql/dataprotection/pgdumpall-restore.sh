@@ -14,8 +14,10 @@ function remote_file_exists() {
     echo "false"
 }
 
-if [ $(remote_file_exists "${DP_BACKUP_NAME}.sql.zst") == "true" ]; then
-  datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.sql.zst" - | psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT}
-  echo "restore complete!";
-  exit 0
+if [ $(remote_file_exists "${DP_BACKUP_NAME}.sql.zst") != "true" ]; then
+  echo "ERROR: backup file ${DP_BACKUP_NAME}.sql.zst not found in the backup repository, cannot restore" >&2
+  exit 1
 fi
+
+datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.sql.zst" - | psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT}
+echo "restore complete!"
