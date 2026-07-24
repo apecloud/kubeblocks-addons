@@ -117,7 +117,7 @@ Describe "PostgreSQL Initialization Script Tests"
     End
   End
 
-  Describe "need_restart_for_pending()"
+  Describe "pending restart candidate selection"
     setup() {
       CURRENT_POD_NAME="pg-cluster-postgresql-0"
     }
@@ -128,23 +128,44 @@ Describe "PostgreSQL Initialization Script Tests"
     }
     After 'un_setup'
 
-    It "restarts when pending and no leader is pending"
-      When call need_restart_for_pending "true" ""
+    It "selects a pending leader before replicas"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":true},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal "pg-cluster-postgresql-0"
       The status should be success
     End
 
-    It "restarts when pending and the pending leader is the current pod"
+    It "selects one pending replica by stable member name order"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal "pg-cluster-postgresql-1"
+      The status should be success
+    End
+
+    It "selects no candidate while a member is restarting"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"restarting","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "restarts only when the current pod is the selected candidate"
       When call need_restart_for_pending "true" "pg-cluster-postgresql-0"
       The status should be success
     End
 
-    It "does not restart when pending but another pod is the pending leader"
+    It "does not restart when another pod is the selected candidate"
       When call need_restart_for_pending "true" "pg-cluster-postgresql-1"
       The status should be failure
     End
 
+    It "does not restart without a candidate"
+      When call need_restart_for_pending "true" ""
+      The status should be failure
+    End
+
     It "does not restart when not pending"
-      When call need_restart_for_pending "false" ""
+      When call need_restart_for_pending "false" "pg-cluster-postgresql-0"
       The status should be failure
     End
   End
