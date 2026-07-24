@@ -135,6 +135,8 @@ spec:
             echo "RustFS does not support scale-in: removing nodes from a distributed erasure-coding pool is not supported and would cause data loss." >&2
             exit 1
     roleProbe:
+      periodSeconds: 1
+      timeoutSeconds: 3
       exec:
         command:
           - /bin/sh
