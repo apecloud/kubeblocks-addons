@@ -1,0 +1,371 @@
+{{- if and .Values.ha.fixedAddress.enabled .Values.ha.writerReconciler.enabled }}
+{{- if or (not .Values.ha.writerReconciler.image.repository) (not .Values.ha.writerReconciler.image.tag) }}
+{{- fail "ha.writerReconciler.image.repository and ha.writerReconciler.image.tag are required when ha.writerReconciler.enabled=true" }}
+{{- end }}
+{{- $name := "yashandb-writer-endpoint-reconciler" }}
+{{- $writerName := .Values.ha.writerReconciler.name | default "yashandb-writer" }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: writer-endpoint-reconciler
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: writer-endpoint-reconciler
+rules:
+  # 2026-06-22 Reason: the reconciler only needs to inspect proof Pods and update the writer entrypoint; Purpose: keep RBAC narrow for the fixed-address HA route.
+  # Time: 2026-06-22.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "create", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: writer-endpoint-reconciler
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $writerName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: writer
+spec:
+  type: ClusterIP
+  ports:
+    - name: sql
+      port: {{ .Values.ha.writerReconciler.sqlPort | default 2688 }}
+      protocol: TCP
+      targetPort: {{ .Values.ha.writerReconciler.sqlPort | default 2688 }}
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: {{ $writerName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: writer
+subsets: []
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: writer-endpoint-reconciler
+spec:
+  replicas: 1
+  strategy:
+    # 2026-06-22 Reason: only one writer Endpoint reconciler should run during chart upgrades; Purpose: avoid duplicate status polling while still keeping the follower simple.
+    # Time: 2026-06-22.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "yashandb.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: writer-endpoint-reconciler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "yashandb.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: writer-endpoint-reconciler
+    spec:
+      serviceAccountName: {{ $name }}
+      containers:
+        - name: reconciler
+          image: {{ .Values.ha.writerReconciler.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.ha.writerReconciler.image.repository }}:{{ .Values.ha.writerReconciler.image.tag }}
+          imagePullPolicy: {{ .Values.ha.writerReconciler.image.pullPolicy }}
+          env:
+            - name: YASDB_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: YASDB_CLUSTER_NAME
+              value: {{ .Values.ha.writerReconciler.clusterName | quote }}
+            - name: YASDB_WRITER_SERVICE_NAME
+              value: {{ $writerName | quote }}
+            - name: YASDB_SQL_PORT
+              value: {{ .Values.ha.writerReconciler.sqlPort | default 2688 | quote }}
+            - name: YASDB_DB_USER
+              value: {{ .Values.ha.writerReconciler.dbUser | quote }}
+            - name: YASDB_ENDPOINT_POD_MAP
+              value: {{ .Values.ha.writerReconciler.endpointPodMap | quote }}
+            - name: WATCH_INTERVAL_SECONDS
+              value: {{ .Values.ha.writerReconciler.intervalSeconds | default 2 | quote }}
+            - name: YASDB_FAILOVER_ENABLED
+              value: {{ .Values.ha.writerReconciler.failover.enabled | default false | quote }}
+            - name: YASDB_FAILOVER_FAILURE_THRESHOLD
+              value: {{ .Values.ha.writerReconciler.failover.failureThreshold | default 5 | quote }}
+            - name: YASDB_FAILOVER_COOLDOWN_SECONDS
+              value: {{ .Values.ha.writerReconciler.failover.cooldownSeconds | default 60 | quote }}
+            {{- if .Values.ha.writerReconciler.dbPasswordSecretName }}
+            - name: YASDB_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ha.writerReconciler.dbPasswordSecretName | quote }}
+                  key: {{ .Values.ha.writerReconciler.dbPasswordSecretKey | quote }}
+            {{- else }}
+            - name: YASDB_DB_PASSWORD
+              value: {{ .Values.ha.writerReconciler.dbPassword | quote }}
+            {{- end }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              set -eu
+
+              # 2026-06-22 Reason: fixed-address HA needs a productized writer entrypoint follower; Purpose: reconcile only when exactly one open normal primary is visible.
+              # Time: 2026-06-22.
+              pod_for_endpoint() {
+                endpoint="$1"
+                host="${endpoint%%:*}"
+                OLD_IFS="$IFS"
+                IFS=','
+                for item in ${YASDB_ENDPOINT_POD_MAP}; do
+                  key="${item%%=*}"
+                  value="${item#*=}"
+                  if [ "$key" = "$host" ]; then
+                    printf '%s' "$value"
+                    IFS="$OLD_IFS"
+                    return 0
+                  fi
+                done
+                IFS="$OLD_IFS"
+                return 1
+              }
+
+              cluster_status() {
+                OLD_IFS="$IFS"
+                IFS=','
+                for item in ${YASDB_ENDPOINT_POD_MAP}; do
+                  executor="${item#*=}"
+                  if kubectl -n "${YASDB_NAMESPACE}" exec "pod/${executor}" -- su -s /bin/bash - yashan -c "cd /opt/yasboot-package && ./bin/yasboot cluster status -c ${YASDB_CLUSTER_NAME} -d -u ${YASDB_DB_USER} -p ${YASDB_DB_PASSWORD}"; then
+                    IFS="$OLD_IFS"
+                    return 0
+                  fi
+                done
+                IFS="$OLD_IFS"
+                return 1
+              }
+
+              current_nodes() {
+                cluster_status | awk -F'|' -v port=":${YASDB_SQL_PORT}" '
+                  /^[|]/ && / db / {
+                    node=$4; inst=$6; db=$7; role=$8; endpoint=$9
+                    gsub(/^[ \t]+|[ \t]+$/, "", node)
+                    gsub(/:.*/, "", node)
+                    gsub(/^[ \t]+|[ \t]+$/, "", inst)
+                    gsub(/^[ \t]+|[ \t]+$/, "", db)
+                    gsub(/^[ \t]+|[ \t]+$/, "", role)
+                    gsub(/^[ \t]+|[ \t]+$/, "", endpoint)
+                    if (index(endpoint, port) > 0 && inst=="open" && db=="normal") print node "," role "," endpoint
+                  }
+                '
+              }
+
+              current_primary() {
+                current_nodes | awk -F',' '$2=="primary" {print $1 "," $3}'
+              }
+
+              current_standby() {
+                current_nodes | awk -F',' '$2=="standby" {print $1 "," $3}'
+              }
+
+              current_writer_endpoint() {
+                kubectl -n "${YASDB_NAMESPACE}" get endpoints "$YASDB_WRITER_SERVICE_NAME" -o jsonpath='{.subsets[0].addresses[0].ip}:{.subsets[0].ports[0].port}' 2>/dev/null || true
+              }
+
+              writer_sql_probe() {
+                endpoint="$1"
+                probe_pod="$(pod_for_endpoint "$endpoint" || true)"
+                if [ -z "$probe_pod" ]; then
+                  echo "skip writer switch: primary SQL probe failed because no pod maps to ${endpoint}"
+                  return 1
+                fi
+
+                # 2026-06-23 Reason: role status can converge before the promoted primary accepts writes; Purpose: switch the writer Endpoint only after a lightweight SQL write probe succeeds.
+                # Time: 2026-06-23.
+                echo "writer SQL probe: endpoint=${endpoint} pod=${probe_pod}"
+                kubectl -n "${YASDB_NAMESPACE}" exec "pod/${probe_pod}" -- su -s /bin/bash - yashan -c "source /home/yashan/mydb/.temp.ini && source \${YASDB_HOME}/conf/yasdb.bashrc && \${YASDB_HOME}/bin/yasql ${YASDB_DB_USER}/${YASDB_DB_PASSWORD} -c \"create table if not exists KB_WRITER_PROBE(ID int); delete from KB_WRITER_PROBE; insert into KB_WRITER_PROBE values (1); commit; select count(*) from KB_WRITER_PROBE\"" >/tmp/writer-reconciler-sql-probe.out 2>&1
+              }
+
+              apply_endpoint() {
+                endpoint="$1"
+                host="${endpoint%%:*}"
+                cat <<YAML | kubectl -n "${YASDB_NAMESPACE}" apply -f -
+              apiVersion: v1
+              kind: Endpoints
+              metadata:
+                name: ${YASDB_WRITER_SERVICE_NAME}
+                namespace: ${YASDB_NAMESPACE}
+                labels:
+                  app.kubernetes.io/component: writer
+              subsets:
+                - addresses:
+                    - ip: ${host}
+                  ports:
+                    - name: sql
+                      port: ${YASDB_SQL_PORT}
+                      protocol: TCP
+              YAML
+              }
+
+              {{- if .Values.ha.writerReconciler.failover.enabled }}
+              run_failover() {
+                standby_line="$1"
+                standby_node="$(printf '%s\n' "$standby_line" | awk -F',' 'NR==1 {print $1}')"
+                standby_endpoint="$(printf '%s\n' "$standby_line" | awk -F',' 'NR==1 {print $2}')"
+                standby_pod="$(pod_for_endpoint "$standby_endpoint")"
+
+                if [ -z "$standby_node" ] || [ -z "$standby_pod" ]; then
+                  echo "skip failover: standby candidate is incomplete node=${standby_node:-none} pod=${standby_pod:-none} endpoint=${standby_endpoint:-none}"
+                  return 1
+                fi
+
+                # 2026-06-23 Reason: optional automatic failover must coordinate with YashanDB election instead of racing it; Purpose: surface election conflicts as wait/cooldown signals and avoid claiming direct promotion when the database is already electing.
+                # Time: 2026-06-23.
+                echo "failover start: target=${standby_node} endpoint=${standby_endpoint} pod=${standby_pod}"
+                set +e
+                failover_output="$(kubectl -n "${YASDB_NAMESPACE}" exec "pod/${standby_pod}" -- su -s /bin/bash - yashan -c "cd /opt/yasboot-package && printf 'yes\n' | ./bin/yasboot node failover -c ${YASDB_CLUSTER_NAME} -n ${standby_node} -u ${YASDB_DB_USER} -p ${YASDB_DB_PASSWORD} --disable" 2>&1)"
+                failover_rc="$?"
+                set -e
+                printf '%s\n' "$failover_output"
+                if [ "$failover_rc" -eq 0 ]; then
+                  return 0
+                fi
+                if printf '%s\n' "$failover_output" | grep -Eq 'YAS-02434|election'; then
+                  echo "election conflict observed: database is already electing; wait for status convergence"
+                  return 2
+                fi
+                return "$failover_rc"
+              }
+              {{- end }}
+
+              primary_miss_count=0
+              last_failover_epoch=0
+              last_primary_endpoint=""
+
+              while true; do
+                node_lines="$(current_nodes 2>/tmp/writer-reconciler-status.err || true)"
+                primary_lines="$(printf '%s\n' "$node_lines" | awk -F',' '$2=="primary" {print $1 "," $3}')"
+                standby_lines="$(printf '%s\n' "$node_lines" | awk -F',' '$2=="standby" {print $1 "," $3}')"
+                primary_count="$(printf '%s\n' "$primary_lines" | sed '/^$/d' | wc -l | tr -d ' ')"
+                standby_count="$(printf '%s\n' "$standby_lines" | sed '/^$/d' | wc -l | tr -d ' ')"
+                echo "topology guard: primary_count=${primary_count} standby_count=${standby_count}"
+
+                if [ "$primary_count" = "0" ] && [ "$standby_count" -ge "1" ]; then
+                  primary_miss_count=$((primary_miss_count + 1))
+                  echo "no primary observed: miss=${primary_miss_count}/${YASDB_FAILOVER_FAILURE_THRESHOLD} standby_count=${standby_count}"
+                  now_epoch="$(date +%s)"
+                  cooldown_left=$((last_failover_epoch + YASDB_FAILOVER_COOLDOWN_SECONDS - now_epoch))
+                  {{- if .Values.ha.writerReconciler.failover.enabled }}
+                  if [ "$YASDB_FAILOVER_ENABLED" = "true" ] && [ "$primary_miss_count" -ge "$YASDB_FAILOVER_FAILURE_THRESHOLD" ] && [ "$cooldown_left" -le 0 ]; then
+                    # 2026-06-23 Reason: YashanDB may finish election between the no-primary observation and the failover command; Purpose: prefer the database-elected primary and only use yasboot failover as the fallback.
+                    # Time: 2026-06-23.
+                    echo "confirm primary before failover"
+                    confirm_primary_lines="$(current_primary 2>/tmp/writer-reconciler-confirm-status.err || true)"
+                    confirm_primary_count="$(printf '%s\n' "$confirm_primary_lines" | sed '/^$/d' | wc -l | tr -d ' ')"
+                    if [ "$confirm_primary_count" = "1" ]; then
+                      confirm_primary_endpoint="$(printf '%s\n' "$confirm_primary_lines" | awk -F',' 'NR==1 {print $2}')"
+                      echo "primary appeared before failover: ${confirm_primary_endpoint}"
+                      current_endpoint="$(current_writer_endpoint)"
+                      if [ "$current_endpoint" != "$confirm_primary_endpoint" ]; then
+                        if writer_sql_probe "$confirm_primary_endpoint"; then
+                          echo "switch writer endpoint from ${current_endpoint:-none} to ${confirm_primary_endpoint}"
+                          apply_endpoint "$confirm_primary_endpoint"
+                        else
+                          echo "skip writer switch: primary SQL probe failed for ${confirm_primary_endpoint}"
+                        fi
+                      fi
+                      primary_miss_count=0
+                      sleep "${WATCH_INTERVAL_SECONDS}"
+                      continue
+                    fi
+                    standby_line="$(printf '%s\n' "$standby_lines" | sed '/^$/d' | head -1)"
+                    if run_failover "$standby_line"; then
+                      last_failover_epoch="$(date +%s)"
+                      primary_miss_count=0
+                    else
+                      failover_rc="$?"
+                      if [ "$failover_rc" -eq 2 ]; then
+                        echo "failover election conflict: enter cooldown and wait for elected primary"
+                      else
+                        echo "failover failed: rc=${failover_rc}; enter cooldown"
+                      fi
+                      last_failover_epoch="$(date +%s)"
+                    fi
+                  fi
+                  {{- else }}
+                  if [ "$primary_miss_count" -ge "$YASDB_FAILOVER_FAILURE_THRESHOLD" ]; then
+                    echo "failover disabled: no primary observed and standby_count=${standby_count}"
+                  fi
+                  {{- end }}
+                  sleep "${WATCH_INTERVAL_SECONDS}"
+                  continue
+                fi
+
+                if [ "$primary_count" != "1" ]; then
+                  primary_miss_count=0
+                  echo "skip: expected one open normal primary, got ${primary_count}: ${primary_lines:-none}"
+                  sleep "${WATCH_INTERVAL_SECONDS}"
+                  continue
+                fi
+
+                primary_miss_count=0
+                primary_endpoint="$(printf '%s\n' "$primary_lines" | awk -F',' 'NR==1 {print $2}')"
+                current_endpoint="$(current_writer_endpoint)"
+                if [ -n "$last_primary_endpoint" ] && [ "$last_primary_endpoint" != "$primary_endpoint" ]; then
+                  # 2026-06-23 Reason: automatic rebuild can damage the current primary if role detection races with failover; Purpose: log old-primary handling as an explicit manual action until a safer rebuild contract is validated.
+                  # Time: 2026-06-23.
+                  echo "topology guard: primary changed from ${last_primary_endpoint} to ${primary_endpoint}"
+                  echo "rebuild manual action required: verify old primary ${last_primary_endpoint} is not current primary before running yasboot rebuild"
+                fi
+                if [ "$current_endpoint" != "$primary_endpoint" ]; then
+                  if writer_sql_probe "$primary_endpoint"; then
+                    echo "switch writer endpoint from ${current_endpoint:-none} to ${primary_endpoint}"
+                    apply_endpoint "$primary_endpoint"
+                    last_primary_endpoint="$primary_endpoint"
+                  else
+                    echo "skip writer switch: primary SQL probe failed for ${primary_endpoint}"
+                  fi
+                else
+                  echo "noop: writer endpoint already ${primary_endpoint}"
+                  last_primary_endpoint="$primary_endpoint"
+                fi
+                sleep "${WATCH_INTERVAL_SECONDS}"
+              done
+{{- end }}

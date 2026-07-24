@@ -4,9 +4,13 @@ description: YashanDB is a new database system completely independently designed
 
 type: application
 
-version: 1.2.0-alpha.0
+# 2026-07-06 Reason: upstream main already advanced the YashanDB addon release line during PR review; Purpose: keep this PR on the community chart version while preserving the immutable ComponentDefinition contract.
+# Time: 2026-07-06.
+version: 1.2.0-alpha.2
 
-appVersion: "23.1.1-100"
+# 2026-07-07 Reason: PR runtime validation used the available 23.5.2.9 aarch64 image instead of the unavailable 23.4.1.109 default image; Purpose: make the chart default match the validated release boundary.
+# Time: 2026-07-07.
+appVersion: "23.5.2-9"
 
 maintainers:
   - name: ApeCloud
@@ -14,8 +18,14 @@ maintainers:
   - name: JesseAtSZ
     url: https://github.com/JesseAtSZ
 
+# 2026-07-14 Reason: the ParametersDefinition v1alpha1 chain and file-level
+# configs[].reconfigure this addon relies on are KB main/1.2+ contracts
+# (docs/addon-api/); declaring >=1.0.0 promised a 1.0.x compatibility the
+# parameter chain cannot deliver. Purpose: pin the supported KubeBlocks floor
+# to the contract the addon actually implements. 1.0.x support, if ever
+# needed, goes to a separate release-1.0 chart per docs/addon-api-1.0/.
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.2.0"
   addon.kubeblocks.io/model: "RDBMS"
   addon.kubeblocks.io/provider: "community"
 
