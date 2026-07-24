@@ -495,7 +495,12 @@ EOF
     End
 
     Context "when syncerctl cannot create DCS switchover"
-      It "returns failure"
+      # H2 split-brain fix: after syncerctl (invoked with --force under a
+      # timeout(1) wrapper) fails, the DCS record may already be persisted and
+      # syncer may be promoting the candidate. The current primary must be
+      # fenced fail-closed (read_only=1), NOT rolled back to writable — the old
+      # rollback path could leave two writable primaries.
+      It "fails closed by fencing the current primary (does not roll back to writable)"
         make_failing_syncerctl
         prepare_current_primary_for_switchover() {
           return 0
@@ -504,14 +509,24 @@ EOF
           record_call "rollback"
           return 0
         }
+        set_local_read_only() {
+          record_call "set_read_only=$1"
+          return 0
+        }
+        local_read_only_is() {
+          [ "$1" = "1" ]
+        }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be failure
         The output should include "Switchover: creating syncer DCS switchover"
-        The stderr should include "Switchover failed: syncerctl could not create DCS switchover"
-        The contents of file "${TEST_DIR}/calls" should include "rollback"
+        The output should include "fencing current primary read_only=1"
+        The stderr should include "current primary fenced fail-closed"
+        The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+        The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
+        The contents of file "${TEST_DIR}/calls" should not include "rollback"
       End
 
-      It "treats a zero-status syncerctl failure message as failure and rolls back"
+      It "treats a zero-status syncerctl failure message as failure and fails closed by fencing"
         make_zero_status_failing_syncerctl
         prepare_current_primary_for_switchover() {
           return 0
@@ -520,12 +535,39 @@ EOF
           record_call "rollback"
           return 0
         }
+        set_local_read_only() {
+          record_call "set_read_only=$1"
+          return 0
+        }
+        local_read_only_is() {
+          [ "$1" = "1" ]
+        }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be failure
         The output should include "Switchover syncerctl output: switchover failed: operation precheck failed: mdb-mariadb-0 is not the primary"
         The stderr should include "Switchover failed: syncerctl did not report success"
         The stderr should include "Switchover failed: syncerctl could not create DCS switchover"
-        The contents of file "${TEST_DIR}/calls" should include "rollback"
+        The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+        The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
+        The contents of file "${TEST_DIR}/calls" should not include "rollback"
+      End
+
+      It "surfaces a manual-verification error when the fail-closed fence itself cannot be applied"
+        make_failing_syncerctl
+        prepare_current_primary_for_switchover() {
+          return 0
+        }
+        set_local_read_only() {
+          record_call "set_read_only=$1"
+          return 1
+        }
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be failure
+        The output should include "fencing current primary read_only=1"
+        The stderr should include "could not set current primary read_only=1 after uncertain DCS switchover"
+        The stderr should include "manual verification required to avoid split-brain"
+        The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
+        The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
       End
 
       It "treats duplicate post-success invocation as idempotent success when final state is already reached"
