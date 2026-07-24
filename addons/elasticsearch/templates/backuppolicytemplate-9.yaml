@@ -1,0 +1,50 @@
+{{- if .Values.es9.enabled }}
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: elasticsearch-9-backup-policy-template
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  serviceKind: Elasticsearch
+  compDefs:
+    - {{ include "elasticsearch9.cmpdRegexPattern" . }}
+    - {{ include "elasticsearchMaster9.cmpdRegexPattern" . }}
+    - {{ include "elasticsearchData9.cmpdRegexPattern" . }}
+  backupMethods:
+    - name: full-backup
+      target:
+        role: ""
+        strategy: Any
+      snapshotVolumes: false
+      actionSetName: elasticsearch-9-physical-br
+      env:
+        - name: IMAGE
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - {{ .Values.es9.serviceVersion | quote }}
+                mappedValue: {{ .Values.es9.images.elasticsearch | quote }}
+    - name: es-dump
+      target:
+        role: ""
+        strategy: Any
+      snapshotVolumes: false
+      actionSetName: elasticsearch-9-es-dump
+      env:
+        - name: ES_DUMP_IMAGE
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - {{ .Values.es9.serviceVersion | quote }}
+                mappedValue: {{ .Values.es9.images.esDump | quote }}
+  schedules:
+    - backupMethod: full-backup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: es-dump
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+{{- end }}

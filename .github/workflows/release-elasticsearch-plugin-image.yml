@@ -21,6 +21,7 @@ jobs:
       IMG: "apecloud/elasticsearch-plugins"
       VERSION: "${{ inputs.VERSION }}"
       APECD_REF: "v0.1.96"
+      CONTEXT: "./addons/elasticsearch/plugins"
       DOCKERFILE_PATH: "./addons/elasticsearch/plugins/Dockerfile"
       REMOVE_PREFIX: false
       BUILDX_PLATFORMS: "${{ inputs.BUILDX_PLATFORMS }}"
