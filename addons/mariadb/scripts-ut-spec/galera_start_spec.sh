@@ -75,6 +75,38 @@ EOF
       The contents of file "${TEST_DIR}/timeout.args" should include "--ssl=0"
       The contents of file "${TEST_DIR}/timeout.args" should include "-P3306"
     End
+
+    It "treats a port-open-but-unqueryable peer as possibly-alive (fail closed against split-brain)"
+      # Port 3306 open, but the wsrep status query returns nothing (auth error
+      # / SST / load). This must NOT be read as "no peer" — a live Primary we
+      # cannot read would let this node bootstrap a second Primary.
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;      # port open
+          *" mariadb "*) return 0 ;;      # query "runs" but prints no status
+        esac
+        return 1
+      }
+      sleep() { :; }
+
+      When call _any_peer_alive
+      The status should be success
+      The output should include "unreadable after retries"
+    End
+
+    It "skips a peer that gives a clean non-Primary answer"
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;
+          *" mariadb "*) printf "wsrep_cluster_status\tnon-Primary\n"; return 0 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive
+      The status should be failure
+      The output should include "not Primary, skipping"
+    End
   End
 
   Describe "_wait_for_primary_peer()"
@@ -133,7 +165,7 @@ EOF
       The output should include "grastate.dat: safe_to_bootstrap=1"
     End
 
-    It "keeps fresh seqno=-1 bootstrap single-owner on pod-0"
+    It "keeps fresh (seqno=-1, safe_to_bootstrap=1) bootstrap single-owner on pod-0"
       POD_NAME="mdb-galera-mariadb-0"
       write_grastate -1 1
       _any_peer_alive() {
@@ -142,10 +174,10 @@ EOF
 
       When call should_bootstrap
       The status should be success
-      The output should include "Fresh grastate.dat seqno=-1, pod-0 will bootstrap"
+      The output should include "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1, pod-0 will bootstrap"
     End
 
-    It "prevents non-pod-0 fresh seqno=-1 bootstrap"
+    It "prevents non-pod-0 fresh (seqno=-1, safe_to_bootstrap=1) bootstrap"
       POD_NAME="mdb-galera-mariadb-1"
       write_grastate -1 1
       _any_peer_alive() {
@@ -154,8 +186,57 @@ EOF
 
       When call should_bootstrap
       The status should be failure
-      The output should include "Fresh grastate.dat seqno=-1"
+      The output should include "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1"
       The output should include "will wait for pod-0 bootstrap"
+    End
+
+    It "refuses pod-0 bootstrap on a hard-crash grastate (seqno=-1, safe_to_bootstrap=0)"
+      # A running node killed by OOM/power-loss/SIGKILL leaves seqno=-1 but
+      # safe_to_bootstrap=0 — indistinguishable from a fresh PVC by seqno
+      # alone. pod-0 must NOT blind-bootstrap possibly-stale data; it defers
+      # to the fail-closed crash-recovery path.
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate -1 0
+      _any_peer_alive() {
+        return 1
+      }
+      mariadbd() {
+        printf "WSREP: Recovered position: 631a68d0-7697-11f1-923e-42be04dfa95f:44\n"
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Refusing automatic Galera crash recovery bootstrap"
+      The variable GALERA_BOOTSTRAP_DEFER_REASON should include "latest seqno"
+    End
+
+    It "prevents non-pod-0 hard-crash (seqno=-1, safe_to_bootstrap=0) bootstrap"
+      POD_NAME="mdb-galera-mariadb-1"
+      write_grastate -1 0
+      _any_peer_alive() {
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be failure
+    End
+
+    It "does not treat a malformed safe_to_bootstrap value as safe (anchored match)"
+      # A torn/corrupt write leaving 'safe_to_bootstrap: 10' must NOT satisfy
+      # the safe=1 guard via substring match; pod-0 defers rather than
+      # bootstrapping possibly-stale data.
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 7 10
+      _any_peer_alive() {
+        return 1
+      }
+      mariadbd() {
+        printf "WSREP: Recovered position: 631a68d0-7697-11f1-923e-42be04dfa95f:7\n"
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Refusing automatic Galera crash recovery bootstrap"
     End
   End
 
@@ -197,6 +278,59 @@ EOF
       '
       The status should be success
       The output should equal "OK"
+    End
+  End
+
+  Describe "graceful-shutdown self-heal guard"
+    # Behavioral test: with the shutdown marker present the self-heal helper
+    # must NOT kill mariadbd (0 kills); without it, it must kill (>=1). Stub the
+    # pid lookup and the actual signal so we count kill attempts.
+    setup_guard() {
+      GUARD_DIR="$(mktemp -d)"
+      export DATA_DIR="${GUARD_DIR}"
+      KILL_COUNT_FILE="${GUARD_DIR}/kills"
+      : > "${KILL_COUNT_FILE}"
+      _mariadbd_pids() { echo 4242; }
+      kill() { printf 'x' >> "${KILL_COUNT_FILE}"; }
+      sleep() { :; }
+    }
+    cleanup_guard() { rm -rf "${GUARD_DIR}"; unset DATA_DIR; }
+    BeforeEach setup_guard
+    AfterEach cleanup_guard
+
+    It "does not kill mariadbd while a graceful shutdown is in progress"
+      touch "${DATA_DIR}/.galera-shutting-down"
+
+      When call _restart_mariadbd_for_self_heal "test-reason"
+      The status should be success
+      The output should include "graceful shutdown in progress"
+      The contents of file "${KILL_COUNT_FILE}" should equal ""
+    End
+
+    It "kills mariadbd when no graceful shutdown is in progress"
+      When call _restart_mariadbd_for_self_heal "test-reason"
+      The status should be success
+      The output should include "SIGTERM"
+      The contents of file "${KILL_COUNT_FILE}" should not equal ""
+    End
+
+    # Behavioral test of the watcher start-up marker reset: seed all three
+    # stale markers a previous container generation could leave on the PV, call
+    # the extracted helper main() runs at watcher start, and assert every marker
+    # is gone. This exercises the shipped code path (not a source grep), so a
+    # future drift in which markers get cleared — including dropping the
+    # .galera-shutting-down removal that would otherwise disable self-heal for
+    # the new container's whole lifetime — fails the test.
+    It "clears stale role/synced/shutting-down markers at watcher start"
+      touch "${DATA_DIR}/.galera-synced"
+      touch "${DATA_DIR}/.galera-role"
+      touch "${DATA_DIR}/.galera-shutting-down"
+
+      When call _clear_stale_markers_on_start
+      The status should be success
+      The path "${DATA_DIR}/.galera-synced" should not be exist
+      The path "${DATA_DIR}/.galera-role" should not be exist
+      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
     End
   End
 End

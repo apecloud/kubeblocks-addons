@@ -688,7 +688,12 @@ prestop_watchdog_log() {
     >> ${DATA_DIR}/log/prestop-watchdog.log 2>/dev/null || true
 }
 sql_quote() {
-  printf "%s" "$1" | sed "s/'/''/g"
+  # Escape backslashes first, then single quotes. MariaDB's default sql_mode
+  # (no NO_BACKSLASH_ESCAPES) treats a trailing backslash as escaping the
+  # closing quote, so quote-doubling alone lets a value ending in '\' break
+  # out of the string literal. This matches the reconfigure helper escaping
+  # in _helpers.tpl (sql_value_literal).
+  printf "%s" "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
 }
 grant_internal_admin_runtime_privileges() {
   # alpha.109 P0a (Jack 12:08 Round 1c-F FAIL § 5.3 halt + Helen 12:13/12:17/12:19
