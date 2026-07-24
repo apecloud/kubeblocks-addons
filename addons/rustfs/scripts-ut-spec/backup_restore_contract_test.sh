@@ -455,6 +455,56 @@ MANIFEST
 assert_restore_rejects_manifest unsafe-bucket "${TMP_ROOT}/manifest-unsafe-bucket" \
   "backup manifest contains invalid bucket name ../escape"
 
+cat > "${TMP_ROOT}/manifest-ipv4-bucket" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=0
+bucket:192.168.1.1
+MANIFEST
+assert_restore_rejects_manifest ipv4-bucket "${TMP_ROOT}/manifest-ipv4-bucket" \
+  "backup manifest contains invalid bucket name 192.168.1.1"
+
+cat > "${TMP_ROOT}/manifest-ipv4-shaped-bucket" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=0
+bucket:1234.1.1.1
+MANIFEST
+assert_restore_rejects_manifest ipv4-shaped-bucket "${TMP_ROOT}/manifest-ipv4-shaped-bucket" \
+  "backup manifest contains invalid bucket name 1234.1.1.1"
+
+cat > "${TMP_ROOT}/manifest-reserved-bucket" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=0
+bucket:rustfs
+MANIFEST
+assert_restore_rejects_manifest reserved-bucket "${TMP_ROOT}/manifest-reserved-bucket" \
+  "backup manifest contains invalid bucket name rustfs"
+
+cat > "${TMP_ROOT}/manifest-hyphen-dot-bucket" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=0
+bucket:aaa-.bbb
+MANIFEST
+assert_restore_rejects_manifest hyphen-dot-bucket "${TMP_ROOT}/manifest-hyphen-dot-bucket" \
+  "backup manifest contains invalid bucket name aaa-.bbb"
+
+cat > "${TMP_ROOT}/manifest-dot-hyphen-bucket" <<'MANIFEST'
+formatVersion=rustfs-s3-full.v1
+method=s3-full
+bucketCount=1
+objectCount=0
+bucket:aaa.-bbb
+MANIFEST
+assert_restore_rejects_manifest dot-hyphen-bucket "${TMP_ROOT}/manifest-dot-hyphen-bucket" \
+  "backup manifest contains invalid bucket name aaa.-bbb"
+
 cat > "${TMP_ROOT}/manifest-object-bucket-mismatch" <<'MANIFEST'
 formatVersion=rustfs-s3-full.v1
 method=s3-full
