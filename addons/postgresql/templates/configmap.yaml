@@ -12,7 +12,12 @@ metadata:
 data:
   postgresql.conf: |-
     {{- $.Files.Get (printf "config/pg%s-config.tpl" .major) | nindent 4 }}
-  # TODO: check if it should trust all
+  # The `md5` auth method below is PostgreSQL's dual-mode method: when the
+  # stored verifier is SCRAM (password_encryption = 'scram-sha-256'), the
+  # server automatically performs SCRAM authentication on the wire. Keeping
+  # `md5` here (instead of hard `scram-sha-256`) lets accounts created by
+  # older addon versions with md5-stored passwords keep authenticating after
+  # an upgrade, while all fresh clusters get SCRAM end to end.
   pg_hba.conf: |
     host     all             all             0.0.0.0/0                md5
     host     all             all             ::/0                     md5

@@ -1,12 +1,17 @@
+# shellcheck shell=bash
 # use datasafed and default config
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 if [[ -d ${DATA_DIR}.old ]] && [[ ! -d ${DATA_DIR} ]]; then
-  # if dataDir.old exists but dataDir not exits, retry it
+  # A previous run already completed the final staging mv. Un-staging and
+  # exiting 0 here (the old behavior) left a populated DATA_DIR carrying
+  # recovery.signal but no bootstrap: Patroni adopted the directory and
+  # postgres crash-looped on a missing restore_command. Move the data back
+  # and RE-RUN the whole preparation instead — the WAL re-fetch and config
+  # rewrite below are idempotent and the script ends by staging again.
   mv ${DATA_DIR}.old ${DATA_DIR}
-  exit 0;
 fi
 
 mkdir -p ${PITR_DIR};
@@ -27,7 +32,7 @@ echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 cat << EOF > "${CONF_DIR}/recovery.conf"
-restore_command='case "%f" in *history) cp ${PITR_DIR}/%f %p ;; *) mv ${PITR_DIR}/%f %p ;; esac'
+restore_command='cp ${PITR_DIR}/%f %p'
 recovery_target_time='$( date -d "@${DP_RESTORE_TIMESTAMP}" '+%F %T%::z' )'
 recovery_target_action='promote'
 recovery_target_timeline='latest'

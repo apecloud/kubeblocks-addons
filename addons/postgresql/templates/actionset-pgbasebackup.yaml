@@ -8,10 +8,12 @@ metadata:
 spec:
   backupType: Full
   env:
+    - name: VOLUME_DATA_DIR
+      value: {{ .Values.dataMountPath }}
     - name: DATA_DIR
-      value: {{ .Values.dataMountPath }}/pgroot/data
-    - name: IMAGE_TAG
-      value: 14.8.0-pgvector-v0.6.1
+      value: "$(VOLUME_DATA_DIR)/pgroot/data"
+    - name: RESTORE_SCRIPT_DIR
+      value: "$(VOLUME_DATA_DIR)/kb_restore"
   backup:
     preBackup: []
     postBackup: []

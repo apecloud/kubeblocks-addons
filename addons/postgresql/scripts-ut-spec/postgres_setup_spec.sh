@@ -115,9 +115,36 @@ Describe "PostgreSQL Initialization Script Tests"
       The variable SPILO_CONFIGURATION should include "bootstrap:"
       The variable SPILO_CONFIGURATION should include "auth-host: md5"
     End
+
+    It "propagates restore replica configuration when the restore signal exists"
+      RESTORE_DATA_DIR="$(mktemp -d -t pg-restore-data-XXXXXX)"
+      touch "${RESTORE_DATA_DIR}/kb_restore.signal"
+      export RESTORE_DATA_DIR
+      python3() {
+        echo "postgresql:
+                create_replica_methods:
+                - restore_data
+                - basebackup
+                restore_data:
+                  command: bash /home/postgres/pgdata/kb_restore/kb_restore.sh --replica" > "$tmp_patroni_yaml"
+      }
+      chown() {
+        :
+      }
+      exec() {
+        :
+      }
+      When call regenerate_spilo_configuration_and_start_postgres
+      The stderr should include "/home/postgres/.kb_set_up.log: No such file or directory"
+      The status should be success
+      The variable SPILO_CONFIGURATION should include "create_replica_methods:"
+      The variable SPILO_CONFIGURATION should include "restore_data"
+      The variable SPILO_CONFIGURATION should include "kb_restore.sh --replica"
+      rm -rf "${RESTORE_DATA_DIR}"
+    End
   End
 
-  Describe "need_restart_for_pending()"
+  Describe "pending restart candidate selection"
     setup() {
       CURRENT_POD_NAME="pg-cluster-postgresql-0"
     }
@@ -128,23 +155,44 @@ Describe "PostgreSQL Initialization Script Tests"
     }
     After 'un_setup'
 
-    It "restarts when pending and no leader is pending"
-      When call need_restart_for_pending "true" ""
+    It "selects a pending leader before replicas"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":true},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal "pg-cluster-postgresql-0"
       The status should be success
     End
 
-    It "restarts when pending and the pending leader is the current pod"
+    It "selects one pending replica by stable member name order"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal "pg-cluster-postgresql-1"
+      The status should be success
+    End
+
+    It "selects no candidate while a member is restarting"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"restarting","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "restarts only when the current pod is the selected candidate"
       When call need_restart_for_pending "true" "pg-cluster-postgresql-0"
       The status should be success
     End
 
-    It "does not restart when pending but another pod is the pending leader"
+    It "does not restart when another pod is the selected candidate"
       When call need_restart_for_pending "true" "pg-cluster-postgresql-1"
       The status should be failure
     End
 
+    It "does not restart without a candidate"
+      When call need_restart_for_pending "true" ""
+      The status should be failure
+    End
+
     It "does not restart when not pending"
-      When call need_restart_for_pending "false" ""
+      When call need_restart_for_pending "false" "pg-cluster-postgresql-0"
       The status should be failure
     End
   End

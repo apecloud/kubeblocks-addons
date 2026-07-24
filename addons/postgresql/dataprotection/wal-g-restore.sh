@@ -48,6 +48,26 @@ backupName=$(getWalGSentinelInfo "wal-g-backup-name")
 
 # 2. fetch base backup
 export DATASAFED_BACKEND_BASE_PATH="${backupRepoPath}"
+
+# Retry guards:
+# - The fully-staged state (.old populated + DATA_DIR absent) means a previous
+#   run completed everything including the final staging mv. Re-running the
+#   fetch would recreate DATA_DIR and the final `mv DATA_DIR DATA_DIR.old`
+#   would then nest the fresh copy INSIDE the existing .old as .old/data —
+#   a silently corrupt, double-size PGDATA. Nothing left to do; exit.
+if [ -d "${DATA_DIR}.old" ] && [ ! -d "${DATA_DIR}" ]; then
+  echo "restore already staged in ${DATA_DIR}.old; nothing to do"
+  exit 0
+fi
+# - Any previously/partially fetched DATA_DIR must be cleared before
+#   re-fetching: wal-g backup-fetch requires an empty destination, and
+#   re-extracting over a partial tree is undefined. This also covers the
+#   DP_RESTORE_TIMESTAMP path, whose completed state leaves DATA_DIR in place.
+if [ -d "${DATA_DIR}" ] && [ -n "$(ls -A "${DATA_DIR}" 2>/dev/null)" ]; then
+  echo "clearing previous (partial) restore in ${DATA_DIR} before re-fetch"
+  rm -rf "${DATA_DIR}"
+fi
+
 mkdir -p ${DATA_DIR};
 wal-g backup-fetch ${DATA_DIR} ${backupName}
 
@@ -110,11 +130,16 @@ if [[ "${IS_REPLICA}" == "true" ]]; then
 fi
 
 # Primary restore: Restore from successful backup (.old directory exists)
+# Durability barrier BEFORE removing the signal in both branches: the signal
+# is this hook's retry marker, so its removal must be the FINAL commit
+# action. If sync (or a mv) fails, the signal survives and the bootstrap
+# re-runs the hook instead of losing the restore marker.
 if [[ -d "${DATA_DIR}.old" ]] && [[ ! -d "${DATA_DIR}.failed" ]]; then
     echo "Restoring data from ${DATA_DIR}.old..."
     mkdir -p "${DATA_DIR}"
     mv -f ${DATA_DIR}.old/* ${DATA_DIR}/
-    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
+    sync
+    rm -f ${RESTORE_SCRIPT_DIR}/kb_restore.signal
     echo "Data restore completed successfully"
 fi
 
@@ -123,12 +148,11 @@ if [[ -d "${DATA_DIR}.failed" ]]; then
     echo "Recovering from failed restore..."
     mkdir -p ${DATA_DIR}/
     mv -f ${DATA_DIR}.failed/* ${DATA_DIR}/
-    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
     rm -rf ${DATA_DIR}/recovery.signal
+    sync
+    rm -f ${RESTORE_SCRIPT_DIR}/kb_restore.signal
     echo "Failed restore recovery completed"
 fi
-
-sync
 EOF
 
 # Replace variables in the generated script
@@ -155,6 +179,9 @@ EOF
 
 # 6. Rename data directory (required by Patroni bootstrap)
 # Patroni expects an empty data directory, so we move the restored data to .old
-# The kb_restore.sh script will move it back during bootstrap
+# The kb_restore.sh script will move it back during bootstrap.
+# Drop any stale .old first: mv into an existing directory would NEST the
+# fresh copy inside it (.old/data) instead of replacing it.
+rm -rf ${DATA_DIR}.old
 mv ${DATA_DIR} ${DATA_DIR}.old
 sync
