@@ -190,9 +190,15 @@ function replaceK8sSVC() {
                canonical = 0
              }
            }
-           if (canonical) {
-             print $1
-             exit
+           if (canonical && !seen[$1]) {
+             seen[$1] = 1
+             count++
+             candidate = $1
+           }
+         }
+         END {
+           if (count == 1) {
+             print candidate
            }
          }
          ' <<< "${resolverOutput}")

@@ -9,6 +9,22 @@ Describe "OceanBase CE object storage endpoint handling"
       echo "10.99.171.88 $2"
       return 0
     fi
+    if [ "$1" = "hosts" ] && [ "$2" = "duplicate.oceanbase-ce-test.svc" ]; then
+      echo "10.99.171.87 $2"
+      echo "10.99.171.87 $2"
+      return 0
+    fi
+    if [ "$1" = "hosts" ] && [ "$2" = "dual-stack.oceanbase-ce-test.svc" ]; then
+      echo "fd00::10 $2"
+      echo "10.99.171.87 $2"
+      return 0
+    fi
+    if [ "$1" = "hosts" ] && [ "$2" = "ambiguous-dual-stack.oceanbase-ce-test.svc" ]; then
+      echo "fd00::10 $2"
+      echo "10.99.171.87 $2"
+      echo "10.99.171.88 $2"
+      return 0
+    fi
     if [ "$1" = "hosts" ] && [ "$2" = "ipv6-only.oceanbase-ce-test.svc" ]; then
       echo "fd00::10 $2"
       return 0
@@ -75,9 +91,27 @@ Describe "OceanBase CE object storage endpoint handling"
     The status should be success
   End
 
-  It "selects one IPv4 address when service DNS returns multiple addresses"
+  It "preserves the original endpoint when service DNS returns distinct IPv4 addresses"
     When call replaceK8sSVC "http://multi.oceanbase-ce-test.svc:9000"
+    The output should eq "http://multi.oceanbase-ce-test.svc:9000"
+    The status should be success
+  End
+
+  It "resolves repeated observations of one IPv4 address"
+    When call replaceK8sSVC "http://duplicate.oceanbase-ce-test.svc:9000"
     The output should eq "http://10.99.171.87:9000"
+    The status should be success
+  End
+
+  It "resolves a dual-stack service with one canonical IPv4 address"
+    When call replaceK8sSVC "http://dual-stack.oceanbase-ce-test.svc:9000"
+    The output should eq "http://10.99.171.87:9000"
+    The status should be success
+  End
+
+  It "preserves an ambiguous dual-stack service with distinct IPv4 addresses"
+    When call replaceK8sSVC "http://ambiguous-dual-stack.oceanbase-ce-test.svc:9000"
+    The output should eq "http://ambiguous-dual-stack.oceanbase-ce-test.svc:9000"
     The status should be success
   End
 
