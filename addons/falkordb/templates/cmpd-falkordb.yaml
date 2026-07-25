@@ -361,6 +361,9 @@ spec:
         args:
           - /scripts/redis-account-provision.sh
     switchover:
+      # The script enforces per-command and whole-action wall-clock deadlines.
+      # Disable kbagent's 30s default so Sentinel convergence can finish first.
+      timeoutSeconds: -1
       exec:
         container: falkordb
         command:

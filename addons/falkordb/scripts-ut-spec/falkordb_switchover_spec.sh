@@ -117,6 +117,35 @@ master_host:redis-master"
       End
     End
 
+    Context "run_redis_cli()"
+      It "enforces a command timeout outside unit-test mode"
+        ut_mode="false"
+        timeout() {
+          echo "TIMEOUT:$*"
+        }
+        When call run_redis_cli -h redis1 PING
+        The status should be success
+        The output should include "TIMEOUT:-k 2 5 redis-cli -h redis1 PING"
+      End
+
+      It "actually terminates a hanging redis-cli process"
+        run_hanging_redis_cli_case() {
+          local stub_dir
+          stub_dir=$(mktemp -d)
+          printf '%s\n' '#!/bin/bash' 'sleep 60' > "$stub_dir/redis-cli"
+          chmod +x "$stub_dir/redis-cli"
+          PATH="$stub_dir:$PATH"
+          ut_mode="false"
+          run_redis_cli -h redis1 PING
+          local status=$?
+          rm -rf "$stub_dir"
+          return "$status"
+        }
+        When call run_hanging_redis_cli_case
+        The status should be failure
+      End
+    End
+
     Context "check_redis_kernel_status()"
       setup() {
         export REDIS_POD_FQDN_LIST="redis1,redis2,redis3"
@@ -280,14 +309,241 @@ master_host:redis-master"
         }
         check_redis_kernel_status() { return 0; }
         set_redis_priorities() { return 0; }
+        wait_sentinel_sees_priority_bias() { return 0; }
         execute_sentinel_failover() { return 0; }
         check_switchover_result() { return 0; }
-        recover_redis_priorities() { return 0; }
+        recover_redis_priorities() {
+          echo "All FalkorDB config set replica-priority recovered."
+          return 0
+        }
 
         When call switchover_with_candidate
         The status should be success
         The stdout should include "All FalkorDB config set replica-priority recovered"
         The stderr should equal ""
+      End
+
+      It "should restore priorities when Sentinel cache confirmation fails"
+        load_common_library() { return 0; }
+        check_environment_exist() { return 0; }
+        export KB_SWITCHOVER_CANDIDATE_FQDN="redis2"
+        check_redis_role() { echo "secondary"; }
+        check_redis_kernel_status() { echo "redis1"; }
+        set_redis_priorities() {
+          priorities_mutated=true
+          return 0
+        }
+        wait_sentinel_sees_priority_bias() { return 1; }
+        recover_redis_priorities() {
+          echo "RESTORED"
+          priorities_mutated=false
+          return 0
+        }
+        When call run_switchover_action
+        The status should be failure
+        The stdout should include "RESTORED"
+      End
+
+      It "should restore priorities when Sentinel failover fails"
+        load_common_library() { return 0; }
+        check_environment_exist() { return 0; }
+        export KB_SWITCHOVER_CANDIDATE_FQDN="redis2"
+        check_redis_role() { echo "secondary"; }
+        check_redis_kernel_status() { echo "redis1"; }
+        set_redis_priorities() {
+          priorities_mutated=true
+          return 0
+        }
+        wait_sentinel_sees_priority_bias() { return 0; }
+        execute_sentinel_failover() { return 1; }
+        recover_redis_priorities() {
+          echo "RESTORED"
+          priorities_mutated=false
+          return 0
+        }
+        When call run_switchover_action
+        The status should be failure
+        The stdout should include "RESTORED"
+      End
+
+      It "should wait for all Sentinel caches to observe the target bias"
+        export SENTINEL_POD_FQDN_LIST="sentinel1,sentinel2"
+        export REDIS_POD_FQDN_LIST="redis1,redis2,redis3"
+        ORIGINAL_PRIORITIES["redis1"]=100
+        ORIGINAL_PRIORITIES["redis2"]=100
+        ORIGINAL_PRIORITIES["redis3"]=0
+        sentinel_observed_replica_priority() {
+          case "$1:$2" in
+            sentinel1:redis2|sentinel2:redis2) echo "1" ;;
+            sentinel1:redis3|sentinel2:redis3) echo "0" ;;
+          esac
+        }
+        When call wait_sentinel_sees_priority_bias "redis2" "redis1"
+        The status should be success
+        The stdout should include "All Sentinel replica priority caches confirmed"
+      End
+
+      It "should parse the target priority from Sentinel replica output"
+        export REDIS_CLI_TLS_CMD=""
+        export CUSTOM_SENTINEL_MASTER_NAME="redis"
+        export SENTINEL_SERVICE_PORT="26379"
+        export SENTINEL_PASSWORD=""
+        redis-cli() {
+          cat <<'EOF'
+1) "name"
+2) "not-redis2.redis-headless.default.svc.cluster.local:6379"
+3) "slave-priority"
+4) "100"
+5) "name"
+6) "redis2.redis-headless.default.svc.cluster.local:6379"
+7) "ip"
+8) "redis2.redis-headless.default.svc.cluster.local"
+9) "slave-priority"
+10) "1"
+11) "name"
+12) "redis3.redis-headless.default.svc.cluster.local:6379"
+13) "slave-priority"
+14) "100"
+EOF
+        }
+        When call sentinel_observed_replica_priority "sentinel1" "redis2.redis-headless.default.svc.cluster.local"
+        The status should be success
+        The output should equal "1"
+      End
+
+      It "should not accept a different FQDN with the same pod label"
+        When call same_fqdn \
+          "redis2.other-headless.other.svc.cluster.local" \
+          "redis2.redis-headless.default.svc.cluster.local"
+        The status should be failure
+      End
+
+      It "should parse an exact target after a same-label collision"
+        export REDIS_CLI_TLS_CMD=""
+        export CUSTOM_SENTINEL_MASTER_NAME="redis"
+        export SENTINEL_SERVICE_PORT="26379"
+        export SENTINEL_PASSWORD=""
+        redis-cli() {
+          cat <<'EOF'
+1) "name"
+2) "redis2.other-headless.other.svc.cluster.local:6379"
+3) "slave-priority"
+4) "100"
+5) "name"
+6) "redis2.redis-headless.default.svc.cluster.local:6379"
+7) "slave-priority"
+8) "1"
+EOF
+        }
+        When call sentinel_observed_replica_priority "sentinel1" "redis2.redis-headless.default.svc.cluster.local"
+        The status should be success
+        The output should equal "1"
+      End
+
+      It "should reject a requested candidate absent from the exact pod list"
+        export REDIS_POD_FQDN_LIST="redis1.redis-headless.default.svc.cluster.local,redis2.redis-headless.default.svc.cluster.local"
+        export KB_SWITCHOVER_CANDIDATE_FQDN="redis2.other-headless.other.svc.cluster.local"
+        check_redis_role() {
+          echo "secondary"
+        }
+        When call switchover_with_candidate
+        The status should be failure
+        The stderr should include "not an exact member of REDIS_POD_FQDN_LIST"
+      End
+
+      It "should fail a successful action when priority cleanup fails"
+        load_common_library() { return 0; }
+        check_environment_exist() { return 0; }
+        export KB_SWITCHOVER_CANDIDATE_FQDN="redis2"
+        switchover_with_candidate() {
+          priorities_mutated=true
+          return 0
+        }
+        recover_redis_priorities() { return 1; }
+        When call run_switchover_action
+        The status should be failure
+        The stderr should include "Failed to restore"
+      End
+
+      It "should keep priority recovery retries within the supervisor grace"
+        ORIGINAL_PRIORITIES=()
+        ORIGINAL_PRIORITIES["redis1"]=100
+        ORIGINAL_PRIORITIES["redis2"]=100
+        ORIGINAL_PRIORITIES["redis3"]=0
+        call_func_with_retry() {
+          echo "RETRY_CONTRACT:$1:$2:$3:$4"
+          return 0
+        }
+        When call recover_redis_priorities
+        The status should be success
+        The output should include "RETRY_CONTRACT:2:1:execute_sub_command:redis1"
+        The output should include "RETRY_CONTRACT:2:1:execute_sub_command:redis2"
+        The output should include "RETRY_CONTRACT:2:1:execute_sub_command:redis3"
+      End
+
+      It "should complete real parallel timeout retries within the cleanup grace"
+        run_real_priority_recovery_budget_case() {
+          local stub_dir
+          local started
+          local elapsed
+          stub_dir=$(mktemp -d)
+          printf '%s\n' '#!/bin/bash' 'sleep 60' > "$stub_dir/redis-cli"
+          chmod +x "$stub_dir/redis-cli"
+          PATH="$stub_dir:$PATH"
+          ut_mode="false"
+          ORIGINAL_PRIORITIES=()
+          ORIGINAL_PRIORITIES["redis1"]=100
+          ORIGINAL_PRIORITIES["redis2"]=100
+          ORIGINAL_PRIORITIES["redis3"]=0
+          started=$SECONDS
+          recover_redis_priorities
+          local status=$?
+          elapsed=$((SECONDS - started))
+          rm -rf "$stub_dir"
+          echo "RECOVERY_ELAPSED:$elapsed"
+          [[ $status -ne 0 && $elapsed -ge 10 && $elapsed -lt 20 ]]
+        }
+        When call run_real_priority_recovery_budget_case
+        The status should be success
+        The output should include "RECOVERY_ELAPSED:"
+        The stderr should include "failed after 2 retries."
+      End
+
+      It "should route the production main through the bounded supervisor"
+        supervise_switchover_action() {
+          echo "PRODUCTION_SUPERVISOR:$*"
+          return 23
+        }
+        When call falkordb_switchover_main payload
+        The status should be failure
+        The output should include \
+          "PRODUCTION_SUPERVISOR:420 60 /bin/bash"
+        The output should include \
+          "--falkordb-switchover-deadline-child payload"
+      End
+
+      It "should run TERM cleanup when a supervised child hangs"
+        When run supervise_switchover_action 1 2 /bin/bash -c \
+          'trap "echo TERM_CLEANUP; exit 1" TERM; while :; do sleep 1; done'
+        The status should be failure
+        The output should include "TERM_CLEANUP"
+        The stderr should include "Terminated"
+      End
+
+      It "should force-kill a supervised child that ignores TERM"
+        run_forced_kill_case() {
+          (
+            supervise_switchover_action 1 1 /bin/bash -c \
+              'trap "" TERM; while :; do sleep 1; done'
+          ) 2>/dev/null
+          local status=$?
+          echo "FORCED_KILL_STATUS:$status"
+          return "$status"
+        }
+        When call run_forced_kill_case
+        The status should be failure
+        The output should include "FORCED_KILL_STATUS:"
+        The stderr should include "Killed"
       End
 
       It "should fail when candidate is primary"
