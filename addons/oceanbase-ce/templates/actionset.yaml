@@ -45,4 +45,5 @@ spec:
         - |
           set -e
           {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/restore-state.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}

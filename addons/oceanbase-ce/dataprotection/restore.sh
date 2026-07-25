@@ -41,22 +41,12 @@ function execute() {
 function restoreTenant() {
   local tenant_name=${1:?missing tenant_name}
   local sql=${2:?missing restore sql}
-  local time=0
-  while true; do
-    if [[ "$tenant_name" == ${TENANT_NAME} ]]; then
-      echo "INFO: drop init tenant ${tenant_name}"
-      ${mysql_cmd} "SET SESSION ob_query_timeout=1000000000; DROP TENANT IF EXISTS ${TENANT_NAME} FORCE;"
-    fi
-    echo "INFO: $sql"
-    `${mysql_cmd} "${sql}"`
-    if [[ $? -eq 0 ]]  ; then
-      break
-    fi
-    if [[ $time -ge 2 ]]; then
-        return 1
-    fi
-    time=$((time+1))
-  done
+  if [[ "$tenant_name" == "${TENANT_NAME}" ]]; then
+    echo "INFO: drop init tenant ${tenant_name}"
+    ${mysql_cmd} "SET SESSION ob_query_timeout=1000000000; DROP TENANT IF EXISTS ${TENANT_NAME} FORCE;"
+  fi
+  echo "INFO: $sql"
+  ${mysql_cmd} "${sql}"
 }
 
 function executeSQLFile() {
@@ -174,28 +164,46 @@ for i in $(seq 0 ${index}); do
   archivePath=$(json_array_get "$i" archivePath "$extras")
   uri="$(getDestURL data "${tenant_name}"),$(getDestURL restoreFromArchive "${tenant_name}" "${tenant_id}" "${archivePath}")"
   restoreFragment=$(getRestoreFragment "${tenant_name}" "${minRestoreSCN}")
-  existing_role=$(${mysql_cmd} "SELECT tenant_role FROM oceanbase.DBA_OB_TENANTS WHERE tenant_name='${tenant_name}' AND tenant_type='USER';" 2>/dev/null | awk 'NF {print; exit}')
-  if [[ -n "$existing_role" ]]; then
-    case "$existing_role" in
-      PRIMARY)
-        echo "INFO: tenant ${tenant_name} already PRIMARY, skipping RESTORE"
+  existing_tenant=$(${mysql_cmd} "SELECT STATUS, IFNULL(TENANT_ROLE, 'NULL') FROM oceanbase.DBA_OB_TENANTS WHERE tenant_name='${tenant_name}' AND tenant_type='USER';" 2>/dev/null | awk 'NF {print; exit}')
+  existing_status=""
+  existing_role=""
+  if [[ -n "$existing_tenant" ]]; then
+    IFS=$'\t' read -r existing_status existing_role <<<"$existing_tenant"
+    IFS=$OlD_IFS
+  fi
+  tenant_state=$(restore_state_classify_tenant "$existing_status" "$existing_role") || exit 1
+  case "$tenant_state" in
+    CLOSED)
+      echo "INFO: tenant ${tenant_name} already closed, skipping RESTORE"
+      continue
+      ;;
+    OBSERVE)
+      echo "INFO: tenant ${tenant_name} is restoring, skipping RESTORE command"
+      continue
+      ;;
+  esac
+
+  if restore_state_claim_dispatch "$tenant_name"; then
+    echo "INFO: tenant ${tenant_name} won the durable RESTORE dispatch claim"
+  else
+    claim_rc=$?
+    case "$claim_rc" in
+      10)
+        echo "ERROR: tenant ${tenant_name} has a durable no-replay intent but is not observable yet"
+        exit 1
         ;;
-      STANDBY)
-        echo "INFO: tenant ${tenant_name} already STANDBY (restore completed), skipping RESTORE"
-        ;;
-      RESTORE)
-        echo "INFO: tenant ${tenant_name} in RESTORE state, skipping RESTORE command"
+      11)
+        echo "ERROR: tenant ${tenant_name} restore intent lock timed out"
+        exit 1
         ;;
       *)
-        echo "ERROR: tenant ${tenant_name} exists with unexpected role '${existing_role}'"
+        echo "ERROR: tenant ${tenant_name} restore intent claim failed"
         exit 1
         ;;
     esac
-    continue
   fi
   echo "INFO: start to restore tenant ${tenant_name} until ${restoreFragment}"
-  restoreTenant "${tenant_name}" "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM RESTORE ${tenant_name} FROM '${uri}' UNTIL ${restoreFragment} WITH 'pool_list=${poolList}'"
-  if [ $? -eq 1 ]; then
+  if ! restoreTenant "${tenant_name}" "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM RESTORE ${tenant_name} FROM '${uri}' UNTIL ${restoreFragment} WITH 'pool_list=${poolList}'"; then
     exit 1
   fi
   echo "INFO: restoring tenant ${tenant_name}"
