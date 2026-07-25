@@ -39,8 +39,7 @@ spec:
             MAX_RETRIES=300
             retry_count=0
             while [ $retry_count -lt $MAX_RETRIES ]; do
-                result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })" 2>/dev/null)
-                if [[ "$result" == *"ok"* ]]; then
+                if $CLUSTER_MONGO "quit(db.adminCommand({ ping: 1 }).ok === 1 ? 0 : 1)" >/dev/null 2>&1; then
                     echo "INFO: Mongos is ready."
                     break
                 fi

@@ -59,6 +59,7 @@ Describe "MongoDB toggle-balancer operation contract"
     local observed_state="$2"
     local action_rc="$3"
     local state_rc="${4:-0}"
+    local readiness_mode="${5:-ready}"
     local temp_dir
     local script_file
 
@@ -80,17 +81,26 @@ done
 
 case "$query" in
   *ping*)
+    ping_count=$(grep -c '^PING$' "$MOCK_CALL_LOG" 2>/dev/null || true)
+    echo 'PING' >> "$MOCK_CALL_LOG"
+    if [ "$ping_count" -eq 0 ]; then
+      echo "$MOCK_FIRST_PING_STDOUT"
+      exit "$MOCK_FIRST_PING_RC"
+    fi
     echo '{ ok: 1 }'
     ;;
   *sh.startBalancer*)
+    echo 'ACTION:start' >> "$MOCK_CALL_LOG"
     echo 'ACTION:start'
     exit "$MOCK_ACTION_RC"
     ;;
   *sh.stopBalancer*)
+    echo 'ACTION:stop' >> "$MOCK_CALL_LOG"
     echo 'ACTION:stop'
     exit "$MOCK_ACTION_RC"
     ;;
   *sh.getBalancerState*)
+    echo 'STATE' >> "$MOCK_CALL_LOG"
     echo "$MOCK_BALANCER_STATE"
     exit "$MOCK_STATE_RC"
     ;;
@@ -100,12 +110,40 @@ case "$query" in
     ;;
 esac
 MOCK
-    chmod +x "$temp_dir/bin/whereis" "$temp_dir/bin/mongosh"
+    cat > "$temp_dir/bin/sleep" <<'MOCK'
+#!/usr/bin/env bash
+exit 0
+MOCK
+    chmod +x "$temp_dir/bin/whereis" "$temp_dir/bin/mongosh" "$temp_dir/bin/sleep"
 
     export MOCK_BIN_DIR="$temp_dir/bin"
+    export MOCK_CALL_LOG="$temp_dir/calls.log"
+    : > "$MOCK_CALL_LOG"
     export MOCK_BALANCER_STATE="$observed_state"
     export MOCK_ACTION_RC="$action_rc"
     export MOCK_STATE_RC="$state_rc"
+    case "$readiness_mode" in
+      ready)
+        export MOCK_FIRST_PING_STDOUT='{ ok: 1 }'
+        export MOCK_FIRST_PING_RC=0
+        ;;
+      ok0)
+        export MOCK_FIRST_PING_STDOUT='{ ok: 0 }'
+        export MOCK_FIRST_PING_RC=1
+        ;;
+      rc17_ok1)
+        export MOCK_FIRST_PING_STDOUT='{ ok: 1 }'
+        export MOCK_FIRST_PING_RC=17
+        ;;
+      noise)
+        export MOCK_FIRST_PING_STDOUT='book'
+        export MOCK_FIRST_PING_RC=1
+        ;;
+      *)
+        echo "unknown readiness mode: $readiness_mode" >&2
+        return 2
+        ;;
+    esac
     export SERVICE_PORT=27017
     export MONGODB_ROOT_USER=root
     export MONGODB_ROOT_PASSWORD=password
@@ -118,6 +156,12 @@ MOCK
 
     bash -c "$(cat "$script_file")" toggle-balancer "$parameter_mode"
     local rc=$?
+    local ping_count
+    local call_sequence
+    ping_count=$(grep -c '^PING$' "$MOCK_CALL_LOG" 2>/dev/null || true)
+    call_sequence=$(paste -sd, "$MOCK_CALL_LOG")
+    echo "TEST:ping-count=$ping_count"
+    echo "TEST:call-sequence=$call_sequence"
     rm -rf "$temp_dir"
     return "$rc"
   }
@@ -167,6 +211,27 @@ MOCK
     The output should include "ACTION:start"
     The stderr should include "ERROR: Failed to read balancer state with exit code 19."
     The output should not include "INFO: Balancer is enabled."
+  End
+
+  It "does not accept ping ok 0 as ready"
+    When call run_toggle_balancer true true 0 0 ok0
+    The status should be success
+    The output should include "TEST:ping-count=2"
+    The output should include "TEST:call-sequence=PING,PING,ACTION:start,STATE"
+  End
+
+  It "does not accept ok output from a failed ping command"
+    When call run_toggle_balancer true true 0 0 rc17_ok1
+    The status should be success
+    The output should include "TEST:ping-count=2"
+    The output should include "TEST:call-sequence=PING,PING,ACTION:start,STATE"
+  End
+
+  It "does not accept unrelated output containing ok as ready"
+    When call run_toggle_balancer true true 0 0 noise
+    The status should be success
+    The output should include "TEST:ping-count=2"
+    The output should include "TEST:call-sequence=PING,PING,ACTION:start,STATE"
   End
 
   It "forwards the helper parameter without exposing the token in the target script"
