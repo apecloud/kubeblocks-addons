@@ -184,6 +184,7 @@ accountProvision:
     targetPodSelector: Role
     matchingKey: primary
 roleProbe:
+  failureThreshold: {{ .Values.roleProbe.failureThreshold }}
   periodSeconds: {{ .Values.roleProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   exec:
@@ -226,14 +227,26 @@ memberLeave:
           exit 1
         fi
 switchover:
+  {{- $switchoverTimeout := int .Values.orchestrator.switchover.timeoutSeconds }}
+  {{- $commandTimeout := int .Values.orchestrator.switchover.commandTimeoutSeconds }}
+  {{- if or (lt $switchoverTimeout 1) (gt $switchoverTimeout 60) }}
+  {{- fail "orchestrator.switchover.timeoutSeconds must be between 1 and 60" }}
+  {{- end }}
+  {{- if or (lt $commandTimeout 1) (ge $commandTimeout $switchoverTimeout) }}
+  {{- fail "orchestrator.switchover.commandTimeoutSeconds must be positive and shorter than timeoutSeconds" }}
+  {{- end }}
+  timeoutSeconds: {{ $switchoverTimeout }}
   exec:
+    env:
+      - name: SWITCHOVER_COMMAND_TIMEOUT_SECONDS
+        value: "{{ $commandTimeout }}"
     command:
       - /bin/sh
       - -c
       - |
-        /orc-scripts/switchover.sh 2>> /tmp/switchover.log
+        timeout "${SWITCHOVER_COMMAND_TIMEOUT_SECONDS}" /orc-scripts/switchover.sh 2>> /tmp/switchover.log
         if [ $? -ne 0 ]; then
-          echo "ERROR: Failed to switchover"
+          echo "ERROR: Failed to switchover within ${SWITCHOVER_COMMAND_TIMEOUT_SECONDS}s; next-retry-safe: yes"
           exit 1
         fi
 

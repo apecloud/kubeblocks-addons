@@ -271,29 +271,15 @@ cleanup_mysql_binlogs() {
           return
       fi
 
-      # PURGE BINARY LOGS TO '<file>' deletes every file BEFORE <file> (prefix
-      # deletion). So the scan must stop at the FIRST file that has to be kept
-      # (not synced+uploaded, or one of the newest 5): purging past it would
-      # delete it as well and tear a hole in the archived binlog sequence.
-      local keep_tail_start=$((total_files - 5))
-      local first_kept=""
-      local i
-      for ((i = 0; i < total_files; i++)); do
-          local base_name=$(basename "${all_binlogs[$i]}")
-          if ((i >= keep_tail_start)); then
-              first_kept="$base_name"
-              echo "Keeping $base_name and newer (newest 5 binlog files)"
-              break
-          fi
-          if ! (echo "$synced_files" | tr ' ' '\n' | grep -Fxq "$base_name" &&
-                echo "$uploaded_files" | tr ' ' '\n' | grep -Fxq "$base_name"); then
-              first_kept="$base_name"
-              echo "Keeping $base_name and newer (not yet synced or uploaded)"
-              break
-          fi
+      local binlog_names=()
+      local binlog
+      for binlog in "${all_binlogs[@]}"; do
+          binlog_names+=("$(basename "$binlog")")
       done
 
-      if [[ -z "$first_kept" || "$first_kept" == "$(basename "${all_binlogs[0]}")" ]]; then
+      local first_kept
+      if ! first_kept=$(select_mysql_binlog_purge_target \
+          "$synced_files" "$uploaded_files" 5 "${binlog_names[@]}"); then
           echo "No purgeable binlog prefix on master host"
           return
       fi

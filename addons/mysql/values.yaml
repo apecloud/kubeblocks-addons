@@ -112,11 +112,16 @@ orchestrator:
   topology:
     username: orchestrator
     password: orchestrator
+  switchover:
+    ## The kbagent lifecycle action must complete within its 60s clamp.
+    timeoutSeconds: 60
+    ## Leave time for the action wrapper to report a retry-safe failure.
+    commandTimeoutSeconds: 50
 
 roleProbe:
-  failureThreshold: 2
-  periodSeconds: 1
-  timeoutSeconds: 1
+  failureThreshold: 3
+  periodSeconds: 5
+  timeoutSeconds: 3
 
 ## @param cmpdNamePrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.

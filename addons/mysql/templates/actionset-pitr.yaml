@@ -18,7 +18,7 @@ spec:
     - name: CONF_DIR
       value: "$(VOLUME_DATA_DIR)/conf"
     - name: TIME_FORMAT
-      value: 2006-01-02T15:04:05Z
+      value: "2006-01-02T15:04:05Z"
     - name: TARGET_POD_ROLE
       value: primary
     - name: DP_DB_PORT
@@ -52,6 +52,7 @@ spec:
         #!/bin/bash
         set -e;
         {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/mysql-pitr-binlog-purge.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/mysql-pitr-backup.sh" | nindent 8 }}
   restore:
     postReady:

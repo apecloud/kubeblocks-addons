@@ -339,7 +339,7 @@ reconfigure:
       - |
         set -euo pipefail
 
-        /scripts/update-parameter.sh "$1" "$2"
+        /scripts/update-parameter.sh "$@"
       - --
 {{- end -}}
 
