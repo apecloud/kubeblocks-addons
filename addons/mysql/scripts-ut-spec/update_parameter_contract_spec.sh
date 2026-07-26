@@ -143,6 +143,27 @@ Describe "MySQL reconfigure compatibility contract"
     esac
   }
 
+  config_replacement_mysql() {
+    local query
+    eval "query=\"\${$#}\""
+    case "$query" in
+      "SHOW GLOBAL VARIABLES")
+        printf '%s\n' '[mysqld]' 'max_connections=900' >"$MYSQL_CONFIG_FILE"
+        printf '%s\t%s\n' max_connections 400
+        ;;
+      "SHOW GLOBAL VARIABLES WHERE Variable_name = 'max_connections'")
+        printf '%s\t%s\n' max_connections 500
+        ;;
+      "SET GLOBAL max_connections = 500;")
+        printf '%s' "$query" >"$MOCK_QUERY_FILE"
+        ;;
+      *)
+        printf 'unexpected mutation/query: %s\n' "$query" >&2
+        return 1
+        ;;
+    esac
+  }
+
   BeforeEach "setup"
   AfterEach "cleanup"
 
@@ -154,13 +175,14 @@ Describe "MySQL reconfigure compatibility contract"
     The path "$MYSQL_RECONFIGURE_RECEIPT_FILE" should be exist
   End
 
-  It "fails closed when argv is absent and rendered config has no observable difference"
+  It "records a fully observed converged config when the receipt is absent"
     mysql() { no_diff_mysql "$@"; }
+    fingerprint=$(cksum "$MYSQL_CONFIG_FILE" "$MYSQL_DYNAMIC_PARAMETERS_FILE" | cksum | awk '{ print $1 ":" $2 }')
 
     When run source ../scripts/update-parameter.sh
-    The status should be failure
-    The stderr should include "runtime arguments are missing"
-    The stderr should include "next-retry-safe: yes"
+    The status should be success
+    The stdout should include "already converged for the recorded config"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "complete:$fingerprint"
   End
 
   It "accepts an idempotent retry only for the same completed rendered config"
@@ -182,6 +204,69 @@ Describe "MySQL reconfigure compatibility contract"
     The status should be success
     The stdout should include "already converged for the recorded config"
     The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should start with "complete:"
+  End
+
+  It "fails closed on a stale receipt when the rendered config is already converged"
+    mysql() { no_diff_mysql "$@"; }
+    printf '%s\n' 'complete:stale:fingerprint' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "does not match the rendered config"
+    The stderr should include "next-retry-safe: yes"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "complete:stale:fingerprint"
+  End
+
+  It "fails closed on a malformed receipt when the rendered config is already converged"
+    mysql() { no_diff_mysql "$@"; }
+    printf '%s\n' 'not-a-reconfigure-receipt' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "is malformed"
+    The stderr should include "next-retry-safe: yes"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "not-a-reconfigure-receipt"
+  End
+
+  It "rejects a stale receipt before a rendered difference can mutate MySQL"
+    printf '%s\n' 'pending:stale:fingerprint' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "does not match the rendered config"
+    The path "$MOCK_QUERY_FILE" should not be exist
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "pending:stale:fingerprint"
+  End
+
+  It "rejects a malformed receipt before a rendered difference can mutate MySQL"
+    printf '%s\n' 'not-a-reconfigure-receipt' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "is malformed"
+    The path "$MOCK_QUERY_FILE" should not be exist
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "not-a-reconfigure-receipt"
+  End
+
+  It "rejects a matching receipt with an extra line before mutation"
+    fingerprint=$(cksum "$MYSQL_CONFIG_FILE" "$MYSQL_DYNAMIC_PARAMETERS_FILE" | cksum | awk '{ print $1 ":" $2 }')
+    printf 'complete:%s\n\n' "$fingerprint" >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "is malformed"
+    The path "$MOCK_QUERY_FILE" should not be exist
+  End
+
+  It "uses one rendered-input snapshot for fingerprint, preflight, and mutation"
+    mysql() { config_replacement_mysql "$@"; }
+    fingerprint=$(cksum "$MYSQL_CONFIG_FILE" "$MYSQL_DYNAMIC_PARAMETERS_FILE" | cksum | awk '{ print $1 ":" $2 }')
+
+    When run source ../scripts/update-parameter.sh
+    The status should be success
+    The stdout should include "Applied 1 rendered dynamic parameter"
+    The contents of file "$MOCK_QUERY_FILE" should equal "SET GLOBAL max_connections = 500;"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "complete:$fingerprint"
   End
 
   It "fails closed when an argv-less update does not converge"

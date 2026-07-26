@@ -217,7 +217,35 @@ values_equal() {
 }
 
 rendered_config_fingerprint() {
-    cksum "$1" "$2" | cksum | awk '{ print $1 ":" $2 }'
+    local config_label="${3:-$1}"
+    local allowlist_label="${4:-$2}"
+    local config_sum allowlist_sum combined_sum
+    local config_crc config_bytes allowlist_crc allowlist_bytes
+
+    config_sum=$(cksum "$1") || return 1
+    if [[ ! "$config_sum" =~ ^([0-9]+)[[:space:]]+([0-9]+)[[:space:]] ]]; then
+        return 1
+    fi
+    config_crc="${BASH_REMATCH[1]}"
+    config_bytes="${BASH_REMATCH[2]}"
+
+    allowlist_sum=$(cksum "$2") || return 1
+    if [[ ! "$allowlist_sum" =~ ^([0-9]+)[[:space:]]+([0-9]+)[[:space:]] ]]; then
+        return 1
+    fi
+    allowlist_crc="${BASH_REMATCH[1]}"
+    allowlist_bytes="${BASH_REMATCH[2]}"
+
+    combined_sum=$(
+        printf '%s %s %s\n%s %s %s\n' \
+            "$config_crc" "$config_bytes" "$config_label" \
+            "$allowlist_crc" "$allowlist_bytes" "$allowlist_label" |
+            cksum
+    ) || return 1
+    if [[ ! "$combined_sum" =~ ^([0-9]+)[[:space:]]+([0-9]+) ]]; then
+        return 1
+    fi
+    printf '%s:%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
 }
 
 persist_reconfigure_receipt() {
@@ -233,25 +261,84 @@ persist_reconfigure_receipt() {
     fi
 }
 
-apply_rendered_dynamic_differences() {
-    local config_file="${MYSQL_CONFIG_FILE:-/etc/mysql/conf.d/my.cnf}"
-    local receipt_file="${MYSQL_RECONFIGURE_RECEIPT_FILE:-/tmp/kubeblocks-mysql-reconfigure.receipt}"
-    local allowlist_file live_file parameter normalized_name desired actual verified fingerprint
-    local applied=0 configured=0
+validate_reconfigure_receipt() {
+    local receipt_file="$1"
+    local fingerprint="$2"
+    local expected
 
-    if ! allowlist_file=$(resolve_dynamic_parameters_file); then
+    [ -e "$receipt_file" ] || return 0
+    if ! expected=$(mktemp); then
+        return 2
+    fi
+    if ! printf 'pending:%s\n' "$fingerprint" >"$expected"; then
+        rm -f "$expected"
+        return 2
+    fi
+    if cmp -s "$receipt_file" "$expected"; then
+        rm -f "$expected"
+        return 0
+    fi
+    if ! printf 'complete:%s\n' "$fingerprint" >"$expected"; then
+        rm -f "$expected"
+        return 2
+    fi
+    if cmp -s "$receipt_file" "$expected"; then
+        rm -f "$expected"
+        return 0
+    fi
+    rm -f "$expected"
+    return 1
+}
+
+apply_rendered_dynamic_differences() (
+    local config_source="${MYSQL_CONFIG_FILE:-/etc/mysql/conf.d/my.cnf}"
+    local receipt_file="${MYSQL_RECONFIGURE_RECEIPT_FILE:-/tmp/kubeblocks-mysql-reconfigure.receipt}"
+    local allowlist_source snapshot_dir config_file allowlist_file live_file
+    local parameter normalized_name desired actual verified fingerprint
+    local applied=0 configured=0 receipt_status
+
+    if ! allowlist_source=$(resolve_dynamic_parameters_file); then
         return 1
     fi
-    if [ ! -r "$config_file" ] || [ ! -r "$allowlist_file" ]; then
+    if [ ! -r "$config_source" ] || [ ! -r "$allowlist_source" ]; then
         printf 'Rendered-config fallback inputs are unreadable; runtime arguments are missing; next-retry-safe: yes\n' >&2
         return 1
     fi
-    if ! fingerprint=$(rendered_config_fingerprint "$config_file" "$allowlist_file"); then
+    if ! snapshot_dir=$(mktemp -d); then
+        printf 'Could not create a rendered-config snapshot; next-retry-safe: yes\n' >&2
+        return 1
+    fi
+    trap 'rm -rf "$snapshot_dir"' EXIT
+    config_file="$snapshot_dir/my.cnf"
+    allowlist_file="$snapshot_dir/dynamic-parameters.txt"
+    live_file="$snapshot_dir/live-variables"
+    if ! cp "$config_source" "$config_file" ||
+        ! cp "$allowlist_source" "$allowlist_file"; then
+        printf 'Could not snapshot rendered-config fallback inputs; next-retry-safe: yes\n' >&2
+        return 1
+    fi
+    if ! fingerprint=$(
+        rendered_config_fingerprint \
+            "$config_file" "$allowlist_file" "$config_source" "$allowlist_source"
+    ); then
         printf 'Could not fingerprint rendered-config fallback inputs; next-retry-safe: yes\n' >&2
         return 1
     fi
+    validate_reconfigure_receipt "$receipt_file" "$fingerprint"
+    receipt_status=$?
+    case "$receipt_status" in
+        0)
+            ;;
+        1)
+            printf 'Existing rendered-config receipt is malformed or does not match the rendered config; next-retry-safe: yes\n' >&2
+            return 1
+            ;;
+        *)
+            printf 'Could not validate the rendered-config receipt; next-retry-safe: yes\n' >&2
+            return 1
+            ;;
+    esac
 
-    live_file=$(mktemp)
     if ! mysql_exec "SHOW GLOBAL VARIABLES" >"$live_file"; then
         rm -f "$live_file"
         printf 'Could not read live MySQL variables; runtime arguments are missing; next-retry-safe: yes\n' >&2
@@ -319,25 +406,19 @@ apply_rendered_dynamic_differences() {
     rm -f "$live_file"
 
     if [ "$applied" -eq 0 ]; then
-        if [ -r "$receipt_file" ] &&
-            { [ "$(cat "$receipt_file")" = "pending:${fingerprint}" ] ||
-              [ "$(cat "$receipt_file")" = "complete:${fingerprint}" ]; }; then
-            if ! persist_reconfigure_receipt "$receipt_file" complete "$fingerprint"; then
-                printf 'Could not finalize the rendered-config completion receipt; next-retry-safe: yes\n' >&2
-                return 1
-            fi
-            printf 'Rendered dynamic parameters already converged for the recorded config\n'
-            return 0
+        if ! persist_reconfigure_receipt "$receipt_file" complete "$fingerprint"; then
+            printf 'Could not persist the rendered-config completion receipt; next-retry-safe: yes\n' >&2
+            return 1
         fi
-        printf 'No rendered dynamic difference was observable while runtime arguments are missing; next-retry-safe: yes\n' >&2
-        return 1
+        printf 'Rendered dynamic parameters already converged for the recorded config\n'
+        return 0
     fi
     if ! persist_reconfigure_receipt "$receipt_file" complete "$fingerprint"; then
         printf 'Could not persist the rendered-config completion receipt; next-retry-safe: yes\n' >&2
         return 1
     fi
     printf 'Applied %s rendered dynamic parameter(s)\n' "$applied"
-}
+)
 
 main() {
     case "$#" in
