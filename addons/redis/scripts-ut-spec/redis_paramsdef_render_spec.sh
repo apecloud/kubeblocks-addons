@@ -74,6 +74,7 @@ Describe "Redis ParametersDefinition render contract"
       matched = 0
       files = 0
       kept = 0
+      rejected_neighbors = 0
       external_configs.each do |component_definition, config|
         component_name = component_definition.dig("metadata", "name")
         matches = parameter_definitions.select do |parameter_definition|
@@ -87,6 +88,18 @@ Describe "Redis ParametersDefinition render contract"
 
         parameter_definition = matches.first
         kept += 1 if parameter_definition.dig("metadata", "annotations", "helm.sh/resource-policy") == "keep"
+
+        selector = Regexp.new(parameter_definition.dig("spec", "componentDef"))
+        dot_neighbor = component_name.sub(".", "x")
+        abort "#{component_name}: expected a version dot for selector mutation" if dot_neighbor == component_name
+        [
+          "shadow-#{component_name}",
+          "#{component_name}-shadow",
+          dot_neighbor
+        ].each do |neighbor|
+          abort "#{parameter_definition.dig("metadata", "name")}: selector accepts non-exact neighbor #{neighbor}" if selector.match?(neighbor)
+          rejected_neighbors += 1
+        end
 
         template = config_maps.find do |config_map|
           config_map.dig("metadata", "name") == config["template"] &&
@@ -102,6 +115,7 @@ Describe "Redis ParametersDefinition render contract"
       puts "matched_bindings=#{matched}"
       puts "file_bindings=#{files}"
       puts "kept_bindings=#{kept}"
+      puts "selector_neighbors_rejected=#{rejected_neighbors}"
     ' "$workdir/current.yaml" "$workdir/next.yaml"
     status=$?
     rm -rf "$workdir"
@@ -115,6 +129,7 @@ Describe "Redis ParametersDefinition render contract"
 external_configs=24
 matched_bindings=24
 file_bindings=24
-kept_bindings=24"
+kept_bindings=24
+selector_neighbors_rejected=72"
   End
 End
