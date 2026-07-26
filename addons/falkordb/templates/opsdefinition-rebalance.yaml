@@ -44,10 +44,11 @@ spec:
             command: ["/bin/sh", "-c"]
             args:
               - |
+                set -e
                 POD_FQDN=$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN
                 REDIS_URL="redis://${REDIS_DEFAULT_USER}:${REDIS_DEFAULT_PASSWORD}@${POD_FQDN}"
                 echo ${REDIS_URL}
-                cat <<EOF > /tmp/reshard.ini
+                cat <<EOF > /tmp/reshard.ini.tmp
                 [extractor]
                 db_type=redis
                 extract_type=reshard
@@ -55,15 +56,26 @@ spec:
                 [sinker]
                 sink_type=dummy
                 EOF
+                mv /tmp/reshard.ini.tmp /tmp/reshard.ini
             volumeMounts:
             - name: reshard-config
               mountPath: /tmp
           - name: falkordb-rebalance
             image: {{ include "apeDts.reshard.image" . }}
             imagePullPolicy: IfNotPresent
-            command: ["/ape-dts"]
+            command: ["/busybox/sh", "-c"]
             args:
-              - /tmp/reshard.ini
+              - |
+                wait_seconds=0
+                while [ ! -s /tmp/reshard.ini ]; do
+                  if [ "$wait_seconds" -ge 120 ]; then
+                    echo "timed out waiting for /tmp/reshard.ini" >&2
+                    exit 1
+                  fi
+                  sleep 1
+                  wait_seconds=$((wait_seconds + 1))
+                done
+                exec /ape-dts /tmp/reshard.ini
             volumeMounts:
             - name: reshard-config
               mountPath: /tmp
