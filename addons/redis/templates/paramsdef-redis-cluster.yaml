@@ -4,11 +4,13 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ printf "redis-cluster%s-pd" .major }}
+  name: {{ printf "redis-cluster%s-pd-%s" .major $.Chart.Version }}
   labels:
     {{- include "redis.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" $ | nindent 4 }}
 spec:
-  componentDef: {{ printf "%s-%s" .clusterComponentDef  $.Chart.Version }}
+  componentDef: {{ printf "^%s$" (printf "%s-%s" .clusterComponentDef $.Chart.Version | replace "." "[.]") | quote }}
   templateName: redis-cluster-config
   fileName: redis.conf
   fileFormatConfig:
