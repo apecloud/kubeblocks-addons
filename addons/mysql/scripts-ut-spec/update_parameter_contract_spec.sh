@@ -80,7 +80,7 @@ Describe "MySQL reconfigure compatibility contract"
     local query
     eval "query=\"\${$#}\""
     case "$query" in
-      "SET GLOBAL sql_mode = 'ANSI''QUOTES';")
+      "SET GLOBAL sql_mode = "*)
         printf '%s' "$query" >"$MOCK_QUERY_FILE"
         ;;
       *)
@@ -180,7 +180,35 @@ Describe "MySQL reconfigure compatibility contract"
     When run source ../scripts/update-parameter.sh sql-mode "ANSI'QUOTES"
     The status should be success
     The stdout should include "Set parameter sql_mode"
-    The contents of file "$MOCK_QUERY_FILE" should equal "SET GLOBAL sql_mode = 'ANSI''QUOTES';"
+    The contents of file "$MOCK_QUERY_FILE" should equal "SET GLOBAL sql_mode = X'414e53492751554f544553';"
+  End
+
+  It "hex-encodes every apostrophe in a string value"
+    mysql() { string_mysql "$@"; }
+
+    When run source ../scripts/update-parameter.sh sql-mode "A'B''C"
+    The status should be success
+    The stdout should include "Set parameter sql_mode"
+    The contents of file "$MOCK_QUERY_FILE" should equal "SET GLOBAL sql_mode = X'412742272743';"
+  End
+
+  It "hex-encodes a backslash followed by an apostrophe"
+    mysql() { string_mysql "$@"; }
+
+    When run source ../scripts/update-parameter.sh sql-mode "A\\'B"
+    The status should be success
+    The stdout should include "Set parameter sql_mode"
+    The contents of file "$MOCK_QUERY_FILE" should equal "SET GLOBAL sql_mode = X'415c2742';"
+  End
+
+  It "fails closed before mutation when string encoding fails"
+    od() { return 1; }
+    mysql() { string_mysql "$@"; }
+
+    When run source ../scripts/update-parameter.sh sql-mode "ANSI"
+    The status should be failure
+    The stderr should include "Failed to encode parameter sql_mode"
+    The path "$MOCK_QUERY_FILE" should not be exist
   End
 
   It "rejects ambiguous extra runtime arguments"

@@ -32,12 +32,20 @@ normalize_parameter_value() {
     fi
 }
 
-quote_sql_string() {
-    printf '%s' "${1//\'/''}"
+sql_string_literal() {
+    local hex
+
+    if ! hex=$(
+        set -o pipefail
+        printf '%s' "$1" | od -An -v -tx1 | tr -d ' \n'
+    ); then
+        return 1
+    fi
+    printf "X'%s'" "$hex"
 }
 
 apply_parameter() {
-    local name value normalized_value query result
+    local name value normalized_value sql_literal query result
     name=$(normalize_parameter_name "$1")
     value="$2"
 
@@ -50,7 +58,11 @@ apply_parameter() {
     if [[ "$normalized_value" =~ ^[0-9]+$ ]]; then
         query="SET GLOBAL ${name} = ${normalized_value};"
     else
-        query="SET GLOBAL ${name} = '$(quote_sql_string "$normalized_value")';"
+        if ! sql_literal=$(sql_string_literal "$normalized_value"); then
+            printf 'Failed to encode parameter %s as a SQL string literal\n' "$name" >&2
+            return 1
+        fi
+        query="SET GLOBAL ${name} = ${sql_literal};"
     fi
 
     if ! result=$(mysql_exec "$query" 2>&1); then
