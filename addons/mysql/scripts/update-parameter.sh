@@ -32,6 +32,41 @@ normalize_parameter_value() {
     fi
 }
 
+canonical_decimal_value() {
+    local value="$1"
+    local sign="" integer fraction=""
+
+    if [[ ! "$value" =~ ^[+-]?[0-9]+([.][0-9]+)?$ ]]; then
+        return 1
+    fi
+
+    case "$value" in
+        +*) value="${value#+}" ;;
+        -*) sign="-"; value="${value#-}" ;;
+    esac
+    case "$value" in
+        *.*) integer="${value%%.*}"; fraction="${value#*.}" ;;
+        *) integer="$value" ;;
+    esac
+
+    while [ "${integer#0}" != "$integer" ]; do
+        integer="${integer#0}"
+    done
+    [ -n "$integer" ] || integer=0
+    while [ -n "$fraction" ] && [ "${fraction%0}" != "$fraction" ]; do
+        fraction="${fraction%0}"
+    done
+    if [ "$integer" = 0 ] && [ -z "$fraction" ]; then
+        sign=""
+    fi
+
+    if [ -n "$fraction" ]; then
+        printf '%s%s.%s' "$sign" "$integer" "$fraction"
+    else
+        printf '%s%s' "$sign" "$integer"
+    fi
+}
+
 sql_string_literal() {
     local hex
 
@@ -163,13 +198,22 @@ lookup_live_value() {
 }
 
 values_equal() {
-    local desired actual
+    local desired actual desired_decimal actual_decimal
     desired=$(normalize_parameter_value "$1")
     actual=$(normalize_parameter_value "$2")
 
-    [ "$desired" = "$actual" ] ||
+    if [ "$desired" = "$actual" ] ||
         [ "$(printf '%s' "$desired" | tr '[:upper:]' '[:lower:]')" = \
-          "$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')" ]
+          "$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')" ]; then
+        return 0
+    fi
+
+    if desired_decimal=$(canonical_decimal_value "$desired") &&
+        actual_decimal=$(canonical_decimal_value "$actual") &&
+        [ "$desired_decimal" = "$actual_decimal" ]; then
+        return 0
+    fi
+    return 1
 }
 
 rendered_config_fingerprint() {

@@ -76,6 +76,45 @@ Describe "MySQL reconfigure compatibility contract"
     esac
   }
 
+  decimal_format_mysql() {
+    local query
+    eval "query=\"\${$#}\""
+    case "$query" in
+      "SHOW GLOBAL VARIABLES")
+        printf '%s\t%s\n' long_query_time 4.000000
+        ;;
+      "SHOW GLOBAL VARIABLES WHERE Variable_name = 'long_query_time'")
+        printf '%s\t%s\n' long_query_time 5.000000
+        ;;
+      "SET GLOBAL long_query_time = 5;")
+        printf '%s' "$query" >"$MOCK_QUERY_FILE"
+        ;;
+      *)
+        printf 'unexpected query: %s\n' "$query" >&2
+        return 1
+        ;;
+    esac
+  }
+
+  unequal_decimal_mysql() {
+    local query
+    eval "query=\"\${$#}\""
+    case "$query" in
+      "SHOW GLOBAL VARIABLES")
+        printf '%s\t%s\n' long_query_time 4.000000
+        ;;
+      "SHOW GLOBAL VARIABLES WHERE Variable_name = 'long_query_time'")
+        printf '%s\t%s\n' long_query_time 5.000001
+        ;;
+      "SET GLOBAL long_query_time = 5;")
+        ;;
+      *)
+        printf 'unexpected query: %s\n' "$query" >&2
+        return 1
+        ;;
+    esac
+  }
+
   string_mysql() {
     local query
     eval "query=\"\${$#}\""
@@ -153,6 +192,29 @@ Describe "MySQL reconfigure compatibility contract"
     The stdout should include "Set parameter max_connections to value 500"
     The stderr should include "did not converge"
     The stderr should include "next-retry-safe: yes"
+  End
+
+  It "accepts equivalent fixed-scale numeric values after fallback mutation"
+    printf '%s\n' '[mysqld]' 'long_query_time=5' >"$MYSQL_CONFIG_FILE"
+    printf '%s\n' 'long_query_time' >"$MYSQL_DYNAMIC_PARAMETERS_FILE"
+    mysql() { decimal_format_mysql "$@"; }
+
+    When run source ../scripts/update-parameter.sh
+    The status should be success
+    The stdout should include "Applied 1 rendered dynamic parameter"
+    The contents of file "$MOCK_QUERY_FILE" should equal "SET GLOBAL long_query_time = 5;"
+    The path "$MYSQL_RECONFIGURE_RECEIPT_FILE" should be exist
+  End
+
+  It "rejects a different fixed-scale numeric value after fallback mutation"
+    printf '%s\n' '[mysqld]' 'long_query_time=5' >"$MYSQL_CONFIG_FILE"
+    printf '%s\n' 'long_query_time' >"$MYSQL_DYNAMIC_PARAMETERS_FILE"
+    mysql() { unequal_decimal_mysql "$@"; }
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stdout should include "Set parameter long_query_time to value 5"
+    The stderr should include "Parameter long_query_time did not converge"
   End
 
   It "preflights all configured allowlisted variables before any fallback mutation"
