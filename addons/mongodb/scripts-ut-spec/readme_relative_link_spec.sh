@@ -9,7 +9,7 @@ Describe "MongoDB README relative-link closure"
     repo_root=${MONGODB_REPO_ROOT:-$(git rev-parse --show-toplevel)} || return 2
     ruby_bin=${MONGODB_RUBY_BIN:-ruby}
 
-    "$ruby_bin" -e '
+    "$ruby_bin" -ruri -e '
       def inside_root?(root, path)
         path == root || path.start_with?("#{root}#{File::SEPARATOR}")
       end
@@ -30,8 +30,23 @@ Describe "MongoDB README relative-link closure"
       readmes.each do |relative_readme|
         readme = File.join(root, relative_readme)
         File.read(readme).scan(/\[([^\]]+)\]\(([^)]+)\)/).each do |_label, raw_target|
-          target = raw_target.split(/[?#]/, 2).first
-          next if target.empty? || target.start_with?("#")
+          raw_path = raw_target.split(/[?#]/, 2).first
+          next if raw_path.empty?
+
+          if raw_path.match?(/%(?![0-9a-f]{2})/i)
+            failures << "#{relative_readme} link=#{raw_target.inspect} malformed_percent_encoding"
+            next
+          end
+          target = URI::DEFAULT_PARSER.unescape(raw_path)
+          unless target.valid_encoding? && !target.include?("\0")
+            failures << "#{relative_readme} link=#{raw_target.inspect} malformed_percent_encoding"
+            next
+          end
+          if target.match?(/%[0-9a-f]{2}/i)
+            failures << "#{relative_readme} link=#{raw_target.inspect} ambiguous_percent_encoding"
+            next
+          end
+
           next if target.match?(/\A[a-z][a-z0-9+.-]*:/i)
 
           basename = File.basename(target)
