@@ -154,4 +154,48 @@ Describe "MongoDB README relative-link closure"
     The status should eq 1
     The stderr should include 'link="outside.md" real_target_escapes_repository'
   End
+
+  It "rejects percent-encoded dot segments that escape after URL path decoding"
+    prepare_link_fixture
+    mkdir -p "$MONGODB_REPO_ROOT/addons/mongodb/%2e%2e/%2e%2e/%2e%2e"
+    printf '# decoy\n' > "$MONGODB_REPO_ROOT/addons/mongodb/%2e%2e/%2e%2e/%2e%2e/outside.md"
+    printf '%s\n' \
+      '[Escape](%2e%2e/%2e%2e/%2e%2e/outside.md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="%2e%2e/%2e%2e/%2e%2e/outside.md" escapes_repository'
+  End
+
+  It "accepts a valid percent-encoded in-repository filename"
+    prepare_link_fixture
+    printf '# encoded filename\n' > "$MONGODB_REPO_ROOT/addons/mongodb/space name.md"
+    printf '%s\n' '[Space](space%20name.md)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "rejects malformed percent encoding before filesystem resolution"
+    prepare_link_fixture
+    printf '%s\n' '[Malformed](bad%2G.md)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="bad%2G.md" malformed_percent_encoding'
+  End
+
+  It "rejects an ambiguous target that remains percent-encoded after one decode"
+    prepare_link_fixture
+    printf '# ambiguous decoy\n' > "$MONGODB_REPO_ROOT/addons/mongodb/literal%2520name.md"
+    printf '%s\n' \
+      '[Ambiguous](literal%2520name.md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="literal%2520name.md" ambiguous_percent_encoding'
+  End
 End
