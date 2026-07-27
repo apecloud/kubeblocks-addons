@@ -14,6 +14,77 @@ Describe "MongoDB README relative-link closure"
         path == root || path.start_with?("#{root}#{File::SEPARATOR}")
       end
 
+      def pointy_destination(line, target_start)
+        index = target_start + 1
+        backslash_run = 0
+        closer = nil
+        nested = false
+
+        while index < line.length
+          byte = line.getbyte(index)
+          if byte == 92
+            backslash_run += 1
+            index += 1
+            next
+          end
+
+          escaped = backslash_run.odd?
+          nested = true if byte == 60 && !escaped
+          if byte == 62 && !escaped
+            closer = index
+            break
+          end
+
+          backslash_run = 0
+          index += 1
+        end
+
+        link_end = line.index(")", target_start)
+        if closer && line.getbyte(closer + 1) == 41 && !nested
+          raw_target = line[target_start..closer]
+          destination = raw_target.byteslice(1, raw_target.bytesize - 2)
+          return [raw_target, destination, closer + 2, false]
+        end
+
+        raw_end = link_end || line.length
+        raw_target = line[target_start...raw_end].sub(/\r?\n\z/, "")
+        next_cursor = link_end ? link_end + 1 : line.length
+        [raw_target, nil, next_cursor, true]
+      end
+
+      def markdown_link_targets(text)
+        targets = []
+        opener = /\[[^\]\n]+\]\(/
+
+        text.each_line do |line|
+          cursor = 0
+          while (match = opener.match(line, cursor))
+            target_start = match.end(0)
+            if line.getbyte(target_start) == 60
+              raw_target, destination, cursor, malformed =
+                pointy_destination(line, target_start)
+              targets << [raw_target, destination, malformed]
+              next
+            end
+
+            link_end = line.index(")", target_start)
+            break unless link_end
+
+            raw_target = line[target_start...link_end]
+            targets << [raw_target, raw_target, false]
+            cursor = link_end + 1
+          end
+        end
+
+        targets
+      end
+
+      def normalize_markdown_destination(destination)
+        destination.gsub(/\\([\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e])/) do
+          Regexp.last_match(1)
+        end
+      end
+
       root = File.realpath(ARGV.fetch(0))
       readmes = %w[
         addons/mongodb/README.md
@@ -29,8 +100,13 @@ Describe "MongoDB README relative-link closure"
 
       readmes.each do |relative_readme|
         readme = File.join(root, relative_readme)
-        File.read(readme).scan(/\[([^\]]+)\]\(([^)]+)\)/).each do |_label, raw_target|
-          raw_path = raw_target.split(/[?#]/, 2).first
+        markdown_link_targets(File.read(readme)).each do |raw_target, destination, malformed|
+          if malformed
+            failures << "#{relative_readme} link=#{raw_target.inspect} malformed_markdown_destination"
+            next
+          end
+
+          raw_path = normalize_markdown_destination(destination).split(/[?#]/, 2).first.to_s
           next if raw_path.empty?
           next if raw_path.match?(/\A[a-z][a-z0-9+.-]*:/i)
 
