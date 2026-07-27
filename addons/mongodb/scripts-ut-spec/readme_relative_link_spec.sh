@@ -47,9 +47,9 @@ Describe "MongoDB README relative-link closure"
           return [raw_target, destination, closer + 2, false]
         end
 
-        raw_end = link_end || line.length
+        raw_end = link_end || segment_end
         raw_target = line[target_start...raw_end].sub(/\r?\n\z/, "")
-        next_cursor = link_end ? link_end + 1 : line.length
+        next_cursor = link_end ? link_end + 1 : segment_end
         [raw_target, nil, next_cursor, true]
       end
 
