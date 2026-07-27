@@ -264,30 +264,26 @@ persist_reconfigure_receipt() {
 validate_reconfigure_receipt() {
     local receipt_file="$1"
     local fingerprint="$2"
-    local expected
+    local receipt_sum receipt_bytes line
 
     [ -e "$receipt_file" ] || return 0
-    if ! expected=$(mktemp); then
+    if ! receipt_sum=$(cksum "$receipt_file"); then
         return 2
     fi
-    if ! printf 'pending:%s\n' "$fingerprint" >"$expected"; then
-        rm -f "$expected"
+    if [[ ! "$receipt_sum" =~ ^([0-9]+)[[:space:]]+([0-9]+)[[:space:]] ]]; then
         return 2
     fi
-    if cmp -s "$receipt_file" "$expected"; then
-        rm -f "$expected"
-        return 0
+    receipt_bytes="${BASH_REMATCH[2]}"
+    if ! IFS= read -r line <"$receipt_file"; then
+        return 1
     fi
-    if ! printf 'complete:%s\n' "$fingerprint" >"$expected"; then
-        rm -f "$expected"
-        return 2
+    if [ "$receipt_bytes" -ne "$((${#line} + 1))" ]; then
+        return 1
     fi
-    if cmp -s "$receipt_file" "$expected"; then
-        rm -f "$expected"
-        return 0
-    fi
-    rm -f "$expected"
-    return 1
+    case "$line" in
+        "pending:$fingerprint" | "complete:$fingerprint") return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 apply_rendered_dynamic_differences() (

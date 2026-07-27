@@ -206,6 +206,17 @@ Describe "MySQL reconfigure compatibility contract"
     The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should start with "complete:"
   End
 
+  It "validates an exact receipt without requiring cmp in the action runtime"
+    mysql() { no_diff_mysql "$@"; }
+    cmp() { return 127; }
+    fingerprint=$(cksum "$MYSQL_CONFIG_FILE" "$MYSQL_DYNAMIC_PARAMETERS_FILE" | cksum | awk '{ print $1 ":" $2 }')
+    printf 'complete:%s\n' "$fingerprint" >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be success
+    The stdout should include "already converged for the recorded config"
+  End
+
   It "fails closed on a stale receipt when the rendered config is already converged"
     mysql() { no_diff_mysql "$@"; }
     printf '%s\n' 'complete:stale:fingerprint' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
@@ -251,6 +262,26 @@ Describe "MySQL reconfigure compatibility contract"
   It "rejects a matching receipt with an extra line before mutation"
     fingerprint=$(cksum "$MYSQL_CONFIG_FILE" "$MYSQL_DYNAMIC_PARAMETERS_FILE" | cksum | awk '{ print $1 ":" $2 }')
     printf 'complete:%s\n\n' "$fingerprint" >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "is malformed"
+    The path "$MOCK_QUERY_FILE" should not be exist
+  End
+
+  It "rejects a matching receipt without its final newline before mutation"
+    fingerprint=$(cksum "$MYSQL_CONFIG_FILE" "$MYSQL_DYNAMIC_PARAMETERS_FILE" | cksum | awk '{ print $1 ":" $2 }')
+    printf 'complete:%s' "$fingerprint" >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "is malformed"
+    The path "$MOCK_QUERY_FILE" should not be exist
+  End
+
+  It "rejects a matching receipt containing an embedded NUL before mutation"
+    fingerprint=$(cksum "$MYSQL_CONFIG_FILE" "$MYSQL_DYNAMIC_PARAMETERS_FILE" | cksum | awk '{ print $1 ":" $2 }')
+    printf 'complete:%s\0\n' "$fingerprint" >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
 
     When run source ../scripts/update-parameter.sh
     The status should be failure
