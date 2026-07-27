@@ -20,7 +20,7 @@ Describe "MongoDB README relative-link closure"
         closer = nil
         nested = false
 
-        while index < line.length
+        while index < segment_end
           byte = line.getbyte(index)
           if byte == 92
             backslash_run += 1
