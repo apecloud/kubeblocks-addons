@@ -558,4 +558,16 @@ Describe "MongoDB README relative-link closure"
     The status should eq 1
     The stderr should include 'link="<before)after" malformed_markdown_destination'
   End
+
+  It "recovers at the next opener after a pointy segment without a closing parenthesis"
+    prepare_link_fixture
+    printf '%s\n' \
+      '[MalformedSegment](<before[Later](missing-later.md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="<before" malformed_markdown_destination'
+    The stderr should include 'link="missing-later.md" missing=addons/mongodb/missing-later.md'
+  End
 End
