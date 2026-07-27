@@ -570,4 +570,16 @@ Describe "MongoDB README relative-link closure"
     The stderr should include 'link="<before" malformed_markdown_destination'
     The stderr should include 'link="missing-later.md" missing=addons/mongodb/missing-later.md'
   End
+
+  It "does not borrow a pointy closer from a later bare destination"
+    prepare_link_fixture
+    printf '%s\n' \
+      '[MalformedSegment](<before[Later](missing-later>)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="<before" malformed_markdown_destination'
+    The stderr should include 'link="missing-later>" missing=addons/mongodb/missing-later>'
+  End
 End
