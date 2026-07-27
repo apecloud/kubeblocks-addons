@@ -312,9 +312,28 @@ volumeMounts:
 {{- end -}}
 
 
+{{- define "mysql.syncer.image" -}}
+{{- $registry := .Values.image.registry | default "docker.io" -}}
+{{- $repository := required "image.syncer.repository is required" .Values.image.syncer.repository -}}
+{{- $tag := required "image.syncer.tag is required" .Values.image.syncer.tag -}}
+{{- $digests := .Values.image.syncer.digests | default dict -}}
+{{- $digest := index $digests $tag | default "" -}}
+{{- if $digest -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $digest) -}}
+{{- fail (printf "image.syncer.digests[%s] must be sha256:<64 lowercase hex>" $tag) -}}
+{{- end -}}
+{{- printf "%s/%s:%s@%s" $registry $repository $tag $digest -}}
+{{- else if eq $tag "0.7.7" -}}
+{{- required "image.syncer.digests[0.7.7] is required" $digest -}}
+{{- else -}}
+{{- printf "%s/%s:%s" $registry $repository $tag -}}
+{{- end -}}
+{{- end -}}
+
+
 {{- define "mysql.spec.runtime.images" -}}
 init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+init-syncer: {{ include "mysql.syncer.image" . }}
 mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 {{- end -}}
 

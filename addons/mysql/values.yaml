@@ -20,6 +20,9 @@ image:
   syncer:
     repository: apecloud/syncer
     tag: 0.7.7
+    # Pin reviewed default tags while keeping explicit alternative tags observable.
+    digests:
+      "0.7.7": sha256:2cf5d059a029f06372c615ddf79b2fc7ff1876934811932f049e8e7977d224dd
   # refer: addons/mysql/orc-tools/Dockerfile
   orcTools:
     repository: apecloud/orc-tools
