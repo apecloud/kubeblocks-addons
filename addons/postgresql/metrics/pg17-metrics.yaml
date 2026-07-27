@@ -31,9 +31,19 @@ pg_stat_bgwriter:
       bgwriter.buffers_clean AS buffers_clean_total,
       bgwriter.maxwritten_clean AS maxwritten_clean_total,
       bgwriter.buffers_alloc AS buffers_alloc_total,
+      io.buffers_backend AS buffers_backend_total,
+      io.buffers_backend_fsync AS buffers_backend_fsync_total,
       bgwriter.stats_reset AS stats_reset_total
     FROM pg_catalog.pg_stat_bgwriter AS bgwriter
     CROSS JOIN pg_catalog.pg_stat_checkpointer AS checkpointer
+    CROSS JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(writes), 0) AS buffers_backend,
+        COALESCE(SUM(fsyncs), 0) AS buffers_backend_fsync
+      FROM pg_catalog.pg_stat_io
+      WHERE object = 'relation'
+        AND backend_type NOT IN ('background writer', 'checkpointer')
+    ) AS io
   metrics:
     - checkpoints_timed_total:
         usage: "COUNTER"
@@ -59,6 +69,12 @@ pg_stat_bgwriter:
     - buffers_alloc_total:
         usage: "COUNTER"
         description: "Number of buffers allocated"
+    - buffers_backend_total:
+        usage: "COUNTER"
+        description: "Number of buffers written directly by backends"
+    - buffers_backend_fsync_total:
+        usage: "COUNTER"
+        description: "Number of fsync calls performed directly by backends"
     - stats_reset_total:
         usage: "GAUGE"
         description: "Time at which the background writer statistics were last reset"

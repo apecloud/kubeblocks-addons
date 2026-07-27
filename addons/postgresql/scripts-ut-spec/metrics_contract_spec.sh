@@ -51,7 +51,16 @@ Describe "PostgreSQL metrics compatibility contract"
         'checkpointer\.buffers_written AS buffers_checkpoint_total' \
         'bgwriter\.buffers_clean AS buffers_clean_total' \
         'bgwriter\.maxwritten_clean AS maxwritten_clean_total' \
-        'bgwriter\.buffers_alloc AS buffers_alloc_total'
+        'bgwriter\.buffers_alloc AS buffers_alloc_total' \
+        'io\.buffers_backend AS buffers_backend_total' \
+        'io\.buffers_backend_fsync AS buffers_backend_fsync_total' \
+        'FROM pg_catalog\.pg_stat_io' \
+        "object = 'relation'" \
+        "backend_type NOT IN ('background writer', 'checkpointer')" \
+        'SUM(writes)' \
+        'SUM(fsyncs)' \
+        'buffers_backend_total:' \
+        'buffers_backend_fsync_total:'
       do
         if ! grep -q "$pattern" "$file"; then
           printf 'pg%s missing %s\n' "$major" "$pattern"
