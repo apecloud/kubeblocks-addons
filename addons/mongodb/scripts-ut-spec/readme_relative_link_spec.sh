@@ -234,4 +234,240 @@ Describe "MongoDB README relative-link closure"
     The status should eq 1
     The stderr should include 'link="literal%2520name.md" ambiguous_percent_encoding'
   End
+
+  It "skips a pointy external scheme before local percent validation"
+    prepare_link_fixture
+    printf '%s\n' \
+      '[ExternalPointy](<https://example.invalid/bad%2G.md>)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "keeps query and fragment suffixes on a pointy canonical shared-doc link"
+    prepare_link_fixture
+    printf '%s\n' \
+      '[PointyShared](<../../examples/docs/prerequisites.md?source=fixture#install>)' \
+      '[Install](../../examples/docs/install-addon.md)' \
+      '[BackupRepo](../../examples/docs/create-backuprepo.md)' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "accepts a pointy percent-encoded in-repository filename"
+    prepare_link_fixture
+    printf '# encoded filename\n' > "$MONGODB_REPO_ROOT/addons/mongodb/space name.md"
+    printf '%s\n' '[PointySpace](<space%20name.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "rejects a pointy percent-encoded dot-segment escape"
+    prepare_link_fixture
+    mkdir -p "$MONGODB_REPO_ROOT/addons/mongodb/%2e%2e/%2e%2e/%2e%2e"
+    printf '# decoy\n' > "$MONGODB_REPO_ROOT/addons/mongodb/%2e%2e/%2e%2e/%2e%2e/outside.md"
+    printf '%s\n' \
+      '[PointyEscape](<%2e%2e/%2e%2e/%2e%2e/outside.md>)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="<%2e%2e/%2e%2e/%2e%2e/outside.md>" escapes_repository'
+  End
+
+  It "reports an unwrapped missing path for a pointy local link"
+    prepare_link_fixture
+    printf '%s\n' '[PointyMissing](<missing-pointy.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="<missing-pointy.md>" missing=addons/mongodb/missing-pointy.md'
+  End
+
+  It "rejects a pointy symlink whose real target escapes the repository"
+    prepare_link_fixture
+    ln -s ../../../outside.md "$MONGODB_REPO_ROOT/addons/mongodb/pointy-outside.md"
+    printf '%s\n' '[PointySymlink](<pointy-outside.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="<pointy-outside.md>" real_target_escapes_repository'
+  End
+
+  It "rejects a pointy shared-doc basename that resolves to the wrong real file"
+    prepare_link_fixture
+    printf '# wrong shared doc\n' > "$MONGODB_REPO_ROOT/addons/mongodb/install-addon.md"
+    printf '%s\n' \
+      '[Prerequisites](../../examples/docs/prerequisites.md)' \
+      '[WrongShared](<install-addon.md>)' \
+      '[BackupRepo](../../examples/docs/create-backuprepo.md)' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'actual=addons/mongodb/install-addon.md expected=examples/docs/install-addon.md'
+  End
+
+  It "rejects malformed percent encoding inside a pointy destination"
+    prepare_link_fixture
+    printf '%s\n' '[PointyMalformed](<bad%2G.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="<bad%2G.md>" malformed_percent_encoding'
+  End
+
+  It "rejects a leading pointy delimiter without a matching closer"
+    prepare_link_fixture
+    printf '%s\n' '[NoCloser](<missing.md)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+
+  It "accepts a bare destination ending in a pointy delimiter"
+    prepare_link_fixture
+    printf '# bare closing pointy\n' > "$MONGODB_REPO_ROOT/addons/mongodb/closing>"
+    printf '%s\n' '[BareClosing](closing>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "accepts a bare destination containing an interior pointy delimiter"
+    prepare_link_fixture
+    printf '# bare interior pointy\n' > "$MONGODB_REPO_ROOT/addons/mongodb/middle>name.md"
+    printf '%s\n' '[BareInterior](middle>name.md)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "rejects nested unescaped pointy delimiters"
+    prepare_link_fixture
+    printf '%s\n' '[Nested](<<nested>.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+
+  It "keeps an empty pointy destination as the empty destination"
+    prepare_link_fixture
+    printf '%s\n' '[Empty](<>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "accepts an escaped pointy delimiter as destination data"
+    prepare_link_fixture
+    printf '# escaped pointy\n' > "$MONGODB_REPO_ROOT/addons/mongodb/escaped>name.md"
+    printf '%s\n' '[EscapedPointy](<escaped\>name.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "captures an escaped closing parenthesis inside a pointy destination"
+    prepare_link_fixture
+    printf '# escaped parenthesis\n' > "$MONGODB_REPO_ROOT/addons/mongodb/escaped)name.md"
+    printf '%s\n' '[EscapedParen](<escaped\)name.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "normalizes an escaped scheme colon before external ownership"
+    prepare_link_fixture
+    printf '%s\n' \
+      '[EscapedScheme](<https\://example.invalid/bad%2G.md>)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "keeps an escaped percent encoded scheme locally owned"
+    prepare_link_fixture
+    printf '%s\n' \
+      '[EscapedPercent](<\%68ttps://example.invalid/resource.md>)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'missing=addons/mongodb/https:/example.invalid/resource.md'
+  End
+
+  It "rejects a pointy candidate whose only apparent closer is escaped"
+    prepare_link_fixture
+    printf '%s\n' '[OnlyEscaped](<escaped\>name.md)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+
+  It "rejects a pointy candidate ending in a lone backslash"
+    prepare_link_fixture
+    printf '%s\n' '[LoneBackslash](<lone\)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+
+  It "applies Markdown backslash normalization exactly once"
+    prepare_link_fixture
+    printf '# one-pass parenthesis\n' > "$MONGODB_REPO_ROOT/addons/mongodb/"'escaped\)name.md'
+    printf '%s\n' '[OnePass](<escaped\\)name.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "uses even backslash parity to select the first unescaped pointy closer"
+    prepare_link_fixture
+    printf '# previous-byte decoy\n' > "$MONGODB_REPO_ROOT/addons/mongodb/"'escaped\>name.md'
+    printf '%s\n' '[EvenParity](<escaped\\>name.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+
+  It "uses odd backslash parity beyond run one"
+    prepare_link_fixture
+    printf '# triple parity\n' > "$MONGODB_REPO_ROOT/addons/mongodb/"'escaped\>name.md'
+    printf '%s\n' '[TripleParity](<escaped\\\>name.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "uses odd backslash parity beyond run three"
+    prepare_link_fixture
+    printf '# five parity\n' > "$MONGODB_REPO_ROOT/addons/mongodb/"'escaped\\>name.md'
+    printf '%s\n' '[FiveParity](<escaped\\\\\>name.md>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
 End
