@@ -546,4 +546,13 @@ Describe "MongoDB README relative-link closure"
     The status should be success
     The output should include "MongoDB README relative-link closure passed"
   End
+
+  It "preserves closing-parenthesis data in a malformed pointy diagnostic"
+    prepare_link_fixture
+    printf '%s\n' '[MalformedRaw](<before)after)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="<before)after" malformed_markdown_destination'
+  End
 End
