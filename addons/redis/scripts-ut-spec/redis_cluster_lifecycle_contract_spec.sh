@@ -55,7 +55,8 @@ Describe "Redis Cluster lifecycle action contract"
       actual_parameter_cmpds = documents.map do |document|
         document.dig("spec", "componentDef") if document["kind"] == "ParametersDefinition"
       end.compact.sort
-      abort "versioned Redis Cluster ParametersDefinitions differ: #{actual_parameter_cmpds.inspect}" unless actual_parameter_cmpds == expected_cmpds
+      expected_parameter_cmpds = expected_cmpds.map { |name| "^#{name.gsub(".", "[.]")}$" }
+      abort "versioned Redis Cluster ParametersDefinitions differ: #{actual_parameter_cmpds.inspect}" unless actual_parameter_cmpds == expected_parameter_cmpds
 
       cluster = documents.find { |document| document["kind"] == "ClusterDefinition" }
       abort "missing Redis ClusterDefinition" unless cluster
