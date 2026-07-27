@@ -164,6 +164,63 @@ Describe "MySQL reconfigure compatibility contract"
     esac
   }
 
+  receipt_replacement_mysql() {
+    local query
+    eval "query=\"\${$#}\""
+    case "$query" in
+      "SHOW GLOBAL VARIABLES")
+        printf '%s\n' 'pending:9:9' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+        printf '%s\t%s\n' max_connections 500
+        ;;
+      *)
+        printf 'unexpected mutation/query: %s\n' "$query" >&2
+        return 1
+        ;;
+    esac
+  }
+
+  two_parameter_mysql() {
+    local query
+    eval "query=\"\${$#}\""
+    case "$query" in
+      "SHOW GLOBAL VARIABLES")
+        printf '%s\t%s\n' max_connections 500 event_scheduler OFF
+        ;;
+      *)
+        printf 'unexpected mutation/query: %s\n' "$query" >&2
+        return 1
+        ;;
+    esac
+  }
+
+  unequal_string_mysql() {
+    local query
+    eval "query=\"\${$#}\""
+    case "$query" in
+      "SHOW GLOBAL VARIABLES")
+        printf '%s\t%s\n' event_scheduler OFF
+        ;;
+      *)
+        printf 'unexpected mutation/query: %s\n' "$query" >&2
+        return 1
+        ;;
+    esac
+  }
+
+  second_lookup_failure_mysql() {
+    local query
+    eval "query=\"\${$#}\""
+    case "$query" in
+      "SHOW GLOBAL VARIABLES")
+        printf '%s\t%s\n' max_connections 400
+        ;;
+      *)
+        printf 'unexpected mutation/query: %s\n' "$query" >&2
+        return 1
+        ;;
+    esac
+  }
+
   BeforeEach "setup"
   AfterEach "cleanup"
 
@@ -233,15 +290,97 @@ Describe "MySQL reconfigure compatibility contract"
     The path "$MOCK_QUERY_FILE" should not be exist
   End
 
-  It "fails closed on a stale receipt when the rendered config is already converged"
+  It "accepts a stale completed receipt after observing full convergence"
     mysql() { no_diff_mysql "$@"; }
-    printf '%s\n' 'complete:stale:fingerprint' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+    printf '%s\n' 'complete:1:2' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be success
+    The stdout should include "already converged; stale receipt preserved"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "complete:1:2"
+    The path "$MOCK_QUERY_FILE" should not be exist
+  End
+
+  It "accepts a stale pending receipt after observing full convergence"
+    mysql() { no_diff_mysql "$@"; }
+    printf '%s\n' 'pending:1:2' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be success
+    The stdout should include "already converged; stale receipt preserved"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "pending:1:2"
+    The path "$MOCK_QUERY_FILE" should not be exist
+  End
+
+  It "preserves a newer receipt generation that appears during stale reconciliation"
+    mysql() { receipt_replacement_mysql "$@"; }
+    printf '%s\n' 'complete:1:2' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
 
     When run source ../scripts/update-parameter.sh
     The status should be failure
-    The stderr should include "does not match the rendered config"
-    The stderr should include "next-retry-safe: yes"
-    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "complete:stale:fingerprint"
+    The stderr should include "changed during convergence verification"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "pending:9:9"
+    The path "$MOCK_QUERY_FILE" should not be exist
+  End
+
+  It "fails closed when desired-value parsing fails for an allowlisted parameter"
+    printf '%s\n' '[mysqld]' 'max_connections=500' 'event_scheduler=ON' >"$MYSQL_CONFIG_FILE"
+    printf '%s\n' max_connections event_scheduler >"$MYSQL_DYNAMIC_PARAMETERS_FILE"
+    printf '%s\n' 'pending:1:2' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+    mysql() { two_parameter_mysql "$@"; }
+    awk() {
+      local argument
+      for argument in "$@"; do
+        if [ "$argument" = "wanted=event_scheduler" ]; then
+          return 2
+        fi
+      done
+      command awk "$@"
+    }
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "Could not read rendered value for event_scheduler"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "pending:1:2"
+    The path "$MOCK_QUERY_FILE" should not be exist
+  End
+
+  It "fails closed when value comparison infrastructure fails"
+    printf '%s\n' '[mysqld]' 'event_scheduler=ON' >"$MYSQL_CONFIG_FILE"
+    printf '%s\n' event_scheduler >"$MYSQL_DYNAMIC_PARAMETERS_FILE"
+    printf '%s\n' 'complete:1:2' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+    mysql() { unequal_string_mysql "$@"; }
+    shopt() { return 2; }
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "Could not compare rendered and live value for event_scheduler"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "complete:1:2"
+    The path "$MOCK_QUERY_FILE" should not be exist
+  End
+
+  It "fails closed when a second-pass live-value lookup fails operationally"
+    mysql() { second_lookup_failure_mysql "$@"; }
+    awk() {
+      local count=0
+      if [ "$1" = "-F" ] && [ "$2" = "\t" ]; then
+        if [ -r "${MYSQL_RECONFIGURE_RECEIPT_FILE}.lookup-count" ]; then
+          IFS= read -r count <"${MYSQL_RECONFIGURE_RECEIPT_FILE}.lookup-count"
+        fi
+        count=$((count + 1))
+        printf '%s\n' "$count" >"${MYSQL_RECONFIGURE_RECEIPT_FILE}.lookup-count"
+        if [ "$count" -eq 2 ]; then
+          return 2
+        fi
+      fi
+      command awk "$@"
+    }
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "Could not look up live value for max_connections"
+    The path "$MOCK_QUERY_FILE" should not be exist
+    The path "$MYSQL_RECONFIGURE_RECEIPT_FILE" should not be exist
   End
 
   It "fails closed on a malformed receipt when the rendered config is already converged"
@@ -256,13 +395,23 @@ Describe "MySQL reconfigure compatibility contract"
   End
 
   It "rejects a stale receipt before a rendered difference can mutate MySQL"
-    printf '%s\n' 'pending:stale:fingerprint' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+    printf '%s\n' 'pending:1:2' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
 
     When run source ../scripts/update-parameter.sh
     The status should be failure
     The stderr should include "does not match the rendered config"
     The path "$MOCK_QUERY_FILE" should not be exist
-    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "pending:stale:fingerprint"
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "pending:1:2"
+  End
+
+  It "rejects a stale completed receipt before a rendered difference can mutate MySQL"
+    printf '%s\n' 'complete:1:2' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "does not match the rendered config"
+    The path "$MOCK_QUERY_FILE" should not be exist
+    The contents of file "$MYSQL_RECONFIGURE_RECEIPT_FILE" should equal "complete:1:2"
   End
 
   It "rejects a malformed receipt before a rendered difference can mutate MySQL"

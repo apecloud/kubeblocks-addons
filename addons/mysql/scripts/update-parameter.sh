@@ -197,16 +197,26 @@ lookup_live_value() {
     ' "$live_file"
 }
 
-values_equal() {
-    local desired actual desired_decimal actual_decimal
-    desired=$(normalize_parameter_value "$1")
-    actual=$(normalize_parameter_value "$2")
+values_equal() (
+    local desired actual desired_decimal actual_decimal comparison_status
+    if ! desired=$(normalize_parameter_value "$1") ||
+        ! actual=$(normalize_parameter_value "$2"); then
+        return 2
+    fi
 
-    if [ "$desired" = "$actual" ] ||
-        [ "$(printf '%s' "$desired" | tr '[:upper:]' '[:lower:]')" = \
-          "$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')" ]; then
+    if [ "$desired" = "$actual" ]; then
         return 0
     fi
+    if ! shopt -s nocasematch; then
+        return 2
+    fi
+    [[ "$desired" == "$actual" ]]
+    comparison_status=$?
+    case "$comparison_status" in
+        0) return 0 ;;
+        1) ;;
+        *) return 2 ;;
+    esac
 
     if desired_decimal=$(canonical_decimal_value "$desired") &&
         actual_decimal=$(canonical_decimal_value "$actual") &&
@@ -214,7 +224,7 @@ values_equal() {
         return 0
     fi
     return 1
-}
+)
 
 rendered_config_fingerprint() {
     local config_label="${3:-$1}"
@@ -288,17 +298,43 @@ validate_reconfigure_receipt() (
         return 1
     fi
     case "$line" in
-        "pending:$fingerprint" | "complete:$fingerprint") return 0 ;;
+        "pending:$fingerprint" | "complete:$fingerprint")
+            printf '%s' "$line"
+            return 0
+            ;;
+    esac
+    if [[ "$line" =~ ^(pending|complete):[0-9]+:[0-9]+$ ]]; then
+        printf '%s' "$line"
+        return 3
+    fi
+    return 1
+)
+
+reconfigure_receipt_is_unchanged() {
+    local receipt_file="$1"
+    local fingerprint="$2"
+    local expected_line="$3"
+    local current_line receipt_status
+
+    if [ -z "$expected_line" ]; then
+        [ ! -e "$receipt_file" ]
+        return
+    fi
+    current_line=$(validate_reconfigure_receipt "$receipt_file" "$fingerprint")
+    receipt_status=$?
+    case "$receipt_status" in
+        0 | 3) [ "$current_line" = "$expected_line" ] ;;
         *) return 1 ;;
     esac
-)
+}
 
 apply_rendered_dynamic_differences() (
     local config_source="${MYSQL_CONFIG_FILE:-/etc/mysql/conf.d/my.cnf}"
     local receipt_file="${MYSQL_RECONFIGURE_RECEIPT_FILE:-/tmp/kubeblocks-mysql-reconfigure.receipt}"
     local allowlist_source snapshot_dir config_file allowlist_file live_file
-    local parameter normalized_name desired actual verified fingerprint
-    local applied=0 configured=0 receipt_status
+    local parameter normalized_name desired actual verified fingerprint receipt_line
+    local applied=0 configured=0 differences=0 receipt_status desired_status comparison_status lookup_status
+    local stale_receipt=0
 
     if ! allowlist_source=$(resolve_dynamic_parameters_file); then
         return 1
@@ -327,13 +363,16 @@ apply_rendered_dynamic_differences() (
         printf 'Could not fingerprint rendered-config fallback inputs; next-retry-safe: yes\n' >&2
         return 1
     fi
-    validate_reconfigure_receipt "$receipt_file" "$fingerprint"
+    receipt_line=$(validate_reconfigure_receipt "$receipt_file" "$fingerprint")
     receipt_status=$?
     case "$receipt_status" in
         0)
             ;;
+        3)
+            stale_receipt=1
+            ;;
         1)
-            printf 'Existing rendered-config receipt is malformed or does not match the rendered config; next-retry-safe: yes\n' >&2
+            printf 'Existing rendered-config receipt is malformed; next-retry-safe: yes\n' >&2
             return 1
             ;;
         *)
@@ -353,39 +392,120 @@ apply_rendered_dynamic_differences() (
     while IFS= read -r parameter || [ -n "$parameter" ]; do
         [ -n "$parameter" ] || continue
         normalized_name=$(normalize_parameter_name "$parameter")
-        if ! desired=$(read_desired_value "$normalized_name" "$config_file"); then
-            continue
-        fi
+        desired=$(read_desired_value "$normalized_name" "$config_file")
+        desired_status=$?
+        case "$desired_status" in
+            0) ;;
+            1) continue ;;
+            *)
+                rm -f "$live_file"
+                printf 'Could not read rendered value for %s; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+        esac
         configured=$((configured + 1))
-        if ! lookup_live_value "$normalized_name" "$live_file" >/dev/null; then
-            rm -f "$live_file"
-            printf 'Configured dynamic parameter %s is absent from live MySQL variables; next-retry-safe: yes\n' \
-                "$normalized_name" >&2
-            return 1
-        fi
+        desired=$(unquote_config_value "$desired")
+        actual=$(lookup_live_value "$normalized_name" "$live_file")
+        lookup_status=$?
+        case "$lookup_status" in
+            0) ;;
+            1)
+                rm -f "$live_file"
+                printf 'Configured dynamic parameter %s is absent from live MySQL variables; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+            *)
+                rm -f "$live_file"
+                printf 'Could not look up live value for %s; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+        esac
+        values_equal "$desired" "$actual"
+        comparison_status=$?
+        case "$comparison_status" in
+            0) ;;
+            1) differences=$((differences + 1)) ;;
+            *)
+                rm -f "$live_file"
+                printf 'Could not compare rendered and live value for %s; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+        esac
     done <"$allowlist_file"
     if [ "$configured" -eq 0 ]; then
         rm -f "$live_file"
         printf 'No rendered allowlisted dynamic parameter was observable; runtime arguments are missing; next-retry-safe: yes\n' >&2
         return 1
     fi
+    if [ "$stale_receipt" -eq 1 ]; then
+        rm -f "$live_file"
+        if [ "$differences" -ne 0 ]; then
+            printf 'Existing rendered-config receipt does not match the rendered config and live differences remain; next-retry-safe: yes\n' >&2
+            return 1
+        fi
+        if ! reconfigure_receipt_is_unchanged "$receipt_file" "$fingerprint" "$receipt_line"; then
+            printf 'Existing rendered-config receipt changed during convergence verification; next-retry-safe: yes\n' >&2
+            return 1
+        fi
+        printf 'Rendered dynamic parameters already converged; stale receipt preserved\n'
+        return 0
+    fi
 
     while IFS= read -r parameter || [ -n "$parameter" ]; do
         [ -n "$parameter" ] || continue
         normalized_name=$(normalize_parameter_name "$parameter")
-        if ! desired=$(read_desired_value "$normalized_name" "$config_file"); then
-            continue
-        fi
+        desired=$(read_desired_value "$normalized_name" "$config_file")
+        desired_status=$?
+        case "$desired_status" in
+            0) ;;
+            1) continue ;;
+            *)
+                rm -f "$live_file"
+                printf 'Could not read rendered value for %s; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+        esac
         desired=$(unquote_config_value "$desired")
         actual=$(lookup_live_value "$normalized_name" "$live_file")
-        if values_equal "$desired" "$actual"; then
-            continue
-        fi
-        if [ "$applied" -eq 0 ] &&
-            ! persist_reconfigure_receipt "$receipt_file" pending "$fingerprint"; then
-            rm -f "$live_file"
-            printf 'Could not persist the rendered-config pending receipt; next-retry-safe: yes\n' >&2
-            return 1
+        lookup_status=$?
+        case "$lookup_status" in
+            0) ;;
+            1)
+                rm -f "$live_file"
+                printf 'Configured dynamic parameter %s disappeared from the live snapshot; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+            *)
+                rm -f "$live_file"
+                printf 'Could not look up live value for %s; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+        esac
+        values_equal "$desired" "$actual"
+        comparison_status=$?
+        case "$comparison_status" in
+            0) continue ;;
+            1) ;;
+            *)
+                rm -f "$live_file"
+                printf 'Could not compare rendered and live value for %s; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+        esac
+        if [ "$applied" -eq 0 ]; then
+            if ! persist_reconfigure_receipt "$receipt_file" pending "$fingerprint"; then
+                rm -f "$live_file"
+                printf 'Could not persist the rendered-config pending receipt; next-retry-safe: yes\n' >&2
+                return 1
+            fi
         fi
         if ! apply_parameter "$normalized_name" "$desired"; then
             rm -f "$live_file"
@@ -398,12 +518,23 @@ apply_rendered_dynamic_differences() (
             return 1
         fi
         verified="${verified#*$'\t'}"
-        if ! values_equal "$desired" "$verified"; then
-            rm -f "$live_file"
-            printf 'Parameter %s did not converge to the rendered value; next-retry-safe: yes\n' \
-                "$normalized_name" >&2
-            return 1
-        fi
+        values_equal "$desired" "$verified"
+        comparison_status=$?
+        case "$comparison_status" in
+            0) ;;
+            1)
+                rm -f "$live_file"
+                printf 'Parameter %s did not converge to the rendered value; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+            *)
+                rm -f "$live_file"
+                printf 'Could not compare rendered and verified value for %s; next-retry-safe: yes\n' \
+                    "$normalized_name" >&2
+                return 1
+                ;;
+        esac
         applied=$((applied + 1))
     done <"$allowlist_file"
     rm -f "$live_file"
