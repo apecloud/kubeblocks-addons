@@ -217,6 +217,22 @@ Describe "MySQL reconfigure compatibility contract"
     The stdout should include "already converged for the recorded config"
   End
 
+  It "rejects a malformed receipt generation captured for validation"
+    fingerprint=$(cksum "$MYSQL_CONFIG_FILE" "$MYSQL_DYNAMIC_PARAMETERS_FILE" | cksum | awk '{ print $1 ":" $2 }')
+    printf 'complete:%s\n' "$fingerprint" >"$MYSQL_RECONFIGURE_RECEIPT_FILE"
+    cp() {
+      if [ "$#" -eq 2 ] && [ "$1" = "$MYSQL_RECONFIGURE_RECEIPT_FILE" ]; then
+        printf 'complete:%s\nEXTRA\n' "$fingerprint" >"$1"
+      fi
+      command cp "$@"
+    }
+
+    When run source ../scripts/update-parameter.sh
+    The status should be failure
+    The stderr should include "is malformed"
+    The path "$MOCK_QUERY_FILE" should not be exist
+  End
+
   It "fails closed on a stale receipt when the rendered config is already converged"
     mysql() { no_diff_mysql "$@"; }
     printf '%s\n' 'complete:stale:fingerprint' >"$MYSQL_RECONFIGURE_RECEIPT_FILE"

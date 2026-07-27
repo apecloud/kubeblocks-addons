@@ -261,20 +261,27 @@ persist_reconfigure_receipt() {
     fi
 }
 
-validate_reconfigure_receipt() {
+validate_reconfigure_receipt() (
     local receipt_file="$1"
     local fingerprint="$2"
-    local receipt_sum receipt_bytes line
+    local receipt_snapshot receipt_sum receipt_bytes line
 
     [ -e "$receipt_file" ] || return 0
-    if ! receipt_sum=$(cksum "$receipt_file"); then
+    if ! receipt_snapshot=$(mktemp); then
+        return 2
+    fi
+    trap 'rm -f "$receipt_snapshot"' EXIT
+    if ! cp "$receipt_file" "$receipt_snapshot"; then
+        return 2
+    fi
+    if ! receipt_sum=$(cksum "$receipt_snapshot"); then
         return 2
     fi
     if [[ ! "$receipt_sum" =~ ^([0-9]+)[[:space:]]+([0-9]+)[[:space:]] ]]; then
         return 2
     fi
     receipt_bytes="${BASH_REMATCH[2]}"
-    if ! IFS= read -r line <"$receipt_file"; then
+    if ! IFS= read -r line <"$receipt_snapshot"; then
         return 1
     fi
     if [ "$receipt_bytes" -ne "$((${#line} + 1))" ]; then
@@ -284,7 +291,7 @@ validate_reconfigure_receipt() {
         "pending:$fingerprint" | "complete:$fingerprint") return 0 ;;
         *) return 1 ;;
     esac
-}
+)
 
 apply_rendered_dynamic_differences() (
     local config_source="${MYSQL_CONFIG_FILE:-/etc/mysql/conf.d/my.cnf}"
