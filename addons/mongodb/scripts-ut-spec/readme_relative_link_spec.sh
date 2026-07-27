@@ -32,6 +32,7 @@ Describe "MongoDB README relative-link closure"
         File.read(readme).scan(/\[([^\]]+)\]\(([^)]+)\)/).each do |_label, raw_target|
           raw_path = raw_target.split(/[?#]/, 2).first
           next if raw_path.empty?
+          next if raw_path.match?(/\A[a-z][a-z0-9+.-]*:/i)
 
           if raw_path.match?(/%(?![0-9a-f]{2})/i)
             failures << "#{relative_readme} link=#{raw_target.inspect} malformed_percent_encoding"
@@ -46,8 +47,6 @@ Describe "MongoDB README relative-link closure"
             failures << "#{relative_readme} link=#{raw_target.inspect} ambiguous_percent_encoding"
             next
           end
-
-          next if target.match?(/\A[a-z][a-z0-9+.-]*:/i)
 
           basename = File.basename(target)
           seen[[relative_readme, basename]] << target if shared_docs.include?(basename)
