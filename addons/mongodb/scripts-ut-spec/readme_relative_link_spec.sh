@@ -10,6 +10,10 @@ Describe "MongoDB README relative-link closure"
     ruby_bin=${MONGODB_RUBY_BIN:-ruby}
 
     "$ruby_bin" -e '
+      def inside_root?(root, path)
+        path == root || path.start_with?("#{root}#{File::SEPARATOR}")
+      end
+
       root = File.realpath(ARGV.fetch(0))
       readmes = %w[
         addons/mongodb/README.md
@@ -33,7 +37,7 @@ Describe "MongoDB README relative-link closure"
           basename = File.basename(target)
           seen[[relative_readme, basename]] << target if shared_docs.include?(basename)
           expanded = File.expand_path(target, File.dirname(readme))
-          unless expanded.start_with?("#{root}/")
+          unless inside_root?(root, expanded)
             failures << "#{relative_readme} link=#{raw_target.inspect} escapes_repository"
             next
           end
@@ -42,10 +46,20 @@ Describe "MongoDB README relative-link closure"
             next
           end
 
+          begin
+            actual = File.realpath(expanded)
+          rescue SystemCallError => error
+            failures << "#{relative_readme} link=#{raw_target.inspect} realpath_error=#{error.class}"
+            next
+          end
+          unless inside_root?(root, actual)
+            failures << "#{relative_readme} link=#{raw_target.inspect} real_target_escapes_repository"
+            next
+          end
+
           next unless shared_docs.include?(basename)
 
           expected = File.realpath(File.join(root, "examples", "docs", basename))
-          actual = File.realpath(expanded)
           unless actual == expected
             failures << "#{relative_readme} link=#{raw_target.inspect} actual=#{actual.delete_prefix("#{root}/")} expected=#{expected.delete_prefix("#{root}/")}"
           end
