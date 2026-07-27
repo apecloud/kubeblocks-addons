@@ -18,6 +18,11 @@ spec:
   - name: xtrabackup
     snapshotVolumes: false
     actionSetName: mysql-xtrabackup-br-v2
+    target:
+      role: secondary
+      fallbackRole: primary
+      account: root
+      useParentSelectedPods: true
     env:
       - name: XTRABACKUP_IMAGE
         valueFrom:
@@ -51,6 +56,11 @@ spec:
     compatibleMethod: xtrabackup
     snapshotVolumes: false
     actionSetName: mysql-xtrabackup-inc-br-v2
+    target:
+      role: secondary
+      fallbackRole: primary
+      account: root
+      useParentSelectedPods: true
     env:
       - name: XTRABACKUP_IMAGE
         valueFrom:
