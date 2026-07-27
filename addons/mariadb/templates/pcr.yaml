@@ -1,0 +1,61 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: mariadb-standalone-pcr
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.cmpdName" . }}
+  parametersDefs:
+    - mariadb-standalone-pd
+  configs:
+    - name: my.cnf
+      templateName: mariadb-standalone-config
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: mariadb-replication-pcr
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.replication.cmpdName" . }}
+  parametersDefs:
+    - mariadb-replication-pd
+  configs:
+    - name: my.cnf
+      templateName: mariadb-replication-config
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: mariadb-galera-pcr
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mariadb.galera.cmpdName" . }}
+  parametersDefs:
+    - mariadb-galera-pd
+  configs:
+    - name: my.cnf
+      templateName: mariadb-galera-config
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld

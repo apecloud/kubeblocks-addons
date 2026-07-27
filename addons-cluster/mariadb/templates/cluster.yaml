@@ -6,9 +6,11 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDef: mariadb
+  topology: {{ .Values.mode }}
   componentSpecs:
     - name: mariadb
-      componentDef: mariadb
+      serviceVersion: {{ .Values.version | quote }}
       replicas: {{ include "mariadb-cluster.replicas" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

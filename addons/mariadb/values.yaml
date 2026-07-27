@@ -5,16 +5,60 @@ image:
   registry: docker.io
   repository: mariadb
   pullPolicy: IfNotPresent
-  tag: 10.6.15
+  tag: 11.4
   prom:
     pullPolicy: IfNotPresent
     exporter:
       repository: prom/mysqld-exporter
       tag: v0.14.0
+  syncer:
+    repository: apecloud/syncer
+    # Keep the chart default on a published syncer tag. Candidate or
+    # engine-specific syncer builds must be supplied explicitly by values
+    # override during validation, not baked into the release chart default.
+    tag: 0.6.7
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 defaultServiceVersion:
   mariadb: 10.6.15
+  replication: 11.4.10
+  galera: 11.4.10
+
+etcd:
+  etcdCmpdName: etcd
+
+## @section replication
+## alpha.89 v1 commit 13 (Helen 2026-05-20) — C3 design env plumbing
+## via Helm value (the conservative plumbing path: chart-install-time
+## configurable; runtime OpsRequest mode flip is deferred to a future
+## commit that wires a Cluster annotation OR a non-INI-bound PD).
+##
+## `replication.mode` is the top-level switch consumed by the
+## addon-side mapper (`scripts/replication-mode-mapper.sh`) sourced
+## into the merged CmpD's `reconfigureAction.persisted` helper. The
+## mapper translates the value into the four real engine variables
+## (rpl_semi_sync_master_enabled / slave_enabled /
+## master_wait_for_slave_count / master_timeout) BEFORE the main
+## loop renders any my.cnf or runtime-overrides.d/ file. When the
+## value is empty (the default) the mapper is a no-op: the
+## "only-4-vars" path on existing clusters is unchanged. The CUE
+## `replicationmode?: _|_` declared in commit 11 v2 ensures the
+## synthetic key cannot leak into the rendered my.cnf even if a
+## future plumbing source sets it incorrectly.
+##
+## Accepted values: "", "async", "semisync".
+##   ""        — default; mapper no-op; existing behavior preserved.
+##   "async"   — mapper writes master_enabled=OFF / slave_enabled=OFF
+##               into runtime-overrides at first reconfigure.
+##   "semisync" — mapper writes master_enabled=ON / slave_enabled=ON
+##                + wait_for_slave_count=1 + timeout=10000 into
+##                runtime-overrides at first reconfigure.
+##
+## Invalid values fail the reconfigureAction with mapper rc=2
+## (invalid mode) and exit 1; the action does not produce any
+## partial state.
+replication:
+  mode: ""
 
 ## MySQL Authentication parameters
 auth:
@@ -26,6 +70,22 @@ auth:
   ## @param auth.database Name for a custom database to create
   ## MYSQL_DATABASE
   database: "mydb"
+
+dataMountPath: /var/lib/mysql
+clusterDomain: cluster.local
+
+roleProbe:
+  # Cadence tightened from 5s to 3s per #397 (Route B follow-up).
+  # 5s contributed ~20% of observation gap latency in #396 R1 attribution.
+  # 3s reduces tail latency by ~40% with ~67% CPU/log overhead increase.
+  # Tested under cell-3/cell-4 baseline conditions; deeper reduction (2s)
+  # may be considered after cross-engine validation.
+  periodSeconds: 3
+  # alpha.13 P1: bumped 1 → 2 per #402 zombie redline mitigation.
+  # SHOW SLAVE STATUS occasional >1s spike → kbagent SIGKILL probe script →
+  # grep orphan reparent to PID 1 (kbagent Go non-reaper) → zombie accumulation.
+  # 2s gives margin while staying < 3s cadence. Pattern B mitigation joint with P2.
+  timeoutSeconds: 2
 
 nameOverride: ""
 fullnameOverride: ""

@@ -8,6 +8,36 @@ spec:
   serviceKind: Mariadb
   compDefs:
     - {{ include "mariadb.cmpdRegexpPattern" . }}
+  # The ActionSet uses `mariadb-backup --slave-info` and waits for the
+  # selected pod's SQL listener before streaming backup data. The
+  # secondary role is the preferred backup target; KubeBlocks falls back
+  # to the primary when no pod with role=secondary exists.
+  # `target.account` is still the DataProtection-selected target account
+  # and secret source. The ActionSet may switch to the chart-managed
+  # internal admin account at runtime when that account is exposed in the
+  # backup pod environment, so `mariadb-backup --slave-info` uses the same
+  # monitor/admin privilege path maintained by the addon.
+  #
+  # Per-topology resolution of target.role under this single BPT:
+  #   - replication: role=secondary
+  #     (avoids primary replication / write latency impact)
+  #   - galera: secondary role is not defined (all synced Galera nodes
+  #     report role=primary by design), so KubeBlocks resolves through
+  #     fallbackRole=primary; backup runs against any synced node
+  #   - standalone: single pod with role=primary, resolved through
+  #     fallbackRole=primary
+  #
+  # Method-level override is intentionally NOT used here because a
+  # replica full backup avoids primary write latency impact. The backup
+  # remains crash-consistent through InnoDB redo logging; `--slave-info`
+  # records replication metadata without stopping the SQL thread. If a
+  # PITR / binlog-archive method is added later it must override
+  # `target.role: primary` at the method level (binlog only exists on
+  # the primary), matching the MySQL `mysql-pitr` pattern.
+  target:
+    role: secondary
+    fallbackRole: primary
+    account: root
   backupMethods:
     - name: mariadb-backup
       snapshotVolumes: false
