@@ -335,6 +335,17 @@ register_to_sentinel_if_needed() {
   fi
 }
 
+clear_bootstrap_authorization_marker() {
+  local data_dir="${REDIS_DATA_DIR:-/data}"
+  local restore_marker="${REDIS_RESTORE_BOOTSTRAP_MARKER:-${data_dir}/.kb-redis-restore-bootstrap-authorized}"
+  local fresh_marker="${REDIS_FRESH_BOOTSTRAP_MARKER:-${data_dir}/.kb-redis-fresh-bootstrap-pending}"
+  if [ -e "$restore_marker" ] || [ -e "$fresh_marker" ]; then
+    rm -f "$restore_marker" "$fresh_marker"
+    sync
+    echo "cleared Redis bootstrap authorization markers after Sentinel registration"
+  fi
+}
+
 # This is magic for shellspec ut framework.
 # Sometime, functions are defined in a single shell script.
 # You will want to test it. but you do not want to run the script.
@@ -345,4 +356,4 @@ ${__SOURCED__:+false} : || return 0
 # main
 load_common_library
 register_to_sentinel_if_needed
-
+clear_bootstrap_authorization_marker

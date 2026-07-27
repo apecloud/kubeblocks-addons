@@ -1,4 +1,4 @@
-{{- define "kblib.syncer.policyRules" -}}
+{{- define "kblib.syncer._policyRules" -}}
 policyRules:
 - apiGroups:
   - ""
@@ -15,6 +15,9 @@ policyRules:
   - ""
   resources:
   - pods
+  {{- if .readPersistentVolumeClaims }}
+  - persistentvolumeclaims
+  {{- end }}
   verbs:
   - get
   - list
@@ -31,6 +34,14 @@ policyRules:
   verbs:
   - get
   - list
+{{- end -}}
+
+{{- define "kblib.syncer.policyRules" -}}
+{{- include "kblib.syncer._policyRules" (dict "readPersistentVolumeClaims" false) -}}
+{{- end -}}
+
+{{- define "kblib.syncer.policyRulesWithPersistentVolumeClaims" -}}
+{{- include "kblib.syncer._policyRules" (dict "readPersistentVolumeClaims" true) -}}
 {{- end -}}
 
 

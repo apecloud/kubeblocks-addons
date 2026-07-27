@@ -397,8 +397,107 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
         The variable current_comp_primary_node should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379"
         The variable current_comp_other_nodes should equal "10.42.0.228#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc:6379@16379"
+        The stdout should include "current_comp_primary_node:"
         The variable other_comp_primary_nodes should equal "10.42.0.229#redis-shard-abc-0.redis-shard-abc-headless.default.svc#redis-shard-abc-0.redis-shard-abc-headless.default.svc:6379@16379"
         The stdout should include "other_comp_other_nodes: "
+      End
+    End
+
+    Context "when a slotless current master and the shard slot owner coexist"
+      get_cluster_nodes_info() {
+        echo "$cluster_nodes_info_fixture"
+      }
+
+      setup() {
+        unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
+        export ALL_SHARDS_COMPONENT_SHORT_NAMES="redis-shard-sxj,redis-shard-abc,redis-shard-def"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
+        export SERVICE_PORT="6379"
+        export current_comp_primary_node=()
+        export current_comp_primary_fail_node=()
+        export current_comp_other_nodes=()
+        export other_comp_primary_nodes=()
+        export other_comp_primary_fail_nodes=()
+        export other_comp_other_nodes=()
+      }
+      Before "setup"
+
+      un_setup() {
+        unset ALL_SHARDS_COMPONENT_SHORT_NAMES
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset SERVICE_PORT
+        unset cluster_nodes_info
+        unset cluster_nodes_info_fixture
+      }
+      After "un_setup"
+
+      It "selects the slot owner when the slotless current pod is listed first"
+        cluster_nodes_info_fixture="target-id 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc myself,master - 0 0 0 connected"$'\n'"owner-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-5460"$'\n'"other-id 10.42.0.229:6379@16379,redis-shard-abc-0.redis-shard-abc-headless.default.svc master - 0 1711958289570 5 connected 5461-10922"
+
+        When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
+        The variable current_comp_primary_node should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379"
+        The variable current_comp_other_nodes should equal "10.42.0.228#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc:6379@16379"
+        The stdout should include "current_comp_primary_node:"
+      End
+
+      It "selects the same slot owner when the slot owner is listed first"
+        cluster_nodes_info_fixture="owner-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-5460"$'\n'"target-id 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc myself,master - 0 0 0 connected"$'\n'"other-id 10.42.0.229:6379@16379,redis-shard-abc-0.redis-shard-abc-headless.default.svc master - 0 1711958289570 5 connected 5461-10922"
+
+        When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
+        The variable current_comp_primary_node should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379"
+        The variable current_comp_other_nodes should equal "10.42.0.228#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc:6379@16379"
+        The stdout should include "current_comp_primary_node:"
+      End
+    End
+
+    Context "when the current shard slot owner is not usable"
+      get_cluster_nodes_info() {
+        echo "$cluster_nodes_info_fixture"
+      }
+
+      setup() {
+        unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
+        export ALL_SHARDS_COMPONENT_SHORT_NAMES="redis-shard-sxj,redis-shard-abc,redis-shard-def"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
+        export SERVICE_PORT="6379"
+        export current_comp_primary_node=()
+        export current_comp_primary_fail_node=()
+        export current_comp_other_nodes=()
+        export other_comp_primary_nodes=()
+        export other_comp_primary_fail_nodes=()
+        export other_comp_other_nodes=()
+      }
+      Before "setup"
+
+      un_setup() {
+        unset ALL_SHARDS_COMPONENT_SHORT_NAMES
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset SERVICE_PORT
+        unset cluster_nodes_info
+        unset cluster_nodes_info_fixture
+      }
+      After "un_setup"
+
+      It "does not select a disconnected slot owner"
+        cluster_nodes_info_fixture="target-id 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc myself,master - 0 0 0 connected"$'\n'"owner-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 disconnected 0-5460"$'\n'"other-id 10.42.0.229:6379@16379,redis-shard-abc-0.redis-shard-abc-headless.default.svc master - 0 1711958289570 5 connected 5461-10922"
+
+        When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
+        The variable cluster_view_initialized should equal "true"
+        The variable current_comp_primary_node should be blank
+        The variable current_comp_primary_fail_node should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379"
+        The stdout should include "current_comp_primary_fail_node:"
+      End
+
+      It "does not select a failed slot owner"
+        cluster_nodes_info_fixture="target-id 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc myself,master - 0 0 0 connected"$'\n'"owner-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master,fail - 0 1711958289570 4 connected 0-5460"$'\n'"other-id 10.42.0.229:6379@16379,redis-shard-abc-0.redis-shard-abc-headless.default.svc master - 0 1711958289570 5 connected 5461-10922"
+
+        When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
+        The variable cluster_view_initialized should equal "true"
+        The variable current_comp_primary_node should be blank
+        The variable current_comp_primary_fail_node should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379"
+        The stdout should include "current_comp_primary_fail_node:"
       End
     End
   End
@@ -479,6 +578,233 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       End
     End
 
+    Context "when the cluster view is initialized without exactly one usable slot owner"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        cluster_view_initialized="true"
+        current_comp_primary_node=()
+        current_comp_primary_fail_node=()
+        current_comp_other_nodes=("target")
+        case "$primary_contract_fixture" in
+          multiple)
+            current_comp_primary_node=("owner-0" "owner-1")
+            ;;
+          disconnected)
+            current_comp_primary_fail_node=("disconnected-owner")
+            ;;
+          failed)
+            current_comp_primary_fail_node=("failed-owner")
+            ;;
+        esac
+      }
+
+      shutdown_redis_server() {
+        echo "shutdown-called"
+      }
+
+      ensure_current_node_replication() {
+        echo "repair-called"
+      }
+
+      check_and_meet_other_primary_nodes() {
+        echo "mutate-called"
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
+        export service_port="6379"
+        export current_comp_primary_node=()
+        export current_comp_primary_fail_node=()
+        export current_comp_other_nodes=()
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset service_port
+        unset primary_contract_fixture
+        unset cluster_view_initialized
+      }
+      After "un_setup"
+
+      It "fails closed with zero mutations when no slot owner exists"
+        primary_contract_fixture="zero"
+        When run scale_redis_cluster_replica
+        The status should be failure
+        The stderr should include "Expected exactly one connected non-fail slot-owning primary for initialized shard redis-shard-sxj, found 0"
+        The stdout should include "shutdown-called"
+        The stdout should not include "repair-called"
+        The stdout should not include "mutate-called"
+      End
+
+      It "fails closed with zero mutations when multiple slot owners exist"
+        primary_contract_fixture="multiple"
+        When run scale_redis_cluster_replica
+        The status should be failure
+        The stderr should include "Expected exactly one connected non-fail slot-owning primary for initialized shard redis-shard-sxj, found 2"
+        The stdout should include "shutdown-called"
+        The stdout should not include "repair-called"
+        The stdout should not include "mutate-called"
+      End
+
+      It "fails closed with zero mutations when the slot owner is disconnected"
+        primary_contract_fixture="disconnected"
+        When run scale_redis_cluster_replica
+        The status should be failure
+        The stderr should include "Expected exactly one connected non-fail slot-owning primary for initialized shard redis-shard-sxj, found 0"
+        The stdout should include "shutdown-called"
+        The stdout should not include "repair-called"
+        The stdout should not include "mutate-called"
+      End
+
+      It "fails closed with zero mutations when the slot owner is failed"
+        primary_contract_fixture="failed"
+        When run scale_redis_cluster_replica
+        The status should be failure
+        The stderr should include "Expected exactly one connected non-fail slot-owning primary for initialized shard redis-shard-sxj, found 0"
+        The stdout should include "shutdown-called"
+        The stdout should not include "repair-called"
+        The stdout should not include "mutate-called"
+      End
+    End
+
+    Context "when the cluster is not initialized"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        cluster_view_initialized="false"
+        current_comp_primary_node=()
+        current_comp_primary_fail_node=()
+      }
+
+      shutdown_redis_server() {
+        echo "shutdown-called"
+      }
+
+      ensure_current_node_replication() {
+        echo "repair-called"
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
+        export service_port="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset service_port
+        unset cluster_view_initialized
+      }
+      After "un_setup"
+
+      It "keeps the bootstrap path without mutation"
+        When run scale_redis_cluster_replica
+        The status should be success
+        The stdout should include "current_comp_primary_node is empty, skip scale out replica"
+        The stdout should not include "shutdown-called"
+        The stdout should not include "repair-called"
+      End
+    End
+
+    Context "when a slotless current pod is already a cluster member"
+      get_cluster_nodes_info() {
+        echo "target-id 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc myself,master - 0 0 0 connected"$'\n'"owner-id 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-5460"$'\n'"other-id 10.42.0.229:6379@16379,redis-shard-abc-0.redis-shard-abc-headless.default.svc master - 0 1711958289570 5 connected 5461-10922"
+      }
+
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 0
+      }
+
+      get_cluster_id_with_retry() {
+        echo "owner-id"
+      }
+
+      get_current_shard_node_ids() {
+        echo "owner-id,target-id"
+      }
+
+      ensure_current_node_replication() {
+        echo "repair-called"
+        return 0
+      }
+
+      check_and_meet_current_primary_node() {
+        echo "meet-current-primary-called"
+      }
+
+      check_and_meet_other_primary_nodes() {
+        echo "primary-fast-path-called"
+      }
+
+      setup() {
+        unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
+        export ALL_SHARDS_COMPONENT_SHORT_NAMES="redis-shard-sxj,redis-shard-abc,redis-shard-def"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export current_node_host_info="redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export SERVICE_PORT="6379"
+        export service_port="6379"
+        export current_comp_primary_node=()
+        export current_comp_primary_fail_node=()
+        export current_comp_other_nodes=()
+        export other_comp_primary_nodes=()
+        export other_comp_primary_fail_nodes=()
+        export other_comp_other_nodes=()
+      }
+      Before "setup"
+
+      un_setup() {
+        unset ALL_SHARDS_COMPONENT_SHORT_NAMES
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_POD_NAME
+        unset current_node_host_info
+        unset SERVICE_PORT
+        unset service_port
+        unset cluster_view_initialized
+      }
+      After "un_setup"
+
+      It "selects the slot owner and reaches replica convergence before returning"
+        When run scale_redis_cluster_replica
+        The status should be success
+        The stdout should include "repair-called"
+        The stdout should include "meet-current-primary-called"
+        The stdout should not include "primary-fast-path-called"
+        The stdout should not include "Current pod redis-shard-sxj-1 is primary node"
+      End
+    End
+
     Context "when current pod is already in the cluster"
       check_redis_server_ready_with_retry() {
         return 0
@@ -544,6 +870,10 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         true
       }
 
+      ensure_current_node_replication() {
+        echo "unexpected-repair-called"
+      }
+
       setup() {
         export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
         export CURRENT_POD_NAME="redis-shard-sxj-0"
@@ -562,6 +892,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         When run scale_redis_cluster_replica
         The status should be success
         The stdout should include "Current pod redis-shard-sxj-0 is primary node, check and correct other primary nodes..."
+        The stdout should not include "unexpected-repair-called"
       End
     End
 

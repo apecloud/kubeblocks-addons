@@ -1,0 +1,120 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: {{ printf "redis-cluster-shardadd-%s" .Chart.Version }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  podInfoExtractors:
+    - name: redis-cluster-shardadd-inputs
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: REDIS_DEFAULT_USER
+          valueFrom:
+            envRef:
+              targetContainerName: redis-cluster
+              envName: REDIS_DEFAULT_USER
+        - name: REDIS_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              targetContainerName: redis-cluster
+              envName: REDIS_DEFAULT_PASSWORD
+        - name: REDIS_TLS_ENABLED
+          optional: true
+          valueFrom:
+            envRef:
+              targetContainerName: redis-cluster
+              envName: TLS_ENABLED
+        - name: REDIS_SOURCE_POD_NAME
+          valueFrom:
+            fieldPath:
+              fieldPath: metadata.name
+        - name: REDIS_SOURCE_COMPONENT_NAME
+          valueFrom:
+            envRef:
+              targetContainerName: redis-cluster
+              envName: CURRENT_SHARD_COMPONENT_NAME
+        - name: REDIS_CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              targetContainerName: redis-cluster
+              envName: CLUSTER_NAMESPACE
+        - name: REDIS_CLUSTER_DOMAIN
+          valueFrom:
+            envRef:
+              targetContainerName: redis-cluster
+              envName: CLUSTER_DOMAIN
+        - name: REDIS_SERVICE_PORT
+          valueFrom:
+            envRef:
+              targetContainerName: redis-cluster
+              envName: SERVICE_PORT
+      volumeMounts:
+        - name: tls
+          mountPath: /etc/pki/tls
+          readOnly: true
+  parametersSchema:
+    openAPIV3Schema:
+      type: object
+      required:
+        - KB_SHARD_ADD_TOKEN
+        - KB_SHARDING_NAME
+        - KB_SHARD_ADD_SHARDS
+        - KB_SHARD_COUNT
+      properties:
+        KB_SHARD_ADD_TOKEN:
+          type: string
+          minLength: 1
+        KB_SHARDING_NAME:
+          type: string
+          minLength: 1
+        KB_SHARD_ADD_SHARDS:
+          type: string
+          minLength: 1
+        KB_SHARD_COUNT:
+          type: integer
+          minimum: 1
+  actions:
+    - name: shardadd-rebalance
+      failurePolicy: Fail
+      parameters:
+        - KB_SHARD_ADD_TOKEN
+        - KB_SHARDING_NAME
+        - KB_SHARD_ADD_SHARDS
+        - KB_SHARD_COUNT
+      workload:
+        type: ManagedJob
+        podInfoExtractorName: redis-cluster-shardadd-inputs
+        backoffLimit: 0
+        podSpec:
+          restartPolicy: Never
+          activeDeadlineSeconds: 10800
+          terminationGracePeriodSeconds: 30
+          containers:
+            - name: redis-cluster-shardadd-worker
+              image: {{ include "redis7.image" . }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/bash
+                - /scripts/redis-cluster-shardadd-worker.sh
+              env:
+                - name: REDIS_TLS_CA_FILE
+                  value: /etc/pki/tls/ca.crt
+                - name: REDIS_TLS_CERT_FILE
+                  value: /etc/pki/tls/tls.crt
+                - name: REDIS_TLS_KEY_FILE
+                  value: /etc/pki/tls/tls.key
+                - name: REDIS_COMMAND_TIMEOUT_SECONDS
+                  value: "7200"
+                - name: REDIS_COMMAND_KILL_GRACE_SECONDS
+                  value: "30"
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+          volumes:
+            - name: scripts
+              configMap:
+                name: {{ include "redisCluster.scriptsTemplate" . }}
+                defaultMode: 0555

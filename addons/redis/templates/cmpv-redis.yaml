@@ -27,6 +27,7 @@ spec:
       redis: {{ $redisRepository }}:{{ .imageTag }}
       metrics: {{ include "metrics.repository" $ }}:v1.80.1
       init-dbctl: {{ $.Values.dbctlImage.registry | default ( $.Values.image.registry | default "docker.io" ) }}/{{ $.Values.dbctlImage.repository }}:{{ $.Values.dbctlImage.tag }}
+      init-kubectl: {{ $.Values.kubectlImage.registry | default ( $.Values.image.registry | default "docker.io" ) }}/{{ $.Values.kubectlImage.repository }}:{{ $.Values.kubectlImage.tag }}
       postProvision: {{ $redisRepository }}:{{ .imageTag }}
       accountProvision: {{ $redisRepository }}:{{ .imageTag }}
       switchover: {{ $redisRepository }}:{{ .imageTag }}

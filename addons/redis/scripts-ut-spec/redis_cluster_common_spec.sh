@@ -547,4 +547,355 @@ Describe "Redis Cluster Common Bash Script Tests"
       End
     End
   End
+
+  Describe "classify_current_node_replication_view()"
+    It "classifies a slotless replica with the wrong upstream as repairable"
+      cluster_nodes_info="self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 myself,slave stale-primary-id 0 1 1 connected
+primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+
+      When call classify_current_node_replication_view "$cluster_nodes_info" "primary-id"
+      The status should be success
+      The output should equal "repairable"
+      The stderr should be blank
+    End
+  End
+
+  Describe "get_consistent_current_node_replication_state()"
+    setup_replication_views() {
+      service_port=6379
+      retry_delay_second=0
+      current_shard_node_ids="primary-id,self-id"
+      expected_replication_view_calls=$(printf '%s\n' \
+        "127.0.0.1:6379" \
+        "primary:6379" \
+        "127.0.0.1:6379" \
+        "primary:6379")
+      rm -f ./replication-view-calls ./replication-view-count
+    }
+    Before "setup_replication_views"
+
+    cleanup_replication_views() {
+      unset service_port retry_delay_second current_shard_node_ids expected_replication_view_calls
+      rm -f ./replication-view-calls ./replication-view-count
+    }
+    After "cleanup_replication_views"
+
+    Context "when both observers agree for two rounds on a correct replica"
+      get_cluster_nodes_info() {
+        printf '%s:%s\n' "$1" "$2" >> ./replication-view-calls
+        if [ "$1" = "127.0.0.1" ]; then
+          echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 myself,slave primary-id 0 1 1 connected"
+        else
+          echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 slave primary-id 0 1 1 connected"
+        fi
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+      }
+
+      It "returns replica_ok after four successful reads"
+        When call get_consistent_current_node_replication_state "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be success
+        The output should equal "replica_ok"
+        The stderr should be blank
+        The contents of file "./replication-view-calls" should equal "$expected_replication_view_calls"
+      End
+    End
+
+    Context "when both observers agree for two rounds on a slotless master"
+      get_cluster_nodes_info() {
+        printf '%s:%s\n' "$1" "$2" >> ./replication-view-calls
+        if [ "$1" = "127.0.0.1" ]; then
+          echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 myself,master - 0 1 1 connected"
+        else
+          echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 master - 0 1 1 connected"
+        fi
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+      }
+
+      It "returns repairable"
+        When call get_consistent_current_node_replication_state "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be success
+        The output should equal "repairable"
+        The stderr should be blank
+        The contents of file "./replication-view-calls" should equal "$expected_replication_view_calls"
+      End
+    End
+
+    Context "when the two observers disagree"
+      get_cluster_nodes_info() {
+        if [ "$1" = "127.0.0.1" ]; then
+          echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 myself,master - 0 1 1 connected"
+        else
+          echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 slave stale-primary-id 0 1 1 connected"
+        fi
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+      }
+
+      It "fails closed"
+        When call get_consistent_current_node_replication_state "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be failure
+        The stderr should include "Cluster replication views disagree"
+      End
+    End
+
+    Context "when the second round changes node identity"
+      setup_changing_views() { echo 0 > ./replication-view-count; }
+      Before "setup_changing_views"
+
+      get_cluster_nodes_info() {
+        count=$(cat ./replication-view-count)
+        count=$((count + 1))
+        echo "$count" > ./replication-view-count
+        self_id="self-id"
+        if [ "$count" -gt 2 ]; then self_id="replacement-id"; fi
+        flags="slave"
+        if [ "$1" = "127.0.0.1" ]; then flags="myself,slave"; fi
+        echo "$self_id 10.42.0.228:6379@16379,redis-shard-sxj-1 $flags primary-id 0 1 1 connected"
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+      }
+
+      It "fails closed across rounds"
+        When call get_consistent_current_node_replication_state "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be failure
+        The stderr should include "Cluster replication view changed before mutation"
+      End
+    End
+
+    Context "when the second round changes the replica upstream"
+      setup_changing_upstream() { echo 0 > ./replication-view-count; }
+      Before "setup_changing_upstream"
+
+      get_cluster_nodes_info() {
+        count=$(cat ./replication-view-count)
+        count=$((count + 1))
+        echo "$count" > ./replication-view-count
+        printf '%s:%s\n' "$1" "$2" >> ./replication-view-calls
+        upstream_id="primary-id"
+        if [ "$count" -gt 2 ]; then upstream_id="stale-primary-id"; fi
+        flags="slave"
+        if [ "$1" = "127.0.0.1" ]; then flags="myself,slave"; fi
+        echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 $flags $upstream_id 0 1 1 connected"
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+      }
+
+      It "fails closed across rounds without mutating"
+        When call get_consistent_current_node_replication_state "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be failure
+        The stderr should include "Cluster replication view changed before mutation"
+        The contents of file "./replication-view-calls" should equal "$expected_replication_view_calls"
+      End
+    End
+
+    Context "when no unique slot owner exists"
+      get_cluster_nodes_info() {
+        flags="master"
+        if [ "$1" = "127.0.0.1" ]; then flags="myself,master"; fi
+        echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 $flags - 0 1 1 connected 0-5460"
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 5461-16383"
+      }
+
+      It "fails closed"
+        When call get_consistent_current_node_replication_state "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be failure
+        The stderr should include "Expected exactly one slot-owning primary"
+      End
+    End
+  End
+
+  Describe "repair_current_node_replication()"
+    setup_repair_command() {
+      export REDIS_DEFAULT_PASSWORD="generated-secret-78431"
+      export REDIS_CLI_TLS_CMD="--tls --insecure"
+      service_port=6379
+      rm -f ./repair-command-argv
+    }
+    Before "setup_repair_command"
+
+    cleanup_repair_command() {
+      unset REDIS_DEFAULT_PASSWORD REDIS_CLI_TLS_CMD service_port
+      rm -f ./repair-command-argv
+    }
+    After "cleanup_repair_command"
+
+    redis-cli() {
+      printf '%s\n' "$*" >> ./repair-command-argv
+      echo OK
+    }
+
+    It "executes exactly once without leaking the generated password"
+      When call repair_current_node_replication "primary-id"
+      The status should be success
+      The stdout should not include "generated-secret-78431"
+      The stderr should not include "generated-secret-78431"
+      The stderr should include "-a ******** CLUSTER REPLICATE primary-id"
+      The contents of file "./repair-command-argv" should equal "--tls --insecure -h 127.0.0.1 -p 6379 -a generated-secret-78431 CLUSTER REPLICATE primary-id"
+    End
+  End
+
+  Describe "verify_current_node_replication() dual-view convergence"
+    setup_replication_verification() {
+      service_port=6379
+      check_ready_times=2
+      retry_delay_second=0
+      current_shard_node_ids="primary-id,self-id"
+      expected_replication_view_calls=$(printf '%s\n' \
+        "127.0.0.1:6379" \
+        "primary:6379" \
+        "127.0.0.1:6379" \
+        "primary:6379")
+      rm -f ./replication-verify-calls ./replication-view-count ./unexpected-verify-repair
+    }
+    Before "setup_replication_verification"
+
+    cleanup_replication_verification() {
+      unset service_port check_ready_times retry_delay_second current_shard_node_ids expected_replication_view_calls
+      rm -f ./replication-verify-calls ./replication-view-count ./unexpected-verify-repair
+    }
+    After "cleanup_replication_verification"
+
+    repair_current_node_replication() { echo repair >> ./unexpected-verify-repair; }
+
+    Context "when both observers agree for two rounds on the repaired replica"
+      get_cluster_nodes_info() {
+        printf '%s:%s\n' "$1" "$2" >> ./replication-verify-calls
+        flags="slave"
+        if [ "$1" = "127.0.0.1" ]; then flags="myself,slave"; fi
+        echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 $flags primary-id 0 1 1 connected"
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+      }
+
+      It "accepts exactly local owner local owner and performs no mutation"
+        When call verify_current_node_replication "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be success
+        The stderr should be blank
+        The contents of file "./replication-verify-calls" should equal "$expected_replication_view_calls"
+        The path "./unexpected-verify-repair" should not be exist
+      End
+    End
+
+    Context "when observers disagree after repair"
+      get_cluster_nodes_info() {
+        printf '%s:%s\n' "$1" "$2" >> ./replication-verify-calls
+        if [ "$1" = "127.0.0.1" ]; then
+          echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 myself,slave primary-id 0 1 1 connected"
+        else
+          echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 slave stale-primary-id 0 1 1 connected"
+        fi
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+      }
+
+      It "classifies disagreement as failure with zero mutation"
+        When call verify_current_node_replication "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be failure
+        The stderr should include "Post-repair cluster replication views disagree"
+        The path "./unexpected-verify-repair" should not be exist
+      End
+    End
+
+    Context "when the second verification round changes upstream"
+      setup_verify_drift() { echo 0 > ./replication-view-count; }
+      Before "setup_verify_drift"
+
+      get_cluster_nodes_info() {
+        count=$(cat ./replication-view-count)
+        count=$((count + 1))
+        echo "$count" > ./replication-view-count
+        printf '%s:%s\n' "$1" "$2" >> ./replication-verify-calls
+        upstream_id="primary-id"
+        if [ "$count" -gt 2 ]; then upstream_id="stale-primary-id"; fi
+        flags="slave"
+        if [ "$1" = "127.0.0.1" ]; then flags="myself,slave"; fi
+        echo "self-id 10.42.0.228:6379@16379,redis-shard-sxj-1 $flags $upstream_id 0 1 1 connected"
+        echo "primary-id 10.42.0.227:6379@16379,redis-shard-sxj-0 master - 0 1 1 connected 0-16383"
+      }
+
+      It "classifies drift as failure with zero mutation"
+        When call verify_current_node_replication "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be failure
+        The stderr should include "Post-repair cluster replication view changed"
+        The contents of file "./replication-verify-calls" should equal "$expected_replication_view_calls"
+        The path "./unexpected-verify-repair" should not be exist
+      End
+    End
+
+    Context "when stable views never converge to a replica"
+      get_consistent_current_node_replication_state() {
+        printf '%s:%s:%s:%s\n' "$1" "$2" "$3" "$4" >> ./replication-verify-calls
+        echo repairable
+      }
+
+      It "times out after the bounded attempts with zero mutation"
+        When call verify_current_node_replication "primary" "6379" "primary-id" "$current_shard_node_ids"
+        The status should be failure
+        The stderr should include "Replication repair verification timeout"
+        The contents of file "./replication-verify-calls" should equal "primary:6379:primary-id:primary-id,self-id
+primary:6379:primary-id:primary-id,self-id"
+        The path "./unexpected-verify-repair" should not be exist
+      End
+    End
+  End
+
+  Describe "ensure_current_node_replication() dual-view gate"
+    It "rejects the removed one-argument API"
+      When call ensure_current_node_replication "primary-id"
+      The status should be failure
+      The stderr should include "requires primary endpoint, port, ID, and shard node IDs"
+    End
+
+    Context "when pre-repair views are inconsistent"
+      get_consistent_current_node_replication_state() {
+        echo "Error: Cluster replication views disagree before mutation" >&2
+        return 1
+      }
+      repair_current_node_replication() { echo called >> ./unexpected-repair; }
+
+      cleanup_unexpected_repair() { rm -f ./unexpected-repair; }
+      Before "cleanup_unexpected_repair"
+      After "cleanup_unexpected_repair"
+
+      It "performs zero mutations"
+        When call ensure_current_node_replication "primary" "6379" "primary-id" "primary-id,self-id"
+        The status should be failure
+        The stderr should include "Cluster replication views disagree before mutation"
+        The stderr should include "Failed to get consistent current node replication state"
+        The path "./unexpected-repair" should not be exist
+      End
+    End
+
+    Context "when the current node already replicates the expected primary"
+      get_consistent_current_node_replication_state() { echo replica_ok; }
+      repair_current_node_replication() { echo called >> ./unexpected-control-repair; }
+      verify_current_node_replication() { echo called >> ./unexpected-control-verify; }
+
+      cleanup_control_calls() { rm -f ./unexpected-control-repair ./unexpected-control-verify; }
+      Before "cleanup_control_calls"
+      After "cleanup_control_calls"
+
+      It "performs zero mutations and zero post-repair verification calls"
+        When call ensure_current_node_replication "primary" "6379" "primary-id" "primary-id,self-id"
+        The status should be success
+        The stdout should include "Current node already replicates expected primary primary-id"
+        The stderr should be blank
+        The path "./unexpected-control-repair" should not be exist
+        The path "./unexpected-control-verify" should not be exist
+      End
+    End
+
+    Context "when repair succeeds and dual-view verification converges"
+      get_consistent_current_node_replication_state() { echo repairable; }
+      repair_current_node_replication() { echo repair >> ./repair-count; }
+      verify_current_node_replication() { echo verify >> ./verify-count; }
+
+      setup_repair_counts() { rm -f ./repair-count ./verify-count; }
+      Before "setup_repair_counts"
+      After "setup_repair_counts"
+
+      It "repairs and verifies exactly once"
+        When call ensure_current_node_replication "primary" "6379" "primary-id" "primary-id,self-id"
+        The status should be success
+        The stderr should be blank
+        The contents of file "./repair-count" should equal "repair"
+        The contents of file "./verify-count" should equal "verify"
+      End
+    End
+  End
 End

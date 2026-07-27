@@ -868,43 +868,16 @@ scale_out_redis_cluster_shard() {
     fi
   done
 
-  # do the reshard
-  # TODO: optimize the number of reshard slots according to the cluster status
-  local total_slots
-  local current_comp_pod_count
-  local all_comp_pod_count
-  local shard_count
-  local slots_per_shard
-  local current_slots
-  local remaining_slots
-  total_slots=16384
-  current_comp_pod_count=$(echo "$CURRENT_SHARD_POD_NAME_LIST" | tr ',' '\n' | grep -c "^$CURRENT_SHARD_COMPONENT_NAME-")
-  all_comp_pod_count=$(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' '\n' | grep -c ".*")
-  shard_count=$((all_comp_pod_count / current_comp_pod_count))
-  slots_per_shard=$((total_slots / shard_count))
-  current_slots=$(count_node_slots "$primary_node_fqdn" "$primary_node_port" "$mapping_primary_cluster_id")
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to count current shard primary slots before scale out reshard" >&2
+  if ! check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"; then
+    echo "Redis cluster slots are not fully covered after shard membership convergence" >&2
     return 1
   fi
-  remaining_slots=$((slots_per_shard - current_slots))
-  if [ "$remaining_slots" -le 0 ]; then
-    if check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"; then
-      echo "Redis cluster scale out shard already owns $current_slots slots and cluster is stable"
-      return 0
-    fi
-    fix_unstable_cluster_and_defer "$primary_node_with_port" || return 1
-  fi
-
-  if scale_out_shard_reshard "$primary_node_with_port" "$mapping_primary_cluster_id" "$remaining_slots"; then
-    echo "Redis cluster scale out shard reshard successfully"
-  else
-    echo "Failed to scale out shard reshard" >&2
+  if ! check_current_shard_other_nodes_are_joined "$primary_node_fqdn" "$primary_node_port"; then
+    echo "Redis cluster shard membership did not converge after node joins" >&2
     return 1
   fi
 
-  check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"
+  echo "Redis cluster shard membership converged; slot migration is delegated to the managed shardAdd Job"
 }
 
 sync_acl_for_redis_cluster_shard() {
@@ -926,8 +899,19 @@ sync_acl_for_redis_cluster_shard() {
       continue
     fi
     cluster_state=$(echo "$cluster_info" | awk -F: '/cluster_state/{print $2}' | tr -d '[:space:]')
-    if is_empty "$cluster_state" || equals "$cluster_state" "ok"; then
+    # Only trust a pod whose cluster_state is explicitly "ok". An empty
+    # cluster_state means the state could not be determined (parse anomaly or
+    # an unreachable pod) and must be skipped, not accepted as a source of
+    # truth for ACL rules.
+    if equals "$cluster_state" "ok"; then
        acl_list=$($redis_base_cmd -p $pod_service_port -h "$pod_fqdn" ACL LIST)
+       # ACL LIST must succeed before this pod is treated as the sync source;
+       # a failed command (e.g. connection blip) must not be mistaken for
+       # "no ACL rules to sync".
+       if [ $? -ne 0 ]; then
+         acl_list=""
+         continue
+       fi
        is_ok=true
        break
     fi

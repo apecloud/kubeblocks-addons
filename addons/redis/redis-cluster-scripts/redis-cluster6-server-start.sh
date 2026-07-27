@@ -38,6 +38,7 @@ current_comp_other_nodes=()
 other_comp_primary_nodes=()
 other_comp_primary_fail_nodes=()
 other_comp_other_nodes=()
+cluster_view_initialized="false"
 
 init_environment(){
   if [[ -z "${CURRENT_SHARD_ADVERTISED_PORT}" ]]; then
@@ -142,6 +143,7 @@ check_and_meet_current_primary_node() {
 get_current_comp_nodes_for_scale_out_replica() {
   local cluster_node="$1"
   local cluster_node_port="$2"
+  cluster_view_initialized="false"
   cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
   status=$?
   if [ $status -ne 0 ]; then
@@ -155,6 +157,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     echo "Cluster nodes info contains less than ${shard_count} nodes, returning..."
     return
   fi
+  cluster_view_initialized="true"
 
   # determine network mode
   local network_mode="default"
@@ -216,10 +219,12 @@ get_current_comp_nodes_for_scale_out_replica() {
     local node_entry="$1"
     local node_role="$2"
     local belong_current_comp="$3"
+    local node_link_state="$4"
+    local node_has_slots="$5"
 
     if [[ "$belong_current_comp" == "true" ]]; then
-      if contains "$node_role" "master"; then
-        if contains "$node_role" "fail"; then
+      if contains "$node_role" "master" && [[ "$node_has_slots" == "true" ]]; then
+        if contains "$node_role" "fail" || [[ "$node_link_state" != "connected" ]]; then
           current_comp_primary_fail_node+=("$node_entry")
         else
           current_comp_primary_node+=("$node_entry")
@@ -271,6 +276,16 @@ get_current_comp_nodes_for_scale_out_replica() {
     node_info=$(parse_node_line_info "$line")
     local node_announce_ip node_port node_bus_port node_role
     read -r node_announce_ip node_port node_bus_port node_role <<< "$node_info"
+    local node_link_state
+    node_link_state=$(echo "$line" | awk '{print $8}')
+    local node_has_slots="false"
+    local slot_entry
+    for slot_entry in $(echo "$line" | cut -d' ' -f9-); do
+      if [[ "$slot_entry" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
+        node_has_slots="true"
+        break
+      fi
+    done
 
     belong_current_comp=false
     for i in "${CURRENT_SHARD_ANNOUNCE_IP_LIST[@]}"; do
@@ -284,7 +299,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     node_entry="$node_announce_ip#$node_announce_ip:$node_port@$node_bus_port"
 
     # categorize nodes
-    categorize_node "$node_entry" "$node_role" "$belong_current_comp"
+    categorize_node "$node_entry" "$node_role" "$belong_current_comp" "$node_link_state" "$node_has_slots"
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
@@ -360,6 +375,12 @@ scale_redis_cluster_replica() {
      fi
   done
 
+  if [ "$cluster_view_initialized" == "true" ] && [ ${#current_comp_primary_node[@]} -ne 1 ]; then
+    echo "Expected exactly one connected non-fail slot-owning primary for initialized shard ${CURRENT_SHARD_COMPONENT_NAME}, found ${#current_comp_primary_node[@]}" >&2
+    shutdown_redis_server "$service_port"
+    exit 1
+  fi
+
   # check current_comp_primary_node is empty or not
   if [ ${#current_comp_primary_node[@]} -eq 0 ]; then
     if is_rebuild_instance; then
@@ -389,6 +410,24 @@ scale_redis_cluster_replica() {
   fi
   # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
   if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$redis_announce_host_value"; then
+    primary_node_cluster_id_status=0
+    primary_node_cluster_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port") || primary_node_cluster_id_status=$?
+    if [ "$primary_node_cluster_id_status" -ne 0 ] || is_empty "$primary_node_cluster_id"; then
+      echo "Failed to resolve the current shard primary ID before replica convergence" >&2
+      exit 1
+    fi
+    current_shard_node_ids_status=0
+    current_shard_node_ids=$(get_current_shard_node_ids "$primary_node_endpoint" "$primary_node_port" "$primary_node_cluster_id") || current_shard_node_ids_status=$?
+    if [ "$current_shard_node_ids_status" -ne 0 ] || is_empty "$current_shard_node_ids"; then
+      echo "Failed to resolve current shard node IDs before replica convergence" >&2
+      exit 1
+    fi
+    current_node_replication_status=0
+    ensure_current_node_replication "$primary_node_endpoint" "$primary_node_port" "$primary_node_cluster_id" "$current_shard_node_ids" || current_node_replication_status=$?
+    if [ "$current_node_replication_status" -ne 0 ]; then
+      echo "Failed to converge current node replication before membership early return" >&2
+      exit 1
+    fi
     # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
     echo "Current pod $CURRENT_POD_NAME is a secondary node, check and meet current primary node..."
     check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"

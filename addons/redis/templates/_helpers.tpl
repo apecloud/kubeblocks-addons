@@ -30,7 +30,9 @@ Common annotations
 {{- define "redis.annotations" -}}
 {{ include "kblib.helm.resourcePolicy" . }}
 {{ include "redis.apiVersion" . }}
+{{- if .Values.skipComponentDefImmutableCheck }}
 apps.kubeblocks.io/skip-immutable-check: "true"
+{{- end }}
 {{- end }}
 
 {{/*
@@ -77,10 +79,10 @@ Define redis sentienl 7.X component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define redis cluster component definition regular expression name prefix
+Define the redis cluster component definition regular expression for this chart version
 */}}
 {{- define "redisCluster.cmpdRegexpPattern" -}}
-^redis-cluster-\d+
+^redis-cluster-\d+-{{ .Chart.Version | replace "." "\\." }}$
 {{- end -}}
 
 {{/*

@@ -78,12 +78,14 @@ spec:
       - container: redis-sentinel
         ports:
           - redis-sentinel
+  {{- if ne .major "5" }}
   tls:
     volumeName: tls
     mountPath: {{ $.Values.tlsMountPath }}
     caFile: ca.crt
     certFile: tls.crt
     keyFile: tls.key
+  {{- end }}
   vars:
     - name: TLS_ENABLED
       valueFrom:

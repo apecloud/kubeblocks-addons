@@ -27,12 +27,14 @@ spec:
   serviceVersion: {{ .serviceVersion }}
   minReadySeconds: 10
   podUpgradePolicy: ReCreate
+  {{- if ne .major "5" }}
   tls:
     volumeName: tls
     mountPath: {{ $.Values.tlsMountPath }}
     caFile: ca.crt
     certFile: tls.crt
     keyFile: tls.key
+  {{- end }}
   services:
     - name: redis-advertised
       serviceName: redis-advertised
@@ -353,7 +355,7 @@ spec:
       expression: {{ `{{if index . "REDIS_CLUSTER_HOST_NETWORK_PORT"}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
     - name: REDIS_METRICS_ADDR
       value: "redis://localhost:$(SERVICE_PORT)"
-      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost: {{.SERVICE_PORT }}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}rediss://localhost:{{.SERVICE_PORT}}{{else}}redis://localhost:{{.SERVICE_PORT}}{{end}}` | toYaml }}
     - name: REDIS_CLI_TLS_CMD
       value: ""
       expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else }}{{end}}` | toYaml }}
@@ -468,13 +470,20 @@ spec:
           - redis
           - getrole
     postProvision:
-      timeoutSeconds: 600
+      timeoutSeconds: 50
       exec:
         container: redis-cluster
         command:
           - /bin/bash
           - -c
-          - /scripts/{{ $redisClusterManageScripts }} --post-provision  > /tmp/post-provision.log 2>&1
+          - |
+            log=/tmp/post-provision.log
+            /scripts/{{ $redisClusterManageScripts }} --post-provision >"$log" 2>&1
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              cat "$log" >&2
+            fi
+            exit "$rc"
         ## all lifecycle actions share the same env
         env:
           - name: CURRENT_POD_NAME
