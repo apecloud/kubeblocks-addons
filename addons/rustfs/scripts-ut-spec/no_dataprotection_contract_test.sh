@@ -52,4 +52,21 @@ assert_kind_count ComponentDefinition 1
 assert_kind_count ComponentVersion 1
 assert_kind_count ConfigMap 2
 
+role_probe_block=$(
+  awk '
+    /^    roleProbe:$/ { in_role_probe = 1; next }
+    in_role_probe && /^    [^ ]/ { exit }
+    in_role_probe { print }
+  ' "$rendered"
+)
+
+for expected in \
+  '      periodSeconds: 1' \
+  '      timeoutSeconds: 3'; do
+  if ! printf '%s\n' "$role_probe_block" | grep -Fxq "$expected"; then
+    echo "RustFS must preserve roleProbe timing: $expected" >&2
+    exit 1
+  fi
+done
+
 echo "rustfs no-dataprotection contract test passed"
