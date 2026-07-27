@@ -54,6 +54,65 @@ Milvus is an open source (Apache-2.0 licensed) vector database built to power em
 
 ## Examples
 
+### Upgrade an affected standalone cluster to 1.2.0-alpha.1
+
+Milvus addon `1.2.0-alpha.1` replaces the embedded MinIO `admin` account with a
+generated `root` account. Existing standalone Clusters must switch both the
+embedded MinIO component and the Milvus component to the new immutable
+ComponentDefinitions.
+
+First upgrade the Milvus addon definitions to `1.2.0-alpha.1`. Do not force a
+Helm update of the existing Cluster's `spec.componentSpecs`: KubeBlocks owns
+that atomic field after topology resolution, so another field manager can be
+rejected or can overwrite controller-owned state.
+
+The addon upgrade also narrows the retained alpha.0 and current alpha.1
+Milvus parameter definitions to their exact ComponentDefinition versions.
+This prevents both definitions from claiming the same `user.yaml` file while
+the Cluster transitions between immutable component versions.
+
+Then edit the namespace, Cluster name, and OpsRequest name in
+`examples/upgrade-embedded-minio-credential.yaml` and create it. The KubeBlocks
+`Upgrade` OpsRequest changes the two ComponentDefinitions through the owning
+control plane. The example sets `preConditionDeadlineSeconds: 600` because an
+affected alpha.0 Cluster can still be `Creating` while MinIO is failing; the
+OpsRequest waits boundedly for KubeBlocks to classify the Cluster `Abnormal`,
+which is an allowed Upgrade source phase. Do not replace this wait with
+`force: true`:
+
+```bash
+kubectl create -f examples/upgrade-embedded-minio-credential.yaml
+```
+
+An affected alpha.0 MinIO Pod is already NotReady because its generated
+`admin` password is empty. KubeBlocks intentionally does not roll an unavailable
+Pod during a normal component upgrade. After creating the OpsRequest, run the
+bounded recovery helper with the same namespace, Cluster, and OpsRequest names:
+
+```bash
+bash scripts/recover-embedded-minio-credential.sh \
+  demo milvus-standalone milvus-standalone-minio-root-migrate
+```
+
+The helper first waits until the MinIO Component and InstanceSet both show
+`milvus-minio-1.2.0-alpha.1` and the new `root` Secret has non-empty credential
+data. It validates the bounded precondition wait and rejects `force`; if the
+OpsRequest reaches a terminal failure while desired state is pending, it exits
+immediately with that state. Only after desired state is ready, if the sole
+MinIO Pod still uses the alpha.0 definition, it
+verifies that the Pod is controlled by the expected InstanceSet and deletes
+that Pod without deleting its PVC or either Secret. KubeBlocks recreates the
+Pod from the alpha.1 template. The helper exits successfully only after the
+replacement Pod is Ready, the OpsRequest is `Succeed`, and the Cluster is
+`Running`; each wait has a finite timeout and reports its first and last
+observations on failure. It is safe to rerun after the replacement Pod already
+uses alpha.1.
+
+Finally, verify Milvus service connectivity. Both MinIO and Milvus must consume
+the new non-empty `root` credential. Do not use server-side apply
+`--force-conflicts` on the Cluster or `force: true` on the OpsRequest as a
+migration shortcut, and do not delete the affected PVC.
+
 ### Create
 
 #### Standalone Mode

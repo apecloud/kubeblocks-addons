@@ -29,7 +29,7 @@ spec:
       volumeClaimTemplates:
       - name: data
         spec:
-          storageClassName: {{ .persistence.data.storageClassName }}
+          storageClassName: "{{ .persistence.data.storageClassName }}"
           accessModes:
             - ReadWriteOnce
           resources:
@@ -37,8 +37,10 @@ spec:
               storage: {{ print .persistence.data.size "Gi" }}
       env:
         {{- include "tidb-cluster.enableTLSBetweenComponentsEnv" $ | nindent 6 }}
+      {{- if $.Values.extra.enableTLSBetweenComponents }}
       volumes:
         {{- include "tidb-cluster.TLSBetweenComponentsVolumes" $ | nindent 6 }}
+      {{- end }}
     {{- end }}
     {{- with $.Values.tikv }}
     - name: tikv
@@ -60,16 +62,18 @@ spec:
       volumeClaimTemplates:
       - name: data
         spec:
-          storageClassName: {{ .persistence.data.storageClassName }}
+          storageClassName: "{{ .persistence.data.storageClassName }}"
           accessModes:
             - ReadWriteOnce
           resources:
             requests:
-              storage: {{ print .persistence.data.size "Gi" }}
+              storage: "{{ print .persistence.data.size "Gi" }}"
       env:
         {{- include "tidb-cluster.enableTLSBetweenComponentsEnv" $ | nindent 6 }}
+      {{- if $.Values.extra.enableTLSBetweenComponents }}
       volumes:
         {{- include "tidb-cluster.TLSBetweenComponentsVolumes" $ | nindent 6 }}
+      {{- end }}
     {{- end }}
     {{- with $.Values.tidb }}
     - name: tidb
@@ -95,6 +99,8 @@ spec:
       {{- end }}
       env:
         {{- include "tidb-cluster.enableTLSBetweenComponentsEnv" $ | nindent 6 }}
+      {{- if $.Values.extra.enableTLSBetweenComponents }}
       volumes:
         {{- include "tidb-cluster.TLSBetweenComponentsVolumes" $ | nindent 6 }}
+      {{- end }}
     {{- end }}
