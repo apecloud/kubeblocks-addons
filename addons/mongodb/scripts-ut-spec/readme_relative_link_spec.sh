@@ -202,6 +202,28 @@ Describe "MongoDB README relative-link closure"
     The stderr should include 'link="bad%2G.md" malformed_percent_encoding'
   End
 
+  It "keeps percent-encoded scheme text in the local-link contract"
+    prepare_link_fixture
+    printf '%s\n' \
+      '[EncodedScheme](%68ttps://example.invalid/resource.md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="%68ttps://example.invalid/resource.md" missing=addons/mongodb/https:/example.invalid/resource.md'
+  End
+
+  It "skips a literal external scheme before local percent validation"
+    prepare_link_fixture
+    printf '%s\n' \
+      '[External](https://example.invalid/bad%2G.md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
   It "rejects an ambiguous target that remains percent-encoded after one decode"
     prepare_link_fixture
     printf '# ambiguous decoy\n' > "$MONGODB_REPO_ROOT/addons/mongodb/literal%2520name.md"
