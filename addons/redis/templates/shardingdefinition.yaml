@@ -22,6 +22,7 @@ spec:
     shardAdd:
       opsDefinitionName: {{ printf "redis-cluster-shardadd-%s" .Chart.Version }}
     shardRemove:
+      # kbagent clamps action calls at 60s; keep 10s for cancellation and cleanup.
       timeoutSeconds: 50
       exec:
         container: redis-cluster

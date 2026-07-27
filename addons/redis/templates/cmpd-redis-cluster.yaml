@@ -470,6 +470,7 @@ spec:
           - redis
           - getrole
     postProvision:
+      # kbagent clamps action calls at 60s; keep 10s for cancellation and cleanup.
       timeoutSeconds: 50
       exec:
         container: redis-cluster

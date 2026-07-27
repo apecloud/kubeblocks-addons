@@ -60,7 +60,7 @@ spec:
     {{- end }}
   scripts:
     - name: redis-scripts
-      template: {{ include "redis.scriptsTemplate" $ }}
+      template: {{ include "redisSentinel.scriptsTemplate" $ }}
       namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
