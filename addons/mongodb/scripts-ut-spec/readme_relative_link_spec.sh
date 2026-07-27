@@ -14,7 +14,7 @@ Describe "MongoDB README relative-link closure"
         path == root || path.start_with?("#{root}#{File::SEPARATOR}")
       end
 
-      def pointy_destination(line, target_start)
+      def pointy_destination(line, target_start, segment_end)
         index = target_start + 1
         backslash_run = 0
         closer = nil
@@ -39,7 +39,8 @@ Describe "MongoDB README relative-link closure"
           index += 1
         end
 
-        link_end = line.index(")", target_start)
+        link_end = line.rindex(")", segment_end - 1)
+        link_end = nil if link_end && link_end < target_start
         if closer && line.getbyte(closer + 1) == 41 && !nested
           raw_target = line[target_start..closer]
           destination = raw_target.byteslice(1, raw_target.bytesize - 2)
@@ -61,8 +62,10 @@ Describe "MongoDB README relative-link closure"
           while (match = opener.match(line, cursor))
             target_start = match.end(0)
             if line.getbyte(target_start) == 60
+              next_match = opener.match(line, target_start)
+              segment_end = next_match ? next_match.begin(0) : line.length
               raw_target, destination, cursor, malformed =
-                pointy_destination(line, target_start)
+                pointy_destination(line, target_start, segment_end)
               targets << [raw_target, destination, malformed]
               next
             end
