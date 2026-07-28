@@ -1,3 +1,4 @@
+{{- include "mariadb-cluster.validateTopology" . -}}
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
