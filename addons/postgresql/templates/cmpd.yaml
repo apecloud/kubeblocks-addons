@@ -172,13 +172,6 @@ spec:
           name: remote-instances
           optional: true
           password: Required
-    ## the postgres pod name list for each pod, the value format is "pod1,pod2,..."
-    - name: POSTGRES_POD_NAME_LIST
-      valueFrom:
-        componentVarRef:
-          compDef: {{ $compDefName }}
-          optional: false
-          podNames: Required
     ## the postgres pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
     - name: POSTGRES_POD_FQDN_LIST
       valueFrom:

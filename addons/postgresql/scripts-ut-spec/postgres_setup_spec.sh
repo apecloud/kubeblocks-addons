@@ -192,71 +192,137 @@ Describe "PostgreSQL Initialization Script Tests"
   Describe "pending restart candidate selection"
     setup() {
       CURRENT_POD_NAME="pg-cluster-postgresql-0"
-      POSTGRES_POD_NAME_LIST="pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-2"
+      EXPECTED_POD_NAMES="pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-2"
+      CLUSTER_NAMESPACE="default"
+      CLUSTER_NAME="pg-cluster"
+      POSTGRES_COMPONENT_SHORT_NAME="postgresql"
+      KUBE_API_TMPDIR=$(mktemp -d -t pg-kube-api-XXXXXX)
+      KUBERNETES_SERVICE_ACCOUNT_TOKEN_FILE="${KUBE_API_TMPDIR}/token"
+      KUBERNETES_SERVICE_ACCOUNT_CA_FILE="${KUBE_API_TMPDIR}/ca.crt"
+      printf '%s' "test-token" > "${KUBERNETES_SERVICE_ACCOUNT_TOKEN_FILE}"
+      printf '%s' "test-ca" > "${KUBERNETES_SERVICE_ACCOUNT_CA_FILE}"
+      export CLUSTER_NAMESPACE CLUSTER_NAME POSTGRES_COMPONENT_SHORT_NAME
+      export KUBERNETES_SERVICE_ACCOUNT_TOKEN_FILE KUBERNETES_SERVICE_ACCOUNT_CA_FILE
+      unset KUBE_API_FAIL
     }
     Before 'setup'
 
     un_setup() {
       unset CURRENT_POD_NAME
-      unset POSTGRES_POD_NAME_LIST
+      unset EXPECTED_POD_NAMES
+      unset CLUSTER_NAMESPACE
+      unset CLUSTER_NAME
+      unset POSTGRES_COMPONENT_SHORT_NAME
+      unset KUBERNETES_SERVICE_ACCOUNT_TOKEN_FILE
+      unset KUBERNETES_SERVICE_ACCOUNT_CA_FILE
+      unset KUBE_API_FAIL
+      rm -rf "${KUBE_API_TMPDIR}"
     }
     After 'un_setup'
 
+    Mock curl
+      if [[ "${KUBE_API_FAIL:-0}" == "1" ]]; then
+        exit 22
+      fi
+
+      args=" $* "
+      [[ "${args}" == *" --fail "* ]] || exit 64
+      [[ "${args}" == *" --cacert ${KUBERNETES_SERVICE_ACCOUNT_CA_FILE} "* ]] || exit 65
+      [[ "${args}" == *" --header Authorization: Bearer test-token "* ]] || exit 66
+      [[ "${args}" == *" --data-urlencode labelSelector=app.kubernetes.io/instance=pg-cluster,apps.kubeblocks.io/component-name=postgresql "* ]] || exit 67
+      [[ "${args}" == *" https://kubernetes.default.svc:443/api/v1/namespaces/default/pods "* ]] || exit 68
+      printf '%s' '{"items":[{"metadata":{"name":"pg-cluster-postgresql-2"}},{"metadata":{"name":"pg-cluster-postgresql-0"}},{"metadata":{"name":"pg-cluster-postgresql-1","deletionTimestamp":"2026-07-28T00:00:00Z"}}]}'
+    End
+
     It "selects a pending leader before replicas"
       cluster_state='{"members":[{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":true},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
-      When call pending_restart_candidate "$cluster_state"
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
       The output should equal "pg-cluster-postgresql-0"
       The status should be success
     End
 
     It "selects one pending replica by stable member name order"
       cluster_state='{"members":[{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
-      When call pending_restart_candidate "$cluster_state"
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
       The output should equal "pg-cluster-postgresql-1"
       The status should be success
     End
 
     It "selects no candidate while a member is restarting"
       cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"restarting","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
-      When call pending_restart_candidate "$cluster_state"
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
       The output should equal ""
       The status should be success
     End
 
     It "selects no candidate while a member is stopped"
       cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"stopped","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
-      When call pending_restart_candidate "$cluster_state"
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
       The output should equal ""
       The status should be success
     End
 
     It "selects no candidate while a member is starting"
       cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"starting","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
-      When call pending_restart_candidate "$cluster_state"
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
       The output should equal ""
       The status should be success
     End
 
     It "selects no candidate when an expected member is absent"
       cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
-      When call pending_restart_candidate "$cluster_state"
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
       The output should equal ""
       The status should be success
     End
 
     It "selects no candidate when the observed membership has an extra member"
       cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":false},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-3","role":"replica","state":"streaming","pending_restart":true}]}'
-      When call pending_restart_candidate "$cluster_state"
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
       The output should equal ""
       The status should be success
     End
 
     It "selects no candidate when the expected membership contains duplicates"
-      POSTGRES_POD_NAME_LIST="pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-1"
+      EXPECTED_POD_NAMES="pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-1"
       cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
-      When call pending_restart_candidate "$cluster_state"
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
       The output should equal ""
       The status should be success
+    End
+
+    It "uses a fresh scale-out membership instead of the pod creation snapshot"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":false},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":false},{"name":"pg-cluster-postgresql-3","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-2,pg-cluster-postgresql-3"
+      The output should equal "pg-cluster-postgresql-3"
+      The status should be success
+    End
+
+    It "uses a fresh scale-in membership instead of the pod creation snapshot"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "pg-cluster-postgresql-0,pg-cluster-postgresql-1"
+      The output should equal "pg-cluster-postgresql-1"
+      The status should be success
+    End
+
+    It "extracts only live component pods from the Kubernetes API response"
+      pod_list='{"items":[{"metadata":{"name":"pg-cluster-postgresql-2"}},{"metadata":{"name":"pg-cluster-postgresql-0"}},{"metadata":{"name":"pg-cluster-postgresql-1","deletionTimestamp":"2026-07-28T00:00:00Z"}}]}'
+      When call component_pod_names_from_api "$pod_list"
+      The output should equal "pg-cluster-postgresql-0,pg-cluster-postgresql-2"
+      The status should be success
+    End
+
+    It "reads the current component membership from the Kubernetes API"
+      When call current_component_pod_names
+      The output should equal "pg-cluster-postgresql-0,pg-cluster-postgresql-2"
+      The status should be success
+    End
+
+    It "fails closed when the Kubernetes API membership read fails"
+      export KUBE_API_FAIL=1
+      When call current_component_pod_names
+      The output should equal ""
+      The status should be failure
     End
 
     It "restarts only when the current pod is the selected candidate"

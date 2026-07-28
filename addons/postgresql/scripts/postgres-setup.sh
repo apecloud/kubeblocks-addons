@@ -25,8 +25,9 @@ function wait_pod_restarted() {
 # its local /restart endpoint.
 function pending_restart_candidate() {
   local cluster_state=$1
+  local expected_pod_names=$2
 
-  printf '%s\n' "${cluster_state}" | jq -r --arg expected "${POSTGRES_POD_NAME_LIST:-}" '
+  printf '%s\n' "${cluster_state}" | jq -r --arg expected "${expected_pod_names}" '
     def healthy: .state == "running" or .state == "streaming";
     ($expected | split(",")) as $expected_names |
     (.members // []) as $members |
@@ -45,6 +46,54 @@ function pending_restart_candidate() {
        "")
     end
   '
+}
+
+function component_pod_names_from_api() {
+  local pod_list=$1
+
+  printf '%s\n' "${pod_list}" | jq -er '
+    [.items[]?
+      | select(.metadata.deletionTimestamp == null)
+      | .metadata.name
+      | select(type == "string" and length > 0)] as $names |
+    if ($names | length) == 0 then
+      error("component pod list is empty")
+    else
+      $names | sort | join(",")
+    end
+  '
+}
+
+# Component vars are expanded into a Pod only at creation, so podNames becomes
+# stale after scale-out or scale-in. Query the live component Pods for every
+# arbitration snapshot; a failed or empty API read leaves the loop fail-closed.
+function current_component_pod_names() {
+  local token_file="${KUBERNETES_SERVICE_ACCOUNT_TOKEN_FILE:-/var/run/secrets/kubernetes.io/serviceaccount/token}"
+  local ca_file="${KUBERNETES_SERVICE_ACCOUNT_CA_FILE:-/var/run/secrets/kubernetes.io/serviceaccount/ca.crt}"
+  local api_host="${KUBERNETES_API_HOST:-${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}}"
+  local api_port="${KUBERNETES_API_PORT:-${KUBERNETES_SERVICE_PORT_HTTPS:-443}}"
+  local selector token pod_list
+
+  [[ -n "${CLUSTER_NAMESPACE:-}" && -n "${CLUSTER_NAME:-}" && -n "${POSTGRES_COMPONENT_SHORT_NAME:-}" ]] || return 1
+  [[ -r "${token_file}" && -r "${ca_file}" ]] || return 1
+
+  selector="app.kubernetes.io/instance=${CLUSTER_NAME},apps.kubeblocks.io/component-name=${POSTGRES_COMPONENT_SHORT_NAME}"
+  token=$(<"${token_file}") || return 1
+  [[ -n "${token}" ]] || return 1
+
+  pod_list=$(curl \
+    --fail \
+    --silent \
+    --show-error \
+    --connect-timeout 3 \
+    --max-time 5 \
+    --cacert "${ca_file}" \
+    --header "Authorization: Bearer ${token}" \
+    --get \
+    --data-urlencode "labelSelector=${selector}" \
+    "https://${api_host}:${api_port}/api/v1/namespaces/${CLUSTER_NAMESPACE}/pods") || return 1
+
+  component_pod_names_from_api "${pod_list}"
 }
 
 # Decide whether this pod is the single candidate selected from the latest
@@ -88,7 +137,10 @@ function restart_for_pending_restart_flag() {
     result=$(<${result_tmp_path})
     rm -f ${result_tmp_path}
 
-    if ! restart_candidate=$(pending_restart_candidate "${result}"); then
+    if ! expected_pod_names=$(current_component_pod_names); then
+      continue
+    fi
+    if ! restart_candidate=$(pending_restart_candidate "${result}" "${expected_pod_names}"); then
       continue
     fi
     if [[ -z "${restart_candidate}" ]]; then
@@ -101,7 +153,10 @@ function restart_for_pending_restart_flag() {
     if ! result=$(curl --connect-timeout 3 -s http://localhost:8008/cluster); then
       continue
     fi
-    if ! restart_candidate=$(pending_restart_candidate "${result}"); then
+    if ! expected_pod_names=$(current_component_pod_names); then
+      continue
+    fi
+    if ! restart_candidate=$(pending_restart_candidate "${result}" "${expected_pod_names}"); then
       continue
     fi
     pending_restart=$(curl --connect-timeout 3 -s http://localhost:8008 | jq -r .pending_restart)
