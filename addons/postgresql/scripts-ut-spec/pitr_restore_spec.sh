@@ -126,6 +126,21 @@ EOF
       The path "${DATA_DIR}.old" should be exist
       The path "${CONF_DIR}/recovery.conf" should be exist
     End
+
+    It "continues preparation after the target WAL is found before another archive directory"
+      mkdir -p "${DATA_DIR}/pg_wal"
+      echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
+      export DATASAFED_LIST_ROOT="waldir-one/ waldir-two/"
+      export DATASAFED_LIST_DIR="000000010000000000000002.zst"
+      DP_RESTORE_TIME="2001-01-01 00:00:00"
+      export DP_RESTORE_TIME
+      When run bash "${concat}"
+      The status should eq 0
+      The output should include "exit when reaching the target time log."
+      The output should include "done."
+      The path "${CONF_DIR}/recovery.conf" should be exist
+      The path "${DATA_DIR}.old" should be exist
+    End
   End
 
   Describe "fetch-wal-log()"

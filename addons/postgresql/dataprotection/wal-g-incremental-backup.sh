@@ -98,7 +98,7 @@ parentWalGBackupName=$(getWalGSentinelInfo "wal-g-backup-name")
 # 1. incremental backup
 set +e
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
-PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} --delta-from-name ${parentWalGBackupName} 2>&1 | tee result.txt
+PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} wal-g backup-push ${DATA_DIR} --delta-from-name ${parentWalGBackupName} 2>&1 | tee result.txt
 
 # 2. get backup name of the wal-g
 backupName=$(get_backup_name "${parentWalGBackupName}")
@@ -107,12 +107,9 @@ if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
    exit 1
 fi
 
-set +e
+set -e
 echo "switch wal log"
-# The cmpd pins Service serviceName=postgresql with roleSelector=primary; the
-# suffix must be that fixed serviceName, not the user-chosen component name.
-# pg_switch_wal()/archive checks below must run on the primary.
-PSQL="psql -h ${CLUSTER_COMPONENT_NAME}-postgresql -U ${DP_DB_USER} -d postgres"
+PSQL="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -p ${DP_DB_PORT} -d postgres"
 ${PSQL} -c "select pg_switch_wal();"
 
 # 3. add sentinel file for this backup CR

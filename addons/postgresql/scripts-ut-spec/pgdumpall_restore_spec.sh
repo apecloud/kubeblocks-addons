@@ -22,7 +22,7 @@ Describe "dataprotection/pgdumpall-restore.sh"
     DP_DB_PORT="5432"
     export PATH CALL_LOG DP_DATASAFED_BIN_PATH DP_BACKUP_BASE_PATH \
       DP_BACKUP_NAME DP_DB_PASSWORD DP_DB_USER DP_DB_HOST DP_DB_PORT
-    unset DATASAFED_LIST_OUT DATASAFED_PULL_EXIT PSQL_EXIT 2>/dev/null || true
+    unset DATASAFED_LIST_OUT DATASAFED_PULL_EXIT PSQL_EXIT PSQL_STDERR PSQL_STDERR_FILE 2>/dev/null || true
     write_stubs
   }
 
@@ -52,6 +52,11 @@ EOF
 #!/bin/sh
 printf 'psql %s\n' "$*" >> "${CALL_LOG}"
 cat > /dev/null
+if [ -n "${PSQL_STDERR_FILE:-}" ]; then
+  cat "${PSQL_STDERR_FILE}" >&2
+elif [ -n "${PSQL_STDERR:-}" ]; then
+  printf '%s\n' "${PSQL_STDERR}" >&2
+fi
 exit "${PSQL_EXIT:-0}"
 EOF
     chmod +x "${bindir}/datasafed" "${bindir}/psql"
@@ -93,6 +98,63 @@ EOF
     When run bash "$(script_path)"
     The status should be failure
     The error should include "pgdumpall restore pipeline failed"
+    The output should not include "restore complete!"
+  End
+
+  It "allows all addon-provisioned role already-exists conflicts"
+    export DATASAFED_LIST_OUT="backup-test.sql.zst"
+    PSQL_STDERR_FILE="${tmpdir}/psql.stderr"
+    export PSQL_STDERR_FILE
+    for role in postgres kbadmin kbdataprotection kbprobe kbmonitoring kbreplicator; do
+      printf 'ERROR:  role "%s" already exists\n' "${role}" >> "${PSQL_STDERR_FILE}"
+    done
+    When run bash "$(script_path)"
+    The status should eq 0
+    The error should include 'role "postgres" already exists'
+    The error should include 'role "kbreplicator" already exists'
+    The output should include "restore complete!"
+  End
+
+  It "fails when an application role already exists"
+    export DATASAFED_LIST_OUT="backup-test.sql.zst"
+    export PSQL_STDERR='ERROR:  role "app_owner" already exists'
+    When run bash "$(script_path)"
+    The status should be failure
+    The error should include "non-conflict SQL errors"
+    The output should not include "restore complete!"
+  End
+
+  It "allows the pre-provisioned postgres database already-exists conflict"
+    export DATASAFED_LIST_OUT="backup-test.sql.zst"
+    export PSQL_STDERR='ERROR:  database "postgres" already exists'
+    When run bash "$(script_path)"
+    The status should eq 0
+    The error should include 'database "postgres" already exists'
+    The output should include "restore complete!"
+  End
+
+  It "fails when an incompatible database already exists"
+    export DATASAFED_LIST_OUT="backup-test.sql.zst"
+    export PSQL_STDERR='ERROR:  database "app" already exists'
+    When run bash "$(script_path)"
+    The status should be failure
+    The error should include "non-conflict SQL errors"
+    The output should not include "restore complete!"
+  End
+
+  It "does not mask a late SQL error behind a large benign error stream"
+    export DATASAFED_LIST_OUT="backup-test.sql.zst"
+    PSQL_STDERR_FILE="${tmpdir}/psql.stderr"
+    export PSQL_STDERR_FILE
+    i=0
+    while [ "$i" -lt 4000 ]; do
+      printf 'ERROR:  role "postgres" already exists\n' >> "${PSQL_STDERR_FILE}"
+      i=$((i + 1))
+    done
+    printf 'ERROR:  permission denied for schema app\n' >> "${PSQL_STDERR_FILE}"
+    When run bash "$(script_path)"
+    The status should be failure
+    The error should include "non-conflict SQL errors"
     The output should not include "restore complete!"
   End
 End

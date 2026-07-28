@@ -192,11 +192,13 @@ Describe "PostgreSQL Initialization Script Tests"
   Describe "pending restart candidate selection"
     setup() {
       CURRENT_POD_NAME="pg-cluster-postgresql-0"
+      POSTGRES_POD_NAME_LIST="pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-2"
     }
     Before 'setup'
 
     un_setup() {
       unset CURRENT_POD_NAME
+      unset POSTGRES_POD_NAME_LIST
     }
     After 'un_setup'
 
@@ -216,6 +218,42 @@ Describe "PostgreSQL Initialization Script Tests"
 
     It "selects no candidate while a member is restarting"
       cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"restarting","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate while a member is stopped"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"stopped","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate while a member is starting"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"starting","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate when an expected member is absent"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate when the observed membership has an extra member"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":false},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-3","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate when the expected membership contains duplicates"
+      POSTGRES_POD_NAME_LIST="pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-1"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
       When call pending_restart_candidate "$cluster_state"
       The output should equal ""
       The status should be success

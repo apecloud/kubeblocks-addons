@@ -61,6 +61,15 @@ Describe "PostgreSQL boolean parameter schema"
     fi
   }
 
+  assert_force_parallel_mode_contract() {
+    local major="$1"
+    local constraint="../config/pg${major}-config-constraint.cue"
+    local template="../config/pg${major}-config.tpl"
+
+    grep -Fq 'force_parallel_mode?: string & =~"(?i)^(off|on|regress)$"' "$constraint"
+    grep -Fq "force_parallel_mode = 'off'" "$template"
+  }
+
   It "keeps pg12 boolean settings on the shared PostgreSQL boolean contract"
     When call assert_pg_bool_contract 12
     The status should be success
@@ -98,6 +107,21 @@ Describe "PostgreSQL boolean parameter schema"
 
   It "rejects ambiguous, padded, and invalid boolean spellings"
     When call assert_pg_bool_rejects
+    The status should be success
+  End
+
+  It "models PostgreSQL 12 force_parallel_mode as an enum"
+    When call assert_force_parallel_mode_contract 12
+    The status should be success
+  End
+
+  It "models PostgreSQL 14 force_parallel_mode as an enum"
+    When call assert_force_parallel_mode_contract 14
+    The status should be success
+  End
+
+  It "models PostgreSQL 15 force_parallel_mode as an enum"
+    When call assert_force_parallel_mode_contract 15
     The status should be success
   End
 End

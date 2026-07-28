@@ -33,7 +33,15 @@ if ! datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.sql.zst" - \
   exit 1
 fi
 cat "${errlog}" >&2
-if grep "^ERROR:" "${errlog}" | grep -vE "already exists" | grep -q .; then
+if ! awk '
+  /^ERROR:/ {
+    if ($0 !~ /^ERROR:[[:space:]]+role "(postgres|kbadmin|kbdataprotection|kbprobe|kbmonitoring|kbreplicator)" already exists[[:space:]]*$/ &&
+        $0 !~ /^ERROR:[[:space:]]+database "postgres" already exists[[:space:]]*$/) {
+      invalid = 1
+    }
+  }
+  END { exit invalid }
+' "${errlog}"; then
   echo "ERROR: pgdumpall restore hit non-conflict SQL errors (see above); data may be partially restored" >&2
   exit 1
 fi

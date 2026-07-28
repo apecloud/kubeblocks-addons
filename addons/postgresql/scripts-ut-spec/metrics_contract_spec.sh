@@ -57,7 +57,6 @@ Describe "PostgreSQL metrics compatibility contract"
         'FROM pg_catalog\.pg_stat_io' \
         "object = 'relation'" \
         "backend_type NOT IN ('background writer', 'checkpointer')" \
-        'SUM(writes)' \
         'SUM(fsyncs)' \
         'buffers_backend_total:' \
         'buffers_backend_fsync_total:'
@@ -67,6 +66,13 @@ Describe "PostgreSQL metrics compatibility contract"
         fi
       done
     done
+
+    grep -q "SUM(writes \\* op_bytes) / current_setting('block_size')::numeric" \
+      "$(chart_dir)/metrics/pg17-metrics.yaml" \
+      || printf 'pg17 does not convert write operations to buffers\n'
+    grep -q "SUM(write_bytes) / current_setting('block_size')::numeric" \
+      "$(chart_dir)/metrics/pg18-metrics.yaml" \
+      || printf 'pg18 does not convert write bytes to buffers\n'
   }
 
   It "disables the legacy stat_bgwriter collector only for PostgreSQL 17 and 18"

@@ -26,13 +26,22 @@ function wait_pod_restarted() {
 function pending_restart_candidate() {
   local cluster_state=$1
 
-  printf '%s\n' "${cluster_state}" | jq -r '
+  printf '%s\n' "${cluster_state}" | jq -r --arg expected "${POSTGRES_POD_NAME_LIST:-}" '
     def healthy: .state == "running" or .state == "streaming";
-    if any(.members[]?; .state == "restarting") then
+    ($expected | split(",")) as $expected_names |
+    (.members // []) as $members |
+    ([$members[]?.name]) as $observed_names |
+    if $expected == ""
+       or ($expected_names | any(. == ""))
+       or (($expected_names | unique | length) != ($expected_names | length))
+       or (($observed_names | unique | length) != ($observed_names | length))
+       or (($expected_names | sort) != ($observed_names | sort))
+       or any($members[]?; (healthy | not))
+    then
       ""
     else
-      (([.members[]? | select(.role == "leader" and .pending_restart == true and healthy) | .name] | sort | .[0]) //
-       ([.members[]? | select(.role != "leader" and .pending_restart == true and healthy) | .name] | sort | .[0]) //
+      (([$members[]? | select(.role == "leader" and .pending_restart == true and healthy) | .name] | sort | .[0]) //
+       ([$members[]? | select(.role != "leader" and .pending_restart == true and healthy) | .name] | sort | .[0]) //
        "")
     end
   '

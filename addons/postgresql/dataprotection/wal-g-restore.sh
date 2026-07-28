@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -o pipefail
 export WALG_DATASAFED_CONFIG=""
 export WALG_COMPRESSION_METHOD=zstd
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
@@ -129,29 +130,72 @@ if [[ "${IS_REPLICA}" == "true" ]]; then
     exit 1
 fi
 
-# Primary restore: Restore from successful backup (.old directory exists)
-# Durability barrier BEFORE removing the signal in both branches: the signal
-# is this hook's retry marker, so its removal must be the FINAL commit
-# action. If sync (or a mv) fails, the signal survives and the bootstrap
-# re-runs the hook instead of losing the restore marker.
-if [[ -d "${DATA_DIR}.old" ]] && [[ ! -d "${DATA_DIR}.failed" ]]; then
-    echo "Restoring data from ${DATA_DIR}.old..."
-    mkdir -p "${DATA_DIR}"
-    mv -f ${DATA_DIR}.old/* ${DATA_DIR}/
-    sync
-    rm -f ${RESTORE_SCRIPT_DIR}/kb_restore.signal
-    echo "Data restore completed successfully"
-fi
+HANDOFF_MARKER=".kb_walg_handoff"
 
-# Recover from failed restore attempt (.failed directory exists)
+function finalize_handoff() {
+    local source_dir="$1"
+    local mode="$2"
+    local marker_path="${DATA_DIR}/${HANDOFF_MARKER}"
+
+    if [[ -d "${source_dir}" ]]; then
+        if [[ -f "${marker_path}" ]]; then
+            if [[ "$(cat "${marker_path}")" != "${mode}" ]] \
+                || [[ -n "$(find "${source_dir}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+                echo "ERROR: WAL-G restore handoff state is inconsistent" >&2
+                exit 1
+            fi
+            rmdir "${source_dir}"
+        else
+            if [[ -d "${DATA_DIR}" ]] \
+                && [[ -n "$(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+                echo "ERROR: PostgreSQL data directory is not empty before WAL-G handoff" >&2
+                exit 1
+            fi
+            printf '%s\n' "${mode}" > "${source_dir}/${HANDOFF_MARKER}"
+            if [[ "${mode}" == "failed" ]]; then
+                rm -f "${source_dir}/recovery.signal"
+            fi
+            rm -rf "${DATA_DIR}"
+            mv "${source_dir}" "${DATA_DIR}"
+        fi
+    elif [[ ! -f "${marker_path}" ]] || [[ "$(cat "${marker_path}")" != "${mode}" ]]; then
+        echo "ERROR: WAL-G restore handoff source is missing" >&2
+        exit 1
+    fi
+
+    if [[ "${mode}" == "failed" ]]; then
+        rm -f "${DATA_DIR}/recovery.signal"
+    fi
+    sync
+    rm -f "${RESTORE_SCRIPT_DIR}/kb_restore.signal"
+}
+
 if [[ -d "${DATA_DIR}.failed" ]]; then
     echo "Recovering from failed restore..."
-    mkdir -p ${DATA_DIR}/
-    mv -f ${DATA_DIR}.failed/* ${DATA_DIR}/
-    rm -rf ${DATA_DIR}/recovery.signal
-    sync
-    rm -f ${RESTORE_SCRIPT_DIR}/kb_restore.signal
+    finalize_handoff "${DATA_DIR}.failed" "failed"
     echo "Failed restore recovery completed"
+elif [[ -d "${DATA_DIR}.old" ]]; then
+    echo "Restoring data from ${DATA_DIR}.old..."
+    finalize_handoff "${DATA_DIR}.old" "normal"
+    echo "Data restore completed successfully"
+elif [[ -f "${DATA_DIR}/${HANDOFF_MARKER}" ]]; then
+    handoff_mode="$(cat "${DATA_DIR}/${HANDOFF_MARKER}")"
+    case "${handoff_mode}" in
+        normal)
+            finalize_handoff "${DATA_DIR}.old" "normal"
+            ;;
+        failed)
+            finalize_handoff "${DATA_DIR}.failed" "failed"
+            ;;
+        *)
+            echo "ERROR: unknown WAL-G restore handoff mode" >&2
+            exit 1
+            ;;
+    esac
+    echo "Data restore handoff completed after retry"
+else
+    echo "ERROR: WAL-G restore handoff source is missing" >&2
+    exit 1
 fi
 EOF
 

@@ -38,7 +38,7 @@ pg_stat_bgwriter:
     CROSS JOIN pg_catalog.pg_stat_checkpointer AS checkpointer
     CROSS JOIN LATERAL (
       SELECT
-        COALESCE(SUM(writes), 0) AS buffers_backend,
+        COALESCE(SUM(write_bytes) / current_setting('block_size')::numeric, 0)::bigint AS buffers_backend,
         COALESCE(SUM(fsyncs), 0) AS buffers_backend_fsync
       FROM pg_catalog.pg_stat_io
       WHERE object = 'relation'

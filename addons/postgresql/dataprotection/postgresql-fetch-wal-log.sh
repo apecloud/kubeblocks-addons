@@ -15,7 +15,7 @@ function fetch-wal-log(){
     exit_fetch_wal=0 && mkdir -p $wal_destination_dir
     for dir_name in $(datasafed list /) ; do
       if [[ $exit_fetch_wal -eq 1 ]]; then
-         exit 0
+         break
       fi
 
       # check if the latest_wal_log after the start_wal_log

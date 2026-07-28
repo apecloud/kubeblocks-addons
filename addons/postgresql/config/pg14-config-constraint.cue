@@ -295,7 +295,7 @@
 	extra_float_digits?: int & >=-15 & <=3
 
 	// Forces use of parallel query facilities.
-	force_parallel_mode?: #PgBool
+	force_parallel_mode?: string & =~"(?i)^(off|on|regress)$"
 
 	// Sets the FROM-list size beyond which subqueries are not collapsed.
 	from_collapse_limit?: int & >=1 & <=2147483647
