@@ -19,6 +19,9 @@ printf '\n' >>"$MONGODB_TEST_CALL_LOG"
 
 case "$command_name" in
   list)
+    if [ -n "${MONGODB_TEST_LIST_RC:-}" ]; then
+      exit "$MONGODB_TEST_LIST_RC"
+    fi
     target=${1:-}
     case "$target" in
       kubeblocks-backup.json)
@@ -59,7 +62,7 @@ SH
     export MONGODB_TEST_CALL_LOG="$test_root/calls.log"
     export MONGODB_TEST_METADATA_PRESENT=1
     export MONGODB_TEST_PULL_OUTPUT='{"status":"Completed","extras":[{"backup_name":"backup-2026"}]}'
-    unset MONGODB_TEST_PULL_RC MONGODB_TEST_RM_RC
+    unset MONGODB_TEST_LIST_RC MONGODB_TEST_PULL_RC MONGODB_TEST_RM_RC
     : >"$MONGODB_TEST_CALL_LOG"
   }
   Before "setup_pbm_backup_delete"
@@ -72,7 +75,8 @@ SH
     unset DP_DATASAFED_BIN_PATH DP_BACKUP_BASE_PATH
     unset PBM_BACKUP_TYPE PBM_BACKUP_DIR_NAME RETAIN_PITR_FILES
     unset MONGODB_TEST_CALL_LOG MONGODB_TEST_METADATA_PRESENT
-    unset MONGODB_TEST_PULL_OUTPUT MONGODB_TEST_PULL_RC MONGODB_TEST_RM_RC
+    unset MONGODB_TEST_PULL_OUTPUT MONGODB_TEST_LIST_RC
+    unset MONGODB_TEST_PULL_RC MONGODB_TEST_RM_RC
   }
   After "cleanup_pbm_backup_delete"
 
@@ -130,5 +134,47 @@ SH
     The status should be failure
     The output should not include "|rm|"
     The stderr should include "parse error"
+  End
+
+  It "preserves metadata probe failure without reporting an idempotent delete"
+    export MONGODB_TEST_LIST_RC=17
+
+    When call run_delete_and_report
+
+    The status should equal 17
+    The output should not include "INFO: Backup has been deleted."
+    The output should not include "|rm|"
+    The stderr should be blank
+  End
+
+  It "rejects multiple backup metadata documents before deleting artifacts"
+    export MONGODB_TEST_PULL_OUTPUT='{"status":"Completed","extras":[{"backup_name":"one"}]}
+{"status":"Completed","extras":[{"backup_name":"two"}]}'
+
+    When call run_delete_and_report
+
+    The status should be failure
+    The output should not include "|rm|"
+    The stderr should not be blank
+  End
+
+  It "rejects a non-string backup name before deleting artifacts"
+    export MONGODB_TEST_PULL_OUTPUT='{"status":"Completed","extras":[{"backup_name":42}]}'
+
+    When call run_delete_and_report
+
+    The status should be failure
+    The output should not include "|rm|"
+    The stderr should not be blank
+  End
+
+  It "rejects an unsafe backup path before deleting artifacts"
+    export MONGODB_TEST_PULL_OUTPUT='{"status":"Completed","extras":[{"backup_name":"../other-backup"}]}'
+
+    When call run_delete_and_report
+
+    The status should be failure
+    The output should not include "|rm|"
+    The stderr should not be blank
   End
 End
