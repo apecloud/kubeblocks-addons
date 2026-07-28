@@ -193,6 +193,24 @@ setup_data_dir() {
   chown -R mysql:mysql "${DATA_DIR}" || true
 }
 
+remove_stale_galera_sst_auth() {
+  local stale_sst_auth="${DATA_DIR}/.galera-sst-auth.cnf"
+
+  # A broken symlink is still a credential-path residue, so test both normal
+  # existence and symlink existence before deciding there is nothing to scrub.
+  if [ ! -e "${stale_sst_auth}" ] && [ ! -L "${stale_sst_auth}" ]; then
+    return 0
+  fi
+  if ! rm -f "${DATA_DIR}/.galera-sst-auth.cnf" 2>/dev/null; then
+    echo "Galera startup failed: failed to delete stale SST credential ${stale_sst_auth}" >&2
+    return 1
+  fi
+  if [ -e "${stale_sst_auth}" ] || [ -L "${stale_sst_auth}" ]; then
+    echo "Galera startup failed: stale SST credential ${stale_sst_auth} still exists after deletion" >&2
+    return 1
+  fi
+}
+
 main() {
   setup_data_dir
 
@@ -206,7 +224,7 @@ main() {
   # `needSnapshot: true` volume — so the plaintext root password rode into every
   # volume snapshot / backup. Remove any stale file left by a previous chart
   # version; do not recreate it.
-  rm -f "${DATA_DIR}/.galera-sst-auth.cnf" 2>/dev/null || true
+  remove_stale_galera_sst_auth || return 1
 
   local wsrep_args=(
     "--wsrep-cluster-address=${cluster_address}"
