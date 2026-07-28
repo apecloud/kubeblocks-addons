@@ -152,14 +152,15 @@ spec:
     # internal removal step is required. The previous memberLeave ran in the
     # kbagent execution face (no mariadb client, all SQL `2>/dev/null || true`),
     # so its claimed FLUSH TABLES / wsrep_desync=ON never executed — a silent
-    # no-op. The graceful-leave that does matter at shutdown (final seqno +
-    # safe_to_bootstrap, clean InnoDB flush) is handled by the mariadb
-    # container preStop below, which runs in-container against 127.0.0.1.
+    # no-op. The native preStop below orders the Pods and publishes a guard
+    # for the in-container watcher. After the hook returns, kubelet sends TERM
+    # to mariadbd (PID 1), which owns the actual graceful Galera leave and
+    # InnoDB flush.
   runtime:
-    # Allow enough time for Galera to write grastate.dat on clean shutdown.
-    # 30s (default) is insufficient when InnoDB has dirty pages to flush.
-    # preStop hook below triggers graceful shutdown; this grace period gives
-    # it time to complete before SIGKILL.
+    # The grace period covers both the bounded ordering hook and the clean
+    # mariadbd shutdown that starts only after kubelet sends TERM. Running
+    # mysqladmin inside preStop would consume this same budget before TERM and
+    # can collapse the intended high-to-low order when that client call stalls.
     terminationGracePeriodSeconds: 120
     containers:
       - name: mariadb
