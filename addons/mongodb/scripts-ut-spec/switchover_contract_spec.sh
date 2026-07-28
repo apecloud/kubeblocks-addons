@@ -24,18 +24,18 @@ Describe "MongoDB switchover lifecycle contract"
 
     mkdir -p "$temp_dir/bin"
     cat > "$temp_dir/bin/syncerctl" <<'MOCK'
-#!/usr/bin/env bash
+#!/bin/sh
 printf 'SYNCERCTL' >> "$MOCK_CALL_LOG"
 printf ' <%s>' "$@" >> "$MOCK_CALL_LOG"
 printf '\n' >> "$MOCK_CALL_LOG"
 printf '%s\n' "${MOCK_SYNCER_STDOUT:-switchover accepted}"
-if [[ "${MOCK_SYNCER_RC:-0}" -ne 0 ]]; then
+if [ "${MOCK_SYNCER_RC:-0}" -ne 0 ]; then
   printf '%s' "${MOCK_SYNCER_STDERR:-}" >&2
 fi
 exit "${MOCK_SYNCER_RC:-0}"
 MOCK
     cat > "$temp_dir/bin/kubectl" <<'MOCK'
-#!/usr/bin/env bash
+#!/bin/sh
 printf 'KUBECTL' >> "$MOCK_CALL_LOG"
 printf ' <%s>' "$@" >> "$MOCK_CALL_LOG"
 printf '\n' >> "$MOCK_CALL_LOG"
@@ -46,7 +46,7 @@ printf '%s\n' "$count" > "$MOCK_KUBECTL_COUNT"
 
 case "${MOCK_KUBECTL_MODE:-pending-then-absent}" in
   pending-then-absent)
-    if [[ "$count" -eq 1 ]]; then
+    if [ "$count" -eq 1 ]; then
       printf 'configmap/%s-switchover\n' "$KB_CLUSTER_COMP_NAME"
     fi
     ;;
@@ -69,7 +69,7 @@ case "${MOCK_KUBECTL_MODE:-pending-then-absent}" in
 esac
 MOCK
     cat > "$temp_dir/bin/timeout" <<'MOCK'
-#!/usr/bin/env bash
+#!/bin/sh
 printf 'TIMEOUT <%s>\n' "$1" >> "$MOCK_CALL_LOG"
 case "${MOCK_TIMEOUT_MODE:-run}:$1" in
   syncer-expire:10s|probe-expire:3s)
@@ -80,7 +80,7 @@ shift
 exec "$@"
 MOCK
     cat > "$temp_dir/bin/sleep" <<'MOCK'
-#!/usr/bin/env bash
+#!/bin/sh
 printf 'SLEEP <%s>\n' "$1" >> "$MOCK_CALL_LOG"
 MOCK
     chmod +x \
@@ -107,7 +107,7 @@ MOCK
     export CLUSTER_NAMESPACE="$namespace"
     export KB_CLUSTER_COMP_NAME="$cluster_component_name"
 
-    bash "$script"
+    sh "$script"
     rc=$?
     printf 'TEST:calls='
     paste -sd, "$MOCK_CALL_LOG"
@@ -140,6 +140,7 @@ MOCK
         command = action.dig("exec", "command")
         abort "#{name}: malformed command #{command.inspect}" unless command&.length == 3
         abort "#{name}: expected /bin/sh -c" unless command[0, 2] == ["/bin/sh", "-c"]
+        abort "#{name}: unexpected action image" if action.dig("exec", "image")
 
         body = command[2]
         expected = "/scripts/mongodb-switchover.sh > /tmp/switchover.log"
@@ -177,6 +178,17 @@ MOCK
         abort "#{name}: ConfigMap get permission missing" unless Array(configmaps["verbs"]).include?("get")
       end
     '
+  }
+
+  verify_posix_action_source() {
+    local chart_dir
+    local script
+
+    chart_dir=$(cd .. && pwd)
+    script="$chart_dir/scripts/mongodb-switchover.sh"
+    [ "$(sed -n '1p' "$script")" = "#!/bin/sh" ] || return 1
+    sh -n "$script" || return
+    shellcheck --shell=sh --severity=warning "$script"
   }
 
   It "closes a candidate switchover only after the exact completion ConfigMap disappears"
@@ -323,6 +335,11 @@ MOCK
     The output should include "TEST:calls=TIMEOUT <10s>"
     The output should not include "SYNCERCTL"
     The output should not include "KUBECTL"
+  End
+
+  It "declares and passes the POSIX sh action-source gate"
+    When call verify_posix_action_source
+    The status should be success
   End
 
   It "renders all three actions with the completion-observation prerequisites"
