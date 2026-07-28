@@ -126,17 +126,20 @@ Describe "valkey-cluster-switchover.sh"
 End
 
 Describe "valkey-cluster-member.sh"
+  Include ../scripts/valkey-cluster-roster.sh
   Include ../scripts/valkey-cluster-member.sh
 
   mb_env() {
     export CURRENT_SHARD_POD_FQDN_LIST="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
     export SERVICE_PORT=6379
+    export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-s:shard-s,shard-t:shard-t"
+    export ALL_SHARDS_POD_FQDN_MAP="shard-s=vk-s-0.h.ns.svc,vk-s-1.h.ns.svc;shard-t=vk-t-0.h.ns.svc"
     ut_mode="true"
     # fake spec hostnames must count as resolvable on Linux CI (getent
     # exists there and would filter the whole roster as departed)
     host_resolves() { return 0; }
   }
-  mb_clean() { unset CURRENT_SHARD_POD_FQDN_LIST KB_LEAVE_MEMBER_POD_FQDN KB_JOIN_MEMBER_POD_FQDN; }
+  mb_clean() { unset CURRENT_SHARD_POD_FQDN_LIST ALL_SHARDS_COMPONENT_SHORT_NAMES ALL_SHARDS_POD_FQDN_MAP KB_LEAVE_MEMBER_POD_FQDN KB_JOIN_MEMBER_POD_FQDN; }
   Before "mb_env"
   After "mb_clean"
 
@@ -145,8 +148,6 @@ Describe "valkey-cluster-member.sh"
     # tables — an fqdn-bearing fail line on another remaining pod must
     # still be forgotten before the leave can close.
     export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
-    export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
-    export ALL_SHARDS_POD_FQDN_LIST_SHARD_T="vk-t-0.h.ns.svc"
     mb_calls=$(mktemp)
     shard_vantage() { echo "vk-s-0.h.ns.svc"; }
     node_line_of() { echo ""; }
@@ -172,7 +173,6 @@ Describe "valkey-cluster-member.sh"
 
   It "catches id-only noaddr residue via the target's own MYID (fqdn check alone would false-close)"
     export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
-    export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
     mb_calls=$(mktemp)
     shard_vantage() { echo "vk-s-0.h.ns.svc"; }
     node_line_of() { echo ""; }
@@ -219,6 +219,15 @@ Describe "valkey-cluster-member.sh"
     The status should be failure
     The stderr should include "phase=leave-orphan-guard"
     The stderr should include "would orphan slots"
+  End
+
+  It "treats an unresolved roster host as retryable unknown, not departed"
+    host_resolves() { [ "$1" != "vk-t-0.h.ns.svc" ]; }
+    When call all_cluster_pods_except "vk-s-1.h.ns.svc"
+    The status should be failure
+    The stdout should include "vk-s-0.h.ns.svc"
+    The stderr should include "DNS unresolved"
+    The stderr should include "retry_safe=yes"
   End
 
   Describe "demote candidate binding (fresh-eyes M3: never fail over a mis-bound replica)"
@@ -280,21 +289,20 @@ Describe "valkey-cluster-member.sh"
 
   Describe "roster env contract in purge (fresh-eyes M1)"
     roster_purge_clean() {
-      unset ALL_SHARDS_POD_FQDN_LIST_SHARD_S ALL_SHARDS_POD_FQDN_LIST_SHARD_T
+      unset ALL_SHARDS_POD_FQDN_MAP
     }
     After "roster_purge_clean"
 
     It "hard-fails the leave when a roster var is empty (silent truncation would weaken the FORGET sweep)"
       export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
-      export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
-      export ALL_SHARDS_POD_FQDN_LIST_SHARD_T=""
+      export ALL_SHARDS_POD_FQDN_MAP="shard-s=vk-s-0.h.ns.svc,vk-s-1.h.ns.svc;shard-t="
       shard_vantage() { echo "vk-s-0.h.ns.svc"; }
       node_line_of() { echo ""; }
       build_cli() { _cli=(mock_pong_only); }
       mock_pong_only() { echo PONG; }
       When run member_leave
       The status should be failure
-      The stderr should include "ALL_SHARDS_POD_FQDN_LIST_SHARD_T is empty"
+      The stderr should include "shard shard-t has an invalid or empty FQDN list"
       The stderr should include "retry_safe=no"
     End
   End
@@ -326,8 +334,7 @@ Describe "valkey-cluster-member.sh"
 
   It "leaves via reset+FORGET-sweep+absence, never del-node (r4 CT06 family)"
     export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
-    export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
-    export ALL_SHARDS_POD_FQDN_LIST_SHARD_T="vk-t-0.h.ns.svc"
+    export ALL_SHARDS_POD_FQDN_MAP="shard-s=vk-s-0.h.ns.svc,vk-s-1.h.ns.svc;shard-t=vk-t-0.h.ns.svc"
     mb_calls=$(mktemp)
     shard_vantage() { echo "vk-s-0.h.ns.svc"; }
     node_line_of() { echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave mid1 0 0 5 connected"; }
@@ -361,7 +368,7 @@ Describe "valkey-cluster-member.sh"
 
   It "cannot close a leave while any remaining pod still sees the member"
     export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
-    export ALL_SHARDS_POD_FQDN_LIST_SHARD_S="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc"
+    export ALL_SHARDS_POD_FQDN_MAP="shard-s=vk-s-0.h.ns.svc,vk-s-1.h.ns.svc;shard-t=vk-t-0.h.ns.svc"
     shard_vantage() { echo "vk-s-0.h.ns.svc"; }
     node_line_of() { echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave,fail mid1 0 0 5 disconnected"; }
     build_cli() { _cli=(mock_stuck "${1}"); }

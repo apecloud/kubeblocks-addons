@@ -39,8 +39,8 @@ replicas) with the 16384 hash slots evenly distributed. See
 | Networking | in-cluster only — clients must be cluster-aware (MOVED/ASK); NodePort/LB direct-to-shard is rejected at render time |
 | TLS | not yet supported in cluster mode (rejected at render time) |
 | Custom account secret | not yet wired in cluster mode (rejected at render time) |
-| Backup | per-shard datafile (BGSAVE snapshot + ACL; nodes.conf is never archived; archives self-describe: source shard count, shard master identity, and the master-line slot ranges — recorded from the shard MASTER even when the backup target is a secondary) |
-| Restore | **not supported in v1** — any cluster archive is refused at restore time. Same shard count is not a sufficient safety condition (source slot layouts after rebalance will not match a re-formed cluster); a slot-aware restore is the planned follow-up |
+| Backup | per-shard datafile on the shard primary (BGSAVE snapshot + ACL; nodes.conf is never archived). The backup fails if the primary is unhealthy, has migrating/importing slots, or its topology changes during BGSAVE. Each archive records source shard count, primary identity, slot ranges, and RDB digest. This is a per-shard stability fence, not a cross-shard atomic snapshot. |
+| Restore | same-shard-count slot-aware restore is supported. Each archive's slot ranges are restored to its shard and the complete archive set must cover all 16384 slots without overlap or gaps. Different shard counts and cluster-to-replication/standalone restore are rejected. |
 
 ## Prerequisites
 
@@ -98,7 +98,9 @@ kubectl apply -f examples/valkey/backuprepo.yaml
 kubectl apply -f examples/valkey/backup.yaml
 ```
 
-After the backup is completed, update the backup name in `restore.yaml`, then run:
+After a replication backup is completed, update the backup name in
+`restore.yaml`, then run. This manifest is for replication topology; cluster
+restore uses a cluster topology with the same shard count as the source:
 
 ```bash
 kubectl apply -f examples/valkey/restore.yaml

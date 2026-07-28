@@ -172,7 +172,7 @@ purge_member_from_cluster() {
   local target="${1}" remaining host ids="" id line nodes out
   remaining=$(all_cluster_pods_except "${target}") || return 1
   if [ -z "${remaining}" ]; then
-    classify env-contract no "ALL_SHARDS_POD_FQDN_LIST_* roster empty — cannot purge ${target} cluster-wide (no fallback)"
+    classify env-contract no "ALL_SHARDS_POD_FQDN_MAP roster empty — cannot purge ${target} cluster-wide (no fallback)"
     return 1
   fi
 
@@ -247,28 +247,19 @@ host_resolves() {
 # the exit status and a broken roster env would silently WEAKEN the FORGET
 # sweep and absence proof. Empty roster vars and a zero-var env hard-fail.
 all_cluster_pods_except() {
-  local except="${1}" var value fqdn count=0
-  while IFS='=' read -r var value; do
-    if [ -z "${value}" ]; then
-      classify shard-roster no "${var} is empty"
-      return 1
-    fi
-    count=$((count + 1))
-    for fqdn in $(echo "${value}" | tr ',' '\n' | grep -v '^$'); do
+  local except="${1}" shard_line fqdns fqdn roster
+  roster=$(parse_shard_fqdn_map) || return 1
+  while read -r shard_line; do
+    fqdns="${shard_line#* }"
+    for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
       [ "${fqdn}" = "${except}" ] && continue
-      # skip roster members that no longer resolve (departed concurrently
-      # in the same scale-in operation — their node tables are gone);
-      # resolvable-but-down members still count and defer downstream.
       if ! host_resolves "${fqdn}"; then
-        continue
+        classify leave-roster yes "roster host ${fqdn} DNS unresolved; permanent departure is not proven"
+        return 1
       fi
       echo "${fqdn}"
     done
-  done < <(env | grep -E '^ALL_SHARDS_POD_FQDN_LIST_[A-Za-z0-9_]+=' | sort)
-  if [ "${count}" -eq 0 ]; then
-    classify shard-roster no "no ALL_SHARDS_POD_FQDN_LIST_* env vars present (roster unknown)"
-    return 1
-  fi
+  done <<< "${roster}"
 }
 
 # The leaving pod is the shard's current master: promote another in-shard
@@ -324,6 +315,7 @@ demote_master_before_leave() {
 # This is magic for shellspec ut framework, do not modify!
 ${__SOURCED__:+false} : || return 0
 
+source /scripts/valkey-cluster-roster.sh
 load_common_library
 case "${1:-}" in
   --join)  member_join ;;

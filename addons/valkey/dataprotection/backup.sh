@@ -51,6 +51,165 @@ fi
 connect_base=(valkey-cli --no-auth-warning "${_tls_args[@]}" -h "${DP_DB_HOST}" -p "${DP_DB_PORT}")
 [ -n "${DP_DB_PASSWORD:-}" ] && connect_base+=(-a "${DP_DB_PASSWORD}")
 
+validate_cluster_slot_ranges() {
+  awk -v raw="$1" 'BEGIN {
+    if (raw == "") exit 1
+    n = split(raw, parts, ",")
+    for (i = 1; i <= n; i++) {
+      token = parts[i]
+      if (token ~ /^[0-9]+$/) {
+        start = token + 0; end = start
+      } else if (token ~ /^[0-9]+-[0-9]+$/) {
+        split(token, bounds, "-")
+        start = bounds[1] + 0; end = bounds[2] + 0
+      } else {
+        exit 1
+      }
+      if (start < 0 || end > 16383 || start > end) exit 1
+      for (slot = start; slot <= end; slot++) {
+        if (seen[slot]++) exit 1
+      }
+    }
+  }'
+}
+
+validate_cluster_master_slot_coverage() {
+  awk '
+    NF {
+      masters++
+      if (NF < 9) { bad=1; next }
+      for (i = 9; i <= NF; i++) {
+        token = $i
+        if (token ~ /^[0-9]+$/) {
+          start = token + 0; end = start
+        } else if (token ~ /^[0-9]+-[0-9]+$/) {
+          split(token, bounds, "-")
+          start = bounds[1] + 0; end = bounds[2] + 0
+        } else {
+          bad=1; continue
+        }
+        if (start < 0 || end > 16383 || start > end) {
+          bad=1; continue
+        }
+        for (slot = start; slot <= end; slot++) {
+          if (seen[slot]++) bad=1
+          total++
+        }
+      }
+    }
+    END { exit bad || masters == 0 || total != 16384 }
+  '
+}
+
+cluster_info_value() {
+  printf '%s\n' "${1}" | awk -F: -v key="$2" '
+    $1 == key { gsub(/\r/, "", $2); value=$2; count++ }
+    END { if (count != 1 || value == "") exit 1; print value }
+  '
+}
+
+# Capture an authoritative primary-local topology view. Calling this before
+# and after BGSAVE detects role, parent, slot, and migration drift within the
+# per-shard snapshot window.
+capture_cluster_snapshot_contract() {
+  local info nodes myself_lines myself_flags myself_parent master_rows
+  local state assigned ok pfail failed current_epoch my_epoch
+  info=$("${connect_base[@]}" CLUSTER INFO 2>/dev/null) || {
+    echo "ERROR: cluster mode — cannot read CLUSTER INFO." >&2
+    return 1
+  }
+  state=$(cluster_info_value "${info}" cluster_state) || return 1
+  assigned=$(cluster_info_value "${info}" cluster_slots_assigned) || return 1
+  ok=$(cluster_info_value "${info}" cluster_slots_ok) || return 1
+  pfail=$(cluster_info_value "${info}" cluster_slots_pfail) || return 1
+  failed=$(cluster_info_value "${info}" cluster_slots_fail) || return 1
+  current_epoch=$(cluster_info_value "${info}" cluster_current_epoch) || return 1
+  my_epoch=$(cluster_info_value "${info}" cluster_my_epoch) || return 1
+  case "${current_epoch}" in
+    ''|*[!0-9]*)
+      echo "ERROR: cluster mode — malformed cluster_current_epoch receipt." >&2
+      return 1 ;;
+  esac
+  case "${my_epoch}" in
+    ''|*[!0-9]*)
+      echo "ERROR: cluster mode — malformed cluster_my_epoch receipt." >&2
+      return 1 ;;
+  esac
+  if [ "${state}" != "ok" ] || [ "${assigned}" != "16384" ] ||
+     [ "${ok}" != "16384" ] || [ "${pfail}" != "0" ] || [ "${failed}" != "0" ]; then
+    echo "ERROR: cluster mode — cluster is not healthy with all 16384 slots available." >&2
+    return 1
+  fi
+
+  nodes=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r") || return 1
+  myself_lines=$(printf '%s\n' "${nodes}" | awk '$3 ~ /(^|,)myself(,|$)/')
+  if [ "$(printf '%s\n' "${myself_lines}" | awk 'NF {n++} END {print n+0}')" -ne 1 ]; then
+    echo "ERROR: cluster mode — expected exactly one myself row." >&2
+    return 1
+  fi
+  myself_flags=$(printf '%s\n' "${myself_lines}" | awk '{print $3}')
+  myself_parent=$(printf '%s\n' "${myself_lines}" | awk '{print $4}')
+  if ! printf '%s\n' "${myself_flags}" | grep -Eq '(^|,)master(,|$)' ||
+     [ "${myself_parent}" != "-" ]; then
+    echo "ERROR: cluster mode — backup target is not the authoritative primary." >&2
+    return 1
+  fi
+
+  master_rows=$(printf '%s\n' "${nodes}" | awk '$3 ~ /(^|,)master(,|$)/')
+  if printf '%s\n' "${master_rows}" |
+    awk '$3 ~ /(^|,)(fail|fail\?|handshake|noaddr)(,|$)/ {bad=1} END {exit bad ? 0 : 1}'; then
+    echo "ERROR: cluster mode — a master row is failed or not addressable." >&2
+    return 1
+  fi
+  if ! printf '%s\n' "${master_rows}" | validate_cluster_master_slot_coverage; then
+    echo "ERROR: cluster mode — master slot ownership is incomplete, overlapping, malformed, or migrating." >&2
+    return 1
+  fi
+  _source_shards=$(printf '%s\n' "${master_rows}" | awk 'NF {n++} END {print n+0}')
+  if [ "${_source_shards}" -lt 3 ] || [ "${_source_shards}" -gt 32 ]; then
+    echo "ERROR: cluster mode — source shard count ${_source_shards} is outside 3..32." >&2
+    return 1
+  fi
+  _shard_master_id=$(printf '%s\n' "${myself_lines}" | awk '{print $1}')
+  _shard_slot_ranges=$(printf '%s\n' "${myself_lines}" | cut -d' ' -f9- | tr ' ' ',')
+  _cluster_current_epoch="${current_epoch}"
+  _cluster_my_epoch="${my_epoch}"
+  if ! validate_cluster_slot_ranges "${_shard_slot_ranges}"; then
+    echo "ERROR: cluster mode — invalid slot ranges '${_shard_slot_ranges}' (migration markers, overlap, malformed or out-of-domain)." >&2
+    return 1
+  fi
+  _cluster_topology_signature=$(printf '%s\n' "${nodes}" |
+    awk 'NF {
+      printf "%s %s %s %s", $1, $3, $4, $7
+      for (i=9; i<=NF; i++) printf " %s", $i
+      printf "\n"
+    }' | LC_ALL=C sort)
+}
+
+_cluster_mode_info=$("${connect_base[@]}" INFO cluster 2>/dev/null) || {
+  echo "ERROR: cannot determine whether cluster mode is enabled." >&2
+  exit 1
+}
+_cluster_enabled=$(cluster_info_value "${_cluster_mode_info}" cluster_enabled) || {
+  echo "ERROR: malformed cluster-mode response." >&2
+  exit 1
+}
+case "${_cluster_enabled}" in
+  0|1) ;;
+  *)
+    echo "ERROR: unsupported cluster_enabled value '${_cluster_enabled}'." >&2
+    exit 1 ;;
+esac
+if [ "${_cluster_enabled}" = "1" ]; then
+  capture_cluster_snapshot_contract || exit 1
+  _cluster_topology_signature_before="${_cluster_topology_signature}"
+  _source_shards_before="${_source_shards}"
+  _shard_master_id_before="${_shard_master_id}"
+  _shard_slot_ranges_before="${_shard_slot_ranges}"
+  _cluster_current_epoch_before="${_cluster_current_epoch}"
+  _cluster_my_epoch_before="${_cluster_my_epoch}"
+fi
+
 # Save Sentinel ACL only when Sentinel connection variables are explicitly
 # supplied. The current chart's BackupPolicyTemplate does not inject them.
 save_sentinel_acl() {
@@ -118,6 +277,19 @@ if [ "${_bgsave_elapsed}" -ge "${_bgsave_timeout}" ]; then
   exit 1
 fi
 
+if [ "${_cluster_enabled}" = "1" ]; then
+  capture_cluster_snapshot_contract || exit 1
+  if [ "${_cluster_topology_signature}" != "${_cluster_topology_signature_before}" ] ||
+     [ "${_source_shards}" != "${_source_shards_before}" ] ||
+     [ "${_shard_master_id}" != "${_shard_master_id_before}" ] ||
+     [ "${_shard_slot_ranges}" != "${_shard_slot_ranges_before}" ] ||
+     [ "${_cluster_current_epoch}" != "${_cluster_current_epoch_before}" ] ||
+     [ "${_cluster_my_epoch}" != "${_cluster_my_epoch_before}" ]; then
+    echo "ERROR: cluster mode — topology changed during BGSAVE; refusing a stale snapshot contract." >&2
+    exit 1
+  fi
+fi
+
 echo "INFO: Archiving consistent snapshot artifacts..."
 cd "${DATA_DIR}" || { echo "ERROR: cannot cd to DATA_DIR '${DATA_DIR}'" >&2; exit 1; }
 # Archive ONLY the BGSAVE-produced RDB plus the ACL file — NOT the whole
@@ -135,65 +307,12 @@ fi
 backup_files=("./dump.rdb")
 [ -f "./users.acl" ] && backup_files+=("./users.acl")
 
-validate_cluster_slot_ranges() {
-  awk -v raw="$1" 'BEGIN {
-    if (raw == "") exit 1
-    n = split(raw, parts, ",")
-    for (i = 1; i <= n; i++) {
-      token = parts[i]
-      if (token ~ /^[0-9]+$/) {
-        start = token + 0; end = start
-      } else if (token ~ /^[0-9]+-[0-9]+$/) {
-        split(token, bounds, "-")
-        start = bounds[1] + 0; end = bounds[2] + 0
-      } else {
-        exit 1
-      }
-      if (start < 0 || end > 16383 || start > end) exit 1
-      for (slot = start; slot <= end; slot++) {
-        if (seen[slot]++) exit 1
-      }
-    }
-  }'
-}
-
 # Cluster (sharding) mode: embed the source shard count as engine truth
 # (master lines in CLUSTER NODES) so restore can verify the same-shard-count
 # v1 boundary. Sentinel/standalone targets skip this (cluster_enabled:0).
-_cluster_enabled=$("${connect_base[@]}" INFO cluster 2>/dev/null | grep "^cluster_enabled:" | tr -d "\\r" | cut -d: -f2)
 if [ "${_cluster_enabled}" = "1" ]; then
-  _source_shards=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r" | awk '$3 ~ /master/' | grep -c . || true)
-  if [ -z "${_source_shards}" ] || [ "${_source_shards}" -lt 3 ] || [ "${_source_shards}" -gt 32 ]; then
-    echo "ERROR: cluster mode detected but could not count source shards from CLUSTER NODES." >&2
-    exit 1
-  fi
-  # Record THIS SHARD's slot ranges + master identity: shard count alone
-  # is not a sufficient restore precondition (post-rebalance layouts
-  # differ from a re-formed even split). The backup target is normally a
-  # SECONDARY (BPT role) which owns no slots — so the ranges must come
-  # from this shard's MASTER line, resolved from the target's view:
-  # myself's parent id when the target is a slave, else myself itself.
-  _nodes=$("${connect_base[@]}" CLUSTER NODES 2>/dev/null | tr -d "\r")
-  _myself_line=$(echo "${_nodes}" | awk '$3 ~ /myself/')
-  if echo "${_myself_line}" | awk '{print $3}' | grep -q slave; then
-    _shard_master_id=$(echo "${_myself_line}" | awk '{print $4}')
-  else
-    _shard_master_id=$(echo "${_myself_line}" | awk '{print $1}')
-  fi
-  _master_line=$(echo "${_nodes}" | awk -v id="${_shard_master_id}" '$1 == id')
-  if [ -z "${_master_line}" ] || [ "${_shard_master_id}" = "-" ]; then
-    echo "ERROR: cluster mode — cannot resolve this shard's master from the target's CLUSTER NODES view." >&2
-    exit 1
-  fi
-  _shard_slot_ranges=$(echo "${_master_line}" | cut -d' ' -f9- | tr ' ' ',')
-  if [ -z "${_shard_slot_ranges}" ]; then
-    echo "ERROR: cluster mode — this shard's master ${_shard_master_id} owns no slot ranges; refusing to write empty metadata." >&2
-    exit 1
-  fi
-  if ! validate_cluster_slot_ranges "${_shard_slot_ranges}"; then
-    echo "ERROR: cluster mode — invalid slot ranges '${_shard_slot_ranges}' (migration markers, overlap, malformed or out-of-domain); refusing backup metadata." >&2
-    exit 1
-  fi
+  # These values were read from the primary's authoritative myself row and
+  # proven stable across the BGSAVE window above.
   _rdb_sha256=$(sha256sum ./dump.rdb 2>/dev/null | awk '{print $1}')
   case "${_rdb_sha256}" in
     ''|*[!0-9a-fA-F]* )

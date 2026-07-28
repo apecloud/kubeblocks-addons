@@ -147,9 +147,9 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
-    ## all-shards discovery for formation/scale (KB 'individual' strategy
-    ## emits ALL_SHARDS_POD_FQDN_LIST_<SHARD> per shard; 'combined' gives the
-    ## short-name roster the coordinator election sorts).
+    ## all-shards discovery for formation/scale. Both variables use the
+    ## public combined contract; scripts never depend on individual-variable
+    ## suffix normalization.
     - name: ALL_SHARDS_COMPONENT_SHORT_NAMES
       valueFrom:
         componentVarRef:
@@ -157,15 +157,21 @@ spec:
           optional: false
           shortName: Required
           multipleClusterObjectOption:
+            requireAllComponentObjects: true
             strategy: combined
-    - name: ALL_SHARDS_POD_FQDN_LIST
+    - name: ALL_SHARDS_POD_FQDN_MAP
       valueFrom:
         componentVarRef:
           compDef: {{ printf "valkey-cluster-%s" .major }}
           optional: false
           podFQDNs: Required
           multipleClusterObjectOption:
-            strategy: individual
+            requireAllComponentObjects: true
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ";"
+                keyValueDelimiter: "="
     # ── Physical resource hints for config tuning (io-threads, maxmemory).
     # Optional: pods without explicit limits still render (template guards
     # every access with index — Emily's phase-A first-blocker, task #367).
@@ -309,7 +315,7 @@ spec:
             command:
               - sh
               - -c
-              - /scripts/valkey-ping.sh
+              - /scripts/valkey-cluster-ready.sh
     volumes:
       - name: valkey-conf
         emptyDir: {}

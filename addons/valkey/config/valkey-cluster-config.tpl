@@ -44,10 +44,8 @@ repl-disable-tcp-nodelay no
 cluster-enabled yes
 cluster-config-file /data/nodes.conf
 cluster-node-timeout 5000
-# A replica whose data is too stale never wins election; 0 disables the
-# validity factor so any connected replica may fail over (engine default
-# is 10; 0 matches the HA-first posture for in-cluster deployments).
-cluster-replica-validity-factor 0
+# Keep Valkey's replica-validity safety default: a replica whose data is too
+# stale must not win an election.
 # Require full slot coverage before serving: fail loudly on missing slots
 # instead of silently serving a partial keyspace.
 cluster-require-full-coverage yes

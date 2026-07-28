@@ -8,6 +8,9 @@
         name: shard
         replicas: {{ .Values.cluster.replicas }}
         serviceVersion: {{ .Values.version | quote }}
+        {{- if .Values.podAntiAffinityEnabled }}
+        {{- include "valkey-cluster.shardSchedulingPolicy" . | nindent 8 }}
+        {{- end }}
         {{- include "valkey-cluster.componentResources" . | nindent 8 }}
         {{- include "valkey-cluster.componentStorages" . | nindent 8 }}
 {{- else if eq .Values.mode "replication" }}

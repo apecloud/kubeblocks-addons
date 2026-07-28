@@ -2,6 +2,7 @@
 # shellcheck disable=SC2034
 
 Describe "Valkey cluster restore slot contract"
+  Include ../scripts/valkey-cluster-roster.sh
   Include ../scripts/valkey-cluster-manage.sh
 
   restore_env() {
@@ -30,9 +31,9 @@ META
     export ALL_SHARDS_COMPONENT_SHORT_NAMES="shard-abc:shard-abc,shard-def:shard-def,shard-ghi:shard-ghi"
     export SERVICE_PORT=6379
     each_shard_fqdn_list() {
-      printf 'SHARD_ABC vk-shard-abc-0.h,vk-shard-abc-1.h\n'
-      printf 'SHARD_DEF vk-shard-def-0.h,vk-shard-def-1.h\n'
-      printf 'SHARD_GHI vk-shard-ghi-0.h,vk-shard-ghi-1.h\n'
+      printf 'shard-abc vk-shard-abc-0.h,vk-shard-abc-1.h\n'
+      printf 'shard-def vk-shard-def-0.h,vk-shard-def-1.h\n'
+      printf 'shard-ghi vk-shard-ghi-0.h,vk-shard-ghi-1.h\n'
     }
     node_id_of() {
       case "$1" in
@@ -348,7 +349,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     restored_primary_cluster_ready_for_replica_attach() { return 0; }
     dbsize_of() { echo 0; }
     When call prepare_local_restored_replica_for_attach \
-      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC"
+      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc"
     The status should be success
     The stdout should include "offline-prepared"
   End
@@ -370,7 +371,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     build_cli() { _cli=(mock_no_write "${calls}"); }
     mock_no_write() { echo "$*" >> "$1"; }
     When call prepare_local_restored_replica_for_attach \
-      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC"
+      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc"
     The status should be failure
     The stderr should include "refusing online cleanup"
     The file "${calls}" should be empty file
@@ -392,7 +393,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     build_cli() { _cli=(mock_no_write "${calls}"); }
     mock_no_write() { echo "$*" >> "$1"; }
     When call prepare_local_restored_replica_for_attach \
-      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC"
+      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc"
     The status should be failure
     The stderr should include "lacks the exact offline-prepared marker"
     The file "${calls}" should be empty file
@@ -417,7 +418,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     build_cli() { _cli=(mock_no_write "${calls}"); }
     mock_no_write() { echo "$*" >> "$1"; }
     When call prepare_local_restored_replica_for_attach \
-      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC"
+      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc"
     The status should be failure
     The stderr should include "lacks the exact offline-prepared marker"
     The file "${calls}" should be empty file
@@ -440,9 +441,9 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     build_cli() { _cli=(mock_no_write "${calls}"); }
     mock_no_write() { echo "$*" >> "$1"; }
     When call prepare_local_restored_replica_for_attach \
-      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC"
+      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc"
     The status should be success
-    The stdout should include "already bound to shard SHARD_ABC"
+    The stdout should include "already bound to shard shard-abc"
     The file "${calls}" should be empty file
   End
 
@@ -465,7 +466,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     mock_no_write() { echo "$*" >> "$1"; }
 
     When call prepare_local_restored_replica_for_attach \
-      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC"
+      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc"
     The status should be failure
     The stderr should include "lacks the exact offline-prepared marker"
     The file "${calls}" should be empty file
@@ -489,7 +490,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     mock_no_write() { echo "$*" >> "$1"; }
 
     When call prepare_local_restored_replica_for_attach \
-      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC"
+      "${restore_meta}" "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc"
     The status should be failure
     The stderr should include "lacks the exact offline-prepared marker"
     The file "${calls}" should be empty file
@@ -502,7 +503,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     build_cluster_cli() { _ccli=(mock_add_ok); }
     mock_add_ok() { echo OK; }
     When call ensure_replica_bound \
-      "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC"
+      "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc"
     The status should be success
     The stdout should include "attached vk-shard-abc-1.h as replica"
     The stdout should not include "UNSAFE-RESTORE-PREP"
@@ -514,7 +515,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
     build_cluster_cli() { _ccli=(mock_forbidden_add "${calls}"); }
     mock_forbidden_add() { echo "$*" >> "$1"; }
     When call ensure_replica_bound \
-      "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC" "restore"
+      "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc" "restore"
     The status should be failure
     The stderr should include "phase=restore-replica-wait"
     The stderr should include "attach itself"
@@ -527,7 +528,7 @@ peerid peer:6379@16379 master - 0 0 2 connected 2-6'
       printf 'id-rep vk-shard-abc-1.h:6379@16379 slave id-abc 0 0 1 connected\n'
     }
     When call ensure_replica_bound \
-      "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "SHARD_ABC" "restore"
+      "vk-shard-abc-0.h" "vk-shard-abc-1.h" "id-abc" "shard-abc" "restore"
     The status should be success
   End
 

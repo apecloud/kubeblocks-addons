@@ -72,8 +72,8 @@ spec:
       retentionPeriod: 7d
 ---
 # ── Cluster (sharding) topology ─────────────────────────────────────────────
-# Per-shard datafile backup: each shard component independently targets its
-# secondary (fallback primary) and archives the #2984 snapshot set
+# Per-shard datafile backup: each shard component targets its authoritative
+# primary and archives the #2984 snapshot set
 # (dump.rdb + users.acl + cluster-meta). nodes.conf is deliberately NOT
 # archived — it is cluster identity and must be regenerated on restore.
 #
@@ -99,8 +99,7 @@ spec:
   compDefs:
     - {{ include "valkeyCluster.cmpdRegexpPattern" . }}
   target:
-    role: secondary
-    fallbackRole: primary
+    role: primary
     account: default
   backupMethods:
     - name: datafile

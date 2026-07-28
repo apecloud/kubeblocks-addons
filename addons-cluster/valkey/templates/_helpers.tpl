@@ -154,6 +154,21 @@ schedulingPolicy:
           weight: 100
 {{- end }}
 
+{{- define "valkey-cluster.shardSchedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+                app.kubernetes.io/managed-by: "kubeblocks"
+                apps.kubeblocks.io/sharding-name: "shard"
+            topologyKey: kubernetes.io/hostname
+          weight: 100
+{{- end }}
+
 {{- define "valkey-cluster.sentinelSchedulingPolicy" }}
 schedulingPolicy:
   affinity:

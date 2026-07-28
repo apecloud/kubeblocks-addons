@@ -49,6 +49,7 @@ validate_manage_env() {
   [ -z "${CURRENT_SHARD_COMPONENT_SHORT_NAME:-}" ] && missing="${missing} CURRENT_SHARD_COMPONENT_SHORT_NAME"
   [ -z "${CURRENT_SHARD_POD_FQDN_LIST:-}" ] && missing="${missing} CURRENT_SHARD_POD_FQDN_LIST"
   [ -z "${ALL_SHARDS_COMPONENT_SHORT_NAMES:-}" ] && missing="${missing} ALL_SHARDS_COMPONENT_SHORT_NAMES"
+  [ -z "${ALL_SHARDS_POD_FQDN_MAP:-}" ] && missing="${missing} ALL_SHARDS_POD_FQDN_MAP"
   [ -z "${SERVICE_PORT:-}" ] && missing="${missing} SERVICE_PORT"
   if [ -n "${missing}" ]; then
     classify env-contract no "missing required env:${missing} (no fallback)"
@@ -422,8 +423,8 @@ coordinator_shard() {
   echo "${names}" | tr ' ' '\n' | grep -v '^$' | sort | head -1
 }
 
-# All shard FQDN lists are exposed as ALL_SHARDS_POD_FQDN_LIST_<SHARD-SUFFIX>
-# env vars (KB 'individual' strategy). Prints "shard fqdn1,fqdn2" per line.
+# All shard FQDN lists use the public combined-variable contract. Prints
+# "shard fqdn1,fqdn2" per line without suffix normalization.
 #
 # CONSUMPTION CONTRACT (fresh-eyes review M1): callers MUST materialize the
 # output first (roster=$(each_shard_fqdn_list) || return 1) and iterate the
@@ -432,17 +433,7 @@ coordinator_shard() {
 # downstream completeness/absence proof would quietly weaken. Zero roster
 # vars is likewise a hard failure, never an empty (vacuously passing) loop.
 each_shard_fqdn_list() {
-  local var value shard count=0
-  while IFS='=' read -r var value; do
-    shard="${var#ALL_SHARDS_POD_FQDN_LIST_}"
-    [ -z "${value}" ] && { classify shard-roster no "${var} is empty"; return 1; }
-    echo "${shard} ${value}"
-    count=$((count + 1))
-  done < <(env | grep -E '^ALL_SHARDS_POD_FQDN_LIST_[A-Za-z0-9_]+=' | sort)
-  if [ "${count}" -eq 0 ]; then
-    classify shard-roster no "no ALL_SHARDS_POD_FQDN_LIST_* env vars present (roster unknown)"
-    return 1
-  fi
+  parse_shard_fqdn_map
 }
 
 first_fqdn_of_list() {
@@ -462,11 +453,7 @@ current_pod_fqdn_of_list() {
 
 self_is_coordinator_pod() {
   local coord_shard="${1}"
-  local self_short_upper coord_upper
-  # env var suffixes are uppercased with '-' mapped to '_'
-  coord_upper=$(echo "${coord_shard}" | tr '[:lower:]-' '[:upper:]_')
-  self_short_upper=$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')
-  [ "${self_short_upper}" != "${coord_upper}" ] && return 1
+  [ "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" != "${coord_shard}" ] && return 1
   local my_shard_first
   my_shard_first=$(first_fqdn_of_list "${CURRENT_SHARD_POD_FQDN_LIST}")
   [ "${my_shard_first%%.*}" = "${CURRENT_POD_NAME}" ]
@@ -735,7 +722,7 @@ restore_cluster_from_meta() {
     shard="${shard_line%% *}"
     fqdns="${shard_line#* }"
     first=$(first_fqdn_of_list "${fqdns}")
-    if [ "${shard}" = "$(echo "${coord}" | tr '[:lower:]-' '[:upper:]_')" ]; then
+    if [ "${shard}" = "${coord}" ]; then
       coord_host="${first}"
     fi
     other_id=$(node_id_of "${first}") || true
@@ -1251,8 +1238,8 @@ verify_or_join() {
   local first_incomplete
   first_incomplete=$(first_incomplete_shard "${any_formed_host}") || return 1
   if [ -n "${first_incomplete}" ] && \
-     [ "${first_incomplete}" != "$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')" ]; then
-    classify join-queue yes "holder=${first_incomplete} current=$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_') — waiting for earlier joining shard (deterministic multi-join serialization)"
+     [ "${first_incomplete}" != "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" ]; then
+    classify join-queue yes "holder=${first_incomplete} current=${CURRENT_SHARD_COMPONENT_SHORT_NAME} — waiting for earlier joining shard (deterministic multi-join serialization)"
     return 1
   fi
 
@@ -1562,6 +1549,7 @@ post_provision() {
   if [ ! -e "${restore_meta}" ] && [ -f "${restore_state}" ] && \
      grep -qx 'phase=formed' "${restore_state}"; then
     local_cluster_restore_formed_without_meta || exit 1
+    mark_cluster_readiness_formed || exit 1
     echo "local restore duties already complete — allowing the next pod action to proceed."
     exit 0
   fi
@@ -1574,6 +1562,7 @@ post_provision() {
       exit 1
     }
     restore_cluster_from_meta "${restore_meta}" || exit 1
+    mark_cluster_readiness_formed || exit 1
     exit 0
   fi
   if cluster_formed_from_self; then
@@ -1581,6 +1570,7 @@ post_provision() {
        [ -e "${restore_prepare}" ] || [ -e "${restore_prepared}" ]; then
       mark_local_cluster_restore_formed "${restore_meta}" || exit 1
     fi
+    mark_cluster_readiness_formed || exit 1
     echo "cluster already formed (state ok, 16384 slots) — nothing to do."
     exit 0
   fi
@@ -1596,7 +1586,32 @@ post_provision() {
   else
     verify_or_join || exit 1
   fi
+  mark_cluster_readiness_formed || exit 1
   exit 0
+}
+
+mark_cluster_readiness_formed() {
+  local marker="${VALKEY_DATA_DIR}/.kb-valkey-cluster-formed"
+  local temporary
+  if [ -L "${marker}" ] || { [ -e "${marker}" ] && [ ! -f "${marker}" ]; }; then
+    classify readiness-marker no "${marker} is not a safe regular file"
+    return 1
+  fi
+  umask 077
+  temporary=$(mktemp "${marker}.tmp.XXXXXX") || {
+    classify readiness-marker yes "cannot create durable cluster formation marker"
+    return 1
+  }
+  printf 'formed\n' > "${temporary}" || {
+    rm -f "${temporary}"
+    classify readiness-marker yes "cannot write durable cluster formation marker"
+    return 1
+  }
+  mv -f "${temporary}" "${marker}" || {
+    rm -f "${temporary}"
+    classify readiness-marker yes "cannot commit durable cluster formation marker"
+    return 1
+  }
 }
 
 # ── shard removal ────────────────────────────────────────────────────────────
@@ -1612,7 +1627,7 @@ shard_remove() {
   while read -r shard_line; do
     shard="${shard_line%% *}"
     fqdns="${shard_line#* }"
-    [ "${shard}" = "$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')" ] && continue
+    [ "${shard}" = "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" ] && continue
     first=$(first_fqdn_of_list "${fqdns}")
     if [ "$(cluster_state_of "${first}")" = "ok" ]; then
       remaining_host="${first}"
@@ -1736,23 +1751,16 @@ purge_shard_from_cluster() {
     pattern="${pattern:+${pattern}|}${fqdn}"
   done
 
-  local remaining=() shard_line shard fqdns self_upper roster
-  self_upper=$(echo "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" | tr '[:lower:]-' '[:upper:]_')
+  local remaining=() shard_line shard fqdns roster
   roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
     fqdns="${shard_line#* }"
-    [ "${shard}" = "${self_upper}" ] && continue
+    [ "${shard}" = "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" ] && continue
     for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
-      # r9 CT12: in a multi-shard scale-in the roster env snapshot still
-      # lists SIBLING shards leaving in the same operation. A roster host
-      # whose DNS name no longer exists has departed — its node table
-      # died with it, so FORGET and the absence proof on it are vacuous.
-      # Only DNS-gone hosts are skipped; a resolvable-but-unreachable
-      # host (pod restarting) still defers below, keeping the proof strict.
       if ! host_resolves "${fqdn}"; then
-        echo "roster host ${fqdn} no longer resolves — departed concurrently; skipping as vantage."
-        continue
+        classify remove-roster yes "roster host ${fqdn} DNS unresolved; permanent departure is not proven"
+        return 1
       fi
       remaining+=("${fqdn}")
     done
@@ -1867,6 +1875,7 @@ shard_master_id_via() {
 # This is magic for shellspec ut framework, do not modify!
 ${__SOURCED__:+false} : || return 0
 
+source /scripts/valkey-cluster-roster.sh
 load_common_library
 case "${1:-}" in
   --post-provision) post_provision ;;
