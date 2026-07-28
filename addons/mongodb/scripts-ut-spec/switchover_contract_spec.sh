@@ -662,6 +662,7 @@ ENV
   It "classifies a hanging completion probe under the resolved MongoDB action image"
     When call run_actual_resolved_image_timeout_control probe
     The status should equal 124
+    The output should include "ACTUAL_SYNCERCTL <switchover> <--primary> <mongodb-0> <--candidate> <mongodb-1>"
     The stderr should include "phase: completion-probe-timeout"
     The stderr should include "completion-probe-rc: 124"
     The stderr should include "next-retry-safe: no"
