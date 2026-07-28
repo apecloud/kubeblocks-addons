@@ -78,7 +78,7 @@ function stat_and_save_backup_info() {
   if total_size=$(
     printf '%s\n' "$stat_output" |
       awk '
-        $1 == "TotalSize" {
+        $1 == "TotalSize:" {
           count++
           if (NF == 2 && $2 ~ /^[0-9]+$/) {
             valid++

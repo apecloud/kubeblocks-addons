@@ -249,7 +249,7 @@ SH
 
   It "classifies empty successful MongoDB output before the datafile backup"
     export MONGODB_TEST_DATE_OUTPUT="2026-07-29T00:00:00Z"
-    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize: 42"
 
     When call run_empty_time_contract
 
@@ -263,7 +263,7 @@ backup info timestamp client returned empty output rc=65"
 
   It "classifies empty successful date output before the datafile backup"
     export MONGODB_TEST_CLIENT_OUTPUT="1753747200"
-    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize: 42"
 
     When call run_empty_time_contract
 
@@ -296,7 +296,7 @@ backup info timestamp conversion returned empty output rc=65"
   End
 
   It "rejects an empty TotalSize value without replacing existing metadata"
-    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize:"
 
     When call run_stat_with_existing_destination
 
@@ -306,8 +306,8 @@ backup info timestamp conversion returned empty output rc=65"
   End
 
   It "rejects duplicate TotalSize values without replacing existing metadata"
-    MONGODB_TEST_DATASAFED_OUTPUT='TotalSize 42
-TotalSize 84'
+    MONGODB_TEST_DATASAFED_OUTPUT='TotalSize: 42
+TotalSize: 84'
     export MONGODB_TEST_DATASAFED_OUTPUT
 
     When call run_stat_with_existing_destination
@@ -318,7 +318,7 @@ TotalSize 84'
   End
 
   It "rejects a JSON-unsafe TotalSize value without replacing existing metadata"
-    export MONGODB_TEST_DATASAFED_OUTPUT='TotalSize "'
+    export MONGODB_TEST_DATASAFED_OUTPUT='TotalSize: "'
 
     When call run_stat_with_existing_destination
 
@@ -328,7 +328,7 @@ TotalSize 84'
   End
 
   It "writes exact metadata for a valid datasafed TotalSize response"
-    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize: 42"
 
     When call run_stat_and_report_file
 
@@ -340,7 +340,7 @@ TotalSize 84'
   It "stops the datafile backup before tar when the start timestamp fails"
     export MONGODB_TEST_CLIENT_RC=17
     export MONGODB_TEST_DATE_OUTPUT="2026-07-29T00:00:00Z"
-    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize: 42"
 
     When call run_datafile_backup_and_report
 
@@ -351,7 +351,7 @@ TotalSize 84'
   End
 
   It "preserves existing metadata and removes temporary output when publication fails"
-    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize: 42"
     export MONGODB_TEST_MV_RC=29
 
     When call run_stat_with_existing_destination
@@ -364,7 +364,7 @@ TotalSize 84'
   It "cleans failed publication under mongodump errexit and records action failure"
     export MONGODB_TEST_CLIENT_OUTPUT="1753747200"
     export MONGODB_TEST_DATE_OUTPUT="2026-07-29T00:00:00Z"
-    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize: 42"
     export MONGODB_TEST_MV_RC=29
 
     When call run_mongodump_publication_failure
