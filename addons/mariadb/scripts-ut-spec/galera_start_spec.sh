@@ -175,5 +175,28 @@ EOF
       The status should be success
       The output should include "GALERA_SOCKETLESS_MARIADBD_THRESHOLD"
     End
+
+    It "does not count socketless ticks while an SST is in progress"
+      # H9: a joiner performing SST runs mariadbd without a SQL socket until
+      # the transfer completes; the socketless killer must skip it, keyed on
+      # the Galera SST marker (sst_in_progress) or a live wsrep_sst_ helper.
+      When call script_contains "sst_in_progress"
+      The status should be success
+      The output should include "sst_in_progress"
+    End
+
+    It "gates the SST skip BEFORE the socketless-kill increment (source order)"
+      # The sst_in_progress guard branch must precede the NO_SOCKET_COUNT
+      # increment so an in-progress SST resets the counter instead of
+      # accumulating toward a kill.
+      When run sh -c '
+        f="$(printf "%s/addons/mariadb/scripts/galera-start.sh" "'"${SHELLSPEC_CWD:?}"'")"
+        sst=$(grep -n "sst_in_progress" "$f" | head -1 | cut -d: -f1)
+        inc=$(grep -n "NO_SOCKET_COUNT=\$((NO_SOCKET_COUNT + 1))" "$f" | head -1 | cut -d: -f1)
+        if [ -n "$sst" ] && [ -n "$inc" ] && [ "$sst" -lt "$inc" ]; then echo OK; else echo "FAIL sst=$sst inc=$inc"; fi
+      '
+      The status should be success
+      The output should equal "OK"
+    End
   End
 End

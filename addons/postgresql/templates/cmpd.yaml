@@ -342,7 +342,6 @@ spec:
               - -ee
               - |
                 exec pg_isready -U {{ default "postgres" | quote }} -h 127.0.0.1 -p 5432
-                [ -f /postgresql/tmp/.initialized ] || [ -f /postgresql/.initialized ]
         volumeMounts:
           - name: dshm
             mountPath: /dev/shm

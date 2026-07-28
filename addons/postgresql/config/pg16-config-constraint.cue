@@ -935,7 +935,7 @@
 	ssl_max_protocol_version?: string & "TLSv1" | "TLSv1.1" | "TLSv1.2"
 
 	// Sets the minimum SSL/TLS protocol version to use.
-	ssl_min_protocol_version?: string & "TLSv1" | "TLSv1.1" | "TLSv1.2"
+	ssl_min_protocol_version?: string & "TLSv1" | "TLSv1.1" | "TLSv1.2" | "TLSv1.3"
 
 	// Causes ... strings to treat backslashes literally.
 	standard_conforming_strings?: bool & false | true
@@ -1052,7 +1052,7 @@
 	wal_buffers?: int & >=-1 & <=262143 @storeResource(8KB)
 
 	// Compresses full-page writes written in WAL file.
-	wal_compression: string & (*"pglz" | "lz4" | "zstd" | "on" | "off")
+	wal_compression: string & (*"pglz" | "lz4" | "zstd" | "on" | "off" | "True" | "False" | "true" | "false")
 
 	// Sets the WAL resource managers for which WAL consistency checks are done.
 	wal_consistency_checking?: string

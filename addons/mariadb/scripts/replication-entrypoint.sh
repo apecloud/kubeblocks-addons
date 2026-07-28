@@ -1689,13 +1689,21 @@ start_mariadbd_process() {
   # orphan events can still occur during a long pod-1
   # restart. A complete fix requires syncer Demote-time
   # catch-up wait (Path B, separate PR).
+  #
+  # --read-only=ON (below) starts fail-closed so there is no writable window
+  # before the SQL-based set_fail_closed_read_only runs. NO_LOCK_NO_ADMIN is a
+  # runtime-variable enum value, NOT a valid command-line boolean: my_getopt
+  # does not recognize it and silently sets read_only=OFF (verified on mariadb
+  # 11.4 AND 11.8), turning fail-closed intent into fail-open on every shipped
+  # version. The portable boolean ON is used here; set_fail_closed_read_only
+  # still upgrades to NO_LOCK_NO_ADMIN post-start where the engine supports it.
   docker-entrypoint.sh mariadbd \
     --defaults-extra-file=${DATA_DIR}/runtime-overrides.cnf \
     --server-id=${SERVICE_ID} \
     --gtid-domain-id=${SERVICE_ID} \
     --log-bin=${DATA_DIR}/binlog/${POD_NAME}-bin \
     --skip-slave-start=ON \
-    --read-only=NO_LOCK_NO_ADMIN \
+    --read-only=ON \
     --thread-cache-size=100 \
     --rpl-semi-sync-master-wait-point=AFTER_SYNC \
     --bind-address="${bind_address}" &

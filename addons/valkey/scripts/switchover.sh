@@ -111,6 +111,55 @@ set_replica_priority() {
   call_func_with_retry 3 3 _do_set_replica_priority "${fqdn}" "${prio}"
 }
 
+get_replica_priority() {
+  local fqdn="${1}"
+  build_cli "${fqdn}"
+  "${_cli[@]}" CONFIG GET replica-priority 2>/dev/null | tail -1 | tr -d '\r\n'
+}
+
+# capture_replica_priorities — record each pod's current replica-priority
+# before the targeted-switchover bias is applied, so the restore step can
+# put back the user-configured values instead of blindly writing 100
+# (replica-priority is a user-settable dynamic parameter; clobbering it
+# silently drifts the runtime away from the declared desired config).
+# Unreachable pods default to 100 (the engine default).
+capture_replica_priorities() {
+  local all_fqdns_csv="${1}"
+  _orig_prio_fqdns=()
+  _orig_prio_values=()
+  local _cap_fqdns=() fqdn prio
+  IFS=',' read -ra _cap_fqdns <<< "${all_fqdns_csv}"
+  for fqdn in "${_cap_fqdns[@]}"; do
+    prio=$(get_replica_priority "${fqdn}") || true
+    case "${prio}" in
+      ''|*[!0-9]*) prio="100" ;;
+    esac
+    _orig_prio_fqdns+=("${fqdn}")
+    _orig_prio_values+=("${prio}")
+  done
+}
+
+restore_replica_priorities() {
+  local i
+  for i in "${!_orig_prio_fqdns[@]}"; do
+    set_replica_priority "${_orig_prio_fqdns[$i]}" "${_orig_prio_values[$i]}" || true
+  done
+}
+
+# captured_replica_priority — look up the pre-bias value recorded by
+# capture_replica_priorities. Prints the captured value, or 100 when the
+# fqdn was never captured (defensive default, same as capture's fallback).
+captured_replica_priority() {
+  local fqdn="${1}" i
+  for i in "${!_orig_prio_fqdns[@]}"; do
+    if [ "${_orig_prio_fqdns[$i]}" = "${fqdn}" ]; then
+      echo "${_orig_prio_values[$i]}"
+      return 0
+    fi
+  done
+  echo "100"
+}
+
 sentinel_observed_replica_priority() {
   local sentinel_fqdn="${1}" replica_fqdn="${2}"
   local replica_host="${replica_fqdn%%.*}"
@@ -171,6 +220,8 @@ wait_sentinel_sees_priority_bias() {
         # The current master is not listed in SENTINEL REPLICAS before failover.
         [ "${pod}" = "${current_pod}" ] && continue
         expected_prio="100"
+        # Never-promote replicas keep their captured 0 (bias skipped, #3016).
+        [ "$(captured_replica_priority "${fqdn}")" = "0" ] && expected_prio="0"
         [ "${pod}" = "${candidate_pod}" ] && expected_prio="1"
         total=$((total + 1))
         observed_prio=$(sentinel_observed_replica_priority "${s_fqdn}" "${fqdn}") || true
@@ -256,15 +307,31 @@ switchover_with_sentinel() {
 
     echo "Biasing Sentinel toward candidate ${candidate_fqdn}..."
     IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
+    # Record the current priorities first so every restore path below puts
+    # back user-configured values instead of hardcoded 100.
+    capture_replica_priorities "$(IFS=','; echo "${all_fqdns[*]}")"
     priority_failed=0
     for fqdn in "${all_fqdns[@]}"; do
       # Append "." so "valkey-1." is not a substring of "valkey-11.headless..." (substring false positive).
       if contains "${fqdn}" "${candidate_fqdn%%.*}."; then
+        if [ "$(captured_replica_priority "${fqdn}")" = "0" ]; then
+          echo "WARNING: candidate ${fqdn} has replica-priority=0 (never-promote); explicit targeted switchover overrides it for this operation." >&2
+        fi
         if ! set_replica_priority "${fqdn}" 1; then
           echo "ERROR: failed to set priority on candidate ${fqdn} — aborting targeted switchover" >&2
           priority_failed=1
         fi
       else
+        # replica-priority 0 means NEVER promote (backup/delayed replicas).
+        # Biasing it to 100 would make it promotable for the whole window —
+        # if the candidate dies mid-failover Sentinel could promote a
+        # never-promote replica (issue #3016). Leave 0 untouched: the
+        # candidate at priority 1 always outranks any positive priority,
+        # and 0 stays out of the election entirely.
+        if [ "$(captured_replica_priority "${fqdn}")" = "0" ]; then
+          echo "Preserving never-promote replica-priority=0 on ${fqdn} (bias skipped)."
+          continue
+        fi
         if ! set_replica_priority "${fqdn}" 100; then
           echo "ERROR: failed to normalize priority on ${fqdn} — aborting targeted switchover" >&2
           priority_failed=1
@@ -272,9 +339,7 @@ switchover_with_sentinel() {
       fi
     done
     if [ "${priority_failed}" -ne 0 ]; then
-      for fqdn in "${all_fqdns[@]}"; do
-        set_replica_priority "${fqdn}" 100 || true
-      done
+      restore_replica_priorities
       return 1
     fi
 
@@ -286,10 +351,7 @@ switchover_with_sentinel() {
     if ! wait_sentinel_sees_priority_bias "${candidate_fqdn}" "$(IFS=','; echo "${all_fqdns[*]}")"; then
       # Sentinel did not reflect the priority in time — restore before aborting
       # so the bias is never left in place after a failed switchover attempt.
-      IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
-      for fqdn in "${all_fqdns[@]}"; do
-        set_replica_priority "${fqdn}" 100 || true
-      done
+      restore_replica_priorities
       return 1
     fi
   fi
@@ -297,10 +359,7 @@ switchover_with_sentinel() {
   if ! execute_sentinel_failover; then
     # Restore priorities before failing so future Sentinel failovers are not biased.
     if ! is_empty "${candidate_fqdn}"; then
-      IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
-      for fqdn in "${all_fqdns[@]}"; do
-        set_replica_priority "${fqdn}" 100 || true
-      done
+      restore_replica_priorities
     fi
     return 1
   fi
@@ -314,10 +373,7 @@ switchover_with_sentinel() {
     wait_for_new_master "${candidate_fqdn}" "${KB_SWITCHOVER_CURRENT_FQDN}" || wfnm_rc=$?
     # Restore priorities on both success and failure paths — Sentinel has now
     # committed +switch-master (or timed out), so the bias is no longer needed.
-    IFS=',' read -ra all_fqdns <<< "$(pod_fqdns_with_candidate "${candidate_fqdn}")"
-    for fqdn in "${all_fqdns[@]}"; do
-      set_replica_priority "${fqdn}" 100 || true
-    done
+    restore_replica_priorities
     return "${wfnm_rc}"
   else
     # No candidate: any new master is a valid outcome, but we must confirm one

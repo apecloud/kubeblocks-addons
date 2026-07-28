@@ -1590,7 +1590,11 @@ EOF
       The output should include "Switchover candidate promoted via DCS observed"
     End
 
-    It "fails closed with reason=candidate_not_promoted_via_dcs_in_budget when stage budget exhausts"
+    It "probes once even at budget=0, then fails closed with reason=candidate_not_promoted_via_dcs_in_budget"
+      # Contract change (probe-at-least-once): budget=0 no longer returns
+      # attempts=0. The loop performs exactly one probe (attempt=1) before
+      # honoring the exhausted budget, so it still fails closed but with
+      # attempts=1 and one poll log line on stdout.
       cat > "${SYNCERCTL_BIN}" <<'EOF'
 #!/bin/sh
 echo "$@" >> "${MOCK_SYNCERCTL_CALLS}"
@@ -1600,9 +1604,189 @@ EOF
       chmod +x "${SYNCERCTL_BIN}"
       When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 0
       The status should be failure
+      The output should include "promotion poll attempt=1"
       The stderr should include "reason=candidate_not_promoted_via_dcs_in_budget"
       The stderr should include "stage_budget=0s"
+      The stderr should include "attempts=1"
+      The stderr should not include "attempts=0"
       The stderr should include "fail-closed"
+    End
+  End
+
+  # Regression: the two staged bounded-probe loops
+  # (wait_candidate_promoted_via_syncerctl, wait_candidate_remote_root_primary_ready)
+  # checked the stage budget BEFORE the first probe. now_epoch() has whole-second
+  # granularity, so a sub-probe budget (stage_deadline=1s) that crosses an
+  # integer-second boundary during setup reads as already-exhausted on the first
+  # iteration and the loop broke with attempts=0 -- never performing a single
+  # real probe. On a fast machine the boundary is never crossed so it passes
+  # locally, but under CI load it fails deterministically. The fix gates the
+  # budget break on attempt>0 so exactly one probe always runs; these tests pin
+  # attempts>=1 under the crossed-second condition and the >=1s per-call clamp.
+  Describe "staged probe loops perform at least one probe under sub-probe budget"
+    setup_crossed_second_clock() {
+      export SWITCHOVER_POLL_SECONDS=0
+      export SWITCHOVER_HAS_TIMEOUT=1
+      # now_epoch: first call (stage start capture) = 1000; every subsequent
+      # call = 1001. So the FIRST in-loop read already shows elapsed=1 >=
+      # stage_deadline=1 -- the exact crossed-integer-second condition. With the
+      # pre-fix while-break-before-probe this yields attempts=0; with the fix the
+      # attempt>0 gate forces one probe (attempt=1) before the budget break.
+      : > "${TEST_DIR}/now_calls"
+      now_epoch() {
+        local n
+        n=$(cat "${TEST_DIR}/now_calls" 2>/dev/null || echo 0)
+        n=$((n + 1))
+        printf '%s' "${n}" > "${TEST_DIR}/now_calls"
+        if [ "${n}" -le 1 ]; then printf '1000'; else printf '1001'; fi
+      }
+    }
+    Before "setup_crossed_second_clock"
+
+    It "promote loop probes once (attempts=1) instead of attempts=0 when budget=1 crosses a second"
+      : > "${TEST_DIR}/getrole.calls"
+      run_syncerctl_getrole_with_timeout() {
+        # Record the per-call timeout argument to assert the >=1s clamp, then
+        # report a still-secondary role so the loop does not converge.
+        printf 'timeout=%s\n' "$2" >> "${TEST_DIR}/getrole.calls"
+        printf 'secondary'
+        return 0
+      }
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 1
+      The status should be failure
+      The output should include "promotion poll attempt=1"
+      The stderr should include "reason=candidate_not_promoted_via_dcs_in_budget"
+      The stderr should include "attempts=1"
+      The stderr should not include "attempts=0"
+      # The probe ran at least once, and its per-call timeout was clamped to >=1s
+      # (never 0 or negative) despite the budget already reading exhausted.
+      The contents of file "${TEST_DIR}/getrole.calls" should include "timeout=1"
+    End
+
+    It "primary-ready loop probes once (attempts=1) instead of attempts=0 when budget=1 crosses a second"
+      : > "${TEST_DIR}/probe.calls"
+      remote_root_primary_ready() {
+        printf 'x' >> "${TEST_DIR}/probe.calls"
+        return 1
+      }
+      # The non-converged read-only capture must not hang; stub the client.
+      cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+printf '1'
+EOF
+      chmod +x "${MARIADB_CLIENT_BIN}"
+      When call wait_candidate_remote_root_primary_ready "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 1
+      The status should be failure
+      The output should include "primary-readiness probe attempt=1"
+      The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
+      The stderr should include "attempts=1"
+      The stderr should not include "attempts=0"
+      The contents of file "${TEST_DIR}/probe.calls" should equal "x"
+    End
+
+    It "promote loop returns success on the guaranteed first probe when already primary"
+      run_syncerctl_getrole_with_timeout() {
+        printf 'primary'
+        return 0
+      }
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 1
+      The status should be success
+      The output should include "Switchover candidate promoted via DCS observed"
+      The output should include "attempt=1"
+    End
+
+    It "primary-ready loop returns success on the guaranteed first probe when already ready"
+      remote_root_primary_ready() { return 0; }
+      When call wait_candidate_remote_root_primary_ready "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 1
+      The status should be success
+      The output should include "primary-readiness probe converged"
+      The output should include "attempt=1"
+    End
+  End
+
+  # With a larger budget and a controlled clock that only crosses the deadline
+  # after several ticks, the loops must keep probing across multiple attempts
+  # before converging or failing -- confirming the attempt>0 gate did not turn
+  # the bounded loop into a single-probe loop.
+  Describe "staged probe loops still poll multiple attempts under a larger budget"
+    setup_multi_tick_clock() {
+      export SWITCHOVER_POLL_SECONDS=0
+      export SWITCHOVER_HAS_TIMEOUT=1
+      # start=1000; then 1000,1000,1001,1002,1003,... so elapsed reaches the
+      # deadline only after several in-loop reads.
+      : > "${TEST_DIR}/now_calls"
+      now_epoch() {
+        local n
+        n=$(cat "${TEST_DIR}/now_calls" 2>/dev/null || echo 0)
+        n=$((n + 1))
+        printf '%s' "${n}" > "${TEST_DIR}/now_calls"
+        # calls: 1->1000(start) 2->1000 3->1000 4->1001 5->1002 ...
+        if [ "${n}" -le 3 ]; then printf '1000'; else printf '%s' "$(( 1000 + n - 3 ))"; fi
+      }
+    }
+    Before "setup_multi_tick_clock"
+
+    It "promote loop converges after several attempts when candidate flips to primary mid-window"
+      : > "${TEST_DIR}/getrole.count"
+      run_syncerctl_getrole_with_timeout() {
+        n=$(cat "${TEST_DIR}/getrole.count" 2>/dev/null || echo 0)
+        n=$((n + 1))
+        printf '%s' "${n}" > "${TEST_DIR}/getrole.count"
+        if [ "${n}" -ge 3 ]; then printf 'primary'; else printf 'secondary'; fi
+        return 0
+      }
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 30
+      The status should be success
+      The output should include "Switchover candidate promoted via DCS observed"
+      The output should include "attempt=3"
+    End
+
+    It "promote loop fails closed with multi-attempt count when it never promotes within a larger budget"
+      run_syncerctl_getrole_with_timeout() {
+        printf 'secondary'
+        return 0
+      }
+      When call wait_candidate_promoted_via_syncerctl "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 3
+      The status should be failure
+      The output should include "promotion poll attempt="
+      The stderr should include "reason=candidate_not_promoted_via_dcs_in_budget"
+      The stderr should not include "attempts=0"
+      The stderr should not include "attempts=1"
+    End
+
+    It "primary-ready loop converges after several attempts when candidate becomes ready mid-window"
+      : > "${TEST_DIR}/probe.count"
+      remote_root_primary_ready() {
+        n=$(cat "${TEST_DIR}/probe.count" 2>/dev/null || echo 0)
+        n=$((n + 1))
+        printf '%s' "${n}" > "${TEST_DIR}/probe.count"
+        if [ "${n}" -ge 3 ]; then return 0; fi
+        return 1
+      }
+      cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+printf '1'
+EOF
+      chmod +x "${MARIADB_CLIENT_BIN}"
+      When call wait_candidate_remote_root_primary_ready "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 30
+      The status should be success
+      The output should include "primary-readiness probe converged"
+      The output should include "attempt=3"
+    End
+
+    It "primary-ready loop fails closed with multi-attempt count when it never becomes ready within a larger budget"
+      remote_root_primary_ready() { return 1; }
+      cat > "${MARIADB_CLIENT_BIN}" <<'EOF'
+#!/bin/sh
+printf '1'
+EOF
+      chmod +x "${MARIADB_CLIENT_BIN}"
+      When call wait_candidate_remote_root_primary_ready "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local" 3
+      The status should be failure
+      The output should include "primary-readiness probe attempt="
+      The stderr should include "reason=candidate_remote_root_primary_not_ready_in_budget"
+      The stderr should not include "attempts=0"
+      The stderr should not include "attempts=1"
     End
   End
 
@@ -1878,7 +2062,12 @@ secondary-other"
       The stderr should include "fail-closed"
     End
 
-    It "fails closed at ready stage with action_deadline_exhausted_ready when promote body exceeds budget"
+    It "fails closed with action_deadline_exhausted_promote_overrun when promote body exceeds budget"
+      # The promote stage now has its own post-body overrun check (mirroring
+      # prepare/dcs/fence), so a promote body that succeeds but burns the global
+      # budget is attributed to promote_overrun BEFORE the ready stage entry --
+      # not silently carried into ready. The stage body "succeeds" (return 0) yet
+      # run_switchover must still fail closed.
       prepare_current_primary_for_switchover() { return 0; }
       syncerctl_switchover() { return 0; }
       fence_current_primary_local_writes_after_dcs() { return 0; }
@@ -1889,8 +2078,32 @@ secondary-other"
       When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
       The status should be failure
       The output should include "Switchover stage candidate_promoted"
-      The stderr should include "reason=action_deadline_exhausted_ready"
+      The stderr should include "reason=action_deadline_exhausted_promote_overrun"
       The stderr should include "fail-closed"
+    End
+
+    It "fails closed with action_deadline_exhausted_ready_overrun and NEVER reports success when the ready body exceeds budget"
+      # P0: ready is the LAST stage, so no downstream stage-entry gate would
+      # catch an overrun. The probe-at-least-once guarantee means the readiness
+      # probe can run once even at zero remaining budget and blow the global
+      # deadline. The ready body here "succeeds" (return 0) but burns 100s; the
+      # final overrun check MUST fail closed before the success log/return so a
+      # switchover that overran the global deadline is never reported as success.
+      prepare_current_primary_for_switchover() { return 0; }
+      syncerctl_switchover() { return 0; }
+      fence_current_primary_local_writes_after_dcs() { return 0; }
+      wait_candidate_promoted_via_syncerctl() { return 0; }
+      wait_candidate_remote_root_primary_ready() {
+        advance_clock 100
+        return 0
+      }
+      When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.headless.demo.svc.cluster.local"
+      The status should be failure
+      The output should include "Switchover stage candidate_primary_ready"
+      The stderr should include "reason=action_deadline_exhausted_ready_overrun"
+      The stderr should include "fail-closed"
+      # The success closeout line must NOT be emitted once the deadline is blown.
+      The output should not include "Switchover action returned:"
     End
 
     It "alpha.61 v3: fails closed at prepare overrun with cause=action_clock_unavailable when wall clock fails mid-prepare"

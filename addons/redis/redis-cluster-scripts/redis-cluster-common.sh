@@ -123,11 +123,12 @@ check_redis_server_ready() {
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     check_ready_cmd="redis-cli $REDIS_CLI_TLS_CMD -h $host -p $port -a $REDIS_DEFAULT_PASSWORD ping"
   fi
+  logging_check_ready_cmd=${check_ready_cmd/$REDIS_DEFAULT_PASSWORD/********}
   output=$($check_ready_cmd)
   set_xtrace_when_ut_mode_false
   status=$?
   if [ $status -ne 0 ] || [ "$output" != "PONG" ] ; then
-    echo "Failed to execute the check ready command: $check_ready_cmd" >&2
+    echo "Failed to execute the check ready command: $logging_check_ready_cmd" >&2
     return 1
   fi
 }
