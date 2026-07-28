@@ -571,7 +571,7 @@ Describe "MongoDB README relative-link closure"
     The stderr should include 'link="missing-later.md" missing=addons/mongodb/missing-later.md'
   End
 
-  It "does not borrow a pointy closer from a later bare destination"
+  It "keeps opener-shaped bytes inside a complete pointy destination"
     prepare_link_fixture
     printf '%s\n' \
       '[MalformedSegment](<before[Later](missing-later>)' \
@@ -579,7 +579,285 @@ Describe "MongoDB README relative-link closure"
 
     When call validate_mongodb_readme_links
     The status should eq 1
-    The stderr should include 'link="<before" malformed_markdown_destination'
-    The stderr should include 'link="missing-later>" missing=addons/mongodb/missing-later>'
+    The stderr should include \
+      'link="<before[Later](missing-later>" missing=addons/mongodb/before[Later](missing-later'
+    The stderr should not include 'malformed_markdown_destination'
+    The stderr should not include 'link="missing-later>"'
+  End
+
+  It "accepts opener-shaped bytes as pointy destination data"
+    prepare_link_fixture
+    printf '# opener-shaped data\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/before[Later](target.md"
+    printf '%s\n' \
+      '[OpenerData](<before[Later](target.md>)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "rejects an interior pointy opener without an early closer"
+    prepare_link_fixture
+    printf '# nested decoy\n' > "$MONGODB_REPO_ROOT/addons/mongodb/nested<inside"
+    printf '%s\n' '[NestedOnly](<nested<inside>)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+
+  It "accepts balanced nested parentheses in a bare destination"
+    prepare_link_fixture
+    printf '# balanced bare destination\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/balanced(and(more(nested))).md"
+    printf '%s\n' \
+      '[BareBalanced](balanced(and(more(nested))).md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "keeps an escaped closing parenthesis as bare destination data"
+    prepare_link_fixture
+    printf '# escaped bare parenthesis\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/escaped)name.md"
+    printf '%s\n' \
+      '[BareEscaped](escaped\)name.md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "keeps an escaped opening parenthesis as bare destination data"
+    prepare_link_fixture
+    printf '# escaped bare opening parenthesis\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/escaped(name.md"
+    printf '%s\n' \
+      '[BareEscapedOpen](escaped\(name.md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "uses odd backslash parity beyond run three in a bare destination"
+    prepare_link_fixture
+    printf '# bare five parity\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/"'escaped\\)name.md'
+    printf '%s\n' \
+      '[BareFiveParity](escaped\\\\\)name.md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "uses even backslash parity to terminate a bare destination"
+    prepare_link_fixture
+    printf '# bare even parity\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/"'even\'
+    printf '%s\n' \
+      '[BareEvenParity](even\\)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "keeps opener-shaped bytes inside a complete bare destination"
+    prepare_link_fixture
+    printf '# bare opener-shaped destination\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/"'before[Later](target).md'
+    printf '%s\n' \
+      '[BareOpenerData](before[Later](target).md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "rejects an unescaped space inside a bare destination"
+    prepare_link_fixture
+    printf '# bare destination space decoy\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/space name.md"
+    printf '%s\n' \
+      '[BareSpace](space name.md)' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+
+  It "rejects an unescaped tab inside a bare destination"
+    prepare_link_fixture
+    tab_name=$(printf 'tab\tname.md')
+    printf '# bare destination tab decoy\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/$tab_name"
+    printf '[BareTab](tab\tname.md)\n' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+
+  It "rejects an unescaped DEL byte inside a bare destination"
+    prepare_link_fixture
+    del_name=$(printf 'del\177name.md')
+    printf '# bare destination DEL decoy\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/$del_name"
+    printf '[BareDel](del\177name.md)\n' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+
+  It "continues at a later opener after a forbidden bare byte"
+    prepare_link_fixture
+    tab_name=$(printf 'bad\tname.md')
+    printf '# forbidden-byte candidate decoy\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/$tab_name"
+    printf '[BadCursor](bad\tname.md)[LaterCursor](missing-after.md)\n' \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+    The stderr should include \
+      'link="missing-after.md" missing=addons/mongodb/missing-after.md'
+  End
+
+  Parameters
+    "0"
+    "1"
+    "2"
+    "3"
+    "4"
+    "5"
+    "6"
+    "7"
+    "8"
+    "10"
+    "11"
+    "12"
+    "13"
+    "14"
+    "15"
+    "16"
+    "17"
+    "18"
+    "19"
+    "20"
+    "21"
+    "22"
+    "23"
+    "24"
+    "25"
+    "26"
+    "27"
+    "28"
+    "29"
+    "30"
+    "31"
+  End
+
+  It "rejects unescaped ASCII control byte $1 inside a bare destination"
+    prepare_link_fixture
+    control_code="$1"
+    control_octal=$(printf '%03o' "$control_code")
+    if [ "$control_code" -ne 0 ]; then
+      control_name=$(
+        printf 'control-%03d%b-name.md' \
+          "$control_code" "\\$control_octal"
+      )
+      printf '# bare destination control decoy\n' \
+        > "$MONGODB_REPO_ROOT/addons/mongodb/$control_name"
+    fi
+    printf '[BareControl%03d](control-%03d%b-name.md)\n' \
+      "$control_code" "$control_code" "\\$control_octal" \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'malformed_markdown_destination'
+  End
+End
+
+Describe "MongoDB README bare parser reasons"
+  It "distinguishes line end before a bare terminator"
+    When call inspect_mongodb_bare_destination_line_end
+    The status should be success
+    The output should eq "line_end_before_terminator"
+  End
+
+  Parameters
+    "0"
+    "1"
+    "2"
+    "3"
+    "4"
+    "5"
+    "6"
+    "7"
+    "8"
+    "9"
+    "10"
+    "11"
+    "12"
+    "13"
+    "14"
+    "15"
+    "16"
+    "17"
+    "18"
+    "19"
+    "20"
+    "21"
+    "22"
+    "23"
+    "24"
+    "25"
+    "26"
+    "27"
+    "28"
+    "29"
+    "30"
+    "31"
+    "32"
+    "127"
+  End
+
+  It "reports exact forbidden bare byte $1 before line transport"
+    When call inspect_mongodb_bare_destination_code "$1"
+    The status should be success
+    The output should eq "forbidden_byte:$1"
+  End
+
+  It "reports exact forbidden bare byte $1 after a backslash"
+    When call inspect_mongodb_bare_destination_escaped_code "$1"
+    The status should be success
+    The output should eq "forbidden_byte:$1"
+  End
+
+  It "binds forbidden bare byte $1 result ownership and recovery cursor"
+    result_hex=$(printf '%02x' "$1")
+
+    When call inspect_mongodb_bare_destination_result "$1"
+    The status should be success
+    The output should eq \
+      "kind=malformed;reason=forbidden_byte;code=$1;raw_hex=6162$result_hex;offending_offset=2;next_cursor=5"
   End
 End
