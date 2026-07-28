@@ -1,5 +1,5 @@
 // PostgreSQL parameters: https://postgresqlco.nf/doc/en/param/
-#PgBool: string & =~"(?i)^(on|off|true|false|yes|no|0|1)$"
+#PgBool: string & =~"(?i)^(t(r(u(e)?)?)?|f(a(l(s(e)?)?)?)?|y(e(s)?)?|n(o)?|on|of(f)?|0|1)$"
 
 #PGParameter: {
 	// Allows tablespaces directly inside pg_tblspc, for testing, pg version: 15

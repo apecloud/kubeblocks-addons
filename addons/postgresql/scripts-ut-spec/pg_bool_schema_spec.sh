@@ -1,12 +1,49 @@
 # shellcheck shell=bash
 
 Describe "PostgreSQL boolean parameter schema"
+  pg_bool_pattern() {
+    local constraint="../config/pg18-config-constraint.cue"
+
+    awk -F'"' '/^#PgBool: string & =~"/ { print $2; exit }' "$constraint"
+  }
+
+  pg_bool_accepts() {
+    local value="$1"
+    local pattern
+
+    pattern="$(pg_bool_pattern)"
+    pattern="${pattern#(?i)}"
+    printf '%s\n' "$value" | grep -Eiq "$pattern"
+  }
+
+  assert_pg_bool_accepts() {
+    local value
+
+    for value in \
+      t tr tru true \
+      f fa fal fals false \
+      y ye yes n no on of off \
+      0 1 TRUE FALSE; do
+      pg_bool_accepts "$value" || return 1
+    done
+  }
+
+  assert_pg_bool_rejects() {
+    local value
+
+    for value in "" o " true" "false " truth enabled 2 00; do
+      if pg_bool_accepts "$value"; then
+        return 1
+      fi
+    done
+  }
+
   assert_pg_bool_contract() {
     local major="$1"
     local constraint="../config/pg${major}-config-constraint.cue"
     local template="../config/pg${major}-config.tpl"
 
-    grep -Fq '#PgBool: string & =~"(?i)^(on|off|true|false|yes|no|0|1)$"' "$constraint"
+    grep -Fq '#PgBool: string & =~"(?i)^(t(r(u(e)?)?)?|f(a(l(s(e)?)?)?)?|y(e(s)?)?|n(o)?|on|of(f)?|0|1)$"' "$constraint"
     ! grep -Eq '^#PgBool:.*\bbool\b' "$constraint"
     grep -Fq 'wal_init_zero?: #PgBool' "$constraint"
     grep -Fq 'autovacuum?: #PgBool' "$constraint"
@@ -51,6 +88,16 @@ Describe "PostgreSQL boolean parameter schema"
 
   It "keeps pg18 boolean settings on the shared PostgreSQL boolean contract"
     When call assert_pg_bool_contract 18
+    The status should be success
+  End
+
+  It "accepts PostgreSQL boolean spellings and unambiguous prefixes"
+    When call assert_pg_bool_accepts
+    The status should be success
+  End
+
+  It "rejects ambiguous, padded, and invalid boolean spellings"
+    When call assert_pg_bool_rejects
     The status should be success
   End
 End
