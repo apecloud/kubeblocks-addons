@@ -317,6 +317,16 @@ TotalSize 84'
     The stderr should equal "backup info TotalSize validation failed rc=65"
   End
 
+  It "rejects a JSON-unsafe TotalSize value without replacing existing metadata"
+    export MONGODB_TEST_DATASAFED_OUTPUT='TotalSize "'
+
+    When call run_stat_with_existing_destination
+
+    The status should equal 65
+    The output should equal "destination=previous-metadata residue=0"
+    The stderr should equal "backup info TotalSize validation failed rc=65"
+  End
+
   It "writes exact metadata for a valid datasafed TotalSize response"
     export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
 

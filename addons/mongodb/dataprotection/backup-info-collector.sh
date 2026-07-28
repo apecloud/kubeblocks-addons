@@ -80,7 +80,7 @@ function stat_and_save_backup_info() {
       awk '
         $1 == "TotalSize" {
           count++
-          if (NF == 2 && length($2) > 0) {
+          if (NF == 2 && $2 ~ /^[0-9]+$/) {
             valid++
             value = $2
           }
