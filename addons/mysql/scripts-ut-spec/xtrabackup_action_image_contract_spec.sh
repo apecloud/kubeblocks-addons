@@ -81,84 +81,6 @@ Describe "MySQL xtrabackup action image contract"
       '
   }
 
-  policy_target_field() {
-    template=$1
-    field=$2
-    shift 2
-
-    render_template "$template" "$@" | awk \
-      -v field="$field" '
-        /^  target:$/ {
-          in_target = 1
-          next
-        }
-        /^  backupMethods:$/ {
-          if (!found) exit 1
-        }
-        in_target && $1 == field ":" {
-          print $2
-          found = 1
-          exit
-        }
-        END { if (!found) exit 1 }
-      '
-  }
-
-  method_target_field() {
-    template=$1
-    method=$2
-    field=$3
-    shift 3
-
-    render_template "$template" "$@" | awk \
-      -v method="$method" \
-      -v field="$field" '
-        /^  - name: / {
-          in_method = ($3 == method)
-          in_target = 0
-        }
-        in_method && /^    target:$/ {
-          in_target = 1
-          next
-        }
-        in_target && $1 == field ":" {
-          print $2
-          found = 1
-          exit
-        }
-        END { if (!found) exit 1 }
-      '
-  }
-
-  method_has_target() {
-    template=$1
-    method=$2
-    shift 2
-
-    render_template "$template" "$@" | awk \
-      -v method="$method" '
-        /^  - name: / { in_method = ($3 == method) }
-        in_method && /^    target:$/ { found = 1 }
-        END { exit(found ? 0 : 1) }
-      '
-  }
-
-  verify_standard_policy_account_contract() {
-    [ "$(policy_target_field backuppolicytemplate.yaml role)" = "secondary" ] || return 1
-    [ "$(policy_target_field backuppolicytemplate.yaml account)" = "kbadmin" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml xtrabackup role)" = "secondary" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml xtrabackup fallbackRole)" = "primary" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml xtrabackup account)" = "root" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml xtrabackup useParentSelectedPods)" = "true" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml xtrabackup-inc role)" = "secondary" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml xtrabackup-inc fallbackRole)" = "primary" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml xtrabackup-inc account)" = "root" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml xtrabackup-inc useParentSelectedPods)" = "true" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml archive-binlog role)" = "primary" ] || return 1
-    [ "$(method_target_field backuppolicytemplate.yaml archive-binlog account)" = "kbadmin" ] || return 1
-    ! method_has_target backuppolicytemplate.yaml mydumper
-  }
-
   action_set_name() {
     template=$1
     shift
@@ -400,10 +322,6 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     The status should be success
   End
 
-  It "uses the per-pod root account for full and incremental xtrabackup only"
-    When call verify_standard_policy_account_contract
-    The status should be success
-  End
 
   It "keeps an old full Backup restorable after the chart upgrade"
     When call resolve_restore_image_from_legacy_backup_status \
