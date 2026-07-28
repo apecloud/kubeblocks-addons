@@ -55,6 +55,48 @@
       "minimum": 1,
       "maximum": 10000
     }
-
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "replication"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "replicas": {
+            "minimum": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "galera"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "replicas": {
+            "enum": [
+              3,
+              5
+            ]
+          }
+        }
+      }
+    }
+  ]
 }
