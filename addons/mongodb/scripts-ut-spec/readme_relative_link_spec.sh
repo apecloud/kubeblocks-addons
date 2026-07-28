@@ -1,177 +1,326 @@
 # shellcheck shell=bash
 
-Describe "MongoDB README relative-link closure"
+run_mongodb_readme_link_oracle() {
+  local mode
+  local ruby_bin
 
-  validate_mongodb_readme_links() {
-    local repo_root
-    local ruby_bin
+  mode=$1
+  shift
+  ruby_bin=${MONGODB_RUBY_BIN:-ruby}
 
-    repo_root=${MONGODB_REPO_ROOT:-$(git rev-parse --show-toplevel)} || return 2
-    ruby_bin=${MONGODB_RUBY_BIN:-ruby}
+  "$ruby_bin" -ruri -e '
+    def inside_root?(root, path)
+      path == root || path.start_with?("#{root}#{File::SEPARATOR}")
+    end
 
-    "$ruby_bin" -ruri -e '
-      def inside_root?(root, path)
-        path == root || path.start_with?("#{root}#{File::SEPARATOR}")
-      end
+    def pointy_destination(line, target_start, segment_end)
+      index = target_start + 1
+      backslash_run = 0
+      malformed = false
 
-      def pointy_destination(line, target_start, segment_end)
-        index = target_start + 1
-        backslash_run = 0
-        closer = nil
-        nested = false
-
-        while index < segment_end
-          byte = line.getbyte(index)
-          if byte == 92
-            backslash_run += 1
-            index += 1
-            next
-          end
-
-          escaped = backslash_run.odd?
-          nested = true if byte == 60 && !escaped
-          if byte == 62 && !escaped
-            closer = index
-            break
-          end
-
-          backslash_run = 0
+      while index < segment_end
+        byte = line.getbyte(index)
+        if byte == 92
+          backslash_run += 1
           index += 1
+          next
         end
 
-        link_end = line.rindex(")", segment_end - 1)
-        link_end = nil if link_end && link_end < target_start
-        if closer && line.getbyte(closer + 1) == 41 && !nested
-          raw_target = line[target_start..closer]
-          destination = raw_target.byteslice(1, raw_target.bytesize - 2)
-          return [raw_target, destination, closer + 2, false]
+        escaped = backslash_run.odd?
+        if byte == 60 && !escaped
+          malformed = true
+          break
+        end
+        if byte == 62 && !escaped
+          if line.getbyte(index + 1) == 41
+            raw_target = line[target_start..index]
+            destination = raw_target.byteslice(
+              1,
+              raw_target.bytesize - 2
+            )
+            return [raw_target, destination, index + 2, false]
+          end
+          malformed = true
+          break
         end
 
-        raw_end = link_end || segment_end
-        raw_target = line[target_start...raw_end].sub(/\r?\n\z/, "")
-        next_cursor = link_end ? link_end + 1 : segment_end
-        [raw_target, nil, next_cursor, true]
+        backslash_run = 0
+        index += 1
       end
 
-      def markdown_link_targets(text)
-        targets = []
-        opener = /\[[^\]\n]+\]\(/
+      next_match = /\[[^\]\n]+\]\(/.match(line, target_start + 1)
+      link_end = line.rindex(")", segment_end - 1) unless next_match
+      raw_end = next_match ? next_match.begin(0) : (link_end || segment_end)
+      raw_target = line[target_start...raw_end].sub(/\r?\n\z/, "")
+      next_cursor = next_match ? next_match.begin(0) : (link_end ? link_end + 1 : segment_end)
+      [raw_target, nil, next_cursor, true]
+    end
 
-        text.each_line do |line|
-          cursor = 0
-          while (match = opener.match(line, cursor))
-            target_start = match.end(0)
-            if line.getbyte(target_start) == 60
-              next_match = opener.match(line, target_start)
-              segment_end = next_match ? next_match.begin(0) : line.length
-              raw_target, destination, cursor, malformed =
-                pointy_destination(line, target_start, segment_end)
-              targets << [raw_target, destination, malformed]
-              next
-            end
+    def malformed_bare_result(
+      raw_target,
+      next_cursor,
+      reason,
+      code = nil,
+      offending_offset = nil
+    )
+      {
+        kind: :malformed,
+        raw_target: raw_target,
+        destination: nil,
+        next_cursor: next_cursor,
+        reason: reason,
+        code: code,
+        offending_offset: offending_offset
+      }
+    end
 
-            link_end = line.index(")", target_start)
-            break unless link_end
+    def bare_destination(line, target_start, segment_end)
+      index = target_start
+      depth = 0
+      backslash_run = 0
 
-            raw_target = line[target_start...link_end]
-            targets << [raw_target, raw_target, false]
-            cursor = link_end + 1
-          end
+      while index < segment_end
+        byte = line.getbyte(index)
+        if byte <= 32 || byte == 127
+          return malformed_bare_result(
+            line.byteslice(target_start, index - target_start + 1),
+            index + 1,
+            :forbidden_byte,
+            byte,
+            index - target_start
+          )
         end
 
-        targets
+        if byte == 92
+          backslash_run += 1
+          index += 1
+          next
+        end
+
+        escaped = backslash_run.odd?
+        if byte == 40 && !escaped
+          depth += 1
+        elsif byte == 41 && !escaped
+          if depth.zero?
+            raw_target = line.byteslice(
+              target_start,
+              index - target_start
+            )
+            return {
+              kind: :valid,
+              raw_target: raw_target,
+              destination: raw_target,
+              next_cursor: index + 1,
+              reason: nil,
+              code: nil,
+              offending_offset: nil
+            }
+          end
+          depth -= 1
+        end
+
+        backslash_run = 0
+        index += 1
       end
 
-      def normalize_markdown_destination(destination)
-        destination.gsub(/\\([\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e])/) do
-          Regexp.last_match(1)
+      raw_target = line.byteslice(
+        target_start,
+        segment_end - target_start
+      ).sub(/\r?\n\z/, "")
+      malformed_bare_result(
+        raw_target,
+        segment_end,
+        :line_end_before_terminator
+      )
+    end
+
+    def markdown_link_targets(text)
+      targets = []
+      opener = /\[[^\]\n]+\]\(/
+
+      text.each_line do |line|
+        cursor = 0
+        while (match = opener.match(line, cursor))
+          target_start = match.end(0)
+          if line.getbyte(target_start) == 60
+            segment_end = line.length
+            raw_target, destination, cursor, malformed =
+              pointy_destination(line, target_start, segment_end)
+            targets << [raw_target, destination, malformed]
+            next
+          end
+
+          segment_end = line.length
+          result = bare_destination(line, target_start, segment_end)
+          next_cursor = result.fetch(:next_cursor)
+          unless target_start < next_cursor && next_cursor <= segment_end
+            abort(
+              "bare_destination cursor invariant failed: " \
+              "target_start=#{target_start} " \
+              "next_cursor=#{next_cursor} " \
+              "segment_end=#{segment_end}"
+            )
+          end
+          targets << [
+            result.fetch(:raw_target),
+            result.fetch(:destination),
+            result.fetch(:kind) == :malformed
+          ]
+          cursor = next_cursor
         end
       end
 
-      root = File.realpath(ARGV.fetch(0))
-      readmes = %w[
-        addons/mongodb/README.md
-        examples/mongodb/README.md
-      ]
-      shared_docs = %w[
-        prerequisites.md
-        install-addon.md
-        create-backuprepo.md
-      ]
-      failures = []
-      seen = Hash.new { |hash, key| hash[key] = [] }
+      targets
+    end
 
-      readmes.each do |relative_readme|
-        readme = File.join(root, relative_readme)
-        markdown_link_targets(File.read(readme)).each do |raw_target, destination, malformed|
-          if malformed
-            failures << "#{relative_readme} link=#{raw_target.inspect} malformed_markdown_destination"
-            next
-          end
+    def normalize_markdown_destination(destination)
+      destination.gsub(/\\([\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e])/) do
+        Regexp.last_match(1)
+      end
+    end
 
-          raw_path = normalize_markdown_destination(destination).split(/[?#]/, 2).first.to_s
-          next if raw_path.empty?
-          next if raw_path.match?(/\A[a-z][a-z0-9+.-]*:/i)
+    mode = ARGV.shift
+    if mode != "validate"
+      code = Integer(ARGV.shift, 10) unless mode == "inspect-line-end"
+      case mode
+      when "inspect-code"
+        line = "ab".b + [code].pack("C") + "cd)"
+        result = bare_destination(line, 0, line.bytesize)
+        puts "#{result.fetch(:reason)}:#{result.fetch(:code)}"
+      when "inspect-escaped-code"
+        line = "ab\\".b + [code].pack("C") + "cd)"
+        result = bare_destination(line, 0, line.bytesize)
+        puts "#{result.fetch(:reason)}:#{result.fetch(:code)}"
+      when "inspect-result"
+        line = "zzab".b + [code].pack("C") + "cd)"
+        result = bare_destination(line, 2, 8)
+        puts [
+          "kind=#{result.fetch(:kind)}",
+          "reason=#{result.fetch(:reason)}",
+          "code=#{result.fetch(:code)}",
+          "raw_hex=#{result.fetch(:raw_target).unpack1("H*")}",
+          "offending_offset=#{result.fetch(:offending_offset)}",
+          "next_cursor=#{result.fetch(:next_cursor)}"
+        ].join(";")
+      when "inspect-line-end"
+        line = "unterminated".b
+        result = bare_destination(line, 0, line.bytesize)
+        puts result.fetch(:reason)
+      else
+        abort "unknown mode: #{mode.inspect}"
+      end
+      exit
+    end
 
-          if raw_path.match?(/%(?![0-9a-f]{2})/i)
-            failures << "#{relative_readme} link=#{raw_target.inspect} malformed_percent_encoding"
-            next
-          end
-          target = URI::DEFAULT_PARSER.unescape(raw_path)
-          unless target.valid_encoding? && !target.include?("\0")
-            failures << "#{relative_readme} link=#{raw_target.inspect} malformed_percent_encoding"
-            next
-          end
-          if target.match?(/%[0-9a-f]{2}/i)
-            failures << "#{relative_readme} link=#{raw_target.inspect} ambiguous_percent_encoding"
-            next
-          end
+    root = File.realpath(ARGV.fetch(0))
+    readmes = %w[
+      addons/mongodb/README.md
+      examples/mongodb/README.md
+    ]
+    shared_docs = %w[
+      prerequisites.md
+      install-addon.md
+      create-backuprepo.md
+    ]
+    failures = []
+    seen = Hash.new { |hash, key| hash[key] = [] }
 
-          basename = File.basename(target)
-          seen[[relative_readme, basename]] << target if shared_docs.include?(basename)
-          expanded = File.expand_path(target, File.dirname(readme))
-          unless inside_root?(root, expanded)
-            failures << "#{relative_readme} link=#{raw_target.inspect} escapes_repository"
-            next
-          end
-          unless File.file?(expanded)
-            failures << "#{relative_readme} link=#{raw_target.inspect} missing=#{expanded.delete_prefix("#{root}/")}"
-            next
-          end
+    readmes.each do |relative_readme|
+      readme = File.join(root, relative_readme)
+      markdown_link_targets(File.read(readme)).each do |raw_target, destination, malformed|
+        if malformed
+          failures << "#{relative_readme} link=#{raw_target.inspect} malformed_markdown_destination"
+          next
+        end
 
-          begin
-            actual = File.realpath(expanded)
-          rescue SystemCallError => error
-            failures << "#{relative_readme} link=#{raw_target.inspect} realpath_error=#{error.class}"
-            next
-          end
-          unless inside_root?(root, actual)
-            failures << "#{relative_readme} link=#{raw_target.inspect} real_target_escapes_repository"
-            next
-          end
+        raw_path = normalize_markdown_destination(destination).split(/[?#]/, 2).first.to_s
+        next if raw_path.empty?
+        next if raw_path.match?(/\A[a-z][a-z0-9+.-]*:/i)
 
-          next unless shared_docs.include?(basename)
+        if raw_path.match?(/%(?![0-9a-f]{2})/i)
+          failures << "#{relative_readme} link=#{raw_target.inspect} malformed_percent_encoding"
+          next
+        end
+        target = URI::DEFAULT_PARSER.unescape(raw_path)
+        unless target.valid_encoding? && !target.include?("\0")
+          failures << "#{relative_readme} link=#{raw_target.inspect} malformed_percent_encoding"
+          next
+        end
+        if target.match?(/%[0-9a-f]{2}/i)
+          failures << "#{relative_readme} link=#{raw_target.inspect} ambiguous_percent_encoding"
+          next
+        end
 
-          expected = File.realpath(File.join(root, "examples", "docs", basename))
-          unless actual == expected
-            failures << "#{relative_readme} link=#{raw_target.inspect} actual=#{actual.delete_prefix("#{root}/")} expected=#{expected.delete_prefix("#{root}/")}"
-          end
+        basename = File.basename(target)
+        seen[[relative_readme, basename]] << target if shared_docs.include?(basename)
+        expanded = File.expand_path(target, File.dirname(readme))
+        unless inside_root?(root, expanded)
+          failures << "#{relative_readme} link=#{raw_target.inspect} escapes_repository"
+          next
+        end
+        unless File.file?(expanded)
+          failures << "#{relative_readme} link=#{raw_target.inspect} missing=#{expanded.delete_prefix("#{root}/")}"
+          next
+        end
+
+        begin
+          actual = File.realpath(expanded)
+        rescue SystemCallError => error
+          failures << "#{relative_readme} link=#{raw_target.inspect} realpath_error=#{error.class}"
+          next
+        end
+        unless inside_root?(root, actual)
+          failures << "#{relative_readme} link=#{raw_target.inspect} real_target_escapes_repository"
+          next
+        end
+
+        next unless shared_docs.include?(basename)
+
+        expected = File.realpath(File.join(root, "examples", "docs", basename))
+        unless actual == expected
+          failures << "#{relative_readme} link=#{raw_target.inspect} actual=#{actual.delete_prefix("#{root}/")} expected=#{expected.delete_prefix("#{root}/")}"
         end
       end
+    end
 
-      readmes.product(shared_docs).each do |relative_readme, basename|
-        count = seen.fetch([relative_readme, basename], []).length
-        failures << "#{relative_readme} shared_doc=#{basename} count=#{count} expected=1" unless count == 1
-      end
+    readmes.product(shared_docs).each do |relative_readme, basename|
+      count = seen.fetch([relative_readme, basename], []).length
+      failures << "#{relative_readme} shared_doc=#{basename} count=#{count} expected=1" unless count == 1
+    end
 
-      unless failures.empty?
-        failures.each { |failure| warn failure }
-        abort "MongoDB README relative-link closure failed: #{failures.length} drift(s)"
-      end
+    unless failures.empty?
+      failures.each { |failure| warn failure }
+      abort "MongoDB README relative-link closure failed: #{failures.length} drift(s)"
+    end
 
-      puts "MongoDB README relative-link closure passed"
-    ' "$repo_root"
-  }
+    puts "MongoDB README relative-link closure passed"
+  ' "$mode" "$@"
+}
+
+validate_mongodb_readme_links() {
+  local repo_root
+
+  repo_root=${MONGODB_REPO_ROOT:-$(git rev-parse --show-toplevel)} || return 2
+  run_mongodb_readme_link_oracle validate "$repo_root"
+}
+
+inspect_mongodb_bare_destination_code() {
+  run_mongodb_readme_link_oracle inspect-code "$1"
+}
+
+inspect_mongodb_bare_destination_escaped_code() {
+  run_mongodb_readme_link_oracle inspect-escaped-code "$1"
+}
+
+inspect_mongodb_bare_destination_result() {
+  run_mongodb_readme_link_oracle inspect-result "$1"
+}
+
+inspect_mongodb_bare_destination_line_end() {
+  run_mongodb_readme_link_oracle inspect-line-end
+}
+
+Describe "MongoDB README relative-link closure"
 
   setup_readme_relative_link_test() {
     source_repo_root=$(git rev-parse --show-toplevel)
