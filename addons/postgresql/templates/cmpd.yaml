@@ -171,7 +171,7 @@ spec:
         serviceRefVarRef:
           name: remote-instances
           optional: true
-          password: Optional
+          password: Required
     ## the postgres pod name list for each pod, the value format is "pod1,pod2,..."
     - name: POSTGRES_POD_NAME_LIST
       valueFrom:

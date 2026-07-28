@@ -79,6 +79,51 @@ Describe "PostgreSQL Initialization Script Tests"
     End
   End
 
+  Describe "init_standby_credentials_if_needed()"
+    setup() {
+      STANDBY_HOST="remote.example"
+      PGUSER_STANDBY="standby"
+      PGPASSWORD_STANDBY="local-random"
+      unset KB_PGUSER_STANDBY
+      unset KB_PGPASSWORD_STANDBY
+    }
+    Before 'setup'
+
+    un_setup() {
+      unset STANDBY_HOST
+      unset PGUSER_STANDBY
+      unset PGPASSWORD_STANDBY
+      unset KB_PGUSER_STANDBY
+      unset KB_PGPASSWORD_STANDBY
+    }
+    After 'un_setup'
+
+    It "fails closed when a remote host has no remote password"
+      When call init_standby_credentials_if_needed
+      The status should be failure
+      The stderr should include "FATAL: standby host is set but remote replication password is missing"
+      The variable PGPASSWORD_STANDBY should equal "local-random"
+    End
+
+    It "uses the remote serviceRef credentials when they are complete"
+      KB_PGUSER_STANDBY="remote-repl"
+      KB_PGPASSWORD_STANDBY="remote-secret"
+      When call init_standby_credentials_if_needed
+      The status should be success
+      The output should include "standby cluster: using remote replication credentials from serviceRef"
+      The variable PGUSER_STANDBY should equal "remote-repl"
+      The variable PGPASSWORD_STANDBY should equal "remote-secret"
+    End
+
+    It "keeps local credentials when no remote host is configured"
+      unset STANDBY_HOST
+      When call init_standby_credentials_if_needed
+      The status should be success
+      The variable PGUSER_STANDBY should equal "standby"
+      The variable PGPASSWORD_STANDBY should equal "local-random"
+    End
+  End
+
   Describe "regenerate_spilo_configuration_and_start_postgres()"
     setup() {
       tmp_patroni_yaml="./tmp_patroni.yaml"

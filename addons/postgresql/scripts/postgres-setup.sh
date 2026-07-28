@@ -137,11 +137,18 @@ init_etcd_dcs_config_if_needed() {
 # POSTGRES_PASSWORD in the cmpd), which never matches the remote cluster's —
 # the standby loops on "password authentication failed" and never bootstraps.
 init_standby_credentials_if_needed() {
-  if ! is_empty "${STANDBY_HOST:-}" && ! is_empty "${KB_PGPASSWORD_STANDBY:-}"; then
-    echo "$(date) standby cluster: using remote replication credentials from serviceRef"
-    export PGUSER_STANDBY="${KB_PGUSER_STANDBY:-standby}"
-    export PGPASSWORD_STANDBY="${KB_PGPASSWORD_STANDBY}"
+  if is_empty "${STANDBY_HOST:-}"; then
+    return 0
   fi
+
+  if is_empty "${KB_PGPASSWORD_STANDBY:-}"; then
+    echo "$(date) FATAL: standby host is set but remote replication password is missing" >&2
+    return 1
+  fi
+
+  echo "$(date) standby cluster: using remote replication credentials from serviceRef"
+  export PGUSER_STANDBY="${KB_PGUSER_STANDBY:-standby}"
+  export PGPASSWORD_STANDBY="${KB_PGPASSWORD_STANDBY}"
 }
 
 regenerate_spilo_configuration_and_start_postgres() {
@@ -181,5 +188,7 @@ ${__SOURCED__:+false} : || return 0
 # main
 load_common_library
 init_etcd_dcs_config_if_needed
-init_standby_credentials_if_needed
+if ! init_standby_credentials_if_needed; then
+  exit 1
+fi
 regenerate_spilo_configuration_and_start_postgres

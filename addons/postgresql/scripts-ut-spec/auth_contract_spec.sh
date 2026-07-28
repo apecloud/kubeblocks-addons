@@ -64,4 +64,25 @@ Describe "postgresql authentication contract"
       The status should be failure
     End
   End
+
+  Describe "remote standby credentials"
+    remote_password_requirement() {
+      awk '
+        /- name: KB_PGPASSWORD_STANDBY/ {
+          in_password_ref = 1
+          next
+        }
+        in_password_ref && /password:/ {
+          print $2
+          exit
+        }
+      ' ../templates/cmpd.yaml
+    }
+
+    It "requires the remote password whenever remote-instances is bound"
+      When call remote_password_requirement
+      The output should eq "Required"
+      The status should be success
+    End
+  End
 End
