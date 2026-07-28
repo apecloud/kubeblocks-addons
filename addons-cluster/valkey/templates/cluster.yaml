@@ -8,6 +8,9 @@
         name: shard
         replicas: {{ .Values.cluster.replicas }}
         serviceVersion: {{ .Values.version | quote }}
+        labels:
+          app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+          app.kubernetes.io/component: "valkey-cluster-shard"
         {{- if .Values.podAntiAffinityEnabled }}
         {{- include "valkey-cluster.shardSchedulingPolicy" . | nindent 8 }}
         {{- end }}

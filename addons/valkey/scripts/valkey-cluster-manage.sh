@@ -1751,7 +1751,7 @@ purge_shard_from_cluster() {
     pattern="${pattern:+${pattern}|}${fqdn}"
   done
 
-  local remaining=() shard_line shard fqdns roster
+  local remaining=() unresolved=() shard_line shard fqdns roster
   roster=$(each_shard_fqdn_list) || return 1
   while read -r shard_line; do
     shard="${shard_line%% *}"
@@ -1759,8 +1759,8 @@ purge_shard_from_cluster() {
     [ "${shard}" = "${CURRENT_SHARD_COMPONENT_SHORT_NAME}" ] && continue
     for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
       if ! host_resolves "${fqdn}"; then
-        classify remove-roster yes "roster host ${fqdn} DNS unresolved; permanent departure is not proven"
-        return 1
+        unresolved+=("${fqdn}")
+        continue
       fi
       remaining+=("${fqdn}")
     done
@@ -1770,22 +1770,65 @@ purge_shard_from_cluster() {
     return 1
   fi
 
+  # Build a trustworthy remaining-side view before mutating any leaving pod.
+  # A concurrently deleted sibling may remain in this action's frozen roster;
+  # DNS absence is accepted only when every reachable remaining member also
+  # proves that sibling's FQDN absent from its node table.
+  local nodes ids="" id host missing
+  for host in "${remaining[@]}"; do
+    build_cli "${host}"
+    if ! "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+      classify remove-roster yes "remaining roster host ${host} is not reachable"
+      return 1
+    fi
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r') || {
+      classify remove-roster yes "cannot read CLUSTER NODES from remaining host ${host}"
+      return 1
+    }
+    if [ -z "${nodes}" ] || ! printf '%s\n' "${nodes}" | cluster_node_id_set >/dev/null; then
+      classify remove-roster yes "invalid CLUSTER NODES structure from remaining host ${host}"
+      return 1
+    fi
+    for missing in "${unresolved[@]}"; do
+      if printf '%s\n' "${nodes}" | grep -Fq "${missing}"; then
+        classify remove-roster yes "unresolved roster host ${missing} still exists in ${host}'s cluster view"
+        return 1
+      fi
+    done
+  done
+
   # old ids of this shard: UNION across every remaining pod's view (a
   # residue line can be visible from one pod only) plus each reachable
   # leaving pod's own MYID read BEFORE reset (id-only noaddr residue
   # carries no fqdn, so views alone can miss it).
-  local nodes ids="" id host
   for host in "${remaining[@]}"; do
     build_cli "${host}"
-    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r') || {
+      classify remove-roster yes "cannot re-read CLUSTER NODES from remaining host ${host}"
+      return 1
+    }
     ids="${ids} $(echo "${nodes}" | grep -E "${pattern}" | awk '{print $1}')"
   done
+
+  # Every leaving pod must be reachable, slotless, and expose its old id
+  # before any reset/forget mutation. Otherwise a persisted nodes.conf could
+  # let that pod rejoin after this action incorrectly reports success.
   for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
     build_cli "${fqdn}"
-    if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
-      id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r')
-      [ -n "${id}" ] && ids="${ids} ${id}"
+    if ! "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+      classify remove-reset yes "${fqdn} is unreachable — old cluster identity cannot be destroyed"
+      return 1
     fi
+    if self_claims_master_with_slots; then
+      classify remove-slots-nonzero yes "${fqdn} still claims master with slots — refusing reset"
+      return 1
+    fi
+    id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r')
+    if [ -z "${id}" ]; then
+      classify remove-reset yes "CLUSTER MYID unreadable from ${fqdn}"
+      return 1
+    fi
+    ids="${ids} ${id}"
   done
   ids=$(echo "${ids}" | tr ' ' '\n' | grep -v '^$' | sort -u)
 
@@ -1795,17 +1838,11 @@ purge_shard_from_cluster() {
   # a drain failure, not a cleanup step.
   for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
     build_cli "${fqdn}"
-    if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
-      if self_claims_master_with_slots; then
-        classify remove-slots-nonzero yes "${fqdn} still claims master with slots — refusing reset"
-        return 1
-      fi
-      "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # replicas refuse (harmless); master proven slotless
-      "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
-        classify remove-reset yes "CLUSTER RESET HARD on ${fqdn} failed"
-        return 1
-      }
-    fi
+    "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # replicas refuse (harmless); master proven slotless
+    "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
+      classify remove-reset yes "CLUSTER RESET HARD on ${fqdn} failed"
+      return 1
+    }
   done
 
   # 2) forget the old ids on every remaining node
@@ -1825,7 +1862,14 @@ purge_shard_from_cluster() {
   local residue
   for host in "${remaining[@]}"; do
     build_cli "${host}"
-    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r') || {
+      classify remove-residue yes "cannot re-read CLUSTER NODES from ${host}"
+      return 1
+    }
+    if [ -z "${nodes}" ] || ! printf '%s\n' "${nodes}" | cluster_node_id_set >/dev/null; then
+      classify remove-residue yes "invalid CLUSTER NODES structure from ${host}"
+      return 1
+    fi
     residue=$(echo "${nodes}" | grep -E "${pattern}" || true)
     for id in ${ids}; do
       residue="${residue}$(echo "${nodes}" | awk -v i="${id}" '$1==i')"
@@ -1834,6 +1878,26 @@ purge_shard_from_cluster() {
       classify remove-residue yes "removed-shard residue still visible from ${host}"
       return 1
     fi
+  done
+
+  # Revalidate the stale-roster exception at the commit boundary. A sibling
+  # that reappears during this purge must join the next complete sweep.
+  for missing in "${unresolved[@]}"; do
+    if host_resolves "${missing}"; then
+      classify remove-roster yes "previously unresolved roster host ${missing} became resolvable during purge"
+      return 1
+    fi
+    for host in "${remaining[@]}"; do
+      build_cli "${host}"
+      nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r') || {
+        classify remove-roster yes "cannot verify departed sibling ${missing} from ${host}"
+        return 1
+      }
+      if printf '%s\n' "${nodes}" | grep -Fq "${missing}"; then
+        classify remove-roster yes "unresolved roster host ${missing} reappeared in ${host}'s cluster view"
+        return 1
+      fi
+    done
   done
   return 0
 }

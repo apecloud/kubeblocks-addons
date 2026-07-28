@@ -55,6 +55,7 @@ spec:
     - name: primary
       updatePriority: 2
       participatesInQuorum: false
+      isExclusive: true
     - name: secondary
       updatePriority: 1
       participatesInQuorum: false
@@ -259,8 +260,6 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
-      # preCondition is a sibling of exec (KB Action API), not an exec field
-      preCondition: RuntimeReady
       retryPolicy:
         maxRetries: 20
         retryInterval: 5

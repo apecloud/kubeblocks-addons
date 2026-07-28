@@ -143,10 +143,7 @@ Describe "valkey-cluster-member.sh"
   Before "mb_env"
   After "mb_clean"
 
-  It "purges residue even when the vantage cannot see the member (no blind early close)"
-    # review blocker: one blind vantage proves nothing about other pods'
-    # tables — an fqdn-bearing fail line on another remaining pod must
-    # still be forgotten before the leave can close.
+  It "refuses to forget an unreachable leaving member whose identity cannot be reset"
     export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
     mb_calls=$(mktemp)
     shard_vantage() { echo "vk-s-0.h.ns.svc"; }
@@ -165,10 +162,10 @@ Describe "valkey-cluster-member.sh"
       esac
     }
     When run member_leave
-    The status should be success
-    The stdout should include "reset, forgotten, absence-proven"
-    The contents of file "${mb_calls}" should include "FORGET:vk-s-0.h.ns.svc:tid2"
-    The contents of file "${mb_calls}" should include "FORGET:vk-t-0.h.ns.svc:tid2"
+    The status should be failure
+    The stderr should include "phase=leave-reset"
+    The stderr should include "old cluster identity cannot be destroyed"
+    The contents of file "${mb_calls}" should not include "FORGET:"
   End
 
   It "catches id-only noaddr residue via the target's own MYID (fqdn check alone would false-close)"
@@ -408,17 +405,85 @@ Describe "valkey-cluster-member.sh"
     The stderr should include "phase=vantage"
   End
 
-  It "does not confirm a join on visibility alone (must be replica of this master)"
+  It "repairs a visible target that is attached to the wrong master"
     export KB_JOIN_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    repair_marker=$(mktemp -u)
     shard_vantage() { echo "vk-s-0.h.ns.svc"; }
     shard_master_line() { echo "mid1 vk-s-0.h.ns.svc:6379@16379 myself,master - 0 0 5 connected 0-5460"; }
-    # target visible but flagged master of nothing (not slave of mid1)
-    node_line_of() { echo "tid2 vk-s-1.h.ns.svc:6379@16379 master - 0 0 6 connected"; }
-    build_cluster_cli() { _ccli=(mock_add); }
-    mock_add() { echo "added"; }
+    node_line_of() {
+      if [ -e "${repair_marker}" ]; then
+        echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave mid1 0 0 6 connected"
+      else
+        echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave foreign 0 0 6 connected"
+      fi
+    }
+    build_cli() { _cli=(mock_repair "${repair_marker}"); }
+    mock_repair() {
+      local marker="${1}"; shift
+      case "$*" in
+        PING) echo PONG ;;
+        "CLUSTER NODES") echo "tid2 vk-s-1.h.ns.svc:6379@16379 myself,slave foreign 0 0 6 connected" ;;
+        "CLUSTER REPLICATE mid1") touch "${marker}"; echo OK ;;
+      esac
+    }
+    When run member_join
+    The status should be success
+    The stdout should include "joined shard as replica"
+    The file "${repair_marker}" should be exist
+  End
+
+  It "converges when add-node returns nonzero after membership partially commits"
+    export KB_JOIN_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    partial_marker=$(mktemp -u)
+    repaired_marker=$(mktemp -u)
+    shard_vantage() { echo "vk-s-0.h.ns.svc"; }
+    shard_master_line() { echo "mid1 vk-s-0.h.ns.svc:6379@16379 myself,master - 0 0 5 connected 0-16383"; }
+    node_line_of() {
+      [ -e "${partial_marker}" ] || return 0
+      if [ -e "${repaired_marker}" ]; then
+        echo "tid2 vk-s-1.h.ns.svc:6379@16379 slave mid1 0 0 6 connected"
+      else
+        echo "tid2 vk-s-1.h.ns.svc:6379@16379 master - 0 0 6 connected"
+      fi
+    }
+    build_cluster_cli() { _ccli=(mock_partial_add "${partial_marker}"); }
+    mock_partial_add() { touch "${1}"; echo "replication step failed"; return 1; }
+    build_cli() { _cli=(mock_partial_repair "${repaired_marker}"); }
+    mock_partial_repair() {
+      local marker="${1}"; shift
+      case "$*" in
+        PING) echo PONG ;;
+        "CLUSTER NODES") echo "tid2 vk-s-1.h.ns.svc:6379@16379 myself,master - 0 0 6 connected" ;;
+        "CLUSTER REPLICATE mid1") touch "${marker}"; echo OK ;;
+      esac
+    }
+    When run member_join
+    The status should be success
+    The stdout should include "joined shard as replica"
+    The file "${partial_marker}" should be exist
+    The file "${repaired_marker}" should be exist
+  End
+
+  It "refuses to convert a slot-owning target master into a replica"
+    export KB_JOIN_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    repair_calls=$(mktemp)
+    shard_vantage() { echo "vk-s-0.h.ns.svc"; }
+    shard_master_line() { echo "mid1 vk-s-0.h.ns.svc:6379@16379 myself,master - 0 0 5 connected 5461-16383"; }
+    node_line_of() { echo "tid2 vk-s-1.h.ns.svc:6379@16379 master - 0 0 6 connected 0-5460"; }
+    build_cli() { _cli=(mock_slot_master "${repair_calls}"); }
+    mock_slot_master() {
+      local calls="${1}"; shift
+      case "$*" in
+        PING) echo PONG ;;
+        "CLUSTER NODES") echo "tid2 vk-s-1.h.ns.svc:6379@16379 myself,master - 0 0 6 connected 0-5460" ;;
+        "CLUSTER REPLICATE"*) echo "$*" >> "${calls}"; echo OK ;;
+      esac
+    }
     When run member_join
     The status should be failure
-    The stderr should include "phase=join-confirm"
+    The stderr should include "phase=join-repair"
+    The stderr should include "refusing to convert"
+    The contents of file "${repair_calls}" should equal ""
   End
 
   It "requires the join target env"

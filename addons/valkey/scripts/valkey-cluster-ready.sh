@@ -14,12 +14,13 @@ run_cli() {
   fi
 }
 
-# Before postProvision closes, PING readiness is required so the lifecycle
-# action can run without a readiness/postProvision dependency cycle.
+# Readiness is the public service gate, not merely process liveness.
+# postProvision runs without a RuntimeReady precondition, so a missing marker
+# means formation has not committed and must stay out of Endpoints.
 response=$(run_cli PING 2>/dev/null) || exit 1
 [ "${response}" = "PONG" ] || exit 1
 [ -L "${marker}" ] && exit 1
-[ ! -e "${marker}" ] && exit 0
+[ -e "${marker}" ] || exit 1
 [ -f "${marker}" ] || exit 1
 [ "$(cat "${marker}" 2>/dev/null)" = "formed" ] || exit 1
 

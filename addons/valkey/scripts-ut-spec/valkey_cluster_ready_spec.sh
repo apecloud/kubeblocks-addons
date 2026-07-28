@@ -32,9 +32,9 @@ STUB
       sh "${ready_script}"
   }
 
-  It "allows PING-only readiness before the durable formation marker exists"
+  It "keeps an unformed PING-capable node out of readiness"
     When call run_ready
-    The status should be success
+    The status should be failure
   End
 
   It "requires complete healthy slots after formation"

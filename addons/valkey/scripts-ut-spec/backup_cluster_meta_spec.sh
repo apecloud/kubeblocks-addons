@@ -26,10 +26,9 @@ case "${args}" in
   *"INFO persistence"*)
     printf 'rdb_bgsave_in_progress:0\nrdb_last_bgsave_status:ok\n'; exit 0 ;;
   *LASTSAVE*)
-    # advance on every call so the post-BGSAVE read exceeds the baseline
-    n=$(cat "${LASTSAVE_COUNTER:-/tmp/ls-counter}" 2>/dev/null || echo 100)
-    n=$((n + 1)); echo "${n}" > "${LASTSAVE_COUNTER:-/tmp/ls-counter}"
-    echo "${n}"; exit 0 ;;
+    # A fast BGSAVE may complete in the same second. The backup must not
+    # require this second-resolution timestamp to advance.
+    echo "100"; exit 0 ;;
   *BGSAVE*)             echo "Background saving started"; exit 0 ;;
   *"INFO cluster"*)
     [ "${FAKE_CLUSTER_INFO_FAIL:-0}" = "1" ] && exit 1

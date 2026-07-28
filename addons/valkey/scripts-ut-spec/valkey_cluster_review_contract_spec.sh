@@ -37,6 +37,15 @@ Describe "Valkey cluster review contracts"
       END { if (!cluster) exit 1 }
     ' "${bpt_file}"
   }
+  exclusive_primary_contract() {
+    awk '
+      /^  roles:/ { in_roles=1 }
+      in_roles && /^    - name: primary$/ { in_primary=1; next }
+      in_primary && /^      isExclusive: true$/ { found=1 }
+      in_primary && /^    - name:/ { exit !found }
+      END { exit !found }
+    ' "${cmpd_file}"
+  }
   render_cluster_chart() {
     helm dependency build ../../../addons-cluster/valkey >/dev/null &&
       helm template review ../../../addons-cluster/valkey \
@@ -59,6 +68,11 @@ Describe "Valkey cluster review contracts"
     The status should be success
   End
 
+  It "declares the primary role exclusive"
+    When call exclusive_primary_contract
+    The status should be success
+  End
+
   It "does not override Valkey's replica-validity safety default"
     When call grep -E '^cluster-replica-validity-factor[[:space:]]+0$' "${cluster_config}"
     The status should be failure
@@ -68,6 +82,7 @@ Describe "Valkey cluster review contracts"
     When call render_cluster_chart
     The status should be success
     The stdout should include "podAntiAffinity:"
-    The stdout should include 'apps.kubeblocks.io/sharding-name: "shard"'
+    The stdout should include 'app.kubernetes.io/component: "valkey-cluster-shard"'
+    The stdout should not include "apps.kubeblocks.io/sharding-name"
   End
 End

@@ -996,6 +996,7 @@ ADDNODE"
       case "$*" in
         PING) echo PONG ;;
         FLUSHALL) echo OK ;;
+        "CLUSTER MYID") case "${host}" in vk-def-0.h) echo dead1 ;; vk-def-1.h) echo dead2 ;; esac ;;
         "CLUSTER RESET HARD") echo "RESET:${host}" >> "${f}"; echo OK ;;
         "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
         "CLUSTER NODES")
@@ -1026,7 +1027,7 @@ ADDNODE"
         case "$*" in
           PING) echo PONG ;;
           FLUSHALL|"CLUSTER RESET HARD") echo OK ;;
-          "CLUSTER MYID") echo "" ;;
+          "CLUSTER MYID") case "${host}" in vk-def-0.h) echo dead1 ;; vk-def-1.h) echo dead2 ;; esac ;;
           "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
           "CLUSTER NODES")
             printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
@@ -1042,7 +1043,7 @@ ADDNODE"
       The contents of file "${calls}" should include "FORGET:vk-abc-1.h:dead2"
     End
 
-    It "defers when a roster sibling has transient DNS failure"
+    It "skips an already-departed sibling only after every live view proves it absent"
       # 5->3 scale-in: shard-def and shard-ghi leave in the same batch.
       # From shard-def's action, shard-ghi's pods are roster-listed but
       # their DNS is already gone — they must be skipped as vantage, not
@@ -1054,10 +1055,31 @@ ADDNODE"
       }
       host_resolves() { case "${1}" in vk-ghi-*) return 1 ;; *) return 0 ;; esac; }
       When call purge_shard_from_cluster
-      The status should be failure
-      The stderr should include "DNS unresolved"
-      The stderr should include "retry_safe=yes"
+      The status should be success
       The contents of file "${calls}" should not include "FORGET:vk-ghi"
+    End
+
+    It "defers when an unresolved sibling still exists in any live cluster view"
+      each_shard_fqdn_list() {
+        printf 'shard-abc vk-abc-0.h,vk-abc-1.h\n'
+        printf 'shard-def vk-def-0.h,vk-def-1.h\n'
+        printf 'shard-ghi vk-ghi-0.h,vk-ghi-1.h\n'
+      }
+      host_resolves() { case "${1}" in vk-ghi-*) return 1 ;; *) return 0 ;; esac; }
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            printf 'old3 vk-ghi-0.h:6379@16379 master,fail - 0 0 3 disconnected\n' ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be failure
+      The stderr should include "phase=remove-roster"
+      The stderr should include "still exists"
+      The contents of file "${calls}" should equal ""
     End
 
     It "still defers when a resolvable live member cannot be reached (connection failure is NOT departure)"
@@ -1067,6 +1089,7 @@ ADDNODE"
         case "$*" in
           PING) echo PONG ;;
           FLUSHALL|"CLUSTER RESET HARD") echo OK ;;
+          "CLUSTER MYID") case "${host}" in vk-def-0.h) echo dead1 ;; vk-def-1.h) echo dead2 ;; esac ;;
           "CLUSTER FORGET"*)
             if [ "${host}" = "vk-abc-1.h" ]; then echo "Could not connect to Valkey at vk-abc-1.h:6379: Connection refused"; else echo OK; fi ;;
           "CLUSTER NODES")
@@ -1080,12 +1103,35 @@ ADDNODE"
       The stderr should include "retry_safe=yes"
     End
 
+    It "never FORGETs when any leaving pod cannot be reset"
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) [ "${host}" = "vk-def-1.h" ] && return 1; echo PONG ;;
+          "CLUSTER MYID") [ "${host}" = "vk-def-0.h" ] && echo dead1 ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            printf 'dead1 vk-def-0.h:6379@16379 slave live1 0 0 2 connected\n'
+            printf 'dead2 vk-def-1.h:6379@16379 slave live1 0 0 2 connected\n' ;;
+          "CLUSTER RESET HARD") echo "RESET:${host}" >> "${f}"; echo OK ;;
+          "CLUSTER FORGET"*) echo "FORGET:${host}:${3}" >> "${f}"; echo OK ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be failure
+      The stderr should include "phase=remove-reset"
+      The stderr should include "old cluster identity cannot be destroyed"
+      The contents of file "${calls}" should not include "RESET:"
+      The contents of file "${calls}" should not include "FORGET:"
+    End
+
     It "cannot succeed while resurrection residue persists (retry-safe defer)"
       mock_cli() {
         local host="${1}" f="${2}"; shift 2
         case "$*" in
           PING) echo PONG ;;
           FLUSHALL|"CLUSTER RESET HARD"|"CLUSTER FORGET"*) echo OK ;;
+          "CLUSTER MYID") case "${host}" in vk-def-0.h) echo dead1 ;; vk-def-1.h) echo dead2 ;; esac ;;
           "CLUSTER NODES")
             printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
             printf 'dead1 vk-def-0.h:6379@16379 master,fail - 0 0 2 disconnected\n' ;;
@@ -1104,6 +1150,7 @@ ADDNODE"
         case "$*" in
           PING) echo PONG ;;
           FLUSHALL|"CLUSTER RESET HARD") echo OK ;;
+          "CLUSTER MYID") case "${host}" in vk-def-0.h) echo dead1 ;; vk-def-1.h) echo dead2 ;; esac ;;
           "CLUSTER FORGET"*) echo "ERR Unknown node ${3}" ;;
           "CLUSTER NODES")
             printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'

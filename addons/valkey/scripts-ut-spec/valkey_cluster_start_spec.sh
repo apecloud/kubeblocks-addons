@@ -481,14 +481,10 @@ Describe "Valkey cluster template contracts"
     The status should be success
   End
 
-  It "wires postProvision preCondition at the action level (KB Action API shape)"
-    # Live install first-blocker (kubeblocks-tests #583): 'precondition'
-    # nested under exec is not a CRD field and fails addon install. The
-    # correct shape is action-level 'preCondition', a SIBLING of exec —
-    # same as the sentinel cmpd prior art.
+  It "does not gate formation on RuntimeReady (readiness requires formation)"
     When call grep -c "^      preCondition: RuntimeReady" "${cmpd}"
-    The status should be success
-    The stdout should equal "1"
+    The status should be failure
+    The stdout should equal "0"
   End
 
   It "carries no exec-nested lowercase 'precondition:' anywhere in the cluster cmpd"

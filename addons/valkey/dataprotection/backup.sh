@@ -229,11 +229,10 @@ save_sentinel_acl() {
   echo "INFO: Sentinel ACL saved."
 }
 
-# Trigger BGSAVE and wait for it to finish.
-# Record LASTSAVE timestamp before triggering so we can confirm our BGSAVE
-# completes (not a pre-existing one that was already in progress).
+# Trigger BGSAVE and wait for the accepted operation to finish. BGSAVE returns
+# only after the server has accepted the child; LASTSAVE has one-second
+# resolution and cannot distinguish a valid fast save in the same second.
 echo "INFO: Triggering BGSAVE on ${DP_DB_HOST}:${DP_DB_PORT}"
-_lastsave_before=$("${connect_base[@]}" LASTSAVE 2>/dev/null) || _lastsave_before=0
 _bgsave_output=$("${connect_base[@]}" BGSAVE 2>&1) || {
   echo "ERROR: BGSAVE command failed: ${_bgsave_output}" >&2
   exit 1
@@ -241,8 +240,12 @@ _bgsave_output=$("${connect_base[@]}" BGSAVE 2>&1) || {
 echo "INFO: BGSAVE response: ${_bgsave_output}"
 # valkey-cli exits 0 even for protocol errors; detect server-side failures early.
 case "${_bgsave_output}" in
+  "Background saving started"|"Background saving scheduled") ;;
   "(error)"*|"ERR "*)
     echo "ERROR: BGSAVE returned error: ${_bgsave_output}" >&2
+    exit 1 ;;
+  *)
+    echo "ERROR: unexpected BGSAVE response: ${_bgsave_output}" >&2
     exit 1 ;;
 esac
 
@@ -257,17 +260,15 @@ while [ "${_bgsave_elapsed}" -lt "${_bgsave_timeout}" ]; do
   in_progress=$(echo "${persistence_info}" | grep rdb_bgsave_in_progress | tr -d '\r' | cut -d: -f2)
   if [ "${in_progress}" = "0" ]; then
     status=$(echo "${persistence_info}" | grep rdb_last_bgsave_status | tr -d '\r' | cut -d: -f2)
-    if [ "${status}" = "err" ]; then
+    if [ "${status}" != "ok" ]; then
       echo "ERROR: BGSAVE failed" >&2
       exit 1
     fi
-    # Confirm the save timestamp advanced past our baseline to ensure
-    # we are not capturing a pre-existing BGSAVE completion.
-    _lastsave_now=$("${connect_base[@]}" LASTSAVE 2>/dev/null) || _lastsave_now=0
-    if [ "${_lastsave_now}" -gt "${_lastsave_before}" ]; then
-      echo "INFO: BGSAVE completed (lastsave=${_lastsave_now})."
-      break
-    fi
+    echo "INFO: BGSAVE completed."
+    break
+  elif [ "${in_progress}" != "1" ]; then
+    echo "ERROR: invalid rdb_bgsave_in_progress value: ${in_progress:-<empty>}" >&2
+    exit 1
   fi
   sleep 3
   _bgsave_elapsed=$((_bgsave_elapsed + 3))

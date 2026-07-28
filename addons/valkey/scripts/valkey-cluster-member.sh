@@ -98,7 +98,7 @@ member_join() {
     classify env-contract no "KB_JOIN_MEMBER_POD_FQDN is required for --join"
     exit 1
   fi
-  local via master_line master_id
+  local via master_line master_id target_line out
   via=$(shard_vantage "${target}") || exit 1
   master_line=$(shard_master_line "${via}")
   if [ -z "${master_line}" ]; then
@@ -108,27 +108,92 @@ member_join() {
   master_id=$(echo "${master_line}" | awk '{print $1}')
 
   if join_confirmed "${via}" "${target}" "${master_id}"; then
+    master_line=$(shard_master_line "${via}")
+    if [ -z "${master_line}" ] || [ "$(echo "${master_line}" | awk '{print $1}')" != "${master_id}" ]; then
+      classify join-master-drift yes "shard master changed while confirming ${target}; retry against a fresh master"
+      exit 1
+    fi
     echo "member ${target} already a replica of this shard's master — join already effective."
     exit 0
   fi
-  if [ -z "$(node_line_of "${via}" "${target}")" ]; then
+  target_line=$(node_line_of "${via}" "${target}")
+  if [ -z "${target_line}" ]; then
     # existing-node argument is the vantage FQDN: any cluster member works,
     # and reusing ${via} avoids parsing the master's announced address out
     # of CLUSTER NODES (fresh-eyes review: that parse was IPv4-only —
     # cut -d: -f1 mangles an IPv6 announce address).
     build_cluster_cli
-    local out
-    out=$("${_ccli[@]}" --cluster add-node "${target}:${port}" "${via}:${port}" --cluster-slave --cluster-master-id "${master_id}" 2>&1) || {
-      classify join-add-node no "add-node --cluster-slave for ${target} failed: ${out}"
-      exit 1
-    }
+    if ! out=$("${_ccli[@]}" --cluster add-node "${target}:${port}" "${via}:${port}" --cluster-slave --cluster-master-id "${master_id}" 2>&1); then
+      # add-node is multi-command and can fail after MEET committed. Re-read
+      # before classifying so the next invocation can repair a partial join.
+      target_line=$(node_line_of "${via}" "${target}")
+      if [ -z "${target_line}" ]; then
+        classify join-add-node yes "add-node --cluster-slave for ${target} failed before membership became visible: ${out}"
+        exit 1
+      fi
+    fi
   fi
   if ! join_confirmed "${via}" "${target}" "${master_id}"; then
-    classify join-confirm yes "${target} not yet a replica of master ${master_id} in the non-target cluster view"
+    repair_existing_join "${via}" "${target}" "${master_id}" || exit 1
+    if ! join_confirmed "${via}" "${target}" "${master_id}"; then
+      classify join-confirm yes "${target} repair issued but correct replica binding is not yet visible from the non-target cluster view"
+      exit 1
+    fi
+  fi
+  master_line=$(shard_master_line "${via}")
+  if [ -z "${master_line}" ] || [ "$(echo "${master_line}" | awk '{print $1}')" != "${master_id}" ]; then
+    classify join-master-drift yes "shard master changed while joining ${target}; retry against a fresh master"
     exit 1
   fi
   echo "member ${target} joined shard as replica of ${master_id}."
   exit 0
+}
+
+# Converge an add-node that partially committed or attached the target to the
+# wrong parent. A slot-owning master is never converted because that would
+# orphan its slots; all other role repairs are issued on the target itself.
+repair_existing_join() {
+  local via="${1}" target="${2}" master_id="${3}" line self_line flags slots out
+  line=$(node_line_of "${via}" "${target}")
+  if [ -z "${line}" ]; then
+    classify join-repair yes "${target} disappeared from the non-target cluster view before repair"
+    return 1
+  fi
+  flags=$(echo "${line}" | awk '{print $3}')
+  case ",${flags}," in
+    *,fail,*|*,handshake,*|*,noaddr,*)
+      classify join-repair yes "${target} is not in a repairable connected state (${flags})"
+      return 1 ;;
+  esac
+
+  build_cli "${target}"
+  if ! "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+    classify join-repair yes "${target} is visible but not reachable for CLUSTER REPLICATE"
+    return 1
+  fi
+  self_line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/ {print; exit}')
+  if [ -z "${self_line}" ]; then
+    classify join-repair yes "${target} has no readable myself line"
+    return 1
+  fi
+  flags=$(echo "${self_line}" | awk '{print $3}')
+  slots=$(echo "${self_line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')
+  if echo "${flags}" | grep -q master && [ -n "${slots}" ]; then
+    classify join-repair no "${target} still owns slots — refusing to convert it into a replica"
+    return 1
+  fi
+  if ! echo "${flags}" | grep -Eq '(^|,)(master|slave)(,|$)'; then
+    classify join-repair yes "${target} has no repairable master/slave role (${flags})"
+    return 1
+  fi
+  out=$("${_cli[@]}" CLUSTER REPLICATE "${master_id}" 2>&1) || {
+    classify join-repair yes "CLUSTER REPLICATE ${master_id} on ${target} failed: ${out}"
+    return 1
+  }
+  case "${out}" in
+    OK*) return 0 ;;
+    *) classify join-repair yes "CLUSTER REPLICATE ${master_id} on ${target} returned: ${out}"; return 1 ;;
+  esac
 }
 
 # Positive join fact: from a NON-TARGET vantage, the target's node line must
@@ -177,18 +242,28 @@ purge_member_from_cluster() {
   fi
 
   build_cli "${target}"
-  if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
-    # explicit RESET precondition: never reset a node whose own view
-    # still claims master+slots (demote/drain failed upstream)
-    line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/')
-    if echo "${line}" | awk '{print $3}' | grep -q master && \
-       [ -n "$(echo "${line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')" ]; then
-      classify leave-orphan-guard no "${target} still claims master with slots — refusing reset"
-      return 1
-    fi
-    id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r')
-    [ -n "${id}" ] && ids="${ids} ${id}"
+  if ! "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+    classify leave-reset yes "${target} is unreachable — old cluster identity cannot be destroyed"
+    return 1
   fi
+  # explicit RESET precondition: never reset a node whose own view
+  # still claims master+slots (demote/drain failed upstream)
+  line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/')
+  if [ -z "${line}" ]; then
+    classify leave-reset yes "${target} has no readable myself line"
+    return 1
+  fi
+  if echo "${line}" | awk '{print $3}' | grep -q master && \
+     [ -n "$(echo "${line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')" ]; then
+    classify leave-orphan-guard no "${target} still claims master with slots — refusing reset"
+    return 1
+  fi
+  id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r')
+  if [ -z "${id}" ]; then
+    classify leave-reset yes "CLUSTER MYID unreadable from ${target}"
+    return 1
+  fi
+  ids="${ids} ${id}"
   for host in ${remaining}; do
     build_cli "${host}"
     nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
@@ -197,13 +272,11 @@ purge_member_from_cluster() {
   ids=$(echo "${ids}" | tr ' ' '\n' | grep -v '^$' | sort -u)
 
   build_cli "${target}"
-  if "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
-    "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # refused on replicas (harmless)
-    "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
-      classify leave-reset yes "CLUSTER RESET HARD on ${target} failed"
-      return 1
-    }
-  fi
+  "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # refused on replicas (harmless)
+  "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
+    classify leave-reset yes "CLUSTER RESET HARD on ${target} failed"
+    return 1
+  }
 
   for host in ${remaining}; do
     build_cli "${host}"

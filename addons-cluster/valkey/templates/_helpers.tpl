@@ -163,8 +163,7 @@ schedulingPolicy:
             labelSelector:
               matchLabels:
                 app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
-                app.kubernetes.io/managed-by: "kubeblocks"
-                apps.kubeblocks.io/sharding-name: "shard"
+                app.kubernetes.io/component: "valkey-cluster-shard"
             topologyKey: kubernetes.io/hostname
           weight: 100
 {{- end }}
