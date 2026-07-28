@@ -12,6 +12,12 @@ Describe "Elasticsearch 9.3.2 chart contract"
   tools_digest="docker.io/apecloud/curl-jq@sha256:7777777777777777777777777777777777777777777777777777777777777777"
   agent_digest="docker.io/apecloud/elasticsearch-agent@sha256:8888888888888888888888888888888888888888888888888888888888888888"
 
+  prepare_cluster_chart() {
+    helm dependency build "${cluster_chart}" >/dev/null
+  }
+
+  BeforeAll 'prepare_cluster_chart'
+
   It "renders isolated 9.x topology, digest-only releases, and version-mapped backup actions"
     When run env \
       ES9_ES_DIGEST="${es_digest}" \
