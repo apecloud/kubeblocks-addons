@@ -115,6 +115,29 @@ puts "kibana_digest=#{kibana9.dig("images", "kibana")}"
 
 bpt = by_kind.fetch("BackupPolicyTemplate").find { |item| item.dig("metadata", "name") == "elasticsearch-9-backup-policy-template" }
 abort "9.x BackupPolicyTemplate not rendered" unless bpt
+bpt_patterns = bpt.dig("spec", "compDefs").map { |pattern| Regexp.new(pattern) }
+topology_representatives = topologies.to_h do |topology|
+  component_names = topology["components"].flat_map do |component|
+    topology_pattern = Regexp.new(component["compDef"])
+    es_cmpds.map do |cmpd|
+      name = cmpd.dig("metadata", "name")
+      name if topology_pattern.match?(name)
+    end.compact
+  end
+  representatives = component_names.select do |name|
+    bpt_patterns.any? { |pattern| pattern.match?(name) }
+  end
+  normalized = representatives.map { |name| name.sub(/-9-.+$/, "-9") }
+  [topology["name"], normalized]
+end
+expected_representatives = {
+  "single-node" => ["elasticsearch-9"],
+  "multi-node" => ["elasticsearch-data-9"]
+}
+unless topology_representatives == expected_representatives
+  abort "unexpected 9.x BPT topology representatives: #{topology_representatives}"
+end
+puts "bpt_topology_representatives=#{topology_representatives.map { |name, representatives| "#{name}:#{representatives.join(",")}" }.join(";")}"
 methods = bpt.dig("spec", "backupMethods").to_h { |method| [method["name"], method] }
 mappings = methods.transform_values do |method|
   env = method.fetch("env").first

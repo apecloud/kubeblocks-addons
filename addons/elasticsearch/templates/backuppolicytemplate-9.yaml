@@ -9,7 +9,6 @@ spec:
   serviceKind: Elasticsearch
   compDefs:
     - {{ include "elasticsearch9.cmpdRegexPattern" . }}
-    - {{ include "elasticsearchMaster9.cmpdRegexPattern" . }}
     - {{ include "elasticsearchData9.cmpdRegexPattern" . }}
   backupMethods:
     - name: full-backup
