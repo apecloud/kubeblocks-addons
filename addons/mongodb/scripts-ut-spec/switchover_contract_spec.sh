@@ -73,7 +73,7 @@ MOCK
 printf 'TIMEOUT <%s>\n' "$1" >> "$MOCK_CALL_LOG"
 case "${MOCK_TIMEOUT_MODE:-run}:$1" in
   syncer-expire:10s|probe-expire:3s)
-    exit 124
+    exit 143
     ;;
 esac
 shift
@@ -225,6 +225,64 @@ MOCK
     shellcheck --shell=sh --severity=warning "$script"
   }
 
+  run_actual_tools_image_timeout_control() {
+    local mode="$1"
+    local chart_dir
+    local script
+    local temp_dir
+    local host_timeout
+    local rc
+
+    chart_dir=$(cd .. && pwd)
+    script="$chart_dir/scripts/mongodb-switchover.sh"
+
+    # Keep the exact-parent RED bounded; the actual-image command runs once
+    # the implementation contains both declared deadline surfaces.
+    grep -F "timeout 10s" "$script" >/dev/null || return 101
+    grep -F "timeout 3s" "$script" >/dev/null || return 101
+
+    host_timeout=$(command -v gtimeout || command -v timeout) || return 102
+    temp_dir=$(mktemp -d)
+    mkdir -p "$temp_dir/tools"
+
+    cat > "$temp_dir/tools/syncerctl" <<'MOCK'
+#!/bin/sh
+if [ "$ACTUAL_TIMEOUT_MODE" = "request" ]; then
+  sleep 30
+fi
+printf 'switchover accepted\n'
+MOCK
+    cat > "$temp_dir/kubectl" <<'MOCK'
+#!/bin/sh
+if [ "$ACTUAL_TIMEOUT_MODE" = "probe" ]; then
+  sleep 30
+fi
+MOCK
+    chmod 755 \
+      "$temp_dir" \
+      "$temp_dir/tools" \
+      "$temp_dir/tools/syncerctl" \
+      "$temp_dir/kubectl"
+
+    "$host_timeout" 20s docker run --rm --platform linux/amd64 \
+      --volume "$chart_dir/scripts:/scripts:ro" \
+      --volume "$temp_dir/tools:/tools:ro" \
+      --volume "$temp_dir/kubectl:/fixture/kubectl:ro" \
+      --env "ACTUAL_TIMEOUT_MODE=$mode" \
+      --env "MONGODB_KUBECTL_BIN=/fixture/kubectl" \
+      --env "KB_SWITCHOVER_ROLE=primary" \
+      --env "KB_SWITCHOVER_CURRENT_NAME=mongodb-0" \
+      --env "KB_SWITCHOVER_CANDIDATE_NAME=mongodb-1" \
+      --env "CLUSTER_NAMESPACE=test-ns" \
+      --env "KB_CLUSTER_COMP_NAME=mongo-rs" \
+      local/kubeblocks-tools:a0f9a4405-linux-amd64 \
+      sh /scripts/mongodb-switchover.sh
+    rc=$?
+
+    rm -rf "$temp_dir"
+    return "$rc"
+  }
+
   It "closes a candidate switchover only after the exact completion ConfigMap disappears"
     When call run_switchover primary mongodb-0 mongodb-1
     The status should be success
@@ -274,9 +332,9 @@ MOCK
 
   It "preserves a completion-probe timeout and classifies it"
     When call run_switchover primary mongodb-0 mongodb-1 0 probe-expire
-    The status should equal 124
+    The status should equal 143
     The stderr should include "phase: completion-probe-timeout"
-    The stderr should include "completion-probe-rc: 124"
+    The stderr should include "completion-probe-rc: 143"
     The stderr should include "next-retry-safe: no"
     The output should not include "KUBECTL"
     The output should not include "SLEEP"
@@ -362,13 +420,29 @@ MOCK
 
   It "preserves syncerctl timeout status and does not probe ambiguous absence"
     When call run_switchover primary mongodb-0 mongodb-1 0 syncer-expire
-    The status should equal 124
+    The status should equal 143
     The stderr should include "phase: syncerctl-timeout"
-    The stderr should include "syncerctl-rc: 124"
+    The stderr should include "syncerctl-rc: 143"
     The stderr should include "next-retry-safe: no"
     The output should include "TEST:calls=TIMEOUT <10s>"
     The output should not include "SYNCERCTL"
     The output should not include "KUBECTL"
+  End
+
+  It "classifies a hanging request under the exact BusyBox tools image"
+    When call run_actual_tools_image_timeout_control request
+    The status should equal 143
+    The stderr should include "phase: syncerctl-timeout"
+    The stderr should include "syncerctl-rc: 143"
+    The stderr should include "next-retry-safe: no"
+  End
+
+  It "classifies a hanging completion probe under the exact BusyBox tools image"
+    When call run_actual_tools_image_timeout_control probe
+    The status should equal 143
+    The stderr should include "phase: completion-probe-timeout"
+    The stderr should include "completion-probe-rc: 143"
+    The stderr should include "next-retry-safe: no"
   End
 
   It "declares and passes the POSIX sh action-source gate"
