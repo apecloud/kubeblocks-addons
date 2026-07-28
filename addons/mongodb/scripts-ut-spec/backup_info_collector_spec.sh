@@ -139,7 +139,7 @@ SH
   }
 
   run_datafile_backup_and_report() {
-    local child_version status tar_state info_state residue_count
+    local child_version status tar_state info_state exit_marker residue_count
 
     "$SHELLSPEC_SHELL" -c '
       printf "%s\n" "$BASH_VERSION" >"$MONGODB_TEST_CHILD_VERSION_FILE"
@@ -158,12 +158,31 @@ SH
     else
       info_state=absent
     fi
+    if [ -f "${DP_BACKUP_INFO_FILE}.exit" ]; then
+      exit_marker=present
+    else
+      exit_marker=absent
+    fi
     residue_count=$(find "$test_root" -maxdepth 1 -type f \
       ! -name backup-info.json ! -name tar-called \
-      ! -name child-bash-version | wc -l | tr -d ' ')
-    printf 'tar=%s info=%s residue=%s child=%s\n' \
-      "$tar_state" "$info_state" "$residue_count" "$child_version"
+      ! -name backup-info.json.exit ! -name child-bash-version \
+      | wc -l | tr -d ' ')
+    printf 'tar=%s info=%s marker=%s residue=%s child=%s\n' \
+      "$tar_state" "$info_state" "$exit_marker" "$residue_count" \
+      "$child_version"
     return "$status"
+  }
+
+  run_empty_time_contract() {
+    local helper_status action_status
+
+    source ../dataprotection/backup-info-collector.sh
+    get_current_time >/dev/null
+    helper_status=$?
+    run_datafile_backup_and_report
+    action_status=$?
+    printf 'helper=%s action=%s\n' "$helper_status" "$action_status"
+    return "$action_status"
   }
 
   run_stat_with_existing_destination() {
@@ -230,20 +249,24 @@ SH
     export MONGODB_TEST_DATE_OUTPUT="2026-07-29T00:00:00Z"
     export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
 
-    When call run_datafile_backup_and_report
+    When call run_empty_time_contract
 
-    The status should equal 65
-    The output should equal "tar=absent info=absent residue=0 child=$BASH_VERSION"
+    The status should equal 1
+    The line 1 of output should equal "failed with exit code 65"
+    The line 2 of output should equal "tar=absent info=absent marker=present residue=0 child=$BASH_VERSION"
+    The line 3 of output should equal "helper=65 action=1"
   End
 
   It "classifies empty successful date output before the datafile backup"
     export MONGODB_TEST_CLIENT_OUTPUT="1753747200"
     export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
 
-    When call run_datafile_backup_and_report
+    When call run_empty_time_contract
 
-    The status should equal 65
-    The output should equal "tar=absent info=absent residue=0 child=$BASH_VERSION"
+    The status should equal 1
+    The line 1 of output should equal "failed with exit code 65"
+    The line 2 of output should equal "tar=absent info=absent marker=present residue=0 child=$BASH_VERSION"
+    The line 3 of output should equal "helper=65 action=1"
   End
 
   It "preserves datasafed failure and does not write backup metadata"
@@ -301,8 +324,9 @@ TotalSize 84'
 
     When call run_datafile_backup_and_report
 
-    The status should be failure
-    The output should equal "tar=absent info=absent residue=0 child=$BASH_VERSION"
+    The status should equal 1
+    The line 1 of output should equal "failed with exit code 17"
+    The line 2 of output should equal "tar=absent info=absent marker=present residue=0 child=$BASH_VERSION"
   End
 
   It "preserves existing metadata and removes temporary output when publication fails"
@@ -323,7 +347,8 @@ TotalSize 84'
 
     When call run_mongodump_publication_failure
 
-    The status should be failure
-    The output should equal "destination=previous-metadata marker=present residue=0 child=$BASH_VERSION"
+    The status should equal 1
+    The line 1 of output should equal "failed with exit code 29"
+    The line 2 of output should equal "destination=previous-metadata marker=present residue=0 child=$BASH_VERSION"
   End
 End
