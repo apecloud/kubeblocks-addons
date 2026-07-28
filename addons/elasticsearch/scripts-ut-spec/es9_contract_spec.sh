@@ -12,11 +12,12 @@ Describe "Elasticsearch 9.3.2 chart contract"
   tools_digest="docker.io/apecloud/curl-jq@sha256:7777777777777777777777777777777777777777777777777777777777777777"
   agent_digest="docker.io/apecloud/elasticsearch-agent@sha256:8888888888888888888888888888888888888888888888888888888888888888"
 
-  prepare_cluster_chart() {
+  prepare_chart_dependencies() {
+    helm dependency build "${addon_chart}" >/dev/null || return 1
     helm dependency build "${cluster_chart}" >/dev/null
   }
 
-  BeforeAll 'prepare_cluster_chart'
+  BeforeAll 'prepare_chart_dependencies'
 
   It "renders isolated 9.x topology, digest-only releases, and version-mapped backup actions"
     When run env \
