@@ -106,6 +106,43 @@ MOCK
     return "$rc"
   }
 
+  render_post_provision_command() {
+    local chart_dir
+    local rendered
+    local render_rc
+
+    chart_dir=$(cd .. && pwd)
+    helm dependency build "$chart_dir" >/dev/null || return
+    rendered=$(helm template kb-addon-mongodb "$chart_dir" \
+      --show-only templates/cmpd-mongodb-shard.yaml)
+    render_rc=$?
+    if [ "$render_rc" -ne 0 ]; then
+      echo "helm template failed with status $render_rc" >&2
+      return "$render_rc"
+    fi
+
+    # shellcheck disable=SC2016
+    printf '%s\n' "$rendered" | ruby -ryaml -e '
+      definitions = YAML.load_stream($stdin.read).compact.select do |document|
+        document["kind"] == "ComponentDefinition"
+      end
+      abort "expected one ComponentDefinition, got #{definitions.length}" unless definitions.length == 1
+
+      command = definitions.first.dig(
+        "spec", "lifecycleActions", "postProvision", "exec", "command", 2
+      )
+      abort "postProvision command is missing" unless command
+      puts command
+    '
+  }
+
+  It "keeps postProvision diagnostics on action stderr while logging stdout"
+    When call render_post_provision_command
+    The status should be success
+    The output should include "/scripts/mongodb-shard-manage.sh --post-provision >> /tmp/post-provision.log"
+    The output should not include "2>&1"
+  End
+
   It "preserves a failed mongos probe status and ignores stale ready output"
     When call run_post_provision '{ "ok": 1 }' 17
     The status should equal 17
