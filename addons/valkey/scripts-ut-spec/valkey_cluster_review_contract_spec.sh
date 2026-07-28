@@ -46,6 +46,15 @@ Describe "Valkey cluster review contracts"
       END { exit !found }
     ' "${cmpd_file}"
   }
+  parallel_provision_contract() {
+    awk '
+      /^  podManagementPolicy:/ {
+        count++
+        if ($2 == "Parallel") parallel++
+      }
+      END { exit !(count == 1 && parallel == 1) }
+    ' "${cmpd_file}"
+  }
   render_cluster_chart() {
     helm dependency build ../../../addons-cluster/valkey >/dev/null &&
       helm template review ../../../addons-cluster/valkey \
@@ -70,6 +79,11 @@ Describe "Valkey cluster review contracts"
 
   It "declares the primary role exclusive"
     When call exclusive_primary_contract
+    The status should be success
+  End
+
+  It "creates every shard replica in parallel before cluster-gated readiness"
+    When call parallel_provision_contract
     The status should be success
   End
 

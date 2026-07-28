@@ -26,7 +26,9 @@ spec:
   serviceKind: valkey-cluster
   serviceVersion: {{ .serviceVersion }}
   updateStrategy: BestEffortParallel
-  podManagementPolicy: OrderedReady
+  # Readiness is cluster-gated, so every ordinal must be created before
+  # postProvision can form the cluster and commit each pod's ready marker.
+  podManagementPolicy: Parallel
 
   replicasLimit:
     # Per-shard scale contract at the API layer (not only the chart
