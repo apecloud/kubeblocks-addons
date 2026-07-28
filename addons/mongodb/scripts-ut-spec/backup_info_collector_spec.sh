@@ -233,6 +233,7 @@ SH
 
     The status should equal 17
     The output should be blank
+    The stderr should equal "backup info timestamp client failed rc=17"
   End
 
   It "fails when the client timestamp cannot be converted"
@@ -243,6 +244,7 @@ SH
 
     The status should equal 11
     The output should be blank
+    The stderr should equal "backup info timestamp conversion failed rc=11"
   End
 
   It "classifies empty successful MongoDB output before the datafile backup"
@@ -255,6 +257,8 @@ SH
     The line 1 of output should equal "failed with exit code 65"
     The line 2 of output should equal "tar=absent info=absent marker=present residue=0 child=$BASH_VERSION"
     The line 3 of output should equal "helper=65 action=1"
+    The stderr should equal "backup info timestamp client returned empty output rc=65
+backup info timestamp client returned empty output rc=65"
   End
 
   It "classifies empty successful date output before the datafile backup"
@@ -267,6 +271,8 @@ SH
     The line 1 of output should equal "failed with exit code 65"
     The line 2 of output should equal "tar=absent info=absent marker=present residue=0 child=$BASH_VERSION"
     The line 3 of output should equal "helper=65 action=1"
+    The stderr should equal "backup info timestamp conversion returned empty output rc=65
+backup info timestamp conversion returned empty output rc=65"
   End
 
   It "preserves datasafed failure and does not write backup metadata"
@@ -276,6 +282,7 @@ SH
 
     The status should equal 23
     The output should equal "file=absent"
+    The stderr should equal "backup info datasafed stat failed rc=23"
   End
 
   It "rejects a successful datasafed response without TotalSize"
@@ -285,6 +292,7 @@ SH
 
     The status should be failure
     The output should equal "file=absent"
+    The stderr should equal "backup info TotalSize validation failed rc=65"
   End
 
   It "rejects an empty TotalSize value without replacing existing metadata"
@@ -294,6 +302,7 @@ SH
 
     The status should equal 65
     The output should equal "destination=previous-metadata residue=0"
+    The stderr should equal "backup info TotalSize validation failed rc=65"
   End
 
   It "rejects duplicate TotalSize values without replacing existing metadata"
@@ -305,6 +314,7 @@ TotalSize 84'
 
     The status should equal 65
     The output should equal "destination=previous-metadata residue=0"
+    The stderr should equal "backup info TotalSize validation failed rc=65"
   End
 
   It "writes exact metadata for a valid datasafed TotalSize response"
@@ -327,6 +337,7 @@ TotalSize 84'
     The status should equal 1
     The line 1 of output should equal "failed with exit code 17"
     The line 2 of output should equal "tar=absent info=absent marker=present residue=0 child=$BASH_VERSION"
+    The stderr should equal "backup info timestamp client failed rc=17"
   End
 
   It "preserves existing metadata and removes temporary output when publication fails"
@@ -337,6 +348,7 @@ TotalSize 84'
 
     The status should equal 29
     The output should equal "destination=previous-metadata residue=0"
+    The stderr should equal "backup info publication failed rc=29"
   End
 
   It "cleans failed publication under mongodump errexit and records action failure"
@@ -350,5 +362,6 @@ TotalSize 84'
     The status should equal 1
     The line 1 of output should equal "failed with exit code 29"
     The line 2 of output should equal "destination=previous-metadata marker=present residue=0 child=$BASH_VERSION"
+    The stderr should equal "backup info publication failed rc=29"
   End
 End
