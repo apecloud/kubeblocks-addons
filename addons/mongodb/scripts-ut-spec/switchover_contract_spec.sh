@@ -73,6 +73,9 @@ MOCK
 printf 'TIMEOUT <%s>\n' "$1" >> "$MOCK_CALL_LOG"
 case "${MOCK_TIMEOUT_MODE:-run}:$1" in
   syncer-expire:10s|probe-expire:3s)
+    exit 124
+    ;;
+  syncer-expire-143:10s|probe-expire-143:3s)
     exit 143
     ;;
 esac
@@ -298,9 +301,119 @@ MOCK
     shellcheck --shell=sh --severity=warning "$script"
   }
 
-  run_actual_tools_image_timeout_control() {
+  verify_resolved_action_image_matrix() {
+    local chart_dir
+
+    chart_dir=$(cd .. && pwd)
+    helm template kb-addon-mongodb "$chart_dir" --dependency-update |
+      ruby -ryaml -e '
+      expected = {
+        "8.0.17" => "docker.io/apecloud/percona-server-mongodb:8.0.17",
+        "7.0.28" => "docker.io/apecloud/percona-server-mongodb:7.0.28",
+        "6.0.27" => "docker.io/apecloud/percona-server-mongodb:6.0.27",
+        "5.0.29" => "docker.io/apecloud/percona-server-mongodb:5.0.29-multi",
+        "4.4.29" => "docker.io/apecloud/percona-server-mongodb:4.4.29-multi",
+        "4.0.28" => "docker.io/apecloud/percona-server-mongodb:4.0.28"
+      }
+      documents = YAML.load_stream($stdin.read).compact
+      components = documents.select do |document|
+        document["kind"] == "ComponentDefinition" &&
+          document.dig("spec", "lifecycleActions", "switchover")
+      end
+      versions = documents.select { |document| document["kind"] == "ComponentVersion" }
+      abort "expected three switchover ComponentDefinitions, got #{components.length}" unless components.length == 3
+      abort "expected three ComponentVersions, got #{versions.length}" unless versions.length == 3
+
+      rows = []
+      components.each do |component|
+        component_name = component.dig("metadata", "name")
+        matches = versions.select do |version|
+          Array(version.dig("spec", "compatibilityRules")).any? do |rule|
+            Array(rule["compDefs"]).any? do |pattern|
+              Regexp.new(pattern).match?(component_name)
+            end
+          end
+        end
+        unless matches.length == 1
+          abort "#{component_name}: expected one compatible ComponentVersion, got #{matches.length}"
+        end
+
+        version = matches.first
+        releases = Array(version.dig("spec", "releases"))
+        unless releases.map { |release| release["serviceVersion"] }.sort == expected.keys.sort
+          abort "#{component_name}: supported serviceVersion matrix drift"
+        end
+
+        action_names = component.dig("spec", "lifecycleActions").keys.map(&:downcase)
+        releases.each do |release|
+          service_version = release.fetch("serviceVersion")
+          images = release.fetch("images").to_h do |name, image|
+            [name.downcase, image]
+          end
+          resolved_actions = action_names.map { |name| images[name] }.compact
+          switchover_image = images["switchover"]
+          abort "#{component_name}/#{service_version}: switchover image unresolved" unless switchover_image
+          unless resolved_actions.uniq == [switchover_image]
+            abort "#{component_name}/#{service_version}: multiple resolved action images #{resolved_actions.uniq.inspect}"
+          end
+          unless switchover_image == images["mongodb"]
+            abort "#{component_name}/#{service_version}: action image differs from mongodb image"
+          end
+          unless switchover_image == expected.fetch(service_version)
+            abort "#{component_name}/#{service_version}: unexpected image #{switchover_image}"
+          end
+          rows << [component_name, service_version, switchover_image]
+        end
+      end
+
+      abort "expected 18 resolved component/release rows, got #{rows.length}" unless rows.length == 18
+      abort "expected six unique action images" unless rows.map(&:last).uniq.sort == expected.values.sort
+      '
+  }
+
+  resolve_switchover_image() {
+    local service_version="$1"
+    local chart_dir
+
+    chart_dir=$(cd .. && pwd)
+    helm template kb-addon-mongodb "$chart_dir" --dependency-update |
+      SERVICE_VERSION="$service_version" \
+      ruby -ryaml -e '
+      service_version = ENV.fetch("SERVICE_VERSION")
+      documents = YAML.load_stream($stdin.read).compact
+      component = documents.find do |document|
+        document["kind"] == "ComponentDefinition" &&
+          document.dig("metadata", "name").start_with?("mongodb-") &&
+          document.dig("spec", "lifecycleActions", "switchover")
+      end
+      abort "default mongodb ComponentDefinition missing" unless component
+
+      component_name = component.dig("metadata", "name")
+      version = documents.find do |document|
+        document["kind"] == "ComponentVersion" &&
+          Array(document.dig("spec", "compatibilityRules")).any? do |rule|
+            Array(rule["compDefs"]).any? do |pattern|
+              Regexp.new(pattern).match?(component_name)
+            end
+          end
+      end
+      abort "compatible ComponentVersion missing" unless version
+
+      release = Array(version.dig("spec", "releases")).find do |item|
+        item["serviceVersion"] == service_version
+      end
+      abort "exact default serviceVersion release missing" unless release
+      images = release.fetch("images").to_h { |name, image| [name.downcase, image] }
+      image = images["switchover"]
+      abort "default switchover image unresolved" unless image
+      puts image
+      '
+  }
+
+  run_actual_resolved_image_timeout_control() {
     local mode="$1"
     local chart_dir
+    local image
     local script
     local temp_dir
     local host_timeout
@@ -308,6 +421,7 @@ MOCK
 
     chart_dir=$(cd .. && pwd)
     script="$chart_dir/scripts/mongodb-switchover.sh"
+    image=$(resolve_switchover_image "8.0.17") || return
 
     # Keep the exact-parent RED bounded; the actual-image command runs once
     # the implementation contains both declared deadline surfaces.
@@ -315,6 +429,8 @@ MOCK
     grep -F "timeout 3s" "$script" >/dev/null || return 101
 
     host_timeout=$(command -v gtimeout || command -v timeout) || return 102
+    "$host_timeout" 300s docker pull --platform linux/amd64 "$image" >/dev/null ||
+      return
     temp_dir=$(mktemp -d)
     mkdir -p "$temp_dir/tools"
 
@@ -360,8 +476,9 @@ ENV
       --volume "$temp_dir/tools:/tools:ro" \
       --volume "$temp_dir/kubectl:/fixture/kubectl:ro" \
       --env-file "$temp_dir/action.env" \
-      local/kubeblocks-tools:a0f9a4405-linux-amd64 \
-      sh /scripts/mongodb-switchover.sh
+      --entrypoint /bin/sh \
+      "$image" \
+      /scripts/mongodb-switchover.sh
     rc=$?
 
     rm -rf "$temp_dir"
@@ -415,11 +532,11 @@ ENV
     The output should not include "SLEEP"
   End
 
-  It "preserves a completion-probe timeout and classifies it"
+  It "preserves the resolved-image completion-probe timeout and classifies it"
     When call run_switchover primary mongodb-0 mongodb-1 0 probe-expire
-    The status should equal 143
+    The status should equal 124
     The stderr should include "phase: completion-probe-timeout"
-    The stderr should include "completion-probe-rc: 143"
+    The stderr should include "completion-probe-rc: 124"
     The stderr should include "next-retry-safe: no"
     The output should not include "KUBECTL"
     The output should not include "SLEEP"
@@ -503,35 +620,55 @@ ENV
     The output should not include "KUBECTL"
   End
 
-  It "preserves syncerctl timeout status and does not probe ambiguous absence"
+  It "preserves the resolved-image syncerctl timeout status and does not probe ambiguous absence"
     When call run_switchover primary mongodb-0 mongodb-1 0 syncer-expire
-    The status should equal 143
+    The status should equal 124
     The stderr should include "phase: syncerctl-timeout"
-    The stderr should include "syncerctl-rc: 143"
+    The stderr should include "syncerctl-rc: 124"
     The stderr should include "next-retry-safe: no"
     The output should include "TEST:calls=TIMEOUT <10s>"
     The output should not include "SYNCERCTL"
     The output should not include "KUBECTL"
   End
 
-  It "classifies a hanging request under the exact BusyBox tools image"
-    When call run_actual_tools_image_timeout_control request
+  It "also classifies BusyBox-style syncerctl timeout status without false success"
+    When call run_switchover primary mongodb-0 mongodb-1 0 syncer-expire-143
     The status should equal 143
     The stderr should include "phase: syncerctl-timeout"
     The stderr should include "syncerctl-rc: 143"
     The stderr should include "next-retry-safe: no"
+    The output should not include "SYNCERCTL"
+    The output should not include "KUBECTL"
   End
 
-  It "classifies a hanging completion probe under the exact BusyBox tools image"
-    When call run_actual_tools_image_timeout_control probe
+  It "also classifies BusyBox-style completion-probe timeout status without false success"
+    When call run_switchover primary mongodb-0 mongodb-1 0 probe-expire-143
     The status should equal 143
     The stderr should include "phase: completion-probe-timeout"
     The stderr should include "completion-probe-rc: 143"
     The stderr should include "next-retry-safe: no"
+    The output should not include "KUBECTL"
+    The output should not include "SLEEP"
   End
 
-  It "executes candidate-free switchover with candidate variables absent in the exact tools image"
-    When call run_actual_tools_image_timeout_control candidate-free
+  It "classifies a hanging request under the resolved MongoDB action image"
+    When call run_actual_resolved_image_timeout_control request
+    The status should equal 124
+    The stderr should include "phase: syncerctl-timeout"
+    The stderr should include "syncerctl-rc: 124"
+    The stderr should include "next-retry-safe: no"
+  End
+
+  It "classifies a hanging completion probe under the resolved MongoDB action image"
+    When call run_actual_resolved_image_timeout_control probe
+    The status should equal 124
+    The stderr should include "phase: completion-probe-timeout"
+    The stderr should include "completion-probe-rc: 124"
+    The stderr should include "next-retry-safe: no"
+  End
+
+  It "executes candidate-free switchover with candidate variables absent in the resolved MongoDB action image"
+    When call run_actual_resolved_image_timeout_control candidate-free
     The status should be success
     The output should include "ACTUAL_SYNCERCTL <switchover> <--primary> <mongodb-0>"
     The output should not include "<--candidate>"
@@ -541,6 +678,11 @@ ENV
 
   It "retains kubectl and syncer producers on the selected default and custom mounts"
     When call verify_rendered_completion_toolchain
+    The status should be success
+  End
+
+  It "resolves one exact MongoDB action image for every supported component and service version"
+    When call verify_resolved_action_image_matrix
     The status should be success
   End
 
