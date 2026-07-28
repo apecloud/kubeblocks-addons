@@ -5,9 +5,9 @@ Describe "MongoDB shard postProvision readiness contract"
   run_post_provision() {
     local ping_stdout="$1"
     local ping_rc="$2"
-    local shard_stdout="${3-{ \"_id\": \"mongodb-shard-0\" }}"
+    local shard_stdout
     local shard_rc="${4:-0}"
-    local shard_after_add_stdout="${5-{ \"_id\": \"mongodb-shard-0\" }}"
+    local shard_after_add_stdout
     local add_rc="${6:-0}"
     local add_stdout="${7-}"
     local client_name="${8:-mongosh}"
@@ -15,6 +15,16 @@ Describe "MongoDB shard postProvision readiness contract"
     local script_file
     local rc
 
+    if [ "$#" -lt 3 ]; then
+      shard_stdout='{ "_id": "mongodb-shard-0" }'
+    else
+      shard_stdout="$3"
+    fi
+    if [ "$#" -lt 5 ]; then
+      shard_after_add_stdout='{ "_id": "mongodb-shard-0" }'
+    else
+      shard_after_add_stdout="$5"
+    fi
     if [ "$#" -lt 7 ]; then
       add_stdout='{ "ok": 1 }'
     fi
@@ -191,6 +201,9 @@ MOCK
     The output should include "TEST:ping-count=1"
     The output should include "TEST:exists-count=0"
     The output should include "TEST:add-count=0"
+    The stderr should include "postProvision diagnosis:"
+    The stderr should include "phase: mongos-probe-failed"
+    The stderr should include "next-retry-safe: no"
   End
 
   It "continues when one successful probe positively reports ready"
@@ -204,7 +217,7 @@ MOCK
   End
 
   It "propagates one shard-add failure without retrying inside the invocation"
-    When call run_post_provision '{ "ok": 1 }' 0 null 0 null 23
+    When call run_post_provision '{ "ok": 1 }' 0 'null' 0 'null' 23
     The status should equal 23
     The output should include "TEST:ping-count=1"
     The output should include "TEST:exists-count=1"
@@ -215,7 +228,7 @@ MOCK
   End
 
   It "defers after one add when the shard is not yet positively visible"
-    When call run_post_provision '{ "ok": 1 }' 0 null 0 null 0
+    When call run_post_provision '{ "ok": 1 }' 0 'null' 0 'null' 0
     The status should be failure
     The output should include "TEST:ping-count=1"
     The output should include "TEST:exists-count=2"
@@ -226,7 +239,7 @@ MOCK
   End
 
   It "fails closed when addShard returns ok zero with process status zero"
-    When call run_post_provision '{ "ok": 1 }' 0 null 0 null 0 '{ "ok": 0 }'
+    When call run_post_provision '{ "ok": 1 }' 0 'null' 0 'null' 0 '{ "ok": 0 }'
     The status should be failure
     The output should include "TEST:ping-count=1"
     The output should include "TEST:exists-count=1"
@@ -237,7 +250,7 @@ MOCK
   End
 
   It "closes after one add is positively visible"
-    When call run_post_provision '{ "ok": 1 }' 0 null 0 '{ "_id": "mongodb-shard-0" }' 0
+    When call run_post_provision '{ "ok": 1 }' 0 'null' 0 '{ "_id": "mongodb-shard-0" }' 0
     The status should be success
     The output should include "TEST:ping-count=1"
     The output should include "TEST:exists-count=2"
@@ -265,7 +278,7 @@ MOCK
   End
 
   It "rejects malformed addShard JSON without a second mutation"
-    When call run_post_provision '{ "ok": 1 }' 0 null 0 null 0 not-json
+    When call run_post_provision '{ "ok": 1 }' 0 'null' 0 'null' 0 not-json
     The status should be failure
     The output should include "TEST:ping-count=1"
     The output should include "TEST:exists-count=1"
