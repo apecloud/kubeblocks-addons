@@ -118,12 +118,14 @@ MOCK
     return "$rc"
   }
 
-  verify_rendered_switchover_actions() {
-    local chart_dir
-
-    chart_dir=$(cd .. && pwd)
+  verify_rendered_switchover_actions_for_path() {
+    local chart_dir="$1"
+    local expected_data_path="$2"
+    shift 2
     # shellcheck disable=SC2016
-    helm template kb-addon-mongodb "$chart_dir" --dependency-update | ruby -ryaml -e '
+    helm template kb-addon-mongodb "$chart_dir" --dependency-update "$@" |
+      EXPECTED_DATA_PATH="$expected_data_path" ruby -ryaml -e '
+      expected_data_path = ENV.fetch("EXPECTED_DATA_PATH")
       documents = YAML.load_stream($stdin.read).compact
       components = documents.select do |document|
         document["kind"] == "ComponentDefinition" &&
@@ -141,6 +143,9 @@ MOCK
         abort "#{name}: malformed command #{command.inspect}" unless command&.length == 3
         abort "#{name}: expected /bin/sh -c" unless command[0, 2] == ["/bin/sh", "-c"]
         abort "#{name}: unexpected action image" if action.dig("exec", "image")
+        unless action.dig("exec", "container") == "mongodb"
+          abort "#{name}: switchover must select the mongodb container"
+        end
 
         body = command[2]
         expected = "/scripts/mongodb-switchover.sh > /tmp/switchover.log"
@@ -151,7 +156,7 @@ MOCK
         end
         unless kubectl_env == {
           "name" => "MONGODB_KUBECTL_BIN",
-          "value" => "/data/mongodb/tmp/bin/kubectl"
+          "value" => "#{expected_data_path}/tmp/bin/kubectl"
         }
           abort "#{name}: missing exact MONGODB_KUBECTL_BIN env"
         end
@@ -165,9 +170,27 @@ MOCK
         init = (component.dig("spec", "runtime", "initContainers") || [])
           .find { |container| container["name"] == "init-kubectl" }
         abort "#{name}: missing init-kubectl" unless init
+
+        mongodb = (component.dig("spec", "runtime", "containers") || [])
+          .find { |container| container["name"] == "mongodb" }
+        abort "#{name}: missing selected mongodb runtime container" unless mongodb
+        mounts = Array(mongodb["volumeMounts"])
+        script_mount = mounts.find { |mount| mount["mountPath"] == "/scripts" }
+        abort "#{name}: selected container does not share /scripts" unless script_mount
+        tools_mount = mounts.find { |mount| mount["mountPath"] == "/tools" }
+        abort "#{name}: selected container does not share /tools" unless tools_mount
+        data_mount = mounts.find { |mount| mount["mountPath"] == expected_data_path }
+        abort "#{name}: selected container missing #{expected_data_path}" unless data_mount
+
+        init_data_mount = Array(init["volumeMounts"]).find do |mount|
+          mount["name"] == data_mount["name"] &&
+            mount["mountPath"] == expected_data_path
+        end
+        abort "#{name}: init and mongodb data mounts do not match" unless init_data_mount
+
         init_body = Array(init["command"]).join("\n")
         unless init_body.include?("/opt/bitnami/kubectl/bin/kubectl") &&
-               init_body.include?("/data/mongodb/tmp/bin")
+               init_body.include?("#{expected_data_path}/tmp/bin")
           abort "#{name}: init-kubectl does not project the expected binary"
         end
 
@@ -178,6 +201,17 @@ MOCK
         abort "#{name}: ConfigMap get permission missing" unless Array(configmaps["verbs"]).include?("get")
       end
     '
+  }
+
+  verify_rendered_switchover_actions() {
+    local chart_dir
+
+    chart_dir=$(cd .. && pwd)
+    verify_rendered_switchover_actions_for_path "$chart_dir" "/data/mongodb" || return
+    verify_rendered_switchover_actions_for_path \
+      "$chart_dir" \
+      "/custom/mongodb-data" \
+      --set dataMountPath=/custom/mongodb-data
   }
 
   verify_posix_action_source() {
