@@ -75,6 +75,18 @@ Describe "mariadb cluster topology replica invariants"
     The error should include "replication mode requires replicas >= 2"
   End
 
+  It "rejects replication above five replicas through values.schema.json"
+    When call render_chart replication 6
+    The status should be failure
+    The error should include "replicas"
+  End
+
+  It "rejects replication above five replicas in the template even when schema validation is skipped"
+    When call render_chart_without_schema replication 6
+    The status should be failure
+    The error should include "replication mode requires replicas between 2 and 5"
+  End
+
   It "rejects Galera with two replicas through values.schema.json"
     When call render_chart galera 2
     The status should be failure
