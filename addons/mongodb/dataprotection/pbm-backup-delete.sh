@@ -33,8 +33,16 @@ else
         and (.[0] | type == "object")
         and (.[0].status | type == "string")
         and (
-            (.[0].extras[0].backup_name? // null) as $backup_name
-            | $backup_name == null or ($backup_name | type == "string")
+            (.[0].extras[0]?) as $extra
+            | $extra == null
+              or (
+                  ($extra | type == "object")
+                  and (
+                      ($extra | has("backup_name") | not)
+                      or $extra.backup_name == null
+                      or ($extra.backup_name | type == "string")
+                  )
+              )
         )
     ' 2>&1); then
         :
@@ -48,11 +56,21 @@ else
     echo "INFO: Backup status: $backup_status"
 
     if backup_name=$(printf '%s\n' "$backup_json" | jq -e -r -s '
-        (.[0].extras[0].backup_name? // "") as $backup_name
+        (.[0].extras[0]?) as $extra
+        | (
+            if (
+                $extra == null
+                or ($extra | has("backup_name") | not)
+                or $extra.backup_name == null
+            )
+            then ""
+            else $extra.backup_name
+            end
+        ) as $backup_name
         | if $backup_name == ""
           then $backup_name
           elif (
-              ($backup_name | test("^[A-Za-z0-9._:+-]+$"))
+              ($backup_name | test("\\A[A-Za-z0-9._:+-]+\\z"))
               and ($backup_name | startswith("-") | not)
               and $backup_name != "."
               and $backup_name != ".."

@@ -187,4 +187,24 @@ SH
     The output should not include "|rm|"
     The stderr should not be blank
   End
+
+  It "rejects a boolean false backup name before deleting artifacts"
+    export MONGODB_TEST_PULL_OUTPUT='{"status":"Completed","extras":[{"backup_name":false}]}'
+
+    When call run_delete_and_report
+
+    The status should be failure
+    The output should not include "|rm|"
+    The stderr should not be blank
+  End
+
+  It "rejects a backup name with a trailing newline before deleting artifacts"
+    export MONGODB_TEST_PULL_OUTPUT='{"status":"Completed","extras":[{"backup_name":"..\n"}]}'
+
+    When call run_delete_and_report
+
+    The status should be failure
+    The output should not include "|rm|"
+    The stderr should not be blank
+  End
 End
