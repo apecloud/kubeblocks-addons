@@ -103,7 +103,12 @@ MOCK
     export PATH="$temp_dir/bin:$PATH"
     export KB_SWITCHOVER_ROLE="$role"
     export KB_SWITCHOVER_CURRENT_NAME="$current_name"
-    export KB_SWITCHOVER_CANDIDATE_NAME="$candidate_name"
+    if [ -n "$candidate_name" ]; then
+      export KB_SWITCHOVER_CANDIDATE_NAME="$candidate_name"
+      export KB_SWITCHOVER_CANDIDATE_FQDN="$candidate_name.test-ns.svc"
+    else
+      unset KB_SWITCHOVER_CANDIDATE_NAME KB_SWITCHOVER_CANDIDATE_FQDN
+    fi
     export CLUSTER_NAMESPACE="$namespace"
     export KB_CLUSTER_COMP_NAME="$cluster_component_name"
 
@@ -250,6 +255,9 @@ MOCK
 if [ "$ACTUAL_TIMEOUT_MODE" = "request" ]; then
   sleep 30
 fi
+printf 'ACTUAL_SYNCERCTL'
+printf ' <%s>' "$@"
+printf '\n'
 printf 'switchover accepted\n'
 MOCK
     cat > "$temp_dir/kubectl" <<'MOCK'
@@ -264,17 +272,26 @@ MOCK
       "$temp_dir/tools/syncerctl" \
       "$temp_dir/kubectl"
 
+    cat > "$temp_dir/action.env" <<ENV
+ACTUAL_TIMEOUT_MODE=$mode
+MONGODB_KUBECTL_BIN=/fixture/kubectl
+KB_SWITCHOVER_ROLE=primary
+KB_SWITCHOVER_CURRENT_NAME=mongodb-0
+CLUSTER_NAMESPACE=test-ns
+KB_CLUSTER_COMP_NAME=mongo-rs
+ENV
+    if [ "$mode" != "candidate-free" ]; then
+      printf '%s\n' \
+        "KB_SWITCHOVER_CANDIDATE_NAME=mongodb-1" \
+        "KB_SWITCHOVER_CANDIDATE_FQDN=mongodb-1.test-ns.svc" \
+        >> "$temp_dir/action.env"
+    fi
+
     "$host_timeout" 20s docker run --rm --platform linux/amd64 \
       --volume "$chart_dir/scripts:/scripts:ro" \
       --volume "$temp_dir/tools:/tools:ro" \
       --volume "$temp_dir/kubectl:/fixture/kubectl:ro" \
-      --env "ACTUAL_TIMEOUT_MODE=$mode" \
-      --env "MONGODB_KUBECTL_BIN=/fixture/kubectl" \
-      --env "KB_SWITCHOVER_ROLE=primary" \
-      --env "KB_SWITCHOVER_CURRENT_NAME=mongodb-0" \
-      --env "KB_SWITCHOVER_CANDIDATE_NAME=mongodb-1" \
-      --env "CLUSTER_NAMESPACE=test-ns" \
-      --env "KB_CLUSTER_COMP_NAME=mongo-rs" \
+      --env-file "$temp_dir/action.env" \
       local/kubeblocks-tools:a0f9a4405-linux-amd64 \
       sh /scripts/mongodb-switchover.sh
     rc=$?
@@ -443,6 +460,15 @@ MOCK
     The stderr should include "phase: completion-probe-timeout"
     The stderr should include "completion-probe-rc: 143"
     The stderr should include "next-retry-safe: no"
+  End
+
+  It "executes candidate-free switchover with candidate variables absent in the exact tools image"
+    When call run_actual_tools_image_timeout_control candidate-free
+    The status should be success
+    The output should include "ACTUAL_SYNCERCTL <switchover> <--primary> <mongodb-0>"
+    The output should not include "<--candidate>"
+    The output should include "phase: completed"
+    The output should include "completion-configmap: mongo-rs-switchover"
   End
 
   It "declares and passes the POSIX sh action-source gate"
