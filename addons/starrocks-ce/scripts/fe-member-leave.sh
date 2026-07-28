@@ -204,7 +204,8 @@ run_mysql_query() {
 
 query_frontends() {
   local phase="$1"
-  run_mysql_query "${phase}" "${FE_DISCOVERY_SERVICE_NAME}" "SHOW FRONTENDS"
+  local host="${2:-${FE_DISCOVERY_SERVICE_NAME}}"
+  run_mysql_query "${phase}" "${host}" "SHOW FRONTENDS"
 }
 
 LEAVE_HOST=""
@@ -384,8 +385,9 @@ drop_follower() {
 verify_member_absent() {
   local host="$1"
   local port="$2"
+  local leader="$3"
 
-  query_frontends "post-drop-query" || return 1
+  query_frontends "post-drop-query" "${leader}" || return 1
   parse_frontends "${MYSQL_OUTPUT}" || return 1
   if [ "${LEADER_COUNT}" -ne 1 ]; then
     diagnose_failure "leader-not-converged" "true" "1" \
@@ -445,7 +447,7 @@ member_leave() {
 
   log "dropping follower ${leave_host}:${leave_port} from FE cluster via leader ${LEADER_HOST}"
   drop_follower "${leave_host}" "${leave_port}" "${LEADER_HOST}" || return 1
-  verify_member_absent "${leave_host}" "${leave_port}" || return 1
+  verify_member_absent "${leave_host}" "${leave_port}" "${LEADER_HOST}" || return 1
 
   log "member leave completed for ${KB_LEAVE_MEMBER_POD_NAME}"
 }

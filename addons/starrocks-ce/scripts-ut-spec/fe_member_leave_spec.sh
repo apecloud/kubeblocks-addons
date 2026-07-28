@@ -33,6 +33,7 @@ case " $* " in
     [ -f "${count_file}" ] && count=$(cat "${count_file}")
     count=$((count + 1))
     printf '%s' "${count}" > "${count_file}"
+    printf '%s' "$*" > "${fixture_dir}/last-query-args"
     case "${SCENARIO}:${count}" in
       query_fail:1) echo "access denied for secret-value" >&2; exit 42 ;;
       query_hang:1) /bin/sleep 2 ;;
@@ -73,6 +74,24 @@ case " $* " in
       non_leader_removed:*)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+        ;;
+      discovery_stale_after_drop:1)
+        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
+        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+        frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
+        ;;
+      discovery_stale_after_drop:*)
+        case " $* " in
+          *" -h starrocks-fe-0.starrocks-fe-headless "*)
+            frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
+            frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+            ;;
+          *)
+            frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
+            frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+            frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
+            ;;
+        esac
         ;;
       leader_timeout:*|leader_transfer_fail:*)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "FOLLOWER"
@@ -164,12 +183,14 @@ TIMEOUT_MOCK
     query_count=0
     java_count=0
     alter_args=""
+    last_query_args=""
     [ -f "${fixture_dir}/alter-count" ] && alter_count=$(cat "${fixture_dir}/alter-count")
     [ -f "${fixture_dir}/query-count" ] && query_count=$(cat "${fixture_dir}/query-count")
     [ -f "${fixture_dir}/java-count" ] && java_count=$(cat "${fixture_dir}/java-count")
     [ -f "${fixture_dir}/alter-args" ] && alter_args=$(cat "${fixture_dir}/alter-args")
-    printf 'ALTER_COUNT=%s\nQUERY_COUNT=%s\nJAVA_COUNT=%s\nALTER_ARGS=%s\nTARGET_MATCH_COUNT=%s\nLEAVE_ENDPOINT=%s:%s\n' \
-      "${alter_count}" "${query_count}" "${java_count}" "${alter_args}" \
+    [ -f "${fixture_dir}/last-query-args" ] && last_query_args=$(cat "${fixture_dir}/last-query-args")
+    printf 'ALTER_COUNT=%s\nQUERY_COUNT=%s\nJAVA_COUNT=%s\nALTER_ARGS=%s\nLAST_QUERY_ARGS=%s\nTARGET_MATCH_COUNT=%s\nLEAVE_ENDPOINT=%s:%s\n' \
+      "${alter_count}" "${query_count}" "${java_count}" "${alter_args}" "${last_query_args}" \
       "${TARGET_MATCH_COUNT:-}" "${LEAVE_HOST:-}" "${LEAVE_PORT:-}"
     return "${rc}"
   }
@@ -286,6 +307,15 @@ TIMEOUT_MOCK
     The stderr should include "phase=post-drop-membership-not-converged"
     The stderr should include "retry_safe=true"
     The stdout should not include "member leave completed"
+  End
+
+  It "verifies post-drop membership against the leader instead of stale discovery"
+    SCENARIO="discovery_stale_after_drop"
+    When call run_member_leave
+    The status should be success
+    The stdout should include "LAST_QUERY_ARGS=--connect-timeout=5 -N -B -h starrocks-fe-0.starrocks-fe-headless"
+    The stdout should include "QUERY_COUNT=2"
+    The stdout should include "member leave completed"
   End
 
   It "fails closed when the target pod remains under a new endpoint after DROP"
