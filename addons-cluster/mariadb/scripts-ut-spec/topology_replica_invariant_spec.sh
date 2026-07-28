@@ -28,6 +28,23 @@ Describe "mariadb cluster topology replica invariants"
       --set "replicas=$2"
   }
 
+  render_chart_with_string_replicas() {
+    ensure_dependency
+    helm template topoinv "$(chart_dir)" \
+      --namespace default \
+      --set "mode=$1" \
+      --set-string "replicas=$2"
+  }
+
+  render_chart_with_string_replicas_without_schema() {
+    ensure_dependency
+    helm template topoinv "$(chart_dir)" \
+      --namespace default \
+      --skip-schema-validation \
+      --set "mode=$1" \
+      --set-string "replicas=$2"
+  }
+
   lint_chart() {
     ensure_dependency
     helm lint "$(chart_dir)" \
@@ -119,6 +136,32 @@ Describe "mariadb cluster topology replica invariants"
 
   It "rejects non-numeric replicas in the template even when schema validation is skipped"
     When call render_chart_without_schema replication invalid
+    The status should be failure
+    The error should include "replicas must be an integer between 1 and 5"
+  End
+
+  It "rejects a numeric string replica through values.schema.json"
+    When call render_chart_with_string_replicas replication 3
+    The status should be failure
+    The error should include "replicas"
+    The error should include "want integer"
+  End
+
+  It "rejects a numeric string replica in the template even when schema validation is skipped"
+    When call render_chart_with_string_replicas_without_schema replication 3
+    The status should be failure
+    The error should include "replicas must be an integer between 1 and 5"
+  End
+
+  It "rejects a leading-zero string replica through values.schema.json"
+    When call render_chart_with_string_replicas replication 03
+    The status should be failure
+    The error should include "replicas"
+    The error should include "want integer"
+  End
+
+  It "rejects a leading-zero string replica in the template even when schema validation is skipped"
+    When call render_chart_with_string_replicas_without_schema replication 03
     The status should be failure
     The error should include "replicas must be an integer between 1 and 5"
   End
