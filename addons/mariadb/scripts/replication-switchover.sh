@@ -2269,8 +2269,11 @@ run_switchover() {
     # be promoting the candidate. Unfencing the current primary would then make
     # two writable primaries (split-brain). Fail closed by fencing instead; see
     # fence_current_primary_after_uncertain_dcs for the full rationale.
-    fence_current_primary_after_uncertain_dcs || true
-    log_switchover_error "Switchover failed: syncerctl could not create DCS switchover; current primary fenced fail-closed (not rolled back to writable) to avoid split-brain if syncer completes the switchover"
+    if fence_current_primary_after_uncertain_dcs; then
+      log_switchover_error "Switchover failed: syncerctl could not create DCS switchover; current primary fenced fail-closed (not rolled back to writable) to avoid split-brain if syncer completes the switchover; fail_closed=true"
+    else
+      log_switchover_error "Switchover failed: syncerctl could not create DCS switchover and the current-primary fence did not close; fail_closed=false manual verification required to avoid split-brain"
+    fi
     return 1
   fi
   # Defensive overrun guard mirrors prepare (DCS is bounded by the timeout(1)
