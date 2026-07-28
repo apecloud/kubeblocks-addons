@@ -139,7 +139,7 @@ SH
   }
 
   run_datafile_backup_and_report() {
-    local child_version status tar_state info_state
+    local child_version status tar_state info_state residue_count
 
     "$SHELLSPEC_SHELL" -c '
       printf "%s\n" "$BASH_VERSION" >"$MONGODB_TEST_CHILD_VERSION_FILE"
@@ -158,8 +158,11 @@ SH
     else
       info_state=absent
     fi
-    printf 'tar=%s info=%s child=%s\n' \
-      "$tar_state" "$info_state" "$child_version"
+    residue_count=$(find "$test_root" -maxdepth 1 -type f \
+      ! -name backup-info.json ! -name tar-called \
+      ! -name child-bash-version | wc -l | tr -d ' ')
+    printf 'tar=%s info=%s residue=%s child=%s\n' \
+      "$tar_state" "$info_state" "$residue_count" "$child_version"
     return "$status"
   }
 
@@ -223,6 +226,26 @@ SH
     The output should be blank
   End
 
+  It "classifies empty successful MongoDB output before the datafile backup"
+    export MONGODB_TEST_DATE_OUTPUT="2026-07-29T00:00:00Z"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
+
+    When call run_datafile_backup_and_report
+
+    The status should equal 65
+    The output should equal "tar=absent info=absent residue=0 child=$BASH_VERSION"
+  End
+
+  It "classifies empty successful date output before the datafile backup"
+    export MONGODB_TEST_CLIENT_OUTPUT="1753747200"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize 42"
+
+    When call run_datafile_backup_and_report
+
+    The status should equal 65
+    The output should equal "tar=absent info=absent residue=0 child=$BASH_VERSION"
+  End
+
   It "preserves datasafed failure and does not write backup metadata"
     export MONGODB_TEST_DATASAFED_RC=23
 
@@ -239,6 +262,26 @@ SH
 
     The status should be failure
     The output should equal "file=absent"
+  End
+
+  It "rejects an empty TotalSize value without replacing existing metadata"
+    export MONGODB_TEST_DATASAFED_OUTPUT="TotalSize"
+
+    When call run_stat_with_existing_destination
+
+    The status should equal 65
+    The output should equal "destination=previous-metadata residue=0"
+  End
+
+  It "rejects duplicate TotalSize values without replacing existing metadata"
+    MONGODB_TEST_DATASAFED_OUTPUT='TotalSize 42
+TotalSize 84'
+    export MONGODB_TEST_DATASAFED_OUTPUT
+
+    When call run_stat_with_existing_destination
+
+    The status should equal 65
+    The output should equal "destination=previous-metadata residue=0"
   End
 
   It "writes exact metadata for a valid datasafed TotalSize response"
@@ -259,7 +302,7 @@ SH
     When call run_datafile_backup_and_report
 
     The status should be failure
-    The output should equal "tar=absent info=absent child=$BASH_VERSION"
+    The output should equal "tar=absent info=absent residue=0 child=$BASH_VERSION"
   End
 
   It "preserves existing metadata and removes temporary output when publication fails"
