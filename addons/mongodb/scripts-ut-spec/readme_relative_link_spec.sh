@@ -139,18 +139,22 @@ run_mongodb_readme_link_oracle() {
       opener = /\[[^\]\n]+\]\(/
 
       text.each_line do |line|
+        source_encoding = line.encoding
+        line = line.b
         cursor = 0
         while (match = opener.match(line, cursor))
           target_start = match.end(0)
           if line.getbyte(target_start) == 60
-            segment_end = line.length
+            segment_end = line.bytesize
             raw_target, destination, cursor, malformed =
               pointy_destination(line, target_start, segment_end)
+            raw_target.force_encoding(source_encoding)
+            destination.force_encoding(source_encoding) if destination
             targets << [raw_target, destination, malformed]
             next
           end
 
-          segment_end = line.length
+          segment_end = line.bytesize
           result = bare_destination(line, target_start, segment_end)
           next_cursor = result.fetch(:next_cursor)
           unless target_start < next_cursor && next_cursor <= segment_end
@@ -161,9 +165,12 @@ run_mongodb_readme_link_oracle() {
               "segment_end=#{segment_end}"
             )
           end
+          result.fetch(:raw_target).force_encoding(source_encoding)
+          destination = result.fetch(:destination)
+          destination.force_encoding(source_encoding) if destination
           targets << [
             result.fetch(:raw_target),
-            result.fetch(:destination),
+            destination,
             result.fetch(:kind) == :malformed
           ]
           cursor = next_cursor
