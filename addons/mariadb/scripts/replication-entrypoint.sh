@@ -2105,7 +2105,7 @@ local_has_user_tables() {
   [ "${table_count}" -gt 0 ]
 }
 reconcile_sql_listener_for_syncer_primary_once() {
-  local now primary_sid role
+  local now primary_sid role primary_ready remote_root_fence master_info listener_wildcard
   [ ! -f "${DATA_DIR}/.prestop-fence-started" ] || return 0
   # alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_is_fresh`
   # early-skip has been removed. alpha.79 v1 minimalist deleted the
@@ -2115,10 +2115,27 @@ reconcile_sql_listener_for_syncer_primary_once() {
   if [ -f "${DATA_DIR}/.sql-listener-ready" ]; then
     role="$(query_local_syncer_role || true)"
     [ "${role}" = "primary" ] || return 0
-    if [ -f "${DATA_DIR}/.primary-read-write-ready" ] && [ ! -f "${DATA_DIR}/.remote-root-fence-role" ] && [ ! -f "${DATA_DIR}/master.info" ] && mariadbd_listen_on_all_interfaces; then
+    primary_ready=absent
+    remote_root_fence=absent
+    master_info=absent
+    listener_wildcard=absent
+    [ -f "${DATA_DIR}/.primary-read-write-ready" ] && primary_ready=present
+    [ -f "${DATA_DIR}/.remote-root-fence-role" ] && remote_root_fence=present
+    [ -f "${DATA_DIR}/master.info" ] && master_info=present
+    if mariadbd_listen_on_all_interfaces; then
+      listener_wildcard=present
+    fi
+    if [ "${primary_ready}" = "present" ] && \
+       [ "${remote_root_fence}" = "absent" ] && \
+       [ "${master_info}" = "absent" ] && \
+       [ "${listener_wildcard}" = "present" ]; then
       return 0
     fi
-    prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=primary-role-state-drift role=${role}"
+    # Record the last pre-mutation snapshot. expose_sql_listener_for_primary_role
+    # starts by STOP/RESET and set_primary_read_write starts by retracting both
+    # ready markers, so a post-repair snapshot cannot identify the first broken
+    # predicate that caused the repair.
+    prestop_watchdog_log "runtime-primary-listener-reconcile-repair-begin reason=primary-role-state-drift role=${role} primary_ready=${primary_ready} remote_root_fence=${remote_root_fence} master_info=${master_info} listener_wildcard=${listener_wildcard}"
     # Keep the historical suffix for log continuity.  The r9 acceptance
     # contract now uses the internal-admin, sql_log_bin=0 pre-open gate on all
     # paths, so neither this repair loop nor a normal promotion emits the old

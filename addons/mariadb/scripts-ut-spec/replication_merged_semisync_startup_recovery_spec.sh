@@ -72,9 +72,28 @@ Describe "cmpd-replication.yaml semisync startup recovery"
   primary_reconcile_fast_path_requires_real_wildcard_listener() {
     awk '
       index($0, "reconcile_sql_listener_for_syncer_primary_once() {") { fn = 1 }
-      fn && index($0, ".primary-read-write-ready") && index($0, "mariadbd_listen_on_all_interfaces") { found = 1 }
-      fn && index($0, "runtime-primary-listener-reconcile-repair-begin") { exit(found ? 0 : 1) }
-      END { exit(found ? 0 : 1) }
+      fn && index($0, ".primary-read-write-ready") { primary_ready = 1 }
+      fn && index($0, "mariadbd_listen_on_all_interfaces") { listener = 1 }
+      fn && index($0, "runtime-primary-listener-reconcile-repair-begin") { exit(primary_ready && listener ? 0 : 1) }
+      END { exit(primary_ready && listener ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
+  primary_reconcile_logs_each_drift_predicate_before_repair() {
+    awk '
+      index($0, "reconcile_sql_listener_for_syncer_primary_once() {") { fn = 1 }
+      fn && index($0, "runtime-primary-listener-reconcile-repair-begin") {
+        log_line = NR
+        primary_ready = index($0, "primary_ready=")
+        remote_fence = index($0, "remote_root_fence=")
+        master_info = index($0, "master_info=")
+        listener = index($0, "listener_wildcard=")
+      }
+      fn && index($0, "expose_sql_listener_for_primary_role \"syncer-promoted-primary-existing-listener-no-writecheck\"") {
+        repair = NR
+        exit(log_line && primary_ready && remote_fence && master_info && listener && log_line < repair ? 0 : 1)
+      }
+      END { exit(log_line && primary_ready && remote_fence && master_info && listener && repair && log_line < repair ? 0 : 1) }
     ' "$(template_file)"
   }
 
@@ -211,6 +230,11 @@ Describe "cmpd-replication.yaml semisync startup recovery"
 
   It "does not trust .sql-listener-ready without a real wildcard listener in syncer-primary fast path"
     When call primary_reconcile_fast_path_requires_real_wildcard_listener
+    The status should be success
+  End
+
+  It "records every primary publish predicate before a drift repair mutates markers"
+    When call primary_reconcile_logs_each_drift_predicate_before_repair
     The status should be success
   End
 
