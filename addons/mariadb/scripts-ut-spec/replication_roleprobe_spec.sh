@@ -93,6 +93,22 @@ EOF
     chmod +x "${TEST_DIR}/mariadb"
   }
 
+  setup_secondary_remote_root_base() {
+    unset MARIADB_ROLEPROBE_SKIP_DB_READY
+    export MARIADB_ROOT_HOST="%"
+    export MOCK_MARIADB_SELECT1_RC=0
+    export MOCK_MARIADB_SELECT1_STDOUT="1"
+    export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
+    export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0"
+    export MOCK_MARIADB_CAPTURE_FILE="${TEST_DIR}/mariadb-sql.log"
+    touch "${TEST_DIR}/.replication-ready"
+    touch "${TEST_DIR}/master.info"
+    make_mariadb_cli
+  }
+
   Describe "check_role()"
     Context "when syncerctl returns stale secondary but local files say primary"
       setup_stale_syncer_secondary() {
@@ -734,19 +750,7 @@ Last_SQL_Errno: 0"
 
     Context "when publishing a secondary with remote root access enabled"
       setup_secondary_remote_root() {
-        unset MARIADB_ROLEPROBE_SKIP_DB_READY
-        export MARIADB_ROOT_HOST="%"
-        export MOCK_MARIADB_SELECT1_RC=0
-        export MOCK_MARIADB_SELECT1_STDOUT="1"
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
-Slave_SQL_Running: Yes
-Last_IO_Errno: 0
-Last_SQL_Errno: 0"
-        export MOCK_MARIADB_CAPTURE_FILE="${TEST_DIR}/mariadb-sql.log"
-        touch "${TEST_DIR}/.replication-ready"
-        touch "${TEST_DIR}/master.info"
-        make_mariadb_cli
+        setup_secondary_remote_root_base
       }
       Before "setup_secondary_remote_root"
 
@@ -770,6 +774,63 @@ Last_SQL_Errno: 0"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "BINLOG ADMIN"
         The contents of file "${TEST_DIR}/mariadb-sql.log" should not include "CONNECTION ADMIN"
         The contents of file "${TEST_DIR}/.remote-root-fence-role" should eq "secondary"
+      End
+    End
+
+    Context "when the required secondary fence marker tmp write fails"
+      setup_secondary_fence_marker_write_failure() {
+        setup_secondary_remote_root_base
+        remote_root_fence_write_tmp() {
+          printf '%s' "$2" > "${TEST_DIR}/marker-write-attempted"
+          return 1
+        }
+      }
+      Before "setup_secondary_fence_marker_write_failure"
+
+      It "fails closed instead of publishing secondary"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+        The contents of file "${TEST_DIR}/marker-write-attempted" should include ".remote-root-fence-role.tmp."
+        The path "${TEST_DIR}/.remote-root-fence-role" should not be exist
+      End
+    End
+
+    Context "when the required secondary fence marker atomic rename fails"
+      setup_secondary_fence_marker_rename_failure() {
+        setup_secondary_remote_root_base
+        remote_root_fence_commit_tmp() {
+          printf '%s' "$1" > "${TEST_DIR}/marker-rename-attempted"
+          return 1
+        }
+      }
+      Before "setup_secondary_fence_marker_rename_failure"
+
+      It "fails closed and removes the uncommitted tmp marker"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+        The contents of file "${TEST_DIR}/marker-rename-attempted" should include ".remote-root-fence-role.tmp."
+        The path "${TEST_DIR}/.remote-root-fence-role" should not be exist
+      End
+    End
+
+    Context "when the committed secondary fence marker cannot be read back"
+      setup_secondary_fence_marker_readback_failure() {
+        setup_secondary_remote_root_base
+        remote_root_fence_readback() {
+          printf 'attempted' > "${TEST_DIR}/marker-readback-attempted"
+          return 1
+        }
+      }
+      Before "setup_secondary_fence_marker_readback_failure"
+
+      It "fails closed and removes the unverified marker"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+        The contents of file "${TEST_DIR}/marker-readback-attempted" should eq "attempted"
+        The path "${TEST_DIR}/.remote-root-fence-role" should not be exist
       End
     End
 
