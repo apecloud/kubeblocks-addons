@@ -177,4 +177,14 @@ SH
     The output should not include "|rm|"
     The stderr should not be blank
   End
+
+  It "rejects a backup name that could be parsed as a datasafed option"
+    export MONGODB_TEST_PULL_OUTPUT='{"status":"Completed","extras":[{"backup_name":"--help"}]}'
+
+    When call run_delete_and_report
+
+    The status should be failure
+    The output should not include "|rm|"
+    The stderr should not be blank
+  End
 End
