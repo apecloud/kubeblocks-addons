@@ -63,6 +63,66 @@ Describe "mariadb cluster topology replica invariants"
     The output should include "replicas: 5"
   End
 
+  It "rejects an unknown topology mode through values.schema.json"
+    When call render_chart invalid 3
+    The status should be failure
+    The error should include "mode"
+  End
+
+  It "rejects an unknown topology mode in the template even when schema validation is skipped"
+    When call render_chart_without_schema invalid 3
+    The status should be failure
+    The error should include "mode must be one of standalone, replication, or galera"
+  End
+
+  It "rejects replicas below the global minimum through values.schema.json"
+    When call render_chart standalone 0
+    The status should be failure
+    The error should include "replicas"
+  End
+
+  It "rejects replicas below the global minimum in the template even for standalone"
+    When call render_chart_without_schema standalone 0
+    The status should be failure
+    The error should include "replicas must be an integer between 1 and 5"
+  End
+
+  It "rejects replicas above the global maximum through values.schema.json"
+    When call render_chart standalone 6
+    The status should be failure
+    The error should include "replicas"
+  End
+
+  It "rejects replicas above the global maximum in the template even for standalone"
+    When call render_chart_without_schema standalone 6
+    The status should be failure
+    The error should include "replicas must be an integer between 1 and 5"
+  End
+
+  It "rejects fractional replicas through values.schema.json"
+    When call render_chart replication 2.5
+    The status should be failure
+    The error should include "replicas"
+  End
+
+  It "rejects fractional replicas in the template even when schema validation is skipped"
+    When call render_chart_without_schema replication 2.5
+    The status should be failure
+    The error should include "replicas must be an integer between 1 and 5"
+  End
+
+  It "rejects non-numeric replicas through values.schema.json"
+    When call render_chart replication invalid
+    The status should be failure
+    The error should include "replicas"
+  End
+
+  It "rejects non-numeric replicas in the template even when schema validation is skipped"
+    When call render_chart_without_schema replication invalid
+    The status should be failure
+    The error should include "replicas must be an integer between 1 and 5"
+  End
+
   It "rejects replication with one replica through values.schema.json"
     When call render_chart replication 1
     The status should be failure
@@ -84,7 +144,7 @@ Describe "mariadb cluster topology replica invariants"
   It "rejects replication above five replicas in the template even when schema validation is skipped"
     When call render_chart_without_schema replication 6
     The status should be failure
-    The error should include "replication mode requires replicas between 2 and 5"
+    The error should include "replicas must be an integer between 1 and 5"
   End
 
   It "rejects Galera with two replicas through values.schema.json"
