@@ -156,13 +156,38 @@ resolve_mariadb_cli() {
   return 1
 }
 
+roleprobe_loopback_sql_as() {
+  # The current replication ComponentDefinition has no TLS vars, mounts, or
+  # server-side TLS wiring.  Its roleProbe therefore has one reachable
+  # production mode: a TLS-off loopback server, even when kbagent resolves a
+  # newer host mariadb client that tries TLS by default.  Keep the mode explicit
+  # at this single argv boundary.  A future TLS-on replication path must first
+  # add complete production wiring and rendered tests; do not predeclare an
+  # unreachable TLS_ENABLED branch here.
+  local user="$1"
+  local output_mode="$2"
+  local mariadb_cli
+  shift 2
+  mariadb_cli=$(resolve_mariadb_cli) || return 1
+  case "${output_mode}" in
+    scalar)
+      "${mariadb_cli}" "-u${user}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+        -P3306 -h127.0.0.1 --connect-timeout=5 --skip-ssl -N -s "$@"
+      ;;
+    labeled)
+      "${mariadb_cli}" "-u${user}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
+        -P3306 -h127.0.0.1 --connect-timeout=5 --skip-ssl "$@"
+      ;;
+    *)
+      return 2
+      ;;
+  esac
+}
+
 local_sql_as() {
   local user="$1"
-  local mariadb_cli
   shift
-  mariadb_cli=$(resolve_mariadb_cli) || return 1
-  "${mariadb_cli}" "-u${user}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s "$@" 2>/dev/null
+  roleprobe_loopback_sql_as "${user}" scalar "$@" 2>/dev/null
 }
 
 local_sql() {
@@ -286,14 +311,12 @@ apply_remote_root_fence() {
 }
 
 query_slave_status() {
-  local mariadb_cli
-  mariadb_cli=$(resolve_mariadb_cli) || return 1
   # SHOW SLAVE STATUS\G must keep field labels; local_sql intentionally uses
   # -N -s for scalar probes and collapses \G output into unlabeled values.
-  "${mariadb_cli}" "-u${MARIADB_ROOT_USER:-root}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-    -P3306 -h127.0.0.1 --connect-timeout=5 -e "SHOW SLAVE STATUS\\G" 2>/dev/null || \
-    "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-      -P3306 -h127.0.0.1 --connect-timeout=5 -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
+  roleprobe_loopback_sql_as "${MARIADB_ROOT_USER:-root}" labeled \
+    -e "SHOW SLAVE STATUS\\G" 2>/dev/null || \
+    roleprobe_loopback_sql_as "${MARIADB_INTERNAL_ROOT_USER}" labeled \
+      -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
 }
 
 # Detect a slave SQL thread error caused by the addon's heartbeat table writing
@@ -336,24 +359,23 @@ slave_status_has_kb_health_check_repairable_error() {
 # affected); if STOP/START SLAVE has already converged the next probe tick
 # will observe IO/SQL=Yes and skip this branch entirely.
 secondary_kb_health_check_repair_attempt() {
-  local slave_status mariadb_cli rc
+  local slave_status rc
   slave_status=$(query_slave_status)
   slave_status_has_kb_health_check_repairable_error "${slave_status}" || return 0
   echo "secondary_kb_health_check_repair_attempt: detected 1062/1146 on kubeblocks.kb_health_check, attempting repair" >&2
-  mariadb_cli=$(resolve_mariadb_cli) || {
+  resolve_mariadb_cli >/dev/null || {
     echo "secondary_kb_health_check_repair_attempt: rc=1 reason=no_mariadb_cli" >&2
     return 0
   }
   # Stop SQL thread so the repair DELETE is not racing the failing apply loop.
   # Uses kb_internal_root only; never user-facing root.
-  "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "STOP SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
+  roleprobe_loopback_sql_as "${MARIADB_INTERNAL_ROOT_USER}" scalar \
+    -e "STOP SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
   # Narrow maintenance DELETE: only the kb_health_check rows. kb_internal_root
   # holds READ_ONLY ADMIN, so this writes through while @@global.read_only=1
   # stays untouched. sql_log_bin=0 keeps the DELETE from propagating (the new
   # primary already has the canonical state).
-  "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "
+  roleprobe_loopback_sql_as "${MARIADB_INTERNAL_ROOT_USER}" scalar -e "
       SET SESSION sql_log_bin=0;
       CREATE DATABASE IF NOT EXISTS kubeblocks;
       CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
@@ -361,8 +383,8 @@ secondary_kb_health_check_repair_attempt() {
       SET SESSION sql_log_bin=1;
     " >/dev/null 2>&1
   rc=$?
-  "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "START SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
+  roleprobe_loopback_sql_as "${MARIADB_INTERNAL_ROOT_USER}" scalar \
+    -e "START SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
   echo "secondary_kb_health_check_repair_attempt: rc=${rc}" >&2
   return 0
 }
