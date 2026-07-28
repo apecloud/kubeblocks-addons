@@ -822,6 +822,32 @@ Describe "MongoDB README relative-link closure"
     The output should include "MongoDB README relative-link closure passed"
   End
 
+  It "accepts a UTF-8 bare destination"
+    prepare_link_fixture
+    unicode_name=$(printf '\344\275\240\345\245\275.md')
+    printf '# UTF-8 destination\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/$unicode_name"
+    printf '[Unicode](%s)\n' "$unicode_name" \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
+  It "keeps byte offsets after a UTF-8 prefix"
+    prepare_link_fixture
+    unicode_prefix=$(printf '\350\257\264\346\230\216')
+    printf '# UTF-8 prefix target\n' \
+      > "$MONGODB_REPO_ROOT/addons/mongodb/local.md"
+    printf '%s [Unicode](local.md)\n' "$unicode_prefix" \
+      >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should be success
+    The output should include "MongoDB README relative-link closure passed"
+  End
+
   It "keeps opener-shaped bytes inside a complete bare destination"
     prepare_link_fixture
     printf '# bare opener-shaped destination\n' \
