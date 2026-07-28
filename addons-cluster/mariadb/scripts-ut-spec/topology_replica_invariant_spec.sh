@@ -11,6 +11,12 @@ Describe "mariadb cluster topology replica invariants"
       || helm dependency build --skip-refresh "${chart}" >/dev/null
   }
 
+  render_chart_defaults() {
+    ensure_dependency
+    helm template topoinv "$(chart_dir)" \
+      --namespace default
+  }
+
   render_chart() {
     ensure_dependency
     helm template topoinv "$(chart_dir)" \
@@ -45,6 +51,23 @@ Describe "mariadb cluster topology replica invariants"
       --set-string "replicas=$2"
   }
 
+  render_chart_with_json_replicas() {
+    ensure_dependency
+    helm template topoinv "$(chart_dir)" \
+      --namespace default \
+      --set "mode=$1" \
+      --set-json "replicas=$2"
+  }
+
+  render_chart_with_json_replicas_without_schema() {
+    ensure_dependency
+    helm template topoinv "$(chart_dir)" \
+      --namespace default \
+      --skip-schema-validation \
+      --set "mode=$1" \
+      --set-json "replicas=$2"
+  }
+
   lint_chart() {
     ensure_dependency
     helm lint "$(chart_dir)" \
@@ -54,6 +77,13 @@ Describe "mariadb cluster topology replica invariants"
 
   It "renders standalone with one replica"
     When call render_chart standalone 1
+    The status should be success
+    The output should include "topology: standalone"
+    The output should include "replicas: 1"
+  End
+
+  It "renders the values.yaml defaults without overrides"
+    When call render_chart_defaults
     The status should be success
     The output should include "topology: standalone"
     The output should include "replicas: 1"
@@ -78,6 +108,20 @@ Describe "mariadb cluster topology replica invariants"
     The status should be success
     The output should include "topology: galera"
     The output should include "replicas: 5"
+  End
+
+  It "accepts an integral JSON number through values.schema.json"
+    When call render_chart_with_json_replicas replication 3.0
+    The status should be success
+    The output should include "topology: replication"
+    The output should include "replicas: 3"
+  End
+
+  It "accepts an integral JSON number when schema validation is skipped"
+    When call render_chart_with_json_replicas_without_schema replication 3.0
+    The status should be success
+    The output should include "topology: replication"
+    The output should include "replicas: 3"
   End
 
   It "rejects an unknown topology mode through values.schema.json"

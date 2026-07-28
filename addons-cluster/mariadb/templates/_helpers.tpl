@@ -11,7 +11,7 @@
 {{- if not (or (eq $mode "standalone") (eq $mode "replication") (eq $mode "galera")) -}}
 {{- fail "mode must be one of standalone, replication, or galera" -}}
 {{- end -}}
-{{- if not (kindIs "int64" .Values.replicas) -}}
+{{- if not (or (kindIs "int64" .Values.replicas) (kindIs "float64" .Values.replicas)) -}}
 {{- fail "replicas must be an integer between 1 and 5" -}}
 {{- end -}}
 {{- $replicasText := printf "%v" .Values.replicas -}}
