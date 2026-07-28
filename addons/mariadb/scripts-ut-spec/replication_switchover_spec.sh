@@ -3246,10 +3246,11 @@ EOF
         #   reconcile_secondary + configure_from_primary; the body of
         #   set_replica_read_only itself is the function definition not a
         #   self-call, so 4 caller patterns)
-        # + 1 (prestop_lock_failed_both literal in preStop script) + 14 (tier-annotated swallow lines;
-        #   reduced from 16 after CMPD consolidation PR #2933)
+        # + 1 (prestop_lock_failed_both literal in preStop script) + 12 (tier-annotated swallow lines;
+        #   reduced from 14 when required primary-accept rollback stopped swallowing
+        #   its two root re-lock failures)
         The status should be success
-        The output should equal "1 1 4 1 14 "
+        The output should equal "1 1 4 1 12 "
       End
     End
   End
@@ -3520,9 +3521,9 @@ EOF
         '
         The status should be success
         # Expected: 1 grant body explicit + 1 secondary fence + 4 explicit set_replica_read_only caller +
-        # 1 prestop_lock_failed_both (in prestop script) + 14 tier-annotated swallow (reduced from 16 after CMPD
-        # consolidation PR #2933) + 2 inline-quoted MONITOR loops
-        The output should equal "1 1 4 1 14 2 "
+        # 1 prestop_lock_failed_both (in prestop script) + 12 tier-annotated swallow (required
+        # primary-accept rollback now propagates its two root re-lock failures) + 2 inline-quoted MONITOR loops
+        The output should equal "1 1 4 1 12 2 "
       End
     End
   End
