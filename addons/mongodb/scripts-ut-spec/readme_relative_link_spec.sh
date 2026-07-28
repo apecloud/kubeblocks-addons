@@ -429,6 +429,16 @@ Describe "MongoDB README relative-link closure"
     The stderr should include 'link="bad%2G.md" malformed_percent_encoding'
   End
 
+  It "rejects percent-decoded invalid UTF-8 before filesystem resolution"
+    prepare_link_fixture
+    printf '%s\n' '[InvalidUTF8](%FF.md)' >> "$MONGODB_REPO_ROOT/addons/mongodb/README.md"
+
+    When call validate_mongodb_readme_links
+    The status should eq 1
+    The stderr should include 'link="%FF.md" malformed_percent_encoding'
+    The stderr should not include 'missing='
+  End
+
   It "keeps percent-encoded scheme text in the local-link contract"
     prepare_link_fixture
     printf '%s\n' \
