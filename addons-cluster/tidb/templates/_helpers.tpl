@@ -66,9 +66,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{- define "tidb-cluster.TLSBetweenComponentsVolumes" -}}
-{{- if .Values.extra.enableTLSBetweenComponents }}
 - name: component-tls
   secret:
     secretName: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
-{{- end }}
 {{- end }}

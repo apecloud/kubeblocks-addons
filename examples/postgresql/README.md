@@ -332,7 +332,7 @@ This example will change the `max_connections` to `200`.
 kbcli cluster explain-config pg-cluster # kbcli is a command line tool to interact with KubeBlocks
 ```
 
-### [Backup](backup.yaml)
+### Backup
 
 > [!IMPORTANT]
 > Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
@@ -416,7 +416,7 @@ kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster -l dataprote
 
 WAL-G is an archival restoration tool for PostgreSQL, MySQL/MariaDB, and MS SQL Server (beta for MongoDB and Redis).[^2]
 
-##### [Full Backup](basebackup-wal-g.yaml)
+##### [Full Backup](backup-wal-g.yaml)
 
 To create wal-g backup for the cluster, it is a multi-step process.
 
