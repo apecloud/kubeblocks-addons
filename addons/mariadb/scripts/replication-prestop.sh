@@ -34,7 +34,10 @@ fence_read_only() {
     || true
 }
 prestop_sql_quote() {
-  printf "%s" "$1" | sed "s/'/''/g"
+  # Keep the same MariaDB string-literal contract as replication-entrypoint,
+  # roleprobe, and switchover: under the default sql_mode a backslash is an
+  # escape character, so it must be doubled before single quotes are doubled.
+  printf "%s" "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
 }
 lock_local_root_for_prestop() {
   # alpha.64 v1 (Jack 09:35 RED): drop SUPER (admin bypass).
