@@ -857,6 +857,38 @@ EOF
       The status should be success
       The output should include ".galera-sst-auth.cnf"
     End
+
+    It "deletes an existing stale credential and verifies absence"
+      printf '%s\n' "wsrep_sst_auth=root:secret" > "${DATA_DIR}/.galera-sst-auth.cnf"
+
+      When call remove_stale_galera_sst_auth
+      The status should be success
+      The path "${DATA_DIR}/.galera-sst-auth.cnf" should not be exist
+    End
+
+    It "fails startup when deletion of the stale credential fails"
+      printf '%s\n' "wsrep_sst_auth=root:secret" > "${DATA_DIR}/.galera-sst-auth.cnf"
+      rm() {
+        return 1
+      }
+
+      When call remove_stale_galera_sst_auth
+      The status should be failure
+      The stderr should include "failed to delete stale SST credential"
+      The path "${DATA_DIR}/.galera-sst-auth.cnf" should be exist
+    End
+
+    It "fails startup when deletion reports success but readback still finds the credential"
+      printf '%s\n' "wsrep_sst_auth=root:secret" > "${DATA_DIR}/.galera-sst-auth.cnf"
+      rm() {
+        return 0
+      }
+
+      When call remove_stale_galera_sst_auth
+      The status should be failure
+      The stderr should include "still exists after deletion"
+      The path "${DATA_DIR}/.galera-sst-auth.cnf" should be exist
+    End
   End
 
   Describe "graceful-shutdown self-heal guard"
