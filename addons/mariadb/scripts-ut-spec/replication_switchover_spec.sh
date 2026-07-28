@@ -729,6 +729,7 @@ EOF
         The output should include "Switchover: creating syncer DCS switchover"
         The output should include "fencing current primary read_only=1"
         The stderr should include "current primary fenced fail-closed"
+        The stderr should include "fail_closed=true"
         The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
         The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
         The contents of file "${TEST_DIR}/calls" should not include "rollback"
@@ -774,6 +775,8 @@ EOF
         The output should include "fencing current primary read_only=1"
         The stderr should include "could not set current primary read_only=1 after uncertain DCS switchover"
         The stderr should include "manual verification required to avoid split-brain"
+        The stderr should include "fail_closed=false"
+        The stderr should not include "current primary fenced fail-closed"
         The contents of file "${TEST_DIR}/calls" should include "set_read_only=ON"
         The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
       End
