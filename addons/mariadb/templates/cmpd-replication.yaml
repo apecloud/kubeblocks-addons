@@ -109,8 +109,10 @@ spec:
       # KB kbagent enforces a hardcoded maxActionCallTimeout of 60s
       # (pkg/kbagent/service/action_utils.go), so any value above 60 is silently
       # truncated. We declare 60 here so the contract reflects what kbagent
-      # actually enforces. The switchover action is intentionally short and
-      # delegates post-DCS convergence to roleProbe + KB endpoint controller.
+      # actually enforces. The script uses a 50s internal deadline, leaving a
+      # 10s wrapper/teardown buffer. Explicit-candidate convergence is
+      # delegated to the controller's named-instance role gate; auto-candidate
+      # convergence remains action-observed because the controller has no name.
       timeoutSeconds: 60
       exec:
         container: mariadb

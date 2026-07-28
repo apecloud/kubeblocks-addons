@@ -18,8 +18,10 @@ SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-1}"
 # bounded to a small budget; post-DCS convergence (Primary Service endpoint,
 # old-primary follow, secondary remote root fence, kb_health_check 1062 repair)
 # is delegated to roleProbe + KB endpoint controller. The candidate write probe
-# is still synchronous because it is part of the action's success contract:
-# action returns 0 only after we have proven the candidate is actually writable.
+# remains synchronous only for auto-selected candidates, because KubeBlocks
+# cannot observe the candidate name chosen inside the action. For an explicit
+# candidate, KubeBlocks keeps the OpsRequest Processing until that named
+# instance reports the expected primary role.
 #
 # alpha.61: action now uses a single global deadline rather than per-stage
 # fixed sleeps. This avoids the trap where the sum of per-stage sleep budgets
@@ -27,7 +29,7 @@ SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-1}"
 # is the hard contract; per-stage maxima are clamped by the remaining global
 # deadline at runtime.
 #
-# alpha.61 v2 (Jack 02:00 review): POSIX-portable wall clock + 5-stage
+# alpha.61 v2 (Jack 02:00 review): POSIX-portable wall clock + six-stage
 # enforcement. The original v1 used bash-only $SECONDS / $'\n' case patterns
 # under #!/bin/sh shebang -- in dash $SECONDS is not auto-incrementing, so the
 # deadline expression evaluated to 0 forever and the stage loops would only be
@@ -39,7 +41,9 @@ SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-1}"
 # (prepare/candidate_connect/dcs/fence/promote/ready) checks the remaining
 # global budget at entry and emits action_deadline_exhausted_<stage> if
 # exhausted.
-SWITCHOVER_ACTION_DEADLINE_SECONDS="${SWITCHOVER_ACTION_DEADLINE_SECONDS:-55}"
+# Keep a 10s buffer below the kbagent/CmpD 60s wrapper ceiling so shell
+# closeout and process teardown are not silently reaped after our own deadline.
+SWITCHOVER_ACTION_DEADLINE_SECONDS="${SWITCHOVER_ACTION_DEADLINE_SECONDS:-50}"
 SWITCHOVER_PREPARE_STAGE_BUDGET_SECONDS="${SWITCHOVER_PREPARE_STAGE_BUDGET_SECONDS:-10}"
 SWITCHOVER_CANDIDATE_CONNECT_READY_WAIT_SECONDS="${SWITCHOVER_CANDIDATE_CONNECT_READY_WAIT_SECONDS:-12}"
 SWITCHOVER_CANDIDATE_CONNECT_READY_POLL_SECONDS="${SWITCHOVER_CANDIDATE_CONNECT_READY_POLL_SECONDS:-1}"
@@ -257,9 +261,23 @@ resolve_candidate_name() {
   fi
 }
 
+resolve_candidate_mode() {
+  # Freeze the API source before resolve_candidate_name() turns an empty
+  # candidate into a concrete pod name. The two modes have different
+  # completion contracts in the exact KubeBlocks switchover state machine.
+  if [ -n "${KB_SWITCHOVER_CANDIDATE_NAME}" ]; then
+    printf '%s' "explicit"
+  else
+    printf '%s' "auto"
+  fi
+}
+
 resolve_candidate_fqdn() {
   local candidate
-  candidate=$(resolve_candidate_name)
+  candidate="${1:-}"
+  if [ -z "${candidate}" ]; then
+    candidate=$(resolve_candidate_name)
+  fi
   echo "${candidate}.${CLUSTER_NAME}-${COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc.${CLUSTER_DOMAIN}"
 }
 
@@ -1229,7 +1247,7 @@ rollback_current_primary_switchover_guard() {
 fence_current_primary_after_uncertain_dcs() {
   # H2 split-brain guard for the Stage-3 (DCS switchover) failure path.
   #
-  # syncerctl_switchover is invoked with --force and wrapped by timeout(1). A
+  # syncerctl_switchover is wrapped by timeout(1). A
   # non-zero or timeout(1) (rc 124/125/137) return does NOT prove the DCS
   # switchover record was never persisted: syncer can accept and persist the
   # switchover request, begin asynchronously promoting the candidate, and then
@@ -1625,31 +1643,25 @@ syncerctl_switchover() {
   local output
   local rc
   local using_timeout=0
+  SWITCHOVER_SYNCERCTL_OUTCOME=""
 
-  # alpha.79 v2 (Helen TL autopilot 22:31 westonnnn `442a5d2e`): pass --force
-  # so syncer overrides any leftover "previous switchover unfinished" DCS
-  # record from a prior successful switchover. n1ad same-cluster repeat axis
-  # (2026-05-14 ~14:54 UTC) exposed this: after the first GREEN switchover
-  # cleared chart-side state and OpsRequest reached Succeed, syncer's DCS
-  # record stayed in "unfinished" state. Repeat switchovers got
-  # `Create switchover failed: there is another switchover
-  # maria-5d-n1ad-mariadb-switchover unfinished`. Using --force on every
-  # invocation is safe: first-time switchovers have no leftover record so
-  # --force is a no-op; repeated switchovers proceed cleanly. This is a
-  # syncer-layer cleanup gap (syncer should mark its own DCS record done
-  # when the switchover protocol completes); --force is a chart-side
-  # workaround until syncer side cleans up properly.
+  # r25 completion contract: the addon never preempts an existing DCS
+  # switchover. `--force` used to delete an unfinished marker without proving
+  # that the previous database/lease/grant side effects had rolled back. A
+  # second request must instead receive syncer's stable
+  # SWITCHOVER_IN_PROGRESS conflict and retry only after the first operation
+  # reaches terminal truth.
   if [ -n "${stage_budget}" ] && [ "${SWITCHOVER_HAS_TIMEOUT}" = "1" ]; then
     local wall="${SYNCERCTL_PER_CALL_TIMEOUT_SECONDS}"
     if [ "${stage_budget}" -lt "${wall}" ]; then wall="${stage_budget}"; fi
     if [ "${wall}" -lt 1 ]; then wall=1; fi
     using_timeout=1
     output=$(timeout "${wall}" "${SYNCERCTL_BIN}" --host "${SYNCERCTL_HOST}" --port "${SYNCERCTL_PORT}" \
-      switchover --force --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
+      switchover --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
     rc=$?
   else
     output=$("${SYNCERCTL_BIN}" --host "${SYNCERCTL_HOST}" --port "${SYNCERCTL_PORT}" \
-      switchover --force --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
+      switchover --primary "${current_name}" --candidate "${candidate_name}" 2>&1)
     rc=$?
   fi
 
@@ -1668,6 +1680,14 @@ syncerctl_switchover() {
         ;;
     esac
   fi
+
+  case "${output}" in
+    *"SWITCHOVER_IN_PROGRESS"*)
+      SWITCHOVER_SYNCERCTL_OUTCOME="retryable_conflict"
+      log_switchover_error "Switchover failed: outcome=retryable_conflict mutation=0 reason=switchover_in_progress detail=${output}; retry after the active DCS operation reaches terminal truth"
+      return 1
+      ;;
+  esac
 
   if [ "${rc}" -ne 0 ]; then
     log_switchover_error "Switchover failed: syncerctl exited with rc=${rc}"
@@ -2212,8 +2232,8 @@ run_switchover() {
   #   3. dcs           - syncerctl_switchover (DCS record)
   #   4. fence         - fence_current_primary_local_writes_after_dcs
   #                      (revoke admin-bypass + verify_post_dcs_local_root_write_fenced)
-  #   5. promote       - wait_candidate_promoted_via_syncerctl
-  #   6. ready         - wait_candidate_remote_root_primary_ready
+  #   5. promote       - wait_candidate_promoted_via_syncerctl (auto only)
+  #   6. ready         - wait_candidate_remote_root_primary_ready (auto only)
   #
   # External tools that can block:
   #   - syncerctl getrole: wrapped with timeout(1) (initialize_action_clock
@@ -2228,6 +2248,8 @@ run_switchover() {
   # gate.
   local candidate_name="$1"
   local candidate_fqdn="$2"
+  local candidate_mode="$3"
+  local idempotent_final_state_reached="false"
   local current_name
   current_name=$(resolve_current_name)
 
@@ -2239,6 +2261,13 @@ run_switchover() {
     echo "Switchover failed: candidate name is empty" >&2
     return 1
   fi
+  case "${candidate_mode}" in
+    explicit|auto) ;;
+    *)
+      log_switchover_error "Switchover failed: reason=invalid_candidate_mode candidate_mode=${candidate_mode:-<empty>}; fail-closed"
+      return 1
+      ;;
+  esac
 
   if ! initialize_action_clock; then
     return 1
@@ -2280,18 +2309,32 @@ run_switchover() {
   log_switchover_info "Switchover stage dcs budget=${dcs_budget}s remaining_before=$(remaining_action_budget)s primary=${current_name} candidate=${candidate_name}"
   log_switchover_info "Switchover: creating syncer DCS switchover primary=${current_name} candidate=${candidate_name}"
   if ! syncerctl_switchover "${current_name}" "${candidate_name}" "${dcs_budget}"; then
-    if switchover_final_state_already_reached "${current_name}" "${candidate_name}" "${candidate_fqdn}"; then
-      return 0
+    if [ "${SWITCHOVER_SYNCERCTL_OUTCOME:-}" = "retryable_conflict" ]; then
+      # The syncer active-marker precheck promises mutation=0. Do not run the
+      # uncertain-DCS final-state/fence path: that path is reserved for calls
+      # where the client cannot prove whether this request persisted remote
+      # side effects. A stable active-marker conflict proves this request did
+      # not mutate DCS and must leave the already-running operation untouched.
+      return 1
     fi
-    # H2: do NOT roll the current primary back to writable here. syncerctl runs
-    # with --force under a timeout(1) wrapper, so a non-zero/timeout return does
-    # not prove the DCS switchover record was not persisted — syncer may already
-    # be promoting the candidate. Unfencing the current primary would then make
-    # two writable primaries (split-brain). Fail closed by fencing instead; see
-    # fence_current_primary_after_uncertain_dcs for the full rationale.
-    fence_current_primary_after_uncertain_dcs || true
-    log_switchover_error "Switchover failed: syncerctl could not create DCS switchover; current primary fenced fail-closed (not rolled back to writable) to avoid split-brain if syncer completes the switchover"
-    return 1
+    if switchover_final_state_already_reached "${current_name}" "${candidate_name}" "${candidate_fqdn}"; then
+      # The duplicate call proves that DCS/candidate convergence already
+      # reached the requested topology, but read_only=1 alone does not prove
+      # user-facing root cannot bypass the old-primary fence. Continue through
+      # the same Stage4 revoke + SHOW GRANTS/write verifier before any rc=0.
+      idempotent_final_state_reached="true"
+    else
+      # H2: do NOT roll the current primary back to writable here. syncerctl runs
+      # under a timeout(1) wrapper, so a non-zero/timeout return
+      # does not prove the DCS switchover record was not persisted — syncer may
+      # already be promoting the candidate. Unfencing the current primary would
+      # then make two writable primaries (split-brain). Fail closed by fencing
+      # instead; see fence_current_primary_after_uncertain_dcs for the full
+      # rationale.
+      fence_current_primary_after_uncertain_dcs || true
+      log_switchover_error "Switchover failed: syncerctl could not create DCS switchover; current primary fenced fail-closed (not rolled back to writable) to avoid split-brain if syncer completes the switchover"
+      return 1
+    fi
   fi
   # Defensive overrun guard mirrors prepare (DCS is bounded by the timeout(1)
   # wrapper but the rollback guard above is best-effort and could itself
@@ -2318,11 +2361,38 @@ run_switchover() {
     return 1
   fi
 
-  # Stage 5: candidate promoted via syncerctl
+  # A positive idempotent final-state probe already observed the candidate as
+  # primary/remote-root-ready and the old primary following it. After Stage4
+  # has now closed the bypass-capable old-primary fence, do not repeat the
+  # auto-only Stage5/6 waits; emit the same mode-specific success contract.
+  if [ "${idempotent_final_state_reached}" = "true" ]; then
+    if [ "${candidate_mode}" = "explicit" ]; then
+      log_switchover_info "Switchover action returned: candidate_mode=explicit dcs_recorded=true old_primary_fenced=true convergence=delegated idempotent_final_state=true elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s"
+    else
+      log_switchover_info "Switchover action returned: candidate_mode=auto dcs_recorded=true old_primary_fenced=true convergence=observed candidate_promoted=true candidate_root_primary_ready=true idempotent_final_state=true elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s"
+    fi
+    return 0
+  fi
+
+  # KubeBlocks retains an explicit-candidate OpsRequest in Processing after
+  # action rc=0 and independently waits for that named instance to report the
+  # expected primary role. The action therefore closes once the DCS request is
+  # accepted and the old primary is positively fenced; asynchronous candidate
+  # convergence is delegated to the controller role gate.
+  if [ "${candidate_mode}" = "explicit" ]; then
+    log_switchover_info "Switchover action returned: candidate_mode=explicit dcs_recorded=true old_primary_fenced=true convergence=delegated elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s"
+    return 0
+  fi
+
+  # Auto mode has no candidate name in the controller request. KubeBlocks
+  # would mark action rc=0 immediately Succeeded, so the addon must retain the
+  # Stage5/6 compensation gate and prove the selected candidate converged.
+  # Stage 5: candidate promoted via syncerctl (auto only)
   local promoted_budget
   promoted_budget=$(stage_budget_or_exit "promote" "${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS}") || return 1
   log_switchover_info "Switchover stage candidate_promoted budget=${promoted_budget}s remaining_before=$(remaining_action_budget)s"
   if ! wait_candidate_promoted_via_syncerctl "${candidate_name}" "${candidate_fqdn}" "${promoted_budget}"; then
+    log_switchover_error "Switchover failed: outcome=indeterminate_dcs_in_progress mutation=remote-partial stage=candidate_promoted reason=post_dcs_terminal_not_proven; old primary remains fenced and the DCS operation must not be preempted"
     return 1
   fi
   # Post-stage overrun check (mirrors prepare/dcs/fence). The promote loop is
@@ -2337,11 +2407,12 @@ run_switchover() {
     return 1
   fi
 
-  # Stage 6: candidate remote root primary-readiness probe
+  # Stage 6: candidate remote root primary-readiness probe (auto only)
   local ready_budget
   ready_budget=$(stage_budget_or_exit "ready" "${CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS}") || return 1
   log_switchover_info "Switchover stage candidate_primary_ready budget=${ready_budget}s remaining_before=$(remaining_action_budget)s"
   if ! wait_candidate_remote_root_primary_ready "${candidate_name}" "${candidate_fqdn}" "${ready_budget}"; then
+    log_switchover_error "Switchover failed: outcome=indeterminate_dcs_in_progress mutation=remote-partial stage=candidate_primary_ready reason=post_dcs_terminal_not_proven; old primary remains fenced and the DCS operation must not be preempted"
     return 1
   fi
   # Final-stage overrun check, BEFORE the success log/return. ready is the last
@@ -2358,7 +2429,7 @@ run_switchover() {
     return 1
   fi
 
-  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate root primary-readiness observed without mutating probe. Total elapsed=$(action_elapsed_seconds)s of ${SWITCHOVER_ACTION_DEADLINE_SECONDS}s deadline. Post-DCS convergence delegated to roleProbe + KB endpoint controller."
+  log_switchover_info "Switchover action returned: candidate_mode=auto dcs_recorded=true old_primary_fenced=true convergence=observed candidate_promoted=true candidate_root_primary_ready=true elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s"
   return 0
 }
 
@@ -2369,15 +2440,17 @@ main() {
   fi
   setup_mariadb_client_bin || return 1
 
+  local candidate_mode
   local candidate_name
   local candidate_fqdn
+  candidate_mode=$(resolve_candidate_mode)
   candidate_name=$(resolve_candidate_name)
-  candidate_fqdn=$(resolve_candidate_fqdn)
+  candidate_fqdn=$(resolve_candidate_fqdn "${candidate_name}")
   # alpha.80 v1 (Helen): the alpha.76 unconditional clear_switchover_fence_
   # active_marker call has been removed. alpha.79 v1 minimalist deleted the
   # marker writer in prepare, so no marker exists to clear. Pure dead-code
   # cleanup, no runtime behavior change.
-  run_switchover "${candidate_name}" "${candidate_fqdn}"
+  run_switchover "${candidate_name}" "${candidate_fqdn}" "${candidate_mode}"
 }
 
 # This is magic for shellspec ut framework, do not modify!
