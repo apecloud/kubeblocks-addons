@@ -173,8 +173,12 @@ MOCK
         end
 
         init = (component.dig("spec", "runtime", "initContainers") || [])
-          .find { |container| container["name"] == "init-kubectl" }
-        abort "#{name}: missing init-kubectl" unless init
+          .find do |container|
+            init_body = Array(container["command"]).join("\n")
+            init_body.include?("/opt/bitnami/kubectl/bin/kubectl") &&
+              init_body.include?("#{expected_data_path}/tmp/bin")
+          end
+        abort "#{name}: missing kubectl-producing init container" unless init
 
         mongodb = (component.dig("spec", "runtime", "containers") || [])
           .find { |container| container["name"] == "mongodb" }
@@ -196,7 +200,7 @@ MOCK
         init_body = Array(init["command"]).join("\n")
         unless init_body.include?("/opt/bitnami/kubectl/bin/kubectl") &&
                init_body.include?("#{expected_data_path}/tmp/bin")
-          abort "#{name}: init-kubectl does not project the expected binary"
+          abort "#{name}: kubectl init does not project the expected binary"
         end
 
         configmaps = (component.dig("spec", "policyRules") || []).find do |rule|
@@ -214,6 +218,70 @@ MOCK
     chart_dir=$(cd .. && pwd)
     verify_rendered_switchover_actions_for_path "$chart_dir" "/data/mongodb" || return
     verify_rendered_switchover_actions_for_path \
+      "$chart_dir" \
+      "/custom/mongodb-data" \
+      --set dataMountPath=/custom/mongodb-data
+  }
+
+  verify_rendered_completion_toolchain_for_path() {
+    local chart_dir="$1"
+    local expected_data_path="$2"
+    shift 2
+    helm template kb-addon-mongodb "$chart_dir" --dependency-update "$@" |
+      EXPECTED_DATA_PATH="$expected_data_path" ruby -ryaml -e '
+      expected_data_path = ENV.fetch("EXPECTED_DATA_PATH")
+      documents = YAML.load_stream($stdin.read).compact
+      components = documents.select do |document|
+        document["kind"] == "ComponentDefinition" &&
+          document.dig("spec", "lifecycleActions", "switchover")
+      end
+      abort "expected three switchover actions, got #{components.length}" unless components.length == 3
+
+      components.each do |component|
+        name = component.dig("metadata", "name")
+        mongodb = Array(component.dig("spec", "runtime", "containers"))
+          .find { |container| container["name"] == "mongodb" }
+        abort "#{name}: missing mongodb container" unless mongodb
+
+        mounts = Array(mongodb["volumeMounts"])
+        data_mount = mounts.find { |mount| mount["mountPath"] == expected_data_path }
+        tools_mount = mounts.find { |mount| mount["mountPath"] == "/tools" }
+        abort "#{name}: missing mongodb data mount" unless data_mount
+        abort "#{name}: missing mongodb tools mount" unless tools_mount
+
+        inits = Array(component.dig("spec", "runtime", "initContainers"))
+        kubectl_init = inits.find do |container|
+          body = Array(container["command"]).join("\n")
+          body.include?("/opt/bitnami/kubectl/bin/kubectl") &&
+            body.include?("#{expected_data_path}/tmp/bin")
+        end
+        abort "#{name}: missing kubectl-producing init container" unless kubectl_init
+        kubectl_mount = Array(kubectl_init["volumeMounts"]).find do |mount|
+          mount["name"] == data_mount["name"] &&
+            mount["mountPath"] == expected_data_path
+        end
+        abort "#{name}: kubectl producer does not share mongodb data volume" unless kubectl_mount
+
+        syncer_init = inits.find do |container|
+          body = Array(container["command"]).join("\n")
+          body.include?("/bin/syncerctl") && body.include?("/tools")
+        end
+        abort "#{name}: missing syncerctl-producing init container" unless syncer_init
+        syncer_mount = Array(syncer_init["volumeMounts"]).find do |mount|
+          mount["name"] == tools_mount["name"] &&
+            mount["mountPath"] == "/tools"
+        end
+        abort "#{name}: syncer producer does not share mongodb tools volume" unless syncer_mount
+      end
+    '
+  }
+
+  verify_rendered_completion_toolchain() {
+    local chart_dir
+
+    chart_dir=$(cd .. && pwd)
+    verify_rendered_completion_toolchain_for_path "$chart_dir" "/data/mongodb" || return
+    verify_rendered_completion_toolchain_for_path \
       "$chart_dir" \
       "/custom/mongodb-data" \
       --set dataMountPath=/custom/mongodb-data
@@ -469,6 +537,11 @@ ENV
     The output should not include "<--candidate>"
     The output should include "phase: completed"
     The output should include "completion-configmap: mongo-rs-switchover"
+  End
+
+  It "retains kubectl and syncer producers on the selected default and custom mounts"
+    When call verify_rendered_completion_toolchain
+    The status should be success
   End
 
   It "declares and passes the POSIX sh action-source gate"
