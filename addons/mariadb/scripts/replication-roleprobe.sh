@@ -51,6 +51,46 @@ remote_root_fence_file() {
   printf "%s/.remote-root-fence-role" "$(data_dir)"
 }
 
+remote_root_fence_write_tmp() {
+  printf '%s' "$1" > "$2"
+}
+
+remote_root_fence_commit_tmp() {
+  mv -f "$1" "$2"
+}
+
+remote_root_fence_readback() {
+  cat "$1"
+}
+
+# The marker is durable evidence that the user-facing remote root account was
+# successfully reduced to the secondary privilege set. Publishing "secondary"
+# without positively committing and re-reading that evidence is fail-open: a
+# later primary transition cannot know that it must restore the account.
+write_secondary_remote_root_fence() {
+  marker="$1"
+  marker_tmp="${marker}.tmp.$$"
+  marker_value=""
+
+  rm -f "${marker_tmp}" 2>/dev/null || return 1
+  if ! remote_root_fence_write_tmp "secondary" "${marker_tmp}" 2>/dev/null; then
+    rm -f "${marker_tmp}" 2>/dev/null || true
+    return 1
+  fi
+  if ! remote_root_fence_commit_tmp "${marker_tmp}" "${marker}" 2>/dev/null; then
+    rm -f "${marker_tmp}" 2>/dev/null || true
+    return 1
+  fi
+  marker_value="$(remote_root_fence_readback "${marker}" 2>/dev/null)" || {
+    rm -f "${marker}" 2>/dev/null || true
+    return 1
+  }
+  if [ "${marker_value}" != "secondary" ]; then
+    rm -f "${marker}" 2>/dev/null || true
+    return 1
+  fi
+}
+
 # alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_file` +
 # `switchover_fence_active_is_fresh` + `SWITCHOVER_FENCE_MARKER_MAX_AGE_SECONDS`
 # helpers are removed. alpha.79 v1 minimalist refactor in switchover.sh
@@ -197,7 +237,15 @@ apply_remote_root_fence() {
 
   marker="$(remote_root_fence_file)"
   current="$(cat "${marker}" 2>/dev/null || true)"
-  if [ "${current}" = "${role}" ]; then
+  # The marker has one durable meaning: a secondary remote-root fence is
+  # active.  A fully accepted primary is represented by marker absence; the
+  # entrypoint clears it before publishing primary readiness and its runtime
+  # reconciler requires it to stay absent.  Do not recreate a synthetic
+  # "primary" fence on every roleProbe tick after that authoritative commit.
+  if [ "${role}" = "primary" ] && [ ! -f "${marker}" ]; then
+    return 0
+  fi
+  if [ "${role}" = "secondary" ] && [ "${current}" = "secondary" ]; then
     return 0
   fi
 
@@ -258,10 +306,22 @@ apply_remote_root_fence() {
       local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT BINLOG MONITOR ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
       local_sql_best_effort -e "SET SESSION sql_log_bin=0; GRANT SLAVE MONITOR ON *.* TO '${user}'@'${host}'; SET SESSION sql_log_bin=1;"
     fi
-    printf "%s" "${role}" > "${marker}" 2>/dev/null || true
+    if [ "${role}" = "secondary" ]; then
+      write_secondary_remote_root_fence "${marker}" || return 1
+    else
+      # Primary grants are now in place, so close the same marker contract the
+      # entrypoint uses for a committed healthy primary.  Removal failure must
+      # keep role publication fail-closed rather than hiding state drift.
+      rm -f "${marker}" 2>/dev/null || return 1
+    fi
     return 0
   fi
-  rm -f "${marker}" 2>/dev/null || true
+  # A failed primary transition must preserve an existing secondary fence so
+  # the entrypoint can observe and repair it.  Secondary transition failures
+  # retain the historical stale-marker cleanup behavior.
+  if [ "${role}" != "primary" ]; then
+    rm -f "${marker}" 2>/dev/null || true
+  fi
   return 1
 }
 
