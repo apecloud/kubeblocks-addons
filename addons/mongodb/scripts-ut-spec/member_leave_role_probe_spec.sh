@@ -39,6 +39,14 @@ Describe "mongodb-member-leave.sh role safety"
     The output should include "SYNCER_CALL:leave --instance mongodb-1"
   End
 
+  It "propagates a leave command failure after a successful role probe"
+    ROLE_STDOUT="secondary"
+    LEAVE_RC=23
+    When call run_member_leave
+    The status should equal 23
+    The output should include "SYNCER_CALL:leave --instance mongodb-1"
+  End
+
   It "fails closed when the role probe times out"
     ROLE_RC=124
     When call run_member_leave
