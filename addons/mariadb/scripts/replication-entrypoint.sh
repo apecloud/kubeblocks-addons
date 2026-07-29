@@ -270,6 +270,16 @@ read_only_is_fail_closed() {
   esac
   return 1
 }
+read_only_is_writable() {
+  local value
+  value="$(read_only_value || true)"
+  case "${value}" in
+    0|OFF)
+      return 0
+      ;;
+  esac
+  return 1
+}
 read_only_is_strongest_fail_closed() {
   local value
   value="$(read_only_value || true)"
@@ -2282,6 +2292,22 @@ reconcile_sql_listener_for_syncer_secondary_once() {
   [ ! -f "${DATA_DIR}/.prestop-fence-started" ] || return 0
   role="$(query_local_syncer_role || true)"
   [ "${role}" = "secondary" ] || return 0
+  # Fresh pod-0 is intentionally published locally before the DCS leader
+  # ConfigMap exists. During that short bootstrap window syncerctl must report
+  # secondary: primary publication is DCS-authoritative. Do not feed that
+  # pre-DCS observation back into the database by fencing the only writable
+  # bootstrap member, or InitializeDCS can no longer discover a leader and the
+  # cluster deadlocks with every member secondary.
+  #
+  # This defer is narrow and fail-closed on uncertainty: it requires the full
+  # local-primary marker/listener contract plus an explicit read_only=OFF
+  # result. During a real switchover syncer demotes the former primary first;
+  # once read_only is ON this guard no longer applies and normal secondary
+  # fencing/follow proceeds.
+  if local_primary_role_published && read_only_is_writable; then
+    prestop_watchdog_log "runtime-secondary-listener-reconcile-defer role=${role} reason=pre-dcs-local-primary-writable"
+    return 0
+  fi
   set_replica_read_only "runtime-secondary-reconcile"
   slave_rejoin_rc=$?
   if [ "${slave_rejoin_rc}" -eq 2 ]; then

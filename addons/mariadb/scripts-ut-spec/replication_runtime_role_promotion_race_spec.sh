@@ -50,6 +50,12 @@ query_local_syncer_role() {
     printf '%s\n' primary
   fi
 }
+local_primary_role_published() {
+  return 1
+}
+read_only_is_writable() {
+  return 1
+}
 lock_remote_root_writes() {
   trace_event remote-root-fenced
 }
@@ -108,6 +114,68 @@ HARNESS
 
     TRACE_FILE="${trace}" ROLE_COUNTER="${role_counter}" DATA_DIR="${data_dir}" \
       bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_pre_dcs_secondary_defers_writable_pod0() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/pre-dcs-secondary-harness.sh"
+    trace="${work_dir}/trace"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function reconcile_sql_listener_for_syncer_secondary_once
+      cat <<'HARNESS'
+trace_event() {
+  printf '%s\n' "$1" >> "${TRACE_FILE}"
+}
+query_local_syncer_role() {
+  printf '%s\n' secondary
+}
+local_primary_role_published() {
+  return 0
+}
+read_only_is_writable() {
+  return 0
+}
+set_replica_read_only() {
+  trace_event read-only-on
+  return 0
+}
+prestop_watchdog_log() {
+  trace_event "log:$*"
+}
+mark_replication_pending() {
+  trace_event replication-pending
+}
+query_slave_status_verbose() {
+  return 1
+}
+slave_status_is_healthy() {
+  return 1
+}
+publish_replica_after_rejoin_ready() {
+  return 1
+}
+configure_replication_from_primary_service_once() {
+  return 1
+}
+accept_syncer_primary_promotion_from_replica_path() {
+  return 1
+}
+
+reconcile_sql_listener_for_syncer_secondary_once
+cat "${TRACE_FILE}"
+! grep -q '^read-only-on$' "${TRACE_FILE}"
+grep -q 'reason=pre-dcs-local-primary-writable' "${TRACE_FILE}"
+HARNESS
+    } > "${harness}"
+
+    TRACE_FILE="${trace}" DATA_DIR="${data_dir}" bash "${harness}"
     rc=$?
     rm -rf "${work_dir}"
     return "${rc}"
@@ -262,6 +330,13 @@ HARNESS
     The output should include "read-only-on"
     The output should not include "primary-internal-writable"
     The output should include "full-primary-accept"
+  End
+
+  It "defers a pre-DCS secondary observation while fresh pod-0 is locally published and explicitly writable"
+    When call run_pre_dcs_secondary_defers_writable_pod0
+    The status should be success
+    The output should include "pre-dcs-local-primary-writable"
+    The output should not include "read-only-on"
   End
 
   It "keeps an ordinary business writer fenced before full-primary acceptance"
