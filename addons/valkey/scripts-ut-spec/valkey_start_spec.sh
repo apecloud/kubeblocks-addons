@@ -15,6 +15,16 @@ Describe "Valkey Start Bash Script Tests"
   Include $common_library_file
   Include ../scripts/valkey-start.sh
 
+  data_pod_parallel_start_contract() {
+    awk '
+      /^  podManagementPolicy:/ {
+        count++
+        if ($2 == "Parallel") parallel++
+      }
+      END { exit !(count == 1 && parallel == 1) }
+    ' ../templates/cmpd.yaml
+  }
+
   init() {
     # Override file paths to local test paths (avoid writing to /etc/valkey or /data)
     CONF_TEMPLATE="./valkey-template.conf"
@@ -30,6 +40,13 @@ Describe "Valkey Start Bash Script Tests"
     rm -f "${CONF_TEMPLATE}" "${CONF_RUNTIME}" "${ACL_FILE}" "${ACL_FILE_BAK}" "${common_library_file}"
   }
   AfterAll "cleanup"
+
+  Describe "data pod startup ordering contract"
+    It "creates all replication peers in parallel so existing-data startup can discover authority"
+      When call data_pod_parallel_start_contract
+      The status should be success
+    End
+  End
 
   Describe "extract_obj_ordinal()"
     It "extracts ordinal from a StatefulSet pod name"

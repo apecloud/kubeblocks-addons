@@ -21,10 +21,12 @@ spec:
   serviceKind: redis
   serviceVersion: {{ .serviceVersion }}
 
-  # OrderedReady ensures pod-0 is Running before pod-1 starts.
-  # This matters for replication: the first pod becomes primary and
-  # later pods replicate from it.
-  podManagementPolicy: OrderedReady
+  # Parallel lets every peer start after a full Stop/Start. Startup still
+  # elects only the lowest ordinal for a fresh bootstrap and requires
+  # Sentinel or peer authority before existing data may become primary.
+  # OrderedReady would deadlock that fail-closed recovery: pod-0 waits for
+  # authority while KubeBlocks withholds pod-1 and later until pod-0 is Ready.
+  podManagementPolicy: Parallel
 
   # BestEffortParallel: update secondaries in parallel, primary last.
   # This minimises downtime while still guaranteeing the primary is the
