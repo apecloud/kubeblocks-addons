@@ -146,13 +146,6 @@ Define mariadb-galera component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define reloader script configmap name
-*/}}
-{{- define "mariadb.reloader.scriptConfigMapName" -}}
-mariadb-reload-script
-{{- end -}}
-
-{{/*
 Define versioned replication script configmap name.
 */}}
 {{- define "mariadb.replication.scriptConfigMapName" -}}
@@ -169,16 +162,6 @@ so that multiple template files do not each stitch the same literal.
 {{- define "mariadb.galera.scriptConfigMapName" -}}
 mariadb-galera-scripts
 {{- end -}}
-
-{{/*
-Generate reloader scripts configmap data
-*/}}
-{{- define "mariadb.extend.reload.scripts" -}}
-{{- range $path, $_ := $.Files.Glob "reloader/**" }}
-{{ $path | base }}: |-
-{{- $.Files.Get $path | nindent 2 }}
-{{- end }}
-{{- end }}
 
 {{/*
 ComponentDefinition reconfigure action for MariaDB
