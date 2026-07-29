@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034
+# shellcheck disable=SC2034,SC2154
 
 if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
   echo "valkey_member_leave_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
@@ -233,34 +233,163 @@ Describe "Valkey Member-Leave Bash Script Tests"
 
   Describe "master memberLeave fail-closed contract"
     member_leave_script="../scripts/valkey-member-leave.sh"
+    cmpd_file="../templates/cmpd.yaml"
 
-    It "treats a rejected SENTINEL FAILOVER as an error, not a warning-only success"
-      When call grep -F "ERROR: SENTINEL FAILOVER rejected" "${member_leave_script}"
+    It "returns success only after Sentinel reports a different primary"
+      sentinel_master_state() { echo "different"; }
+      When call handle_master_leave
       The status should be success
-      The stdout should include "ERROR: SENTINEL FAILOVER rejected"
+      The stdout should include "safe to continue"
     End
 
-    It "refuses memberLeave success when no new master is confirmed"
-      When call grep -F "refusing memberLeave success while the leaving pod is still master" "${member_leave_script}"
-      The status should be success
-      The stdout should include "refusing memberLeave success"
+    It "defers after Sentinel accepts a new failover instead of waiting in-process"
+      sentinel_master_state() { echo "leaving"; }
+      run_selected_sentinel_cli() { echo "OK"; }
+      When call handle_master_leave
+      The status should be failure
+      The stdout should include "SENTINEL FAILOVER response: OK"
+      The stderr should include "phase: failover-issued"
+      The stderr should include "next-retry-safe: yes"
     End
 
-    It "treats empty Sentinel master answers as unknown instead of already-safe"
-      export master_name="mycluster-valkey"
-      export KB_LEAVE_MEMBER_POD_NAME="valkey-0"
-      leaving_ip=""
-      s_cli=(valkey-cli)
-      valkey-cli() { printf "(nil)\n"; }
+    It "classifies a rejected failover as operator attention"
+      sentinel_master_state() { echo "leaving"; }
+      run_selected_sentinel_cli() { echo "ERR no good replica"; }
+      When call handle_master_leave
+      The status should be failure
+      The stdout should include "SENTINEL FAILOVER response: ERR no good replica"
+      The stderr should include "phase: failover-rejected"
+      The stderr should include "next-retry-safe: no"
+    End
+
+    It "requires a strict configured-Sentinel majority that still names the leaving primary"
+      master_name="mycluster-valkey"
+      KB_LEAVE_MEMBER_POD_NAME="valkey-0"
+      KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
+      leaving_ip="10.0.0.10"
+      canonicalize_sentinel_endpoints "sentinel-0,sentinel-1,sentinel-2"
+      run_sentinel_cli_for_host() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf "10.0.0.10\n6379\n" ;;
+          sentinel-2) printf "10.0.0.11\n6379\n" ;;
+        esac
+      }
+      When call sentinel_master_state
+      The status should be success
+      The stdout should eq "leaving"
+    End
+
+    It "accepts a strict configured-Sentinel majority that names the same replacement primary"
+      master_name="mycluster-valkey"
+      KB_LEAVE_MEMBER_POD_NAME="valkey-0"
+      KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
+      leaving_ip="10.0.0.10"
+      canonicalize_sentinel_endpoints "sentinel-0,sentinel-1,sentinel-2"
+      run_sentinel_cli_for_host() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf "10.0.0.11\n6379\n" ;;
+          sentinel-2) printf "10.0.0.10\n6379\n" ;;
+        esac
+      }
+      When call sentinel_master_state
+      The status should be success
+      The stdout should eq "different"
+    End
+
+    It "treats split Sentinel answers as unknown instead of already-safe"
+      master_name="mycluster-valkey"
+      KB_LEAVE_MEMBER_POD_NAME="valkey-0"
+      KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
+      leaving_ip="10.0.0.10"
+      canonicalize_sentinel_endpoints "sentinel-0,sentinel-1,sentinel-2"
+      run_sentinel_cli_for_host() {
+        case "$1" in
+          sentinel-0) printf "10.0.0.10\n6379\n" ;;
+          sentinel-1) printf "10.0.0.11\n6379\n" ;;
+          sentinel-2) printf "10.0.0.12\n6379\n" ;;
+        esac
+      }
       When call sentinel_master_state
       The status should be success
       The stdout should eq "unknown"
     End
 
-    It "has an explicit error for unknown Sentinel master while local role is master"
-      When call grep -F "Sentinel returned no concrete master" "${member_leave_script}"
+    It "counts unreachable and malformed replies against the configured majority"
+      master_name="mycluster-valkey"
+      KB_LEAVE_MEMBER_POD_NAME="valkey-0"
+      KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
+      leaving_ip="10.0.0.10"
+      canonicalize_sentinel_endpoints "sentinel-0,sentinel-1,sentinel-2"
+      run_sentinel_cli_for_host() {
+        case "$1" in
+          sentinel-0) printf "10.0.0.11\n6379\n" ;;
+          sentinel-1) return 1 ;;
+          sentinel-2) printf "10.0.0.11\n6380\n" ;;
+        esac
+      }
+      When call sentinel_master_state
       The status should be success
-      The stdout should include "Sentinel returned no concrete master"
+      The stdout should eq "unknown"
+    End
+
+    It "rejects duplicate or empty configured Sentinel endpoints"
+      reject_invalid_sentinel_lists() {
+        ! canonicalize_sentinel_endpoints "sentinel-0,sentinel-0" &&
+          ! canonicalize_sentinel_endpoints "sentinel-0,,sentinel-2" &&
+          ! canonicalize_sentinel_endpoints ",sentinel-1" &&
+          ! canonicalize_sentinel_endpoints "sentinel-1,"
+      }
+      When call reject_invalid_sentinel_lists
+      The status should be success
+    End
+
+    It "treats empty Sentinel master answers as unknown instead of already-safe"
+      master_name="mycluster-valkey"
+      KB_LEAVE_MEMBER_POD_NAME="valkey-0"
+      KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
+      leaving_ip=""
+      canonicalize_sentinel_endpoints "sentinel-0,sentinel-1,sentinel-2"
+      run_sentinel_cli_for_host() { printf "(nil)\n"; }
+      When call sentinel_master_state
+      The status should be success
+      The stdout should eq "unknown"
+    End
+
+    It "defers when Sentinel cannot yet name a concrete master"
+      sentinel_master_state() { echo "unknown"; }
+      When call handle_master_leave
+      The status should be failure
+      The stderr should include "phase: master-not-yet-observable"
+      The stderr should include "next-retry-safe: yes"
+    End
+
+    It "has no active in-process convergence sleep loop"
+      no_active_wait_loop() {
+        ! grep -vE '^[[:space:]]*(#|$)' "${member_leave_script}" \
+          | grep -E 'sleep_when_ut_mode_false|for .*seq' >/dev/null
+      }
+      When call no_active_wait_loop
+      The status should be success
+    End
+
+    It "declares a truthful action timeout and retry policy"
+      member_leave_action_contract() {
+        awk '
+          /^    memberLeave:/ { in_action=1; next }
+          in_action && /^      timeoutSeconds: 50$/ { timeout=1 }
+          in_action && /^      retryPolicy:/ { retry=1 }
+          in_action && /^        maxRetries: 10$/ { retries=1 }
+          in_action && /^        retryInterval: 3$/ { interval=1 }
+          in_action && /^  runtime:/ {
+            exit !(timeout && retry && retries && interval)
+          }
+          END {
+            if (!(timeout && retry && retries && interval)) exit 1
+          }
+        ' "${cmpd_file}"
+      }
+      When call member_leave_action_contract
+      The status should be success
     End
   End
 

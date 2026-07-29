@@ -208,6 +208,37 @@ if [ "${_cluster_enabled}" = "1" ]; then
   _shard_slot_ranges_before="${_shard_slot_ranges}"
   _cluster_current_epoch_before="${_cluster_current_epoch}"
   _cluster_my_epoch_before="${_cluster_my_epoch}"
+else
+  _replication_info=$("${connect_base[@]}" INFO replication 2>/dev/null) || {
+    echo "ERROR: cannot read replication state before backup." >&2
+    exit 1
+  }
+  _backup_role=$(cluster_info_value "${_replication_info}" role) || {
+    echo "ERROR: malformed replication role before backup." >&2
+    exit 1
+  }
+  case "${_backup_role}" in
+    master)
+      ;;
+    slave)
+      _master_link_status=$(cluster_info_value "${_replication_info}" master_link_status) || {
+        echo "ERROR: replica backup source has no master_link_status." >&2
+        exit 1
+      }
+      _master_sync_in_progress=$(cluster_info_value "${_replication_info}" master_sync_in_progress) || {
+        echo "ERROR: replica backup source has no master_sync_in_progress." >&2
+        exit 1
+      }
+      if [ "${_master_link_status}" != "up" ] || [ "${_master_sync_in_progress}" != "0" ]; then
+        echo "ERROR: refusing backup from a stale or synchronizing replica (master_link_status=${_master_link_status}, master_sync_in_progress=${_master_sync_in_progress})." >&2
+        exit 1
+      fi
+      ;;
+    *)
+      echo "ERROR: unsupported replication role '${_backup_role}' before backup." >&2
+      exit 1
+      ;;
+  esac
 fi
 
 # Save Sentinel ACL only when Sentinel connection variables are explicitly

@@ -55,11 +55,43 @@ fi
 archive="${DP_BACKUP_NAME}.tar.zst"
 if datasafed list "${archive}" 2>/dev/null | grep -qF "${archive}"; then
   echo "INFO: Restoring from ${archive}..."
-  if ! datasafed pull -d zstd-fastest "${archive}" - | tar -xvf - -C "${DATA_DIR}"; then
+  restore_tar=$(mktemp "${TMPDIR:-/tmp}/valkey-restore.XXXXXX.tar") || exit 1
+  trap 'rm -f "${restore_tar:-}"' EXIT
+  if ! datasafed pull -d zstd-fastest "${archive}" - > "${restore_tar}"; then
+    echo "ERROR: restore archive download failed." >&2
+    exit 1
+  fi
+  archive_members=$(tar -tf "${restore_tar}") || {
+    echo "ERROR: cannot list restore archive members." >&2
+    exit 1
+  }
+  if ! printf '%s\n' "${archive_members}" | awk '
+    {
+      name=$0
+      sub(/^\.\//, "", name)
+      if (name != "dump.rdb" && name != "users.acl" && name != "cluster-meta") exit 1
+      if (seen[name]++) exit 1
+    }
+    END { exit seen["dump.rdb"] == 1 ? 0 : 1 }
+  '; then
+    echo "ERROR: restore archive must contain exactly one dump.rdb and only optional users.acl/cluster-meta regular files." >&2
+    exit 1
+  fi
+  archive_member_types=$(tar -tvf "${restore_tar}") || {
+    echo "ERROR: cannot inspect restore archive member types." >&2
+    exit 1
+  }
+  if printf '%s\n' "${archive_member_types}" | awk '$1 !~ /^-/ { bad=1 } END { exit bad ? 0 : 1 }'; then
+    echo "ERROR: restore archive contains a non-regular member." >&2
+    exit 1
+  fi
+  if ! tar -xf "${restore_tar}" -C "${DATA_DIR}"; then
     echo "ERROR: restore archive extraction failed; removing partial payload." >&2
     cleanup_restored_payload
     exit 1
   fi
+  rm -f "${restore_tar}"
+  restore_tar=""
 else
   echo "ERROR: backup archive '${archive}' not found in repository." >&2
   exit 1
@@ -91,13 +123,35 @@ seed_multipart_aof_from_rdb() {
     return 1
   fi
 
-  mkdir -p "${append_dir}"
-  cp "${rdb}" "${base_file}"
-  : > "${incr_file}"
-  {
+  mkdir -p "${append_dir}" || {
+    echo "ERROR: cannot create multipart AOF directory." >&2
+    return 1
+  }
+  cp "${rdb}" "${base_file}" || {
+    echo "ERROR: cannot copy dump.rdb into multipart AOF base file." >&2
+    return 1
+  }
+  : > "${incr_file}" || {
+    echo "ERROR: cannot create multipart AOF incremental file." >&2
+    return 1
+  }
+  local manifest_tmp
+  manifest_tmp=$(mktemp "${manifest_file}.tmp.XXXXXX") || {
+    echo "ERROR: cannot allocate multipart AOF manifest." >&2
+    return 1
+  }
+  if ! {
     printf 'file %s seq 1 type b\n' "$(basename "${base_file}")"
     printf 'file %s seq 1 type i\n' "$(basename "${incr_file}")"
-  } > "${manifest_file}"
+  } > "${manifest_tmp}" || ! mv -f "${manifest_tmp}" "${manifest_file}"; then
+    rm -f "${manifest_tmp}"
+    echo "ERROR: cannot write multipart AOF manifest." >&2
+    return 1
+  fi
+  sync || {
+    echo "ERROR: cannot persist multipart AOF seed." >&2
+    return 1
+  }
   echo "INFO: Seeded multipart AOF manifest from restored dump.rdb."
 }
 

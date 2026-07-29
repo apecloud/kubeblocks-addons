@@ -18,6 +18,8 @@ metadata:
   name: valkey-backup-policy-template
   labels:
     {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
 spec:
   # serviceKind must match cmpd.spec.serviceKind
   serviceKind: redis

@@ -327,15 +327,26 @@ Describe "Valkey Start Bash Script Tests"
         The stderr should include "electing bootstrap primary"
       End
 
-      It "allows lexicographic election for full-cluster restart when data already exists"
+      It "refuses to guess a primary for existing data without trusted topology"
         touch "${DATA_DIR}/dump.rdb"
         query_sentinel_quorum_for_master() { echo ""; }
         scan_pods_for_master() { echo ""; }
         verify_pod_role() { echo ""; }
         When call build_replicaof_config
-        The status should be success
-        The stderr should include "treating as full-cluster restart"
-        The stderr should include "electing bootstrap primary"
+        The status should be failure
+        The stderr should include "refusing to guess whether this is a full restart or a network partition"
+      End
+
+      It "never falls back to a heuristic node already observed as a replica"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        find_known_slave_pod() { echo ""; }
+        verify_pod_role() { echo "slave"; }
+        follow_slave_to_master() { echo ""; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "is a replica"
+        The stderr should include "can prove a current master"
       End
 
       It "fails closed when any peer is already a slave even if this pod data dir is fresh"
@@ -368,6 +379,51 @@ Describe "Valkey Start Bash Script Tests"
         The stderr should include "reports role:slave"
         The stderr should include "refusing lexicographic primary guess"
       End
+
+      It "fails closed instead of falling through when the peer master view is ambiguous"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() {
+          echo "ERROR: multiple data pods report role:master" >&2
+          return 1
+        }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "ambiguous master view"
+        The stderr should not include "electing bootstrap primary"
+      End
+    End
+  End
+
+  Describe "scan_pods_for_master()"
+    scan_env() {
+      export CURRENT_POD_NAME="valkey-0"
+      export VALKEY_POD_FQDN_LIST="valkey-0.h,valkey-1.h,valkey-2.h"
+      export SERVICE_PORT="6379"
+    }
+    Before "scan_env"
+
+    timeout() {
+      shift
+      "$@"
+    }
+
+    It "returns the only peer that positively reports master"
+      valkey-cli() {
+        case "$*" in
+          *"-h valkey-1.h "*) printf 'role:master\n' ;;
+          *) printf 'role:slave\n' ;;
+        esac
+      }
+      When call scan_pods_for_master
+      The status should be success
+      The stdout should equal "valkey-1.h"
+    End
+
+    It "rejects two peers that both report master"
+      valkey-cli() { printf 'role:master\n'; }
+      When call scan_pods_for_master
+      The status should be failure
+      The stderr should include "multiple data pods report role:master"
     End
   End
 End

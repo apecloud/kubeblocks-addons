@@ -1,3 +1,4 @@
+{{- include "valkey-cluster.validateInputs" . }}
 {{- include "valkey-cluster.clusterCommon" . }}
 {{- if eq .Values.mode "cluster" }}
   {{- include "valkey-cluster.validateClusterMode" . }}

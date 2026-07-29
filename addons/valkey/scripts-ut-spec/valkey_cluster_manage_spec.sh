@@ -982,6 +982,9 @@ ADDNODE"
         printf 'shard-def vk-def-0.h,vk-def-1.h\n'
       }
       build_cli() { _cli=(mock_cli "${1}" "${calls}"); }
+      # These examples focus on FORGET and residue closure. The reset proof
+      # itself has dedicated behavioral coverage below.
+      prove_reset_safe() { return 0; }
       # CI runs on Linux where getent EXISTS and fails for these fake
       # hostnames — without this stub every roster host would be
       # filtered as "departed" (macOS has no getent, hiding the issue).
@@ -1125,6 +1128,31 @@ ADDNODE"
       The contents of file "${calls}" should not include "FORGET:"
     End
 
+    It "rechecks reset safety at commit and emits no clear/reset on drift"
+      reset_proofs=0
+      prove_reset_safe() {
+        reset_proofs=$((reset_proofs + 1))
+        [ "${reset_proofs}" -lt 3 ]
+      }
+      mock_cli() {
+        local host="${1}" f="${2}"; shift 2
+        case "$*" in
+          PING) echo PONG ;;
+          "CLUSTER MYID") case "${host}" in vk-def-0.h) echo dead1 ;; vk-def-1.h) echo dead2 ;; esac ;;
+          "CLUSTER NODES")
+            printf 'live1 vk-abc-0.h:6379@16379 master - 0 0 1 connected 0-16383\n'
+            printf 'dead1 vk-def-0.h:6379@16379 slave live1 0 0 2 connected\n'
+            printf 'dead2 vk-def-1.h:6379@16379 slave live1 0 0 2 connected\n' ;;
+          FLUSHALL) echo "FLUSH:${host}" >> "${f}"; echo OK ;;
+          "CLUSTER RESET HARD") echo "RESET:${host}" >> "${f}"; echo OK ;;
+        esac
+      }
+      When call purge_shard_from_cluster
+      The status should be failure
+      The contents of file "${calls}" should not include "FLUSH:"
+      The contents of file "${calls}" should not include "RESET:"
+    End
+
     It "cannot succeed while resurrection residue persists (retry-safe defer)"
       mock_cli() {
         local host="${1}" f="${2}"; shift 2
@@ -1177,6 +1205,56 @@ ADDNODE"
     End
   End
 
+  Describe "prove_reset_safe()"
+    reset_gate_env() {
+      build_cli() { _cli=(reset_gate_cli); }
+      build_cli "target.h"
+    }
+    Before "reset_gate_env"
+
+    It "fails closed when CLUSTER NODES is unreadable"
+      reset_gate_cli() { return 72; }
+      When call prove_reset_safe remove-reset target.h
+      The status should be failure
+      The stderr should include "cannot read CLUSTER NODES"
+    End
+
+    It "fails closed when the local view has no unique myself line"
+      reset_gate_cli() {
+        printf 'id target.h:6379@16379 slave master-id 0 0 1 connected\n'
+      }
+      When call prove_reset_safe remove-reset target.h
+      The status should be failure
+      The stderr should include "0 readable myself lines"
+    End
+
+    It "rejects a master that still owns slots"
+      reset_gate_cli() {
+        printf 'id target.h:6379@16379 myself,master - 0 0 1 connected 0-100\n'
+      }
+      When call prove_reset_safe remove-reset target.h
+      The status should be failure
+      The stderr should include "still advertises slot state"
+    End
+
+    It "rejects a malformed replica line that still advertises slots"
+      reset_gate_cli() {
+        printf 'id target.h:6379@16379 myself,slave master-id 0 0 1 connected 0-100\n'
+      }
+      When call prove_reset_safe remove-reset target.h
+      The status should be failure
+      The stderr should include "still advertises slot state"
+    End
+
+    It "accepts a well-formed slotless replica"
+      reset_gate_cli() {
+        printf 'id target.h:6379@16379 myself,slave master-id 0 0 1 connected\n'
+      }
+      When call prove_reset_safe remove-reset target.h
+      The status should be success
+    End
+  End
+
   Describe "shard_membership_bound()"
     nodes3ok='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
 s1 vk-s-a-1.h:6379@16379 slave m1 0 0 1 connected'
@@ -1199,6 +1277,22 @@ s1 vk-s-a-1.h:6379@16379 slave OTHER 0 0 1 connected'
       When call shard_membership_bound "${nodes_bad2}" "shard-a" "vk-s-a-0.h,vk-s-a-1.h"
       The status should be failure
       The stdout should include "replicates OTHER, not this shard's master m1"
+    End
+
+    It "fails when the shard replica is marked failed"
+      nodes_failed='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
+s1 vk-s-a-1.h:6379@16379 slave,fail m1 0 0 1 connected'
+      When call shard_membership_bound "${nodes_failed}" "shard-a" "vk-s-a-0.h,vk-s-a-1.h"
+      The status should be failure
+      The stdout should include "is unhealthy"
+    End
+
+    It "fails when the shard replica is disconnected"
+      nodes_disconnected='m1 vk-s-a-0.h:6379@16379 master - 0 0 1 connected 0-5460
+s1 vk-s-a-1.h:6379@16379 slave m1 0 0 1 disconnected'
+      When call shard_membership_bound "${nodes_disconnected}" "shard-a" "vk-s-a-0.h,vk-s-a-1.h"
+      The status should be failure
+      The stdout should include "is not connected"
     End
   End
 

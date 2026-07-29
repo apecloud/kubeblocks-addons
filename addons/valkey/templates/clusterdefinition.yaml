@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "valkey.labels" . | nindent 4 }}
   annotations:
-    kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+    {{- include "valkey.annotations" . | nindent 4 }}
 spec:
   topologies:
     # ── Standalone ────────────────────────────────────────────────────────────

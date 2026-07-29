@@ -928,6 +928,16 @@ shard_membership_bound() {
     return 1
   fi
   master_line=$(echo "${nodes}" | grep -E "${pattern}" | awk '$3 ~ /master/ {print; exit}')
+  flags=$(echo "${master_line}" | awk '{print $3}')
+  case ",${flags}," in
+    *,fail,*|*,handshake,*|*,noaddr,*)
+      echo "membership incomplete: shard ${shard} master is unhealthy (flags=${flags})."
+      return 1 ;;
+  esac
+  if [ "$(echo "${master_line}" | awk '{print $8}')" != "connected" ]; then
+    echo "membership incomplete: shard ${shard} master is not connected."
+    return 1
+  fi
   master_id=$(echo "${master_line}" | awk '{print $1}')
   master_slots=$(slots_owned_in_node_line "${master_line}") || {
     echo "membership incomplete: shard ${shard} master has invalid slot evidence."
@@ -946,6 +956,17 @@ shard_membership_bound() {
       continue
     fi
     flags=$(echo "${line}" | awk '{print $3}')
+    case ",${flags}," in
+      *,fail,*|*,handshake,*|*,noaddr,*)
+        echo "membership incomplete: ${fqdn} (shard ${shard}) is unhealthy (flags=${flags})."
+        bad=1
+        continue ;;
+    esac
+    if [ "$(echo "${line}" | awk '{print $8}')" != "connected" ]; then
+      echo "membership incomplete: ${fqdn} (shard ${shard}) is not connected."
+      bad=1
+      continue
+    fi
     case "${flags}" in
       *master*) continue ;;
     esac
@@ -1819,10 +1840,7 @@ purge_shard_from_cluster() {
       classify remove-reset yes "${fqdn} is unreachable — old cluster identity cannot be destroyed"
       return 1
     fi
-    if self_claims_master_with_slots; then
-      classify remove-slots-nonzero yes "${fqdn} still claims master with slots — refusing reset"
-      return 1
-    fi
+    prove_reset_safe remove-slots-nonzero "${fqdn}" || return 1
     id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r')
     if [ -z "${id}" ]; then
       classify remove-reset yes "CLUSTER MYID unreadable from ${fqdn}"
@@ -1838,6 +1856,7 @@ purge_shard_from_cluster() {
   # a drain failure, not a cleanup step.
   for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
     build_cli "${fqdn}"
+    prove_reset_safe remove-reset "${fqdn}" || return 1
     "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # replicas refuse (harmless); master proven slotless
     "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
       classify remove-reset yes "CLUSTER RESET HARD on ${fqdn} failed"
@@ -1910,15 +1929,32 @@ host_resolves() {
   getent hosts "${1}" >/dev/null 2>&1
 }
 
-# The current pod's own cluster view: does it claim to be a master that
-# still owns slot ranges? (Engine truth read on the node itself; used as
-# the explicit RESET precondition.) Caller must have built _cli first.
-self_claims_master_with_slots() {
-  local line
-  line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/')
-  [ -z "${line}" ] && return 1
-  echo "${line}" | awk '{print $3}' | grep -q master || return 1
-  [ -n "$(echo "${line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')" ]
+# Fresh engine-truth gate for FLUSHALL/RESET HARD. Missing or malformed
+# topology is never equivalent to a slotless node.
+prove_reset_safe() {
+  local phase="${1}" target="${2}" nodes line_count line flags slots
+  nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null) || {
+    classify "${phase}" yes "cannot read CLUSTER NODES from ${target} at reset commit"
+    return 1
+  }
+  nodes=$(printf '%s\n' "${nodes}" | tr -d '\r')
+  line_count=$(printf '%s\n' "${nodes}" | awk '$3 ~ /(^|,)myself(,|$)/ {count++} END {print count+0}')
+  if [ "${line_count}" -ne 1 ]; then
+    classify "${phase}" yes "${target} has ${line_count} readable myself lines at reset commit"
+    return 1
+  fi
+  line=$(printf '%s\n' "${nodes}" | awk '$3 ~ /(^|,)myself(,|$)/ {print}')
+  if ! printf '%s\n' "${line}" | awk 'NF >= 8 && $3 ~ /(^|,)(master|slave)(,|$)/ {ok=1} END {exit ok ? 0 : 1}'; then
+    classify "${phase}" yes "${target} has a malformed myself line at reset commit"
+    return 1
+  fi
+  flags=$(printf '%s\n' "${line}" | awk '{print $3}')
+  slots=$(printf '%s\n' "${line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')
+  if [ -n "${slots}" ]; then
+    classify "${phase}" yes "${target} still advertises slot state at reset commit (flags=${flags})"
+    return 1
+  fi
+  return 0
 }
 
 # CLUSTER NODES lines whose address matches any pod of the current shard.

@@ -78,12 +78,29 @@ shard_vantage() {
 }
 
 shard_master_line() {
-  local via="${1}" fqdn pattern=""
+  local via="${1}" fqdn pattern="" nodes masters count
   for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$'); do
     pattern="${pattern:+${pattern}|}${fqdn}"
   done
   build_cli "${via}"
-  "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -E "${pattern}" | awk '$3 ~ /master/ {print; exit}'
+  nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r') || return 1
+  masters=$(printf '%s\n' "${nodes}" | grep -E "${pattern}" | awk '
+    $3 ~ /(^|,)master(,|$)/ &&
+    $3 !~ /(^|,)(fail|handshake|noaddr)(,|$)/ &&
+    $8 == "connected" {
+      owns_slot=0
+      for (i=9; i<=NF; i++) {
+        if ($i ~ /^[0-9]+(-[0-9]+)?$/) owns_slot=1
+      }
+      if (owns_slot) print
+    }
+  ')
+  count=$(printf '%s\n' "${masters}" | grep -c .)
+  [ "${count}" -eq 1 ] || {
+    classify join-master yes "shard view has ${count} healthy connected slot-owning masters, expected exactly 1"
+    return 1
+  }
+  printf '%s\n' "${masters}"
 }
 
 node_line_of() {
@@ -153,18 +170,23 @@ member_join() {
 # wrong parent. A slot-owning master is never converted because that would
 # orphan its slots; all other role repairs are issued on the target itself.
 repair_existing_join() {
-  local via="${1}" target="${2}" master_id="${3}" line self_line flags slots out
+  local via="${1}" target="${2}" master_id="${3}" line self_line flags link_state slots out
   line=$(node_line_of "${via}" "${target}")
   if [ -z "${line}" ]; then
     classify join-repair yes "${target} disappeared from the non-target cluster view before repair"
     return 1
   fi
   flags=$(echo "${line}" | awk '{print $3}')
+  link_state=$(echo "${line}" | awk '{print $8}')
   case ",${flags}," in
     *,fail,*|*,handshake,*|*,noaddr,*)
       classify join-repair yes "${target} is not in a repairable connected state (${flags})"
       return 1 ;;
   esac
+  if [ "${link_state}" != "connected" ]; then
+    classify join-repair yes "${target} is not connected in the cluster view (${link_state})"
+    return 1
+  fi
 
   build_cli "${target}"
   if ! "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
@@ -200,10 +222,15 @@ repair_existing_join() {
 # carry the slave flag AND reference this shard's master id (visibility
 # alone is not membership — review blocker).
 join_confirmed() {
-  local via="${1}" target="${2}" master_id="${3}" line
+  local via="${1}" target="${2}" master_id="${3}" line flags
   line=$(node_line_of "${via}" "${target}")
   [ -z "${line}" ] && return 1
-  echo "${line}" | awk '{print $3}' | grep -q slave || return 1
+  flags=$(echo "${line}" | awk '{print $3}')
+  case ",${flags}," in
+    *,fail,*|*,handshake,*|*,noaddr,*) return 1 ;;
+  esac
+  echo "${flags}" | grep -q slave || return 1
+  [ "$(echo "${line}" | awk '{print $8}')" = "connected" ] || return 1
   [ "$(echo "${line}" | awk '{print $4}')" = "${master_id}" ]
 }
 
@@ -234,7 +261,7 @@ member_leave() {
 # leaving node's identity, FORGET every old id on every remaining pod,
 # then prove BOTH old fqdn and old ids absent from every remaining pod.
 purge_member_from_cluster() {
-  local target="${1}" remaining host ids="" id line nodes out
+  local target="${1}" remaining host ids="" id nodes out
   remaining=$(all_cluster_pods_except "${target}") || return 1
   if [ -z "${remaining}" ]; then
     classify env-contract no "ALL_SHARDS_POD_FQDN_MAP roster empty — cannot purge ${target} cluster-wide (no fallback)"
@@ -246,18 +273,7 @@ purge_member_from_cluster() {
     classify leave-reset yes "${target} is unreachable — old cluster identity cannot be destroyed"
     return 1
   fi
-  # explicit RESET precondition: never reset a node whose own view
-  # still claims master+slots (demote/drain failed upstream)
-  line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/')
-  if [ -z "${line}" ]; then
-    classify leave-reset yes "${target} has no readable myself line"
-    return 1
-  fi
-  if echo "${line}" | awk '{print $3}' | grep -q master && \
-     [ -n "$(echo "${line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')" ]; then
-    classify leave-orphan-guard no "${target} still claims master with slots — refusing reset"
-    return 1
-  fi
+  prove_reset_safe leave-orphan-guard "${target}" || return 1
   id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r')
   if [ -z "${id}" ]; then
     classify leave-reset yes "CLUSTER MYID unreadable from ${target}"
@@ -272,6 +288,7 @@ purge_member_from_cluster() {
   ids=$(echo "${ids}" | tr ' ' '\n' | grep -v '^$' | sort -u)
 
   build_cli "${target}"
+  prove_reset_safe leave-reset "${target}" || return 1
   "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # refused on replicas (harmless)
   "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
     classify leave-reset yes "CLUSTER RESET HARD on ${target} failed"
@@ -302,6 +319,34 @@ purge_member_from_cluster() {
       return 1
     fi
   done
+  return 0
+}
+
+# Fresh engine-truth gate for FLUSHALL/RESET HARD. Missing or malformed
+# topology is never equivalent to a slotless node.
+prove_reset_safe() {
+  local phase="${1}" target="${2}" nodes line_count line flags slots
+  nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null) || {
+    classify "${phase}" yes "cannot read CLUSTER NODES from ${target} at reset commit"
+    return 1
+  }
+  nodes=$(printf '%s\n' "${nodes}" | tr -d '\r')
+  line_count=$(printf '%s\n' "${nodes}" | awk '$3 ~ /(^|,)myself(,|$)/ {count++} END {print count+0}')
+  if [ "${line_count}" -ne 1 ]; then
+    classify "${phase}" yes "${target} has ${line_count} readable myself lines at reset commit"
+    return 1
+  fi
+  line=$(printf '%s\n' "${nodes}" | awk '$3 ~ /(^|,)myself(,|$)/ {print}')
+  if ! printf '%s\n' "${line}" | awk 'NF >= 8 && $3 ~ /(^|,)(master|slave)(,|$)/ {ok=1} END {exit ok ? 0 : 1}'; then
+    classify "${phase}" yes "${target} has a malformed myself line at reset commit"
+    return 1
+  fi
+  flags=$(printf '%s\n' "${line}" | awk '{print $3}')
+  slots=$(printf '%s\n' "${line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')
+  if [ -n "${slots}" ]; then
+    classify "${phase}" yes "${target} still advertises slot state at reset commit (flags=${flags})"
+    return 1
+  fi
   return 0
 }
 

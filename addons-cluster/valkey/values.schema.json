@@ -1,6 +1,75 @@
 {
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
+  "allOf": [
+    {
+      "not": {
+        "properties": {
+          "nodePortEnabled": {
+            "const": true
+          },
+          "loadBalancerEnabled": {
+            "const": true
+          }
+        },
+        "required": [
+          "nodePortEnabled",
+          "loadBalancerEnabled"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "replication"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "replicas": {
+            "minimum": 2
+          }
+        }
+      }
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "customSecretName": {
+              "const": ""
+            },
+            "customSecretNamespace": {
+              "const": ""
+            }
+          },
+          "required": [
+            "customSecretName",
+            "customSecretNamespace"
+          ]
+        },
+        {
+          "properties": {
+            "customSecretName": {
+              "minLength": 1
+            },
+            "customSecretNamespace": {
+              "minLength": 1
+            }
+          },
+          "required": [
+            "customSecretName",
+            "customSecretNamespace"
+          ]
+        }
+      ]
+    }
+  ],
   "properties": {
     "version": {
       "title": "Version",
@@ -29,36 +98,63 @@
     },
     "cpu": {
       "title": "CPU",
-      "description": "CPU cores.",
+      "description": "CPU quantity (for example 500m or 1).",
       "type": [
         "number",
         "string"
       ],
-      "default": 0.5,
-      "minimum": 0.1,
-      "maximum": 64
+      "default": "500m",
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 64
+        },
+        {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?(m)?$"
+        }
+      ]
     },
     "memory": {
-      "title": "Memory(Gi)",
-      "description": "Memory in Gi.",
+      "title": "Memory",
+      "description": "Kubernetes memory quantity; legacy numeric values are interpreted as Gi.",
       "type": [
         "number",
         "string"
       ],
-      "default": 0.5,
-      "minimum": 0.1,
-      "maximum": 1000
+      "default": "512Mi",
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1000
+        },
+        {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?([EPTGMK]i?)$"
+        }
+      ]
     },
     "storage": {
-      "title": "Storage(Gi)",
-      "description": "Data storage size in Gi.",
+      "title": "Storage",
+      "description": "Kubernetes storage quantity; legacy numeric values are interpreted as Gi.",
       "type": [
         "number",
         "string"
       ],
-      "default": 20,
-      "minimum": 1,
-      "maximum": 10000
+      "default": "20Gi",
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?([EPTGMK]i?)$"
+        }
+      ]
     },
     "storageClassName": {
       "title": "Storage Class Name",
@@ -113,29 +209,56 @@
             "number",
             "string"
           ],
-          "default": 0.5,
-          "minimum": 0.1,
-          "maximum": 64
+          "default": "500m",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 64
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?(m)?$"
+            }
+          ]
         },
         "memory": {
-          "title": "Sentinel memory(Gi)",
+          "title": "Sentinel memory",
           "type": [
             "number",
             "string"
           ],
-          "default": 0.5,
-          "minimum": 0.1,
-          "maximum": 1000
+          "default": "512Mi",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 1000
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?([EPTGMK]i?)$"
+            }
+          ]
         },
         "storage": {
-          "title": "Sentinel storage(Gi)",
+          "title": "Sentinel storage",
           "type": [
             "number",
             "string"
           ],
-          "default": 5,
-          "minimum": 1,
-          "maximum": 10000
+          "default": "5Gi",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?([EPTGMK]i?)$"
+            }
+          ]
         },
         "storageClassName": {
           "title": "Sentinel StorageClass name",
@@ -152,7 +275,41 @@
           "type": "string",
           "default": ""
         }
-      }
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "customSecretName": {
+                  "const": ""
+                },
+                "customSecretNamespace": {
+                  "const": ""
+                }
+              },
+              "required": [
+                "customSecretName",
+                "customSecretNamespace"
+              ]
+            },
+            {
+              "properties": {
+                "customSecretName": {
+                  "minLength": 1
+                },
+                "customSecretNamespace": {
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "customSecretName",
+                "customSecretNamespace"
+              ]
+            }
+          ]
+        }
+      ]
     },
     "cluster": {
       "title": "Cluster (sharding) mode",

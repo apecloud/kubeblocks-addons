@@ -2,11 +2,9 @@
 set -eu
 
 CONFIG_FILE="${CONFIG_FILE:-/etc/conf/valkey.conf}"
-DATA_LINK="${DATA_LINK:-/etc/conf/..data}"
 RELOAD_PARAM_SCRIPT="${RELOAD_PARAM_SCRIPT:-/scripts/reload-parameter.sh}"
 RELOAD_VERIFY_CMD="${RELOAD_VERIFY_CMD:-}"
 MAX_WAIT="${MAX_WAIT:-15}"
-MTIME_FRESH="${MTIME_FRESH:-10}"
 MARKER_FILE="${MARKER_FILE:-/data/reload-config-applied.marker}"
 GLOBAL_DEADLINE="${GLOBAL_DEADLINE:-}"
 
@@ -86,70 +84,13 @@ done < "$CONFIG_FILE"
 
 _trace "pre-check result: _needs_apply=${_needs_apply} _has_uncheckable=${_has_uncheckable} _checked_any=${_checked_any}"
 
-# ── Phase 2: File matches runtime — verify freshness before rc=0 ─────
-# If every checkable param already matches runtime, succeed only when we
-# can positively confirm the file is post-projection.  Without that
-# proof the match may be coincidental (stale old values == running
-# values) and we must defer so the controller retries after kubelet
-# projects the real update.
-#
-# Heuristic: ..data symlink mtime.  kubelet atomically swaps this
-# symlink on every ConfigMap projection.  A recent mtime is a strong
-# (but not perfect) indicator that the mounted file reflects the
-# current reconfigure target.  kbagent does not pass a generation or
-# action identity, so no local signal can strictly prove "this
-# reconfigure's target has been projected" vs "previous reconfigure's
-# projection is still recent."  MTIME_FRESH bounds the residual false-
-# positive window (back-to-back reconfigurations < MTIME_FRESH apart
-# while kubelet has not yet projected the second one).
-
-_marker_deferred=false
+# ── Phase 2: File matches runtime — require fresh projected content ───
+# kbagent does not inject the target ConfigMap generation or digest. A
+# matching runtime value, a recent ..data mtime, or a marker for the current
+# bytes therefore cannot distinguish this action's target from the previous
+# projection. Only a content change observed during this invocation is
+# positive freshness evidence. Otherwise defer and let the action retry.
 if [ "$_needs_apply" = "false" ]; then
-  MARKER_OBS_WINDOW="${MARKER_OBS_WINDOW:-5}"
-  if [ -f "$MARKER_FILE" ]; then
-    _prev_marker=$(cat "$MARKER_FILE" 2>/dev/null)
-    if _curr_marker=$(_build_marker "$CONFIG_FILE"); then
-      if [ -n "$_prev_marker" ] && [ "$_prev_marker" = "$_curr_marker" ]; then
-        _trace "content-hash marker matches — observing ${MARKER_OBS_WINDOW}s for projection"
-        _obs_waited=0; _obs_initial=$(cat "$CONFIG_FILE")
-        while [ "$_obs_waited" -lt "$MARKER_OBS_WINDOW" ]; do
-          _check_deadline; sleep 1; _obs_waited=$((_obs_waited + 1))
-          if [ "$(cat "$CONFIG_FILE")" != "$_obs_initial" ]; then
-            _trace "projection detected at ${_obs_waited}s — will apply"
-            _needs_apply=true; break
-          fi
-        done
-        if [ "$_needs_apply" = "false" ]; then
-          _trace "marker matched, no projection within ${MARKER_OBS_WINDOW}s — deferring to content polling"
-          _marker_deferred=true
-        fi
-      else
-        _trace "marker mismatch prev='${_prev_marker}' curr='${_curr_marker}' — invalidating"
-        rm -f "$MARKER_FILE"
-      fi
-    else
-      _trace "marker check: _build_marker failed, preserving existing marker"
-    fi
-  else
-    _trace "no marker file at ${MARKER_FILE}"
-  fi
-fi
-
-if [ "$_needs_apply" = "false" ]; then
-  if [ "$_marker_deferred" = "false" ] && [ "$_checked_any" = "true" ] && [ -L "$DATA_LINK" ]; then
-    _now=$(date +%s)
-    _link_mtime=$(stat -c %Y "$DATA_LINK" 2>/dev/null \
-                  || stat -f %m "$DATA_LINK" 2>/dev/null || echo 0)
-    case "$_link_mtime" in *[!0-9]*) _link_mtime=0 ;; esac
-    _link_age=$((_now - _link_mtime))
-    if [ "$_link_age" -le "$MTIME_FRESH" ]; then
-      _trace "..data age=${_link_age}s <= ${MTIME_FRESH}s — recent projection heuristic, runtime matches"
-      if _write_marker "$CONFIG_FILE"; then
-        exit 0
-      fi
-    fi
-  fi
-
   _initial=$(cat "$CONFIG_FILE"); _waited=0
   while [ "$_waited" -lt "$MAX_WAIT" ]; do
     _check_deadline; sleep 1; _waited=$((_waited + 1))
@@ -160,12 +101,6 @@ if [ "$_needs_apply" = "false" ]; then
   done
 
   if [ "$_needs_apply" = "false" ]; then
-    if [ "$_checked_any" = "true" ]; then
-      _trace "content stable ${MAX_WAIT}s + runtime verified — accepting as applied"
-      if _write_marker "$CONFIG_FILE"; then
-        exit 0
-      fi
-    fi
     echo "ERROR: file matches runtime, freshness unconfirmed after ${MAX_WAIT}s" >&2
     echo "retry-safe: yes" >&2
     exit 1

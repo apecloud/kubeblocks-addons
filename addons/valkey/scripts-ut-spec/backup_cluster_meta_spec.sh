@@ -11,6 +11,7 @@ Describe "backup.sh cluster-mode metadata (behavioral)"
     unset FAKE_CLUSTER_RANGE FAKE_CLUSTER_RANGE_AFTER \
       FAKE_REMOTE_RANGE FAKE_REMOTE_RANGE_AFTER \
       FAKE_CLUSTER_INFO_FAIL FAKE_CLUSTER_ENABLED \
+      FAKE_REPLICATION_ROLE FAKE_MASTER_LINK_STATUS FAKE_MASTER_SYNC_IN_PROGRESS \
       FAKE_CURRENT_EPOCH FAKE_CURRENT_EPOCH_AFTER \
       FAKE_MY_EPOCH FAKE_MY_EPOCH_AFTER
     workdir=$(mktemp -d)
@@ -33,6 +34,12 @@ case "${args}" in
   *"INFO cluster"*)
     [ "${FAKE_CLUSTER_INFO_FAIL:-0}" = "1" ] && exit 1
     printf 'cluster_enabled:%s\n' "${FAKE_CLUSTER_ENABLED:-1}"; exit 0 ;;
+  *"INFO replication"*)
+    printf 'role:%s\nmaster_link_status:%s\nmaster_sync_in_progress:%s\n' \
+      "${FAKE_REPLICATION_ROLE:-master}" \
+      "${FAKE_MASTER_LINK_STATUS:-up}" \
+      "${FAKE_MASTER_SYNC_IN_PROGRESS:-0}"
+    exit 0 ;;
   *"CLUSTER INFO"*)
     count=$(cat "${INFO_COUNTER:-/tmp/info-counter}" 2>/dev/null || echo 0)
     count=$((count + 1)); echo "${count}" > "${INFO_COUNTER:-/tmp/info-counter}"
@@ -179,5 +186,27 @@ STUB
     The status should be failure
     The stdout should not include "INFO: Triggering BGSAVE"
     The stderr should include "cannot determine whether cluster mode is enabled"
+  End
+
+  It "fails closed before BGSAVE on a disconnected non-cluster replica"
+    export FAKE_CLUSTER_ENABLED=0
+    export FAKE_REPLICATION_ROLE=slave
+    export FAKE_MASTER_LINK_STATUS=down
+    export FAKE_MASTER_SYNC_IN_PROGRESS=0
+    When call run_backup
+    The status should be failure
+    The stdout should not include "INFO: Triggering BGSAVE"
+    The stderr should include "refusing backup from a stale or synchronizing replica"
+  End
+
+  It "accepts a fully synchronized non-cluster replica"
+    export FAKE_CLUSTER_ENABLED=0
+    export FAKE_REPLICATION_ROLE=slave
+    export FAKE_MASTER_LINK_STATUS=up
+    export FAKE_MASTER_SYNC_IN_PROGRESS=0
+    When call run_backup
+    The status should be success
+    The stdout should include "INFO: BGSAVE completed."
+    The stderr should include "dump.rdb"
   End
 End

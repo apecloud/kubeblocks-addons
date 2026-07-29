@@ -141,9 +141,8 @@ build_replicaof_config() {
     #
     # Retry up to 6 times (5s apart ≈ 54s total including verify timeouts)
     # to cover the sentinel failover convergence window before falling back
-    # to direct pod scan.  Must complete within the liveness probe kill
-    # window (initialDelay 30s + failureThreshold×period = 90s) so the
-    # heuristic election fallback (step A-3) has time to run.
+    # to direct pod scan. The pod remains NotReady until startup establishes
+    # a safe topology and execs valkey-server.
     local attempt
     for attempt in $(seq 1 6); do
       primary_fqdn=$(query_sentinel_quorum_for_master) || true
@@ -179,7 +178,10 @@ build_replicaof_config() {
       echo "INFO: sentinel exhausted — scanning data pods for running master." >&2
       local scan_attempt
       for scan_attempt in 1 2 3; do
-        primary_fqdn=$(scan_pods_for_master) || true
+        if ! primary_fqdn=$(scan_pods_for_master); then
+          echo "ERROR: data pod scan found an ambiguous master view — refusing startup." >&2
+          return 1
+        fi
         if ! is_empty "${primary_fqdn}"; then
           echo "INFO: found running master via pod scan (attempt ${scan_attempt}): ${primary_fqdn}" >&2
           break
@@ -192,12 +194,10 @@ build_replicaof_config() {
       if ! is_empty "${primary_fqdn}"; then
         : # already logged above
       else
-        # Step A-3: no peer is a master yet. Fresh component bootstrap and
-        # clean full-component restart both need one pod to seed the topology
-        # by lexicographic order. Existing data alone is not unsafe: Stop/Start
-        # preserves PVC data while every data pod is down. The unsafe signal is
-        # observing an already-running slave while Sentinel cannot prove the
-        # master; guessing then can create a second master after restart/restore.
+        # Step A-3: no peer is a master yet. Only a fresh empty component may
+        # seed topology by lexicographic order. Existing data cannot distinguish
+        # a full restart from a partition, so it must wait for Sentinel or one
+        # unambiguous running peer to provide authority.
         local known_slave_fqdn
         known_slave_fqdn=$(find_known_slave_pod) || true
         if ! is_empty "${known_slave_fqdn}"; then
@@ -205,7 +205,8 @@ build_replicaof_config() {
           return 1
         fi
         if ! is_fresh_bootstrap_data_dir; then
-          echo "INFO: Sentinel topology has no trusted master and ${DATA_DIR:-/data} contains existing data, but no running peer role was observed — treating as full-cluster restart." >&2
+          echo "ERROR: Sentinel topology has no trusted master and ${DATA_DIR:-/data} contains existing data — refusing to guess whether this is a full restart or a network partition." >&2
+          return 1
         fi
         # Elect the lowest-ordinal pod as the bootstrap primary, then verify it
         # is actually reporting role:master.
@@ -240,8 +241,10 @@ build_replicaof_config() {
                 break
               fi
             done
-            # Fall back to heuristic if all else fails (sentinel may be starting).
-            is_empty "${primary_fqdn}" && primary_fqdn="${heuristic_fqdn}"
+            if is_empty "${primary_fqdn}"; then
+              echo "ERROR: heuristic pod ${heuristic_fqdn} is a replica but neither its upstream nor Sentinel can prove a current master." >&2
+              return 1
+            fi
           fi
         fi
       fi
@@ -304,7 +307,21 @@ query_sentinel_quorum_for_master() {
   fi
 
   IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
+  local unique_sentinel_fqdns=()
+  local candidate known
+  case ",${SENTINEL_POD_FQDN_LIST}," in
+    *",,"*) return 0 ;;
+  esac
+  for candidate in "${sentinel_fqdns[@]}"; do
+    [ -n "${candidate}" ] || return 0
+    for known in "${unique_sentinel_fqdns[@]}"; do
+      [ "${known}" != "${candidate}" ] || return 0
+    done
+    unique_sentinel_fqdns+=("${candidate}")
+  done
+  sentinel_fqdns=("${unique_sentinel_fqdns[@]}")
   local total="${#sentinel_fqdns[@]}"
+  [ "${total}" -gt 0 ] || return 0
   local quorum=$(( total / 2 + 1 ))
 
   # Collect each sentinel's answer as a list of "fqdn count" pairs using
@@ -375,7 +392,7 @@ query_sentinel_quorum_for_master() {
 }
 
 # scan_pods_for_master — query every known data pod except ourselves and return
-# the FQDN of whichever one reports role:master.
+# the FQDN only when exactly one pod reports role:master.
 #
 # This is the bridge between "sentinel is still initialising" and "fresh cluster
 # with no master anywhere".  A non-empty result means an existing master is
@@ -390,16 +407,23 @@ scan_pods_for_master() {
   fi
 
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+  local masters=()
   for pod_fqdn in "${pod_fqdns[@]}"; do
     contains "${pod_fqdn}" "${CURRENT_POD_NAME}." && continue
     local role
     role=$(timeout 3 "${cli_base[@]}" -h "${pod_fqdn}" info replication 2>/dev/null \
       | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
     if [ "${role}" = "master" ]; then
-      echo "${pod_fqdn}"
-      return 0
+      masters+=("${pod_fqdn}")
     fi
   done
+  if [ "${#masters[@]}" -gt 1 ]; then
+    echo "ERROR: multiple data pods report role:master: ${masters[*]}" >&2
+    return 1
+  fi
+  if [ "${#masters[@]}" -eq 1 ]; then
+    echo "${masters[0]}"
+  fi
   return 0
 }
 

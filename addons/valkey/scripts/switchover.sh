@@ -176,8 +176,10 @@ sentinel_observed_replica_priority() {
 
 execute_sentinel_failover() {
   local master_name="${VALKEY_COMPONENT_NAME}"
-  IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
-  for s_fqdn in "${sentinel_fqdns[@]}"; do
+  local sentinel_endpoints s_fqdn
+  sentinel_endpoints=$(canonical_sentinel_fqdns) || return 1
+  while IFS= read -r s_fqdn; do
+    [ -z "${s_fqdn}" ] && continue
     local output exit_code=0
     sentinel_cli_for "${s_fqdn}"
     output=$("${_sentinel_cli[@]}" SENTINEL FAILOVER "${master_name}" 2>/dev/null) || exit_code=$?
@@ -188,9 +190,93 @@ execute_sentinel_failover() {
       echo "Sentinel FAILOVER accepted by ${s_fqdn}"
       return 0
     fi
-  done
+  done <<< "${sentinel_endpoints}"
   echo "ERROR: all Sentinel FAILOVER attempts failed" >&2
   return 1
+}
+
+canonical_sentinel_fqdns() {
+  local raw fqdn seen existing
+  local unique=()
+  IFS=',' read -ra raw <<< "${SENTINEL_POD_FQDN_LIST:-}"
+  for fqdn in "${raw[@]}"; do
+    [ -z "${fqdn}" ] && continue
+    seen=0
+    for existing in "${unique[@]}"; do
+      [ "${existing}" = "${fqdn}" ] && seen=1 && break
+    done
+    if [ "${seen}" -eq 1 ]; then
+      echo "ERROR: duplicate Sentinel endpoint in SENTINEL_POD_FQDN_LIST: ${fqdn}" >&2
+      return 1
+    fi
+    unique+=("${fqdn}")
+  done
+  [ "${#unique[@]}" -gt 0 ] || {
+    echo "ERROR: SENTINEL_POD_FQDN_LIST has no usable endpoints" >&2
+    return 1
+  }
+  printf '%s\n' "${unique[@]}"
+}
+
+# Resolve the current master only from a strict majority of the configured,
+# unique Sentinel endpoints. Reachable-only quorum is not authoritative.
+sentinel_master_host() {
+  local endpoints fqdn output host reported_port i found winner="" winner_count=0
+  local hosts=() counts=()
+  endpoints=$(canonical_sentinel_fqdns) || return 1
+  local configured_count
+  configured_count=$(printf '%s\n' "${endpoints}" | grep -c .)
+  local min_valid=$((configured_count / 2 + 1))
+  while IFS= read -r fqdn; do
+    [ -z "${fqdn}" ] && continue
+    sentinel_cli_for "${fqdn}"
+    output=$("${_sentinel_cli[@]}" SENTINEL GET-MASTER-ADDR-BY-NAME "${VALKEY_COMPONENT_NAME}" 2>/dev/null | tr -d '\r') || continue
+    host=$(printf '%s\n' "${output}" | sed -n '1p')
+    reported_port=$(printf '%s\n' "${output}" | sed -n '2p')
+    [ -n "${host}" ] || continue
+    [ "${reported_port}" = "${port}" ] || continue
+    found=0
+    for i in "${!hosts[@]}"; do
+      if [ "${hosts[$i]}" = "${host}" ]; then
+        counts[$i]=$((counts[$i] + 1))
+        found=1
+        break
+      fi
+    done
+    if [ "${found}" -eq 0 ]; then
+      hosts+=("${host}")
+      counts+=(1)
+    fi
+  done <<< "${endpoints}"
+  for i in "${!hosts[@]}"; do
+    if [ "${counts[$i]}" -gt "${winner_count}" ]; then
+      winner="${hosts[$i]}"
+      winner_count="${counts[$i]}"
+    fi
+  done
+  [ "${winner_count}" -ge "${min_valid}" ] || {
+    echo "ERROR: Sentinel master view has no configured-endpoint majority (${winner_count}/${configured_count}, need ${min_valid})" >&2
+    return 1
+  }
+  printf '%s\n' "${winner}"
+}
+
+same_pod_identity() {
+  [ "${1%%.*}" = "${2%%.*}" ]
+}
+
+sentinel_switchover_converged() {
+  local expected_fqdn="${1}" old_fqdn="${2}" master_host candidate_role old_role
+  master_host=$(sentinel_master_host) || return 1
+  if [ -n "${expected_fqdn}" ] && ! same_pod_identity "${master_host}" "${expected_fqdn}"; then
+    return 1
+  fi
+  same_pod_identity "${master_host}" "${old_fqdn}" && return 1
+  candidate_role=$(get_role "${master_host}") || return 1
+  old_role=$(get_role "${old_fqdn}") || return 1
+  [ "${candidate_role}" = "master" ] && [ "${old_role}" = "slave" ] || return 1
+  SENTINEL_CONFIRMED_MASTER="${master_host}"
+  return 0
 }
 
 wait_sentinel_sees_priority_bias() {
@@ -207,13 +293,16 @@ wait_sentinel_sees_priority_bias() {
   local candidate_fqdn="${1}" all_fqdns_csv="${2}"
   local candidate_pod="${candidate_fqdn%%.*}"
   local current_pod="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
-  local deadline=$((SECONDS + 30))
+  local confirm_budget="${SENTINEL_PRIORITY_CONFIRM_BUDGET:-20}"
+  local deadline=$((SECONDS + confirm_budget))
 
   while [ "${SECONDS}" -lt "${deadline}" ]; do
-    IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
+    local sentinel_endpoints
+    sentinel_endpoints=$(canonical_sentinel_fqdns) || return 1
     IFS=',' read -ra all_fqdns <<< "${all_fqdns_csv}"
     local total=0 confirmed=0
-    for s_fqdn in "${sentinel_fqdns[@]}"; do
+    while IFS= read -r s_fqdn; do
+      [ -z "${s_fqdn}" ] && continue
       for fqdn in "${all_fqdns[@]}"; do
         local pod expected_prio observed_prio
         pod="${fqdn%%.*}"
@@ -229,7 +318,7 @@ wait_sentinel_sees_priority_bias() {
           confirmed=$((confirmed + 1))
         fi
       done
-    done
+    done <<< "${sentinel_endpoints}"
     if [ "${total}" -gt 0 ] && [ "${confirmed}" -eq "${total}" ]; then
       echo "All Sentinel replica priority caches confirmed targeted bias for ${candidate_fqdn}."
       return 0
@@ -237,35 +326,19 @@ wait_sentinel_sees_priority_bias() {
     sleep_when_ut_mode_false 1
   done
 
-  echo "ERROR: Sentinel did not confirm full targeted priority bias for ${candidate_fqdn} within 30s — aborting targeted switchover" >&2
+  echo "ERROR: Sentinel did not confirm full targeted priority bias for ${candidate_fqdn} within ${confirm_budget}s — aborting targeted switchover" >&2
   return 1
 }
 
 wait_for_new_master() {
-  local expected_fqdn="${1}"   # may be empty (no candidate specified)
-  local exclude_fqdn="${2}"    # old master FQDN to skip (avoids returning on old master during stepdown)
-  local max_wait=300 elapsed=0
+  local expected_fqdn="${1}" old_fqdn="${2}"
+  local max_wait="${SWITCHOVER_CONFIRM_BUDGET:-15}" elapsed=0
 
   while [ "${elapsed}" -lt "${max_wait}" ]; do
-    IFS=',' read -ra pod_fqdns <<< "$(pod_fqdns_with_candidate "${expected_fqdn}")"
-    for fqdn in "${pod_fqdns[@]}"; do
-      local role
-      role=$(get_role "${fqdn}") || continue
-      if [ "${role}" = "master" ]; then
-        # Skip the old master — it may still report role=master during stepdown.
-        if ! is_empty "${exclude_fqdn}" && contains "${fqdn}" "${exclude_fqdn%%.*}."; then
-          continue
-        fi
-        # Compare pod-name segments exactly to avoid "pod-1" matching "pod-10".
-        local fqdn_pod expected_pod
-        fqdn_pod="${fqdn%%.*}"
-        expected_pod="${expected_fqdn%%.*}"
-        if is_empty "${expected_fqdn}" || [ "${fqdn_pod}" = "${expected_pod}" ]; then
-          echo "New primary confirmed: ${fqdn}"
-          return 0
-        fi
-      fi
-    done
+    if sentinel_switchover_converged "${expected_fqdn}" "${old_fqdn}"; then
+      echo "New primary confirmed by Sentinel majority plus data-role readback: ${SENTINEL_CONFIRMED_MASTER}"
+      return 0
+    fi
     sleep_when_ut_mode_false 3
     elapsed=$((elapsed + 3))
   done
@@ -275,6 +348,8 @@ wait_for_new_master() {
 
 switchover_with_sentinel() {
   local candidate_fqdn="${1}"   # may be empty
+
+  canonical_sentinel_fqdns >/dev/null || return 1
 
   if ! is_empty "${candidate_fqdn}"; then
     # Pre-check: candidate must currently be a slave.
@@ -290,13 +365,12 @@ switchover_with_sentinel() {
       sleep_when_ut_mode_false 1
     done
     if ! is_empty "${candidate_role}" && [ "${candidate_role}" = "master" ]; then
-      # Candidate is already master — switchover target achieved.
-      # This happens when KB reconcile fires a second switchover call after the
-      # first already succeeded (optimistic-lock retry), or when a prior automatic
-      # failover already promoted this candidate.  In both cases the goal state
-      # is reached: the specified candidate is master.  Return success (idempotent).
-      echo "Candidate ${candidate_fqdn} already master — switchover target achieved, returning success (idempotent)." >&2
-      return 0
+      if sentinel_switchover_converged "${candidate_fqdn}" "${KB_SWITCHOVER_CURRENT_FQDN}"; then
+        echo "Candidate ${candidate_fqdn} already holds the Sentinel-authoritative master role and the old primary is demoted." >&2
+        return 0
+      fi
+      echo "ERROR: candidate ${candidate_fqdn} self-reports master but Sentinel authority and old-primary demotion are not converged" >&2
+      return 1
     elif ! is_empty "${candidate_role}" && [ "${candidate_role}" != "slave" ]; then
       echo "ERROR: candidate ${candidate_fqdn} has role='${candidate_role}', expected 'slave' — aborting switchover" >&2
       return 1
@@ -393,10 +467,17 @@ ${__SOURCED__:+false} : || return 0
 # ── main ────────────────────────────────────────────────────────────────────
 load_common_library
 
-# Only act when KubeBlocks asks us to transfer the primary role
+# The action cannot prove the intended transfer without all formal inputs.
+if is_empty "${KB_SWITCHOVER_ROLE:-}" ||
+   is_empty "${KB_SWITCHOVER_CURRENT_FQDN:-}" ||
+   is_empty "${VALKEY_COMPONENT_NAME:-}"; then
+  echo "ERROR: KB_SWITCHOVER_ROLE, KB_SWITCHOVER_CURRENT_FQDN, and VALKEY_COMPONENT_NAME are required" >&2
+  exit 1
+fi
+
 if [ "${KB_SWITCHOVER_ROLE}" != "primary" ]; then
-  echo "switchover not for primary role (got '${KB_SWITCHOVER_ROLE}') — exiting."
-  exit 0
+  echo "ERROR: switchover only supports the primary role (got '${KB_SWITCHOVER_ROLE}')." >&2
+  exit 1
 fi
 
 # ── Sentinel path ──

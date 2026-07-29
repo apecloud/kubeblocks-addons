@@ -25,6 +25,22 @@ test || __() {
 set -e
 
 port="${SERVICE_PORT:-6379}"
+ACTION_CLIENT_TIMEOUT_SECONDS="${ACTION_CLIENT_TIMEOUT_SECONDS:-3}"
+SYNC_ACL_RETRY_SAFE="yes"
+
+member_join_diagnose() {
+  local phase="$1"
+  local retry_safe="$2"
+  local detail="$3"
+  {
+    echo "memberJoin diagnosis:"
+    echo "  action: memberJoin"
+    echo "  phase: ${phase}"
+    echo "  cluster: ${KB_CLUSTER_NAME:-<unset>}"
+    echo "  detail: ${detail}"
+    echo "  next-retry-safe: ${retry_safe}"
+  } >&2
+}
 
 load_common_library() {
   # shellcheck source=/dev/null
@@ -43,27 +59,39 @@ build_cli() {
   fi
 }
 
+run_bounded_cli() {
+  if [ "${ut_mode:-false}" = "true" ]; then
+    "$@"
+    return $?
+  fi
+  timeout "${ACTION_CLIENT_TIMEOUT_SECONDS}" "$@"
+}
+
 # Find the current primary by polling each pod's role.
 find_primary_fqdn() {
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+  local masters=()
   for fqdn in "${pod_fqdns[@]}"; do
     local role
     build_cli "${fqdn}"
-    role=$("${_cli[@]}" info replication 2>/dev/null \
+    role=$(run_bounded_cli "${_cli[@]}" info replication 2>/dev/null \
              | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || continue
     if [ "${role}" = "master" ]; then
-      echo "${fqdn}"
-      return 0
+      masters+=("${fqdn}")
     fi
   done
-  echo "ERROR: no pod reported role:master — refusing to guess an ACL source." >&2
-  return 1
+  if [ "${#masters[@]}" -ne 1 ]; then
+    echo "ERROR: ${#masters[@]} pods reported role:master — refusing an ambiguous ACL source." >&2
+    return 1
+  fi
+  echo "${masters[0]}"
 }
 
 # Copy all non-default ACL rules from source to target
 sync_acl_to_replica() {
   local src_fqdn="${1}" dst_fqdn="${2}"
   local src_cli=() dst_cli=()
+  SYNC_ACL_RETRY_SAFE="yes"
   build_cli "${src_fqdn}"; src_cli=("${_cli[@]}")
   build_cli "${dst_fqdn}"; dst_cli=("${_cli[@]}")
 
@@ -72,12 +100,17 @@ sync_acl_to_replica() {
   # Read ACL rules from primary
   # valkey-cli exits 0 even for server errors; check output for error prefix.
   local acl_list
-  acl_list=$("${src_cli[@]}" ACL LIST 2>&1) || {
+  acl_list=$(run_bounded_cli "${src_cli[@]}" ACL LIST 2>&1) || {
     echo "ERROR: could not read ACL LIST from ${src_fqdn}: ${acl_list}" >&2
     return 1
   }
   case "${acl_list}" in
+    "")
+      SYNC_ACL_RETRY_SAFE="no"
+      echo "ERROR: ACL LIST from ${src_fqdn} returned an empty reply." >&2
+      return 1 ;;
     "(error)"*|"ERR "*)
+      SYNC_ACL_RETRY_SAFE="no"
       echo "ERROR: ACL LIST from ${src_fqdn} returned error: ${acl_list}" >&2
       return 1 ;;
   esac
@@ -86,39 +119,62 @@ sync_acl_to_replica() {
   while IFS= read -r rule; do
     [ -z "${rule}" ] && continue
     # Format: "user <name> <flags...>"
-    local username
+    local username rule_flags
+    case "${rule}" in
+      "user "*" "*) ;;
+      *)
+        SYNC_ACL_RETRY_SAFE="no"
+        echo "ERROR: ACL LIST from ${src_fqdn} contains a malformed rule." >&2
+        return 1 ;;
+    esac
     username=$(echo "${rule}" | awk '{print $2}')
+    [ -n "${username}" ] || {
+      SYNC_ACL_RETRY_SAFE="no"
+      echo "ERROR: ACL LIST from ${src_fqdn} contains an empty username." >&2
+      return 1
+    }
 
     # Skip "default" — managed by valkey-start.sh from VALKEY_DEFAULT_PASSWORD
     [ "${username}" = "default" ] && continue
 
     # Strip the leading "user <name> " prefix to get just the rule flags
-    local rule_flags
     rule_flags="${rule#user "${username}" }"
 
     # Rule flags contain password material (#<sha256> / ><plain> tokens) —
     # log only the username, never the rule payload.
     echo "  → ACL SETUSER ${username} (rules redacted)"
-    local setuser_out
+    local setuser_out setuser_rc=0
     # Disable glob expansion so ~* and &* in rule_flags are not expanded by the shell.
     # shellcheck disable=SC2086
     set -f
     # shellcheck disable=SC2086
-    setuser_out=$("${dst_cli[@]}" ACL SETUSER "${username}" ${rule_flags} 2>&1) || true
+    setuser_out=$(run_bounded_cli "${dst_cli[@]}" ACL SETUSER "${username}" ${rule_flags} 2>&1) || setuser_rc=$?
     set +f
-    case "${setuser_out}" in
-      *"ERR"*|*"WRONGTYPE"*|*"error"*)
-        echo "  ERROR: failed to set ACL for ${username}: ${setuser_out}" >&2
-        sync_failures=$((sync_failures + 1)) ;;
-    esac
+    setuser_out="${setuser_out//$'\r'/}"
+    setuser_out="${setuser_out//$'\n'/}"
+    if [ "${setuser_rc}" -ne 0 ]; then
+      echo "  ERROR: ACL SETUSER for ${username} failed with rc=${setuser_rc}: ${setuser_out}" >&2
+      sync_failures=$((sync_failures + 1))
+    elif [ "${setuser_out}" != "OK" ]; then
+      SYNC_ACL_RETRY_SAFE="no"
+      echo "  ERROR: ACL SETUSER for ${username} returned non-OK reply: ${setuser_out}" >&2
+      sync_failures=$((sync_failures + 1))
+    fi
   done <<< "${acl_list}"
 
   # Persist on the replica
   # valkey-cli exits 0 even for server errors; check output content.
-  local acl_save_out
-  acl_save_out=$("${dst_cli[@]}" ACL SAVE 2>&1) || true
+  local acl_save_out acl_save_rc=0
+  acl_save_out=$(run_bounded_cli "${dst_cli[@]}" ACL SAVE 2>&1) || acl_save_rc=$?
+  acl_save_out="${acl_save_out//$'\r'/}"
+  acl_save_out="${acl_save_out//$'\n'/}"
+  if [ "${acl_save_rc}" -ne 0 ]; then
+    echo "ERROR: ACL SAVE failed on ${dst_fqdn} with rc=${acl_save_rc}: ${acl_save_out} — rules applied in memory only, will be lost on restart" >&2
+    return 1
+  fi
   if [ "${acl_save_out}" != "OK" ]; then
-    echo "ERROR: ACL SAVE failed on ${dst_fqdn}: ${acl_save_out} — rules applied in memory only, will be lost on restart" >&2
+    SYNC_ACL_RETRY_SAFE="no"
+    echo "ERROR: ACL SAVE returned non-OK reply on ${dst_fqdn}: ${acl_save_out} — rules applied in memory only, will be lost on restart" >&2
     return 1
   fi
 
@@ -135,14 +191,23 @@ ${__SOURCED__:+false} : || return 0
 # ── main ────────────────────────────────────────────────────────────────────
 load_common_library
 
-if is_empty "${KB_JOIN_MEMBER_POD_FQDN}"; then
-  echo "KB_JOIN_MEMBER_POD_FQDN not set — nothing to sync." >&2
-  exit 0
+if is_empty "${KB_JOIN_MEMBER_POD_FQDN}" || is_empty "${KB_JOIN_MEMBER_POD_NAME}"; then
+  member_join_diagnose \
+    "missing-join-member" "no" \
+    "KB_JOIN_MEMBER_POD_NAME and KB_JOIN_MEMBER_POD_FQDN are both required."
+  exit 1
 fi
 
-primary_fqdn=$(find_primary_fqdn) || exit 1
+primary_fqdn=$(find_primary_fqdn) || {
+  member_join_diagnose \
+    "primary-not-yet-observable" "yes" \
+    "No current data pod positively reported role:master."
+  exit 1
+}
 if is_empty "${primary_fqdn}"; then
-  echo "ERROR: could not determine primary — refusing to skip ACL sync." >&2
+  member_join_diagnose \
+    "primary-not-yet-observable" "yes" \
+    "Primary lookup returned an empty address."
   exit 1
 fi
 
@@ -153,4 +218,9 @@ if contains "${primary_fqdn}" "${KB_JOIN_MEMBER_POD_NAME}."; then
   exit 0
 fi
 
-sync_acl_to_replica "${primary_fqdn}" "${KB_JOIN_MEMBER_POD_FQDN}"
+if ! sync_acl_to_replica "${primary_fqdn}" "${KB_JOIN_MEMBER_POD_FQDN}"; then
+  member_join_diagnose \
+    "acl-sync-incomplete" "${SYNC_ACL_RETRY_SAFE}" \
+    "The target member did not positively complete ACL SETUSER plus ACL SAVE."
+  exit 1
+fi

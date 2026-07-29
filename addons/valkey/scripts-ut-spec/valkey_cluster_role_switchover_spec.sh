@@ -52,10 +52,11 @@ Describe "valkey-cluster-switchover.sh"
   sw_env() {
     export CURRENT_SHARD_POD_FQDN_LIST="vk-s-0.h.ns.svc,vk-s-1.h.ns.svc,vk-s-2.h.ns.svc"
     export KB_SWITCHOVER_CURRENT_FQDN="vk-s-0.h.ns.svc"
+    export KB_SWITCHOVER_ROLE="primary"
     unset KB_SWITCHOVER_CANDIDATE_FQDN
     ut_mode="true"
   }
-  sw_clean() { unset CURRENT_SHARD_POD_FQDN_LIST KB_SWITCHOVER_CURRENT_FQDN KB_SWITCHOVER_CANDIDATE_FQDN; }
+  sw_clean() { unset CURRENT_SHARD_POD_FQDN_LIST KB_SWITCHOVER_CURRENT_FQDN KB_SWITCHOVER_CANDIDATE_FQDN KB_SWITCHOVER_ROLE; }
   Before "sw_env"
   After "sw_clean"
 
@@ -81,9 +82,18 @@ Describe "valkey-cluster-switchover.sh"
 
   It "treats an already-master candidate as success (idempotent)"
     role_of() { echo "master"; }
+    switchover_converged() { return 0; }
     When call execute_switchover "vk-s-1.h.ns.svc"
     The status should be success
-    The stdout should include "already master"
+    The stdout should include "authoritative shard master"
+  End
+
+  It "does not accept a candidate local master before the old primary is demoted"
+    role_of() { echo "master"; }
+    switchover_converged() { return 1; }
+    When call execute_switchover "vk-s-1.h.ns.svc"
+    The status should be failure
+    The stderr should include "old-primary demotion"
   End
 
   It "refuses to promote a candidate in unknown state"
@@ -117,11 +127,40 @@ Describe "valkey-cluster-switchover.sh"
 
   It "fails with a classified error when promotion is unconfirmed in budget"
     export SWITCHOVER_CONFIRM_BUDGET=2
-    role_of() { echo "replica"; }
+    switchover_converged() { return 1; }
     When call confirm_promotion "vk-s-1.h.ns.svc"
     The status should be failure
-    The stderr should include "did not report master within 2s"
+    The stderr should include "authoritative shard topology did not converge within 2s"
     The stderr should include "safe to retry"
+  End
+
+  It "proves slot ownership and old-primary demotion from the same fresh topology"
+    build_cli() { _cli=(mock_converged_topology); }
+    mock_converged_topology() {
+      printf 'new vk-s-1.h.ns.svc:6379@16379 myself,master - 0 0 7 connected 0-16383\n'
+      printf 'old vk-s-0.h.ns.svc:6379@16379 slave new 0 0 7 connected\n'
+      printf 'rep vk-s-2.h.ns.svc:6379@16379 slave new 0 0 7 connected\n'
+    }
+    When call switchover_converged "vk-s-1.h.ns.svc" "vk-s-0.h.ns.svc"
+    The status should be success
+  End
+
+  It "rejects a topology where the old primary still reports master"
+    build_cli() { _cli=(mock_split_topology); }
+    mock_split_topology() {
+      printf 'new vk-s-1.h.ns.svc:6379@16379 myself,master - 0 0 7 connected 0-16383\n'
+      printf 'old vk-s-0.h.ns.svc:6379@16379 master - 0 0 6 connected\n'
+      printf 'rep vk-s-2.h.ns.svc:6379@16379 slave new 0 0 7 connected\n'
+    }
+    When call switchover_converged "vk-s-1.h.ns.svc" "vk-s-0.h.ns.svc"
+    The status should be failure
+  End
+
+  It "requires all formal switchover inputs"
+    unset KB_SWITCHOVER_CURRENT_FQDN
+    When call switchover
+    The status should be failure
+    The stderr should include "phase=env-contract"
   End
 End
 
@@ -142,6 +181,36 @@ Describe "valkey-cluster-member.sh"
   mb_clean() { unset CURRENT_SHARD_POD_FQDN_LIST ALL_SHARDS_COMPONENT_SHORT_NAMES ALL_SHARDS_POD_FQDN_MAP KB_LEAVE_MEMBER_POD_FQDN KB_JOIN_MEMBER_POD_FQDN; }
   Before "mb_env"
   After "mb_clean"
+
+  It "selects the only healthy connected slot-owning shard master"
+    build_cli() { _cli=(mock_master_view); }
+    mock_master_view() {
+      printf 'old vk-s-0.h.ns.svc:6379@16379 master - 0 0 4 connected\n'
+      printf 'new vk-s-1.h.ns.svc:6379@16379 master - 0 0 5 connected 0-16383\n'
+    }
+    When call shard_master_line "vk-s-0.h.ns.svc"
+    The status should be success
+    The stdout should include "new vk-s-1.h.ns.svc"
+  End
+
+  It "rejects an ambiguous view with two healthy slot-owning masters"
+    build_cli() { _cli=(mock_split_master_view); }
+    mock_split_master_view() {
+      printf 'one vk-s-0.h.ns.svc:6379@16379 master - 0 0 4 connected 0-8000\n'
+      printf 'two vk-s-1.h.ns.svc:6379@16379 master - 0 0 5 connected 8001-16383\n'
+    }
+    When call shard_master_line "vk-s-0.h.ns.svc"
+    The status should be failure
+    The stderr should include "expected exactly 1"
+  End
+
+  It "does not confirm a failed or disconnected joining replica"
+    node_line_of() {
+      printf 'rep vk-s-1.h.ns.svc:6379@16379 slave,fail mid 0 0 5 disconnected\n'
+    }
+    When call join_confirmed "vk-s-0.h.ns.svc" "vk-s-1.h.ns.svc" "mid"
+    The status should be failure
+  End
 
   It "refuses to forget an unreachable leaving member whose identity cannot be reset"
     export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
@@ -198,6 +267,43 @@ Describe "valkey-cluster-member.sh"
     The status should be success
     The stdout should include "reset, forgotten, absence-proven"
     The contents of file "${mb_calls}" should include "FORGET:vk-s-0.h.ns.svc:tid2"
+  End
+
+  It "emits no FLUSHALL or RESET when the fresh commit-point topology read fails"
+    export KB_LEAVE_MEMBER_POD_FQDN="vk-s-1.h.ns.svc"
+    mb_calls=$(mktemp)
+    topology_reads=$(mktemp)
+    printf '0\n' > "${topology_reads}"
+    shard_vantage() { echo "vk-s-0.h.ns.svc"; }
+    node_line_of() { echo ""; }
+    build_cli() { _cli=(mock_commit_drift_cli "${1}" "${mb_calls}" "${topology_reads}"); }
+    mock_commit_drift_cli() {
+      local host="${1}" calls_file="${2}" reads_file="${3}"; shift 3
+      case "$*" in
+        PING) echo PONG ;;
+        "CLUSTER MYID") echo "tid2" ;;
+        "CLUSTER NODES")
+          if [ "${host}" = "vk-s-1.h.ns.svc" ]; then
+            reads=$(cat "${reads_file}")
+            reads=$((reads + 1))
+            printf '%s\n' "${reads}" > "${reads_file}"
+            [ "${reads}" -eq 1 ] &&
+              printf 'tid2 :0@0 myself,slave mid1 0 0 5 connected\n'
+            [ "${reads}" -eq 1 ]
+          else
+            printf 'mid1 vk-s-0.h.ns.svc:6379@16379 master - 0 0 5 connected 0-16383\n'
+            printf 'tid2 :0@0 slave,fail,noaddr mid1 0 0 5 disconnected\n'
+          fi
+          ;;
+        FLUSHALL) echo "FLUSH:${host}" >> "${calls_file}"; echo OK ;;
+        "CLUSTER RESET HARD") echo "RESET:${host}" >> "${calls_file}"; echo OK ;;
+      esac
+    }
+    When run member_leave
+    The status should be failure
+    The stderr should include "cannot read CLUSTER NODES"
+    The contents of file "${mb_calls}" should not include "FLUSH:"
+    The contents of file "${mb_calls}" should not include "RESET:"
   End
 
   It "refuses to delete a master with no replica to fail over to"

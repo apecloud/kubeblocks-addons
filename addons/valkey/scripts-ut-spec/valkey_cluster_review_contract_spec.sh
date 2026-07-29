@@ -20,11 +20,10 @@ Describe "Valkey cluster review contracts"
   }
   readiness_contract() {
     awk '
-      /livenessProbe:/ { probe="live" }
+      /livenessProbe:/ { live=1 }
       /readinessProbe:/ { probe="ready" }
-      /valkey-ping.sh/ && probe=="live" { live=1 }
       /valkey-cluster-ready.sh/ && probe=="ready" { ready=1 }
-      END { exit !(live && ready) }
+      END { exit !(!live && ready) }
     ' "${cmpd_file}"
   }
   primary_backup_contract() {
@@ -67,7 +66,7 @@ Describe "Valkey cluster review contracts"
     The stdout should include "strategy: combined"
   End
 
-  It "uses a cluster-aware readiness script while keeping liveness on PING"
+  It "uses cluster-aware readiness without channel-based liveness restarts"
     When call readiness_contract
     The status should be success
   End

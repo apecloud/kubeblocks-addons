@@ -24,9 +24,43 @@ disableExporter: true
 {{- if eq .Values.mode "standalone" }}
 replicas: 1
 {{- else if eq .Values.mode "replication" }}
-replicas: {{ max .Values.replicas 2 }}
+replicas: {{ .Values.replicas }}
 {{- end }}
 {{- end }}
+
+{{- define "valkey-cluster.validateInputs" -}}
+{{- if and .Values.nodePortEnabled .Values.loadBalancerEnabled -}}
+{{- fail "nodePortEnabled and loadBalancerEnabled are mutually exclusive" -}}
+{{- end -}}
+{{- if ne (empty .Values.customSecretName) (empty .Values.customSecretNamespace) -}}
+{{- fail "customSecretName and customSecretNamespace must be set together" -}}
+{{- end -}}
+{{- if ne (empty .Values.sentinel.customSecretName) (empty .Values.sentinel.customSecretNamespace) -}}
+{{- fail "sentinel.customSecretName and sentinel.customSecretNamespace must be set together" -}}
+{{- end -}}
+{{- if and (eq .Values.mode "replication") (lt (int .Values.replicas) 2) -}}
+{{- fail "mode=replication requires replicas >= 2" -}}
+{{- end -}}
+{{- if or (lt (int .Values.sentinel.replicas) 3) (gt (int .Values.sentinel.replicas) 5) -}}
+{{- fail "sentinel.replicas must be in the supported range 3..5" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "valkey-cluster.memoryQuantity" -}}
+{{- if kindIs "string" .Values.memory -}}{{ .Values.memory }}{{- else -}}{{ .Values.memory }}Gi{{- end -}}
+{{- end -}}
+
+{{- define "valkey-cluster.storageQuantity" -}}
+{{- if kindIs "string" .Values.storage -}}{{ .Values.storage }}{{- else -}}{{ .Values.storage }}Gi{{- end -}}
+{{- end -}}
+
+{{- define "valkey-cluster.sentinelMemoryQuantity" -}}
+{{- if kindIs "string" .Values.sentinel.memory -}}{{ .Values.sentinel.memory }}{{- else -}}{{ .Values.sentinel.memory }}Gi{{- end -}}
+{{- end -}}
+
+{{- define "valkey-cluster.sentinelStorageQuantity" -}}
+{{- if kindIs "string" .Values.sentinel.storage -}}{{ .Values.sentinel.storage }}{{- else -}}{{ .Values.sentinel.storage }}Gi{{- end -}}
+{{- end -}}
 
 {{- define "valkey-cluster.major" -}}
 {{- regexFind "^[0-9]+" (toString .Values.version) -}}
@@ -95,10 +129,10 @@ spec:
 resources:
   limits:
     cpu: {{ .Values.cpu | quote }}
-    memory: {{ print .Values.memory "Gi" | quote }}
+    memory: {{ include "valkey-cluster.memoryQuantity" . | quote }}
   requests:
     cpu: {{ .Values.cpu | quote }}
-    memory: {{ print .Values.memory "Gi" | quote }}
+    memory: {{ include "valkey-cluster.memoryQuantity" . | quote }}
 {{- end }}
 
 {{- define "valkey-cluster.componentStorages" }}
@@ -112,17 +146,17 @@ volumeClaimTemplates:
       {{- end }}
       resources:
         requests:
-          storage: {{ print .Values.storage "Gi" }}
+          storage: {{ include "valkey-cluster.storageQuantity" . }}
 {{- end }}
 
 {{- define "valkey-cluster.sentinelResources" }}
 resources:
   limits:
     cpu: {{ .Values.sentinel.cpu | quote }}
-    memory: {{ print .Values.sentinel.memory "Gi" | quote }}
+    memory: {{ include "valkey-cluster.sentinelMemoryQuantity" . | quote }}
   requests:
     cpu: {{ .Values.sentinel.cpu | quote }}
-    memory: {{ print .Values.sentinel.memory "Gi" | quote }}
+    memory: {{ include "valkey-cluster.sentinelMemoryQuantity" . | quote }}
 {{- end }}
 
 {{- define "valkey-cluster.sentinelStorages" }}
@@ -136,7 +170,7 @@ volumeClaimTemplates:
       {{- end }}
       resources:
         requests:
-          storage: {{ print .Values.sentinel.storage "Gi" }}
+          storage: {{ include "valkey-cluster.sentinelStorageQuantity" . }}
 {{- end }}
 
 {{- define "valkey-cluster.componentSchedulingPolicy" }}
@@ -218,7 +252,7 @@ schedulingPolicy:
 
 {{- define "valkey-cluster.sentinelComponentSpec" }}
 - name: valkey-sentinel
-  replicas: {{ max .Values.sentinel.replicas 3 }}
+  replicas: {{ .Values.sentinel.replicas }}
   serviceVersion: {{ .Values.version | quote }}
   {{- include "valkey-cluster.tls" . | nindent 2 }}
   {{- if .Values.podAntiAffinityEnabled }}

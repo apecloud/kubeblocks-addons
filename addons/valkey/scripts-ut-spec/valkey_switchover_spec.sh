@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034
+# shellcheck disable=SC2034,SC2154
 
 if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
   echo "valkey_switchover_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
@@ -369,15 +369,25 @@ Describe "Valkey Switchover Bash Script Tests"
     After "teardown"
 
     Context "when candidate is already master (idempotent — target state achieved)"
-      It "returns success immediately without calling execute_sentinel_failover"
+      It "returns success only after Sentinel authority and old-primary demotion converge"
         valkey-cli() {
           printf 'role:master\n'
         }
+        sentinel_switchover_converged() { return 0; }
         execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
         When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
         The status should be success
-        The stderr should include "already master"
-        The stderr should include "idempotent"
+        The stderr should include "Sentinel-authoritative"
+        The stdout should not include "SHOULD_NOT_BE_CALLED"
+      End
+
+      It "fails when the candidate only self-reports master"
+        get_role() { echo "master"; }
+        sentinel_switchover_converged() { return 1; }
+        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
+        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
+        The status should be failure
+        The stderr should include "old-primary demotion are not converged"
         The stdout should not include "SHOULD_NOT_BE_CALLED"
       End
     End
@@ -552,6 +562,7 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when another replica still has priority 1"
       It "returns failure before FAILOVER can be issued"
+        export SENTINEL_PRIORITY_CONFIRM_BUDGET=1
         valkey-cli() {
           printf 'name\nvalkey-1.headless.default.svc.cluster.local:6379\nslave-priority\n1\nname\nvalkey-2.headless.default.svc.cluster.local:6379\nslave-priority\n1\n'
         }
@@ -605,13 +616,11 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when expected candidate becomes master before timeout"
       It "returns success and prints confirmation"
-        get_role() {
-          case "$1" in
-            *"valkey-1"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
+        sentinel_switchover_converged() {
+          SENTINEL_CONFIRMED_MASTER="valkey-1.headless.default.svc.cluster.local"
+          return 0
         }
-        When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" ""
+        When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "New primary confirmed"
         The stdout should include "valkey-1"
@@ -621,11 +630,9 @@ Describe "Valkey Switchover Bash Script Tests"
     Context "when fresh expected candidate is absent from stale VALKEY_POD_FQDN_LIST"
       It "still confirms the candidate by appending the action-time FQDN"
         export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
-        get_role() {
-          case "$1" in
-            *"valkey-3"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
+        sentinel_switchover_converged() {
+          SENTINEL_CONFIRMED_MASTER="valkey-3.headless.default.svc.cluster.local"
+          return 0
         }
         When call wait_for_new_master "valkey-3.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
         The status should be success
@@ -655,12 +662,9 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when exclude_fqdn matches the current master (old master still reporting master)"
       It "skips the excluded FQDN and returns success when a different node becomes master"
-        get_role() {
-          case "$1" in
-            *"valkey-0"*) echo "master" ;;
-            *"valkey-1"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
+        sentinel_switchover_converged() {
+          SENTINEL_CONFIRMED_MASTER="valkey-1.headless.default.svc.cluster.local"
+          return 0
         }
         # valkey-0 is old master (excluded), valkey-1 is new master
         When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
@@ -671,11 +675,9 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when expected_fqdn is empty — any new master is acceptable"
       It "returns success as soon as any non-excluded node reports master"
-        get_role() {
-          case "$1" in
-            *"valkey-2"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
+        sentinel_switchover_converged() {
+          SENTINEL_CONFIRMED_MASTER="valkey-2.headless.default.svc.cluster.local"
+          return 0
         }
         When call wait_for_new_master "" "valkey-0.headless.default.svc.cluster.local"
         The status should be success
@@ -685,18 +687,66 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when the wrong pod becomes master (not the expected candidate)"
       It "does not return success for the wrong master — keeps waiting, returns success only for expected"
-        get_role() {
-          case "$1" in
-            *"valkey-2"*) echo "master" ;;   # wrong pod is master
-            *"valkey-1"*) echo "master" ;;   # expected pod also master (will match)
-            *) echo "slave" ;;
-          esac
+        authority_calls=0
+        sentinel_switchover_converged() {
+          authority_calls=$((authority_calls + 1))
+          [ "${authority_calls}" -ge 2 ] || return 1
+          SENTINEL_CONFIRMED_MASTER="valkey-1.headless.default.svc.cluster.local"
+          return 0
         }
         # valkey-1 is expected; valkey-2 is also master but should be skipped
         When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "valkey-1"
       End
+    End
+  End
+
+  Describe "Sentinel-authoritative switchover confirmation"
+    authority_env() {
+      export VALKEY_COMPONENT_NAME="mycluster-valkey"
+      export SENTINEL_POD_FQDN_LIST="sentinel-0,sentinel-1,sentinel-2"
+      export SENTINEL_SERVICE_PORT=26379
+      export KB_SWITCHOVER_CURRENT_FQDN="valkey-0.headless.default.svc.cluster.local"
+    }
+    Before "authority_env"
+
+    It "accepts only when a configured-endpoint majority names the candidate and the old primary is a slave"
+      sentinel_cli_for() { _sentinel_cli=(mock_master_addr "$1"); }
+      mock_master_addr() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf 'valkey-1.headless.default.svc.cluster.local\n6379\n' ;;
+          *) printf 'valkey-2.headless.default.svc.cluster.local\n6379\n' ;;
+        esac
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-1*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-1.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "rejects duplicate Sentinel endpoints instead of counting duplicate votes"
+      export SENTINEL_POD_FQDN_LIST="sentinel-0,sentinel-0,sentinel-0"
+      When call sentinel_master_host
+      The status should be failure
+      The stderr should include "duplicate Sentinel endpoint"
+    End
+
+    It "rejects a reachable-only minority view"
+      sentinel_cli_for() { _sentinel_cli=(mock_minority "$1"); }
+      mock_minority() {
+        [ "$1" = "sentinel-0" ] || return 1
+        printf 'valkey-1.headless.default.svc.cluster.local\n6379\n'
+      }
+      When call sentinel_master_host
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
     End
   End
 
@@ -937,7 +987,7 @@ Describe "Valkey Switchover Bash Script Tests"
     End
 
     It "does not leave manual confirmation failures as best-effort success"
-      When call grep -F "wait_until_master \"${target_fqdn}\" 10 || true" "${switchover_script}"
+      When call grep -F 'wait_until_master "${target_fqdn}" 10 || true' "${switchover_script}"
       The status should be failure
     End
   End

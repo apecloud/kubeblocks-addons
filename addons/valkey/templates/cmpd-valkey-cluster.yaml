@@ -210,6 +210,7 @@ spec:
     # replica; deterministic candidate pick when unspecified; bounded
     # in-action confirmation.
     switchover:
+      timeoutSeconds: 50
       exec:
         container: valkey-cluster
         command:
@@ -296,16 +297,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: status.podIP
-        livenessProbe:
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
-          exec:
-            command:
-              - sh
-              - -c
-              - /scripts/valkey-ping.sh
+        # valkey-server is PID 1, so kubelet already restarts an exited process.
+        # Keep channel failures in readiness to avoid restart cascades.
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5

@@ -19,10 +19,15 @@ case "$1" in
     printf '%s\n' "$2"
     ;;
   pull)
+    count_file="${FAKE_DATASAFED_PULL_COUNT_FILE:-${TMPDIR:-/tmp}/valkey-datasafed-pull-count}"
+    pull_count=0
+    [ ! -f "${count_file}" ] || pull_count=$(cat "${count_file}")
+    pull_count=$((pull_count + 1))
+    printf '%s\n' "${pull_count}" > "${count_file}"
     tmp="${TMPDIR:-/tmp}/valkey-datasafed-fake.$$"
     rm -rf "${tmp}"
     mkdir -p "${tmp}/src"
-    printf 'restored\n' > "${tmp}/src/restored.txt"
+    printf 'user default on nopass ~* &* +@all\n' > "${tmp}/src/users.acl"
     if [ "${FAKE_DATASAFED_SYMLINK_RDB:-}" = "1" ]; then
       printf 'valkey-rdb\n' > "${tmp}/src/restored-rdb-target"
       ln -s restored-rdb-target "${tmp}/src/dump.rdb"
@@ -52,12 +57,11 @@ case "$1" in
       } > "${tmp}/src/cluster-meta"
     fi
     if [ "${FAKE_DATASAFED_PULL_FAIL:-}" = "1" ]; then
-      printf 'partial\n' > "${tmp}/src/partial.txt"
-      tar -cf - -C "${tmp}/src" .
+      printf 'partial\n'
       rm -rf "${tmp}"
       exit 1
     fi
-    tar -cf - -C "${tmp}/src" .
+    (cd "${tmp}/src" && /usr/bin/tar -cf - ./*)
     rm -rf "${tmp}"
     ;;
   *)
@@ -83,6 +87,7 @@ SH
     export DP_BACKUP_NAME="restore-test"
     export DP_BACKUP_BASE_PATH="/backup"
     export DP_DATASAFED_BIN_PATH="${fakebin}"
+    export FAKE_DATASAFED_PULL_COUNT_FILE="${spec_tmp_dir}/pull-count"
     export PATH="${fakebin}:${PATH}"
   }
   Before "setup"
@@ -107,6 +112,7 @@ SH
     unset FAKE_DATASAFED_OMIT_RDB_SHA
     unset FAKE_DATASAFED_RDB_SHA
     unset FAKE_DATASAFED_PULL_FAIL
+    unset FAKE_DATASAFED_PULL_COUNT_FILE
     unset RESTORE_TARGET_SHARDS
     unset VALKEY_APPEND_DIRNAME
     unset VALKEY_APPEND_FILENAME
@@ -117,7 +123,7 @@ SH
     When run bash ../dataprotection/restore.sh
     The status should be success
     The stdout should include "INFO: Restore complete."
-    The file "${data_dir}/restored.txt" should be exist
+    The file "${data_dir}/dump.rdb" should be exist
     The file "${data_dir}/appendonlydir/appendonly.aof.manifest" should be exist
     The file "${data_dir}/appendonlydir/appendonly.aof.1.base.rdb" should be exist
     The file "${data_dir}/appendonlydir/appendonly.aof.1.incr.aof" should be exist
@@ -130,7 +136,7 @@ SH
     When run bash ../dataprotection/restore.sh
     The status should be failure
     The stderr should include "dot-segment aliases"
-    The file "${spec_tmp_dir}/restored.txt" should not be exist
+    The file "${spec_tmp_dir}/dump.rdb" should not be exist
   End
 
   It "rejects an escaping append directory before any restore write"
@@ -183,8 +189,8 @@ SH
     When run bash ../dataprotection/restore.sh
     The status should be failure
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
-    The stderr should include "restore archive extraction failed"
-    The file "${data_dir}/partial.txt" should not be exist
+    The stderr should include "restore archive download failed"
+    The file "${data_dir}/dump.rdb" should not be exist
     The file "${data_dir}/.kb-data-protection" should be exist
   End
 
@@ -197,13 +203,34 @@ SH
     The contents of file "${data_dir}/appendonlydir/appendonly.aof.1.base.rdb" should include "valkey-rdb"
   End
 
+  It "fails closed and removes payload when the AOF base copy fails"
+    cat > "${fakebin}/cp" <<'SH'
+#!/usr/bin/env bash
+exit 73
+SH
+    chmod +x "${fakebin}/cp"
+    When run bash ../dataprotection/restore.sh
+    The status should be failure
+    The stdout should include "INFO: Restoring from restore-test.tar.zst..."
+    The stderr should include "cannot copy dump.rdb into multipart AOF base file"
+    The file "${data_dir}/dump.rdb" should not be exist
+    The file "${data_dir}/appendonlydir/appendonly.aof.manifest" should not be exist
+  End
+
+  It "downloads the restore archive once before validating and extracting it"
+    When run bash ../dataprotection/restore.sh
+    The status should be success
+    The stdout should include "INFO: Restore complete."
+    The contents of file "${FAKE_DATASAFED_PULL_COUNT_FILE}" should eq "1"
+  End
+
   It "restores when only the data-protection placeholder exists"
     touch "${data_dir}/.kb-data-protection"
 
     When run bash ../dataprotection/restore.sh
     The status should be success
     The stdout should include "INFO: Restore complete."
-    The file "${data_dir}/restored.txt" should be exist
+    The file "${data_dir}/dump.rdb" should be exist
     The file "${data_dir}/.kb-data-protection" should not be exist
   End
 
@@ -214,7 +241,7 @@ SH
     When run bash ../dataprotection/restore.sh
     The status should be failure
     The stderr should include "ERROR: ${data_dir} is not empty"
-    The file "${data_dir}/restored.txt" should not be exist
+    The file "${data_dir}/dump.rdb" should not be exist
   End
 
   It "fails closed when the restored archive is missing dump.rdb"
@@ -223,7 +250,7 @@ SH
     When run bash ../dataprotection/restore.sh
     The status should be failure
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
-    The stderr should include "ERROR: restored archive must contain a safe regular non-empty dump.rdb."
+    The stderr should include "restore archive must contain exactly one dump.rdb"
   End
 
   It "fails closed when the restored dump.rdb is empty"
@@ -241,28 +268,26 @@ SH
     When run bash ../dataprotection/restore.sh
     The status should be failure
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
-    The stderr should include "safe regular non-empty dump.rdb"
+    The stderr should include "restore archive contains a non-regular member"
     The file "${data_dir}/appendonlydir/appendonly.aof.manifest" should not be exist
   End
 
-  It "fails closed when the restored archive already contains an AOF directory"
+  It "rejects an archive containing an unknown AOF directory before extraction"
     export FAKE_DATASAFED_INCLUDE_AOF=1
 
     When run bash ../dataprotection/restore.sh
     The status should be failure
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
-    The stderr should include "ERROR: restored archive already contains AOF state"
-    The stderr should include "appendonlydir"
+    The stderr should include "restore archive must contain exactly one dump.rdb"
   End
 
-  It "fails closed when the restored archive already contains root AOF state"
+  It "rejects an archive containing an unknown root AOF file before extraction"
     export FAKE_DATASAFED_INCLUDE_ROOT_AOF=1
 
     When run bash ../dataprotection/restore.sh
     The status should be failure
     The stdout should include "INFO: Restoring from restore-test.tar.zst..."
-    The stderr should include "ERROR: restored archive already contains AOF state"
-    The stderr should include "appendonly.aof"
+    The stderr should include "restore archive must contain exactly one dump.rdb"
   End
   It "prepares a valid cluster archive and preserves slot metadata for postProvision"
     export FAKE_DATASAFED_CLUSTER_META=3
