@@ -4,6 +4,11 @@
 Describe "Valkey chart input contracts"
   cluster_chart="../../../addons-cluster/valkey"
 
+  build_chart_dependency() {
+    helm dependency build "${cluster_chart}" >/dev/null
+  }
+  BeforeAll "build_chart_dependency"
+
   reject_values() {
     helm template review "${cluster_chart}" "$@" >/dev/null
   }
