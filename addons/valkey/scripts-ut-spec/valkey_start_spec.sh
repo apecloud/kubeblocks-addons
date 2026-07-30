@@ -315,6 +315,7 @@ Describe "Valkey Start Bash Script Tests"
         export SENTINEL_COMPONENT_NAME="valkey-sentinel"
         export SENTINEL_POD_FQDN_LIST="sentinel-0.sentinel-headless.default.svc.cluster.local"
         export CURRENT_POD_NAME="valkey-0"
+        export COMPONENT_REPLICAS="2"
         export VALKEY_POD_NAME_LIST="valkey-0,valkey-1"
         export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local"
         export SERVICE_PORT="6379"
@@ -328,6 +329,7 @@ Describe "Valkey Start Bash Script Tests"
         unset SENTINEL_COMPONENT_NAME
         unset SENTINEL_POD_FQDN_LIST
         unset CURRENT_POD_NAME
+        unset COMPONENT_REPLICAS
         unset VALKEY_POD_NAME_LIST
         unset VALKEY_POD_FQDN_LIST
         unset SERVICE_PORT
@@ -335,13 +337,133 @@ Describe "Valkey Start Bash Script Tests"
       }
       After "teardown"
 
-      It "allows lexicographic bootstrap only for a fresh data directory"
+      It "allows lexicographic bootstrap for a fresh single-pod data component"
+        export COMPONENT_REPLICAS="1"
+        export VALKEY_POD_NAME_LIST="valkey-0"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local"
         query_sentinel_quorum_for_master() { echo ""; }
         scan_pods_for_master() { echo ""; }
         verify_pod_role() { echo ""; }
         When call build_replicaof_config
         The status should be success
         The stderr should include "electing bootstrap primary"
+      End
+
+      It "rejects fresh bootstrap while any configured peer is unreadable"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() { echo ""; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "peer valkey-1.valkey-headless.default.svc.cluster.local is unreachable"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects fresh bootstrap when one configured peer is unreadable after another validates"
+        export COMPONENT_REPLICAS="3"
+        export VALKEY_POD_NAME_LIST="valkey-0,valkey-1,valkey-2"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local,valkey-2.valkey-headless.default.svc.cluster.local"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
+        get_replica_function_list() { :; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "peer valkey-2.valkey-headless.default.svc.cluster.local is unreachable"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects fresh bootstrap when a peer changes after its local validation"
+        export COMPONENT_REPLICAS="3"
+        export VALKEY_POD_NAME_LIST="valkey-0,valkey-1,valkey-2"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local,valkey-2.valkey-headless.default.svc.cluster.local"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        peer_one_role_state="${DATA_DIR}/peer-one-role-reads"
+        printf '0\n' > "${peer_one_role_state}"
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*)
+              peer_one_role_reads=$(cat "${peer_one_role_state}")
+              peer_one_role_reads=$((peer_one_role_reads + 1))
+              printf '%s\n' "${peer_one_role_reads}" > "${peer_one_role_state}"
+              if [ "${peer_one_role_reads}" -le 2 ]; then
+                echo "slave"
+              else
+                echo "master"
+              fi
+              ;;
+            valkey-2.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
+        get_replica_function_list() { :; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "changed role before bootstrap commit"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects a truncated FQDN roster before validating peers"
+        export COMPONENT_REPLICAS="3"
+        export VALKEY_POD_NAME_LIST="valkey-0,valkey-1,valkey-2"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
+        get_replica_function_list() { :; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "topology input count mismatch"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects duplicate pod names before validating peers"
+        export VALKEY_POD_NAME_LIST="valkey-0,valkey-0"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() { echo ""; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "data pod name roster contains duplicate entry valkey-0"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects same-count pod name and FQDN rosters that do not map one to one"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-2.valkey-headless.default.svc.cluster.local"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() { echo ""; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "data pod valkey-1 maps to 0 FQDN roster entries"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects an FQDN that maps to more than one pod name"
+        export CURRENT_POD_NAME="valkey"
+        export VALKEY_POD_NAME_LIST="valkey,valkey.0"
+        export VALKEY_POD_FQDN_LIST="valkey.0.headless.default.svc.cluster.local,other.headless.default.svc.cluster.local"
+        When call validate_parallel_bootstrap_roster
+        The status should be failure
+        The stderr should include "maps to 2 pod name roster entries"
+        The stderr should include "refusing bootstrap"
       End
 
       It "refuses to guess a primary for existing data without trusted topology"
@@ -365,7 +487,8 @@ Describe "Valkey Start Bash Script Tests"
         The stderr should include "can prove a current master"
       End
 
-      It "allows the fresh lowest-ordinal pod to bootstrap when every observed replica points to it"
+      It "allows the fresh lowest-ordinal pod to bootstrap when every configured peer points to it"
+        export COMPONENT_REPLICAS="3"
         export VALKEY_POD_NAME_LIST="valkey-0,valkey-1,valkey-2"
         export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local,valkey-2.valkey-headless.default.svc.cluster.local"
         query_sentinel_quorum_for_master() { echo ""; }
@@ -545,11 +668,12 @@ Describe "Valkey Start Bash Script Tests"
         verify_pod_role() { echo ""; }
         When call build_replicaof_config
         The status should be failure
-        The stderr should include "data pod roster contains duplicate FQDN"
-        The stderr should include "not unique in the data-pod roster"
+        The stderr should include "data pod FQDN roster contains duplicate entry"
+        The stderr should include "refusing bootstrap"
       End
 
       It "rejects conflicting replica upstream targets during fresh bootstrap"
+        export COMPONENT_REPLICAS="3"
         export VALKEY_POD_NAME_LIST="valkey-0,valkey-1,valkey-2"
         export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local,valkey-2.valkey-headless.default.svc.cluster.local"
         query_sentinel_quorum_for_master() { echo ""; }
@@ -575,6 +699,7 @@ Describe "Valkey Start Bash Script Tests"
 
       It "never lets a non-lowest ordinal pod self-bootstrap"
         export CURRENT_POD_NAME="valkey-1"
+        export COMPONENT_REPLICAS="3"
         export VALKEY_POD_NAME_LIST="valkey-0,valkey-1,valkey-2"
         export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local,valkey-2.valkey-headless.default.svc.cluster.local"
         query_sentinel_quorum_for_master() { echo ""; }

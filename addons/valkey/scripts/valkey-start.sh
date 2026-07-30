@@ -216,7 +216,8 @@ build_replicaof_config() {
           # Confirmed master, or pod unreachable. When this pod is the fresh
           # lowest-ordinal bootstrap candidate, peers may already have started
           # as replicas of it under podManagementPolicy=Parallel. Accept that
-          # narrow view only when every observed replica points back here.
+          # narrow view only when every configured peer is reachable as a
+          # replica and points back here.
           if is_empty "${heuristic_role}" && contains "${heuristic_fqdn}" "${CURRENT_POD_NAME}."; then
             if ! validate_parallel_bootstrap_replica_view "${heuristic_fqdn}"; then
               return 1
@@ -603,9 +604,95 @@ resolve_master_host_to_roster_fqdn() {
 
 # A fresh lowest-ordinal pod can start after a faster peer has already become
 # its replica. This is the only safe replica-present bootstrap view: every
-# observed replica must resolve to this exact pod, prove empty loaded keyspace
-# and persisted Function state, and remain a replica of this pod when topology
-# is re-read.
+# configured peer must be reachable as a replica, resolve to this exact pod,
+# prove empty loaded keyspace and persisted Function state, and remain a
+# replica of this pod when topology is re-read. Skipping an unreachable peer
+# creates a blind window where surviving state can be overwritten.
+validate_parallel_bootstrap_roster() {
+  local expected_replicas="${COMPONENT_REPLICAS:-}"
+  local pod_names=()
+  local pod_fqdns=()
+  local unique_names=()
+  local unique_fqdns=()
+  local pod_name pod_fqdn known matches current_matches=0
+
+  case "${expected_replicas}" in
+    ""|*[!0-9]*|0)
+      echo "ERROR: invalid COMPONENT_REPLICAS '${expected_replicas:-<empty>}' — refusing bootstrap." >&2
+      return 1
+      ;;
+  esac
+
+  IFS=',' read -ra pod_names <<< "${VALKEY_POD_NAME_LIST}"
+  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+  if [ "${#pod_names[@]}" -ne "${expected_replicas}" ] || \
+     [ "${#pod_fqdns[@]}" -ne "${expected_replicas}" ]; then
+    echo "ERROR: topology input count mismatch: COMPONENT_REPLICAS=${expected_replicas}, pod names=${#pod_names[@]}, pod FQDNs=${#pod_fqdns[@]} — refusing bootstrap." >&2
+    return 1
+  fi
+
+  for pod_name in "${pod_names[@]}"; do
+    if is_empty "${pod_name}"; then
+      echo "ERROR: data pod name roster contains an empty entry — refusing bootstrap." >&2
+      return 1
+    fi
+    for known in "${unique_names[@]}"; do
+      if [ "${known}" = "${pod_name}" ]; then
+        echo "ERROR: data pod name roster contains duplicate entry ${pod_name} — refusing bootstrap." >&2
+        return 1
+      fi
+    done
+    unique_names+=("${pod_name}")
+    if [ "${pod_name}" = "${CURRENT_POD_NAME}" ]; then
+      current_matches=$(( current_matches + 1 ))
+    fi
+  done
+  if [ "${current_matches}" -ne 1 ]; then
+    echo "ERROR: current pod ${CURRENT_POD_NAME:-<empty>} appears ${current_matches} time(s) in the data pod name roster; expected exactly one — refusing bootstrap." >&2
+    return 1
+  fi
+
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    if is_empty "${pod_fqdn}"; then
+      echo "ERROR: data pod FQDN roster contains an empty entry — refusing bootstrap." >&2
+      return 1
+    fi
+    for known in "${unique_fqdns[@]}"; do
+      if [ "${known}" = "${pod_fqdn}" ]; then
+        echo "ERROR: data pod FQDN roster contains duplicate entry ${pod_fqdn} — refusing bootstrap." >&2
+        return 1
+      fi
+    done
+    unique_fqdns+=("${pod_fqdn}")
+  done
+
+  for pod_name in "${pod_names[@]}"; do
+    matches=0
+    for pod_fqdn in "${pod_fqdns[@]}"; do
+      case "${pod_fqdn}" in
+        "${pod_name}".*) matches=$(( matches + 1 )) ;;
+      esac
+    done
+    if [ "${matches}" -ne 1 ]; then
+      echo "ERROR: data pod ${pod_name} maps to ${matches} FQDN roster entries; expected exactly one — refusing bootstrap." >&2
+      return 1
+    fi
+  done
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    matches=0
+    for pod_name in "${pod_names[@]}"; do
+      case "${pod_fqdn}" in
+        "${pod_name}".*) matches=$(( matches + 1 )) ;;
+      esac
+    done
+    if [ "${matches}" -ne 1 ]; then
+      echo "ERROR: data pod FQDN ${pod_fqdn} maps to ${matches} pod name roster entries; expected exactly one — refusing bootstrap." >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
 validate_parallel_bootstrap_replica_view() {
   local expected_primary_fqdn="$1"
   local observed_replicas=0
@@ -613,6 +700,9 @@ validate_parallel_bootstrap_replica_view() {
   local pod_fqdn role master_host resolved_master rechecked_role rechecked_master rechecked_resolved_master
   local roster_primary_fqdn
 
+  if ! validate_parallel_bootstrap_roster; then
+    return 1
+  fi
   if ! roster_primary_fqdn=$(resolve_master_host_to_roster_fqdn "${expected_primary_fqdn}"); then
     echo "ERROR: bootstrap candidate ${expected_primary_fqdn:-<empty>} is not unique in the data-pod roster — refusing bootstrap." >&2
     return 1
@@ -624,11 +714,14 @@ validate_parallel_bootstrap_replica_view() {
 
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
   for pod_fqdn in "${pod_fqdns[@]}"; do
-    contains "${pod_fqdn}" "${CURRENT_POD_NAME}." && continue
+    case "${pod_fqdn}" in
+      "${CURRENT_POD_NAME}".*) continue ;;
+    esac
     role=$(verify_pod_role "${pod_fqdn}") || true
     case "${role}" in
       "")
-        continue
+        echo "ERROR: bootstrap peer ${pod_fqdn} is unreachable — refusing bootstrap." >&2
+        return 1
         ;;
       slave)
         observed_replicas=$(( observed_replicas + 1 ))
@@ -677,8 +770,30 @@ validate_parallel_bootstrap_replica_view() {
     esac
   done
 
+  # Re-read the complete peer roster at the success boundary. A peer validated
+  # early in the first pass may change while a later peer is being inspected.
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    case "${pod_fqdn}" in
+      "${CURRENT_POD_NAME}".*) continue ;;
+    esac
+    rechecked_role=$(verify_pod_role "${pod_fqdn}") || true
+    if [ "${rechecked_role}" != "slave" ]; then
+      echo "ERROR: ${pod_fqdn} changed role before bootstrap commit (${rechecked_role:-unreachable}) — refusing bootstrap." >&2
+      return 1
+    fi
+    rechecked_master=$(get_replica_master_host "${pod_fqdn}") || true
+    if ! rechecked_resolved_master=$(resolve_master_host_to_roster_fqdn "${rechecked_master}"); then
+      echo "ERROR: replica ${pod_fqdn} upstream changed before bootstrap commit — refusing bootstrap." >&2
+      return 1
+    fi
+    if [ "${rechecked_resolved_master}" != "${expected_primary_fqdn}" ]; then
+      echo "ERROR: replica ${pod_fqdn} upstream changed to ${rechecked_resolved_master} before bootstrap commit — refusing bootstrap." >&2
+      return 1
+    fi
+  done
+
   if [ "${observed_replicas}" -gt 0 ]; then
-    echo "INFO: parallel cold-start replica view is consistent: ${observed_replicas} replica(s) with empty keyspace and Function state stably point to ${expected_primary_fqdn}." >&2
+    echo "INFO: parallel cold-start replica view is consistent: all ${observed_replicas} configured peer(s) have empty keyspace and Function state and stably point to ${expected_primary_fqdn}." >&2
   fi
   return 0
 }
