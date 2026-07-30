@@ -196,12 +196,12 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
     It "the --defaults-extra-file flag appears immediately after the mariadbd command (positional first arg)"
       # MariaDB requires --defaults-* flags to be the first option.
       # We assert by source-order: the line containing
-      # `docker-entrypoint.sh mariadbd \` must be IMMEDIATELY followed
+      # The addon-owned image-entrypoint wrapper invocation must be IMMEDIATELY followed
       # by the `--defaults-extra-file=...` line (allowing only
       # whitespace and line-continuation markers).
       When run sh -c '
         awk "
-          /docker-entrypoint\.sh mariadbd \\\\/ { found_mariadbd = NR; next }
+          /mariadb-image-entrypoint\.sh run .* mariadbd \\\\/ { found_mariadbd = NR; next }
           found_mariadbd && NR == found_mariadbd + 1 {
             if (\$0 ~ /--defaults-extra-file=/) {
               print \"OK\"

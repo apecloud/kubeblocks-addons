@@ -79,6 +79,18 @@ if [ -n "${MARIADB_REPLICATION_MODE:-}" ]; then
     exit 1
   fi
 fi
+# The official MariaDB image entrypoint treats the presence of the mysql
+# system directory as "initialization complete", although the directory is
+# created before the temporary server and account setup have committed.  If a
+# fresh init crosses the image's old 30-second temporary-server boundary, the
+# next container restart otherwise skips account setup permanently.  Recover
+# only a fresh init that this addon explicitly marked in progress; legacy and
+# already-existing datadirs have no marker and are never erased.
+if [ ! -x /scripts/mariadb-image-entrypoint.sh ]; then
+  echo "MariaDB image entrypoint wrapper is missing or not executable; refusing to start" >&2
+  exit 1
+fi
+/scripts/mariadb-image-entrypoint.sh recover "${DATA_DIR}"
 # Signal to roleProbe that this pod is initializing — prevents spurious "primary"
 # reports that would cause KubeBlocks to auto-trigger a switchover.
 rm -f ${DATA_DIR}/.replication-ready
@@ -1895,7 +1907,7 @@ start_mariadbd_process() {
   # 11.4 AND 11.8), turning fail-closed intent into fail-open on every shipped
   # version. The portable boolean ON is used here; set_fail_closed_read_only
   # still upgrades to NO_LOCK_NO_ADMIN post-start where the engine supports it.
-  docker-entrypoint.sh mariadbd \
+  /scripts/mariadb-image-entrypoint.sh run "${DATA_DIR}" mariadbd \
     --defaults-extra-file=${DATA_DIR}/runtime-overrides.cnf \
     --server-id=${SERVICE_ID} \
     --gtid-domain-id=${SERVICE_ID} \
