@@ -714,12 +714,21 @@ accept_syncer_primary_promotion_from_replica_path() {
   prestop_watchdog_log "replica-path-accept-dcs-primary label=${label} action=accept-primary-promotion"
 
   # r9 first-red: replica fencing can begin while syncer still reports
-  # secondary, then race with syncer promoting this same Pod. Keep the
-  # global read_only fence ON until the existing full-primary acceptance
-  # takes control. MariaDB read_only is server-global, so turning it OFF here
-  # would also expose ordinary business users, not just kb_internal_root.
+  # secondary, then race with syncer promoting this same Pod. Promotion can
+  # win before set_replica_read_only reaches its first lock operation, so an
+  # rc=2 from that path does not itself prove that global read_only is ON.
+  # Positively establish the fail-closed fence before the existing full-
+  # primary acceptance takes control. MariaDB read_only is server-global, so
+  # turning it OFF here would also expose ordinary business users, not just
+  # kb_internal_root.
   # Syncer's DCS-authoritative local leader heartbeat must instead use its
   # dedicated READ_ONLY ADMIN connection while suppressing binlog output.
+  if ! read_only_is_fail_closed; then
+    if ! set_fail_closed_read_only "${label}-pre-accept"; then
+      prestop_watchdog_log "replica-path-primary-accept-rollback label=${label} rc=1 reason=pre-accept-fence-failed fail_closed=false"
+      return 3
+    fi
+  fi
   # Re-check DCS immediately before the full acceptance to close the role
   # decision window without opening a write window first.
   role="$(query_local_syncer_role || true)"

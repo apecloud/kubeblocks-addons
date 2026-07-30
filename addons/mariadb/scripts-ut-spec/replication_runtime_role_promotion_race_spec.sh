@@ -56,6 +56,9 @@ local_primary_role_published() {
 read_only_is_writable() {
   return 1
 }
+read_only_is_fail_closed() {
+  grep -q '^read-only-on$' "${TRACE_FILE}"
+}
 lock_remote_root_writes() {
   trace_event remote-root-fenced
 }
@@ -108,6 +111,94 @@ full_accept_line="$(grep -n '^full-primary-accept$' "${TRACE_FILE}" | cut -d: -f
 [ -n "${read_only_line}" ]
 [ -n "${full_accept_line}" ]
 [ -z "${internal_open_line}" ]
+[ "${read_only_line}" -lt "${full_accept_line}" ]
+HARNESS
+    } > "${harness}"
+
+    TRACE_FILE="${trace}" ROLE_COUNTER="${role_counter}" DATA_DIR="${data_dir}" \
+      bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_promotion_before_first_replica_fence() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/early-race-harness.sh"
+    trace="${work_dir}/trace"
+    role_counter="${work_dir}/role-counter"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}"
+    printf '0\n' > "${role_counter}"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function set_replica_read_only
+      extract_function replica_lock_abort_if_syncer_primary
+      extract_function accept_syncer_primary_promotion_from_replica_path
+      extract_function reconcile_sql_listener_for_syncer_secondary_once
+      cat <<'HARNESS'
+GLOBAL_READ_ONLY=0
+trace_event() {
+  printf '%s\n' "$1" >> "${TRACE_FILE}"
+}
+query_local_syncer_role() {
+  local call
+  call=$(( $(cat "${ROLE_COUNTER}") + 1 ))
+  printf '%s\n' "${call}" > "${ROLE_COUNTER}"
+  if [ "${call}" -eq 1 ]; then
+    printf '%s\n' secondary
+  else
+    printf '%s\n' primary
+  fi
+}
+local_primary_role_published() {
+  return 1
+}
+read_only_is_writable() {
+  [ "${GLOBAL_READ_ONLY}" -eq 0 ]
+}
+read_only_is_fail_closed() {
+  [ "${GLOBAL_READ_ONLY}" -eq 1 ]
+}
+set_fail_closed_read_only() {
+  GLOBAL_READ_ONLY=1
+  trace_event read-only-on
+}
+prestop_watchdog_log() {
+  :
+}
+expose_sql_listener_for_primary_role() {
+  if [ "${GLOBAL_READ_ONLY}" -eq 1 ]; then
+    trace_event full-primary-accept-fenced
+  else
+    trace_event full-primary-accept-unfenced
+  fi
+}
+mark_replication_pending() {
+  trace_event replication-pending
+}
+query_slave_status_verbose() {
+  return 1
+}
+slave_status_is_healthy() {
+  return 1
+}
+publish_replica_after_rejoin_ready() {
+  return 1
+}
+configure_replication_from_primary_service_once() {
+  return 1
+}
+
+reconcile_sql_listener_for_syncer_secondary_once
+
+cat "${TRACE_FILE}"
+read_only_line="$(grep -n '^read-only-on$' "${TRACE_FILE}" | cut -d: -f1)"
+full_accept_line="$(grep -n '^full-primary-accept-fenced$' "${TRACE_FILE}" | cut -d: -f1)"
+[ -n "${read_only_line}" ]
+[ -n "${full_accept_line}" ]
+! grep -q '^full-primary-accept-unfenced$' "${TRACE_FILE}"
 [ "${read_only_line}" -lt "${full_accept_line}" ]
 HARNESS
     } > "${harness}"
@@ -181,6 +272,51 @@ HARNESS
     return "${rc}"
   }
 
+  run_pre_accept_fence_failure() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/fence-failure-harness.sh"
+    trace="${work_dir}/trace"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function accept_syncer_primary_promotion_from_replica_path
+      cat <<'HARNESS'
+trace_event() {
+  printf '%s\n' "$1" >> "${TRACE_FILE}"
+}
+query_local_syncer_role() {
+  printf '%s\n' primary
+}
+read_only_is_fail_closed() {
+  return 1
+}
+set_fail_closed_read_only() {
+  trace_event pre-accept-fence-failed
+  return 1
+}
+prestop_watchdog_log() {
+  trace_event "log:$*"
+}
+expose_sql_listener_for_primary_role() {
+  trace_event unexpected-full-primary-accept
+}
+
+accept_rc=0
+accept_syncer_primary_promotion_from_replica_path fence-failure || accept_rc=$?
+cat "${TRACE_FILE}"
+[ "${accept_rc}" -eq 3 ]
+grep -q '^pre-accept-fence-failed$' "${TRACE_FILE}"
+grep -q 'reason=pre-accept-fence-failed fail_closed=false' "${TRACE_FILE}"
+! grep -q '^unexpected-full-primary-accept$' "${TRACE_FILE}"
+HARNESS
+    } > "${harness}"
+
+    TRACE_FILE="${trace}" bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
   run_business_writer_during_primary_accept() {
     work_dir="$(mktemp -d)"
     harness="${work_dir}/business-writer-harness.sh"
@@ -196,6 +332,9 @@ trace_event() {
 }
 query_local_syncer_role() {
   printf '%s\n' primary
+}
+read_only_is_fail_closed() {
+  [ "${GLOBAL_READ_ONLY}" -eq 1 ]
 }
 internal_sql() {
   case "$*" in
@@ -263,6 +402,9 @@ query_local_syncer_role() {
   else
     printf '%s\n' primary
   fi
+}
+read_only_is_fail_closed() {
+  return 0
 }
 internal_sql() {
   case "$*" in
@@ -332,11 +474,27 @@ HARNESS
     The output should include "full-primary-accept"
   End
 
+  It "installs the fail-closed fence when promotion wins before the first replica lock"
+    When call run_promotion_before_first_replica_fence
+    The status should be success
+    The output should include "read-only-on"
+    The output should include "full-primary-accept-fenced"
+    The output should not include "full-primary-accept-unfenced"
+  End
+
   It "defers a pre-DCS secondary observation while fresh pod-0 is locally published and explicitly writable"
     When call run_pre_dcs_secondary_defers_writable_pod0
     The status should be success
     The output should include "pre-dcs-local-primary-writable"
     The output should not include "read-only-on"
+  End
+
+  It "fails closed and skips full acceptance when the pre-accept fence cannot be installed"
+    When call run_pre_accept_fence_failure
+    The status should be success
+    The output should include "pre-accept-fence-failed"
+    The output should include "fail_closed=false"
+    The output should not include "unexpected-full-primary-accept"
   End
 
   It "keeps an ordinary business writer fenced before full-primary acceptance"
