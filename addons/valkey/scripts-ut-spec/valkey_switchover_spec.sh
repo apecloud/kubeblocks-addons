@@ -99,6 +99,14 @@ Describe "Valkey Switchover Bash Script Tests"
         The stdout should include "-p 6379"
         The stdout should not include " -a "
       End
+
+      It "uses an explicitly supplied external endpoint port"
+        When call _build_cli_as_string "10.0.0.23" "31003"
+        The status should be success
+        The stdout should include "-h 10.0.0.23"
+        The stdout should include "-p 31003"
+        The stdout should not include "-p 6379"
+      End
     End
 
     Context "when VALKEY_DEFAULT_PASSWORD is set"
@@ -823,6 +831,93 @@ Describe "Valkey Switchover Bash Script Tests"
         "valkey-3.headless.default.svc.cluster.local" \
         "valkey-0.headless.default.svc.cluster.local"
       The status should be success
+    End
+
+    It "confirms an untargeted failover through the exact new NodePort endpoint"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001"
+      unset KB_SWITCHOVER_CANDIDATE_FQDN
+      sentinel_cli_for() { _sentinel_cli=(mock_untargeted_nodeport_master "$1"); }
+      mock_untargeted_nodeport_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf '10.0.0.23\n31003\n' ;;
+          *) printf '10.0.0.21\n31001\n' ;;
+        esac
+      }
+      get_role_at_endpoint() {
+        [ "$1" = "10.0.0.23" ] && [ "$2" = "31003" ] || return 1
+        echo master
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "confirms an untargeted failover through the exact new LoadBalancer endpoint"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_LB_ADVERTISED_PORT="valkey-lb-advertised-0:6379,valkey-lb-advertised-1:6379"
+      export VALKEY_LB_ADVERTISED_HOST="valkey-lb-advertised-0:lb-0.example.com,valkey-lb-advertised-1:lb-1.example.com"
+      unset KB_SWITCHOVER_CANDIDATE_FQDN
+      sentinel_cli_for() { _sentinel_cli=(mock_untargeted_load_balancer_master "$1"); }
+      mock_untargeted_load_balancer_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf 'lb-3.example.com\n6379\n' ;;
+          *) printf 'lb-1.example.com\n6379\n' ;;
+        esac
+      }
+      get_role_at_endpoint() {
+        [ "$1" = "lb-3.example.com" ] && [ "$2" = "6379" ] || return 1
+        echo master
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "counts different ports on the same external host as different Sentinel votes"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001"
+      sentinel_cli_for() { _sentinel_cli=(mock_split_external_ports "$1"); }
+      mock_split_external_ports() {
+        case "$1" in
+          sentinel-0) printf '10.0.0.23\n31003\n' ;;
+          sentinel-1) printf '10.0.0.23\n31004\n' ;;
+          *) return 1 ;;
+        esac
+      }
+      When call sentinel_master_host "allow-external"
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
+    End
+
+    It "does not accept an unmapped external endpoint for targeted switchover"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001"
+      unset KB_SWITCHOVER_CANDIDATE_FQDN
+      sentinel_cli_for() { _sentinel_cli=(mock_unmapped_targeted_master "$1"); }
+      mock_unmapped_targeted_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf '10.0.0.23\n31003\n' ;;
+          *) printf '10.0.0.21\n31001\n' ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-3.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
     End
 
     It "rejects an ambiguous NodePort-to-roster mapping instead of counting the vote"

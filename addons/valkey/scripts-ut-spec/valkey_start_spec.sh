@@ -378,6 +378,7 @@ Describe "Valkey Start Bash Script Tests"
         }
         get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
         get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
+        get_replica_function_list() { :; }
         When call build_replicaof_config
         The status should be success
         The stderr should include "parallel cold-start replica view"
@@ -400,6 +401,44 @@ Describe "Valkey Start Bash Script Tests"
         When call build_replicaof_config
         The status should be failure
         The stderr should include "retains 30 key(s) in db2"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects fresh bootstrap when a zero-key replica retains a persisted Function library"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
+        get_replica_function_list() {
+          printf 'library_name\nsurviving-lib\nengine\nLUA\n'
+        }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "retains persisted Function state"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects fresh bootstrap when replica Function evidence is unreadable"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
+        get_replica_function_list() { return 1; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "Function evidence is unreadable"
         The stderr should include "refusing bootstrap"
       End
 
@@ -459,6 +498,7 @@ Describe "Valkey Start Bash Script Tests"
         }
         get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
         get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
+        get_replica_function_list() { :; }
         When call build_replicaof_config
         The status should be failure
         The stderr should include "changed role during bootstrap validation"
@@ -527,6 +567,7 @@ Describe "Valkey Start Bash Script Tests"
           esac
         }
         get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
+        get_replica_function_list() { :; }
         When call build_replicaof_config
         The status should be failure
         The stderr should include "refusing conflicting replica targets"

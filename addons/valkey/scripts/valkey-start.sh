@@ -454,9 +454,21 @@ get_replica_keyspace_info() {
   timeout 3 "${cli_base[@]}" -h "${replica_fqdn}" info keyspace 2>/dev/null
 }
 
+get_replica_function_list() {
+  local replica_fqdn="$1"
+  # shellcheck disable=SC2206
+  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
+  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
+    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
+  fi
+
+  timeout 3 "${cli_base[@]}" -h "${replica_fqdn}" FUNCTION LIST 2>/dev/null
+}
+
 # A replica that already points at an unreachable fresh bootstrap candidate
-# cannot have synchronized from that candidate. Its loaded keyspace therefore
-# proves whether it still carries data from an older topology.
+# cannot have synchronized from that candidate. Its loaded keyspace and
+# persisted Function libraries therefore prove whether it still carries data
+# from an older topology.
 validate_replica_keyspace_empty() {
   local replica_fqdn="$1"
   local keyspace_info
@@ -529,6 +541,21 @@ validate_replica_keyspace_empty() {
   return 0
 }
 
+validate_replica_function_state_empty() {
+  local replica_fqdn="$1"
+  local function_list
+  if ! function_list=$(get_replica_function_list "${replica_fqdn}"); then
+    echo "ERROR: replica ${replica_fqdn} Function evidence is unreadable — refusing bootstrap." >&2
+    return 1
+  fi
+  function_list="${function_list//$'\r'/}"
+  if [ -n "${function_list}" ]; then
+    echo "ERROR: replica ${replica_fqdn} retains persisted Function state — refusing bootstrap." >&2
+    return 1
+  fi
+  return 0
+}
+
 resolve_master_host_to_roster_fqdn() {
   local master_host="$1"
   if is_empty "${master_host}"; then
@@ -576,8 +603,9 @@ resolve_master_host_to_roster_fqdn() {
 
 # A fresh lowest-ordinal pod can start after a faster peer has already become
 # its replica. This is the only safe replica-present bootstrap view: every
-# observed replica must resolve to this exact pod, prove an empty loaded
-# keyspace, and remain a replica of this pod when topology is re-read.
+# observed replica must resolve to this exact pod, prove empty loaded keyspace
+# and persisted Function state, and remain a replica of this pod when topology
+# is re-read.
 validate_parallel_bootstrap_replica_view() {
   local expected_primary_fqdn="$1"
   local observed_replicas=0
@@ -620,6 +648,9 @@ validate_parallel_bootstrap_replica_view() {
         if ! validate_replica_keyspace_empty "${pod_fqdn}"; then
           return 1
         fi
+        if ! validate_replica_function_state_empty "${pod_fqdn}"; then
+          return 1
+        fi
         rechecked_role=$(verify_pod_role "${pod_fqdn}") || true
         if [ "${rechecked_role}" != "slave" ]; then
           echo "ERROR: ${pod_fqdn} changed role during bootstrap validation (${rechecked_role:-unreachable}) — refusing bootstrap." >&2
@@ -647,7 +678,7 @@ validate_parallel_bootstrap_replica_view() {
   done
 
   if [ "${observed_replicas}" -gt 0 ]; then
-    echo "INFO: parallel cold-start replica view is consistent: ${observed_replicas} empty replica(s) stably point to ${expected_primary_fqdn}." >&2
+    echo "INFO: parallel cold-start replica view is consistent: ${observed_replicas} replica(s) with empty keyspace and Function state stably point to ${expected_primary_fqdn}." >&2
   fi
   return 0
 }

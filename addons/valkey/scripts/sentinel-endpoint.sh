@@ -169,6 +169,10 @@ resolve_sentinel_master_endpoint() {
   case "${reported_port}" in
     ""|*[!0-9]*) return 1 ;;
   esac
+  case "${mode}" in
+    strict|member-leave|allow-external) ;;
+    *) return 1 ;;
+  esac
 
   if [ -n "${VALKEY_ADVERTISED_PORT:-}" ]; then
     case "${VALKEY_ADVERTISED_PORT}" in
@@ -221,31 +225,51 @@ resolve_sentinel_master_endpoint() {
     [ "${action_status}" -eq 2 ] || return 1
   fi
 
-  [ "${reported_port}" = "${internal_port}" ] || return 1
-  if [ "${mode}" = "member-leave" ]; then
-    if [ "${host}" = "${KB_LEAVE_MEMBER_POD_FQDN:-}" ] || \
-       [ "${host}" = "${KB_LEAVE_MEMBER_POD_NAME:-}" ] || \
-       { [ -n "${leaving_ip:-}" ] && [ "${host}" = "${leaving_ip}" ]; }; then
-      printf '%s\n' "${KB_LEAVE_MEMBER_POD_FQDN}"
+  if [ "${reported_port}" = "${internal_port}" ]; then
+    if [ "${mode}" = "member-leave" ]; then
+      if [ "${host}" = "${KB_LEAVE_MEMBER_POD_FQDN:-}" ] || \
+         [ "${host}" = "${KB_LEAVE_MEMBER_POD_NAME:-}" ] || \
+         { [ -n "${leaving_ip:-}" ] && [ "${host}" = "${leaving_ip}" ]; }; then
+        printf '%s\n' "${KB_LEAVE_MEMBER_POD_FQDN}"
+        return 0
+      fi
+      printf '%s\n' "${host}"
       return 0
     fi
-    printf '%s\n' "${host}"
-    return 0
+
+    local roster
+    local candidate pod_ip
+    roster=$(canonical_data_pod_fqdns) || return 1
+    matches=()
+    while IFS= read -r candidate; do
+      [ -n "${candidate}" ] || continue
+      if [ "${host}" = "${candidate}" ] || [ "${host}" = "${candidate%%.*}" ]; then
+        matches+=("${candidate}")
+        continue
+      fi
+      pod_ip=$(getent hosts "${candidate}" 2>/dev/null | awk '{print $1}' | head -n1) || true
+      [ -z "${pod_ip}" ] || [ "${host}" != "${pod_ip}" ] || matches+=("${candidate}")
+    done <<< "${roster}"
+    if [ "${#matches[@]}" -eq 1 ]; then
+      printf '%s\n' "${matches[0]}"
+      return 0
+    fi
+    [ "${#matches[@]}" -eq 0 ] || return 1
+  else
+    [ "${mode}" != "member-leave" ] || return 1
+    canonical_data_pod_fqdns >/dev/null || return 1
   fi
 
-  local roster
-  local candidate pod_ip
-  roster=$(canonical_data_pod_fqdns) || return 1
-  matches=()
-  while IFS= read -r candidate; do
-    [ -n "${candidate}" ] || continue
-    if [ "${host}" = "${candidate}" ] || [ "${host}" = "${candidate%%.*}" ]; then
-      matches+=("${candidate}")
-      continue
-    fi
-    pod_ip=$(getent hosts "${candidate}" 2>/dev/null | awk '{print $1}' | head -n1) || true
-    [ -z "${pod_ip}" ] || [ "${host}" != "${pod_ip}" ] || matches+=("${candidate}")
-  done <<< "${roster}"
-  [ "${#matches[@]}" -eq 1 ] || return 1
-  printf '%s\n' "${matches[0]}"
+  # With no requested candidate, a newly scaled replica may be absent from
+  # creation-time advertised-endpoint metadata. Preserve the exact endpoint
+  # identity so the caller can require both Sentinel majority and a direct
+  # role readback without guessing an internal pod identity.
+  if [ "${mode}" = "allow-external" ]; then
+    case "${host}" in
+      *'|'*) return 1 ;;
+    esac
+    printf '@sentinel-external|%s|%s\n' "${host}" "${reported_port}"
+    return 0
+  fi
+  return 1
 }

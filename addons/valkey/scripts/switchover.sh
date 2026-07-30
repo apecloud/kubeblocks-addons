@@ -38,7 +38,8 @@ load_common_library() {
 
 build_cli() {
   local host="${1}"
-  _cli=(valkey-cli --no-auth-warning -h "${host}" -p "${port}")
+  local endpoint_port="${2:-${port}}"
+  _cli=(valkey-cli --no-auth-warning -h "${host}" -p "${endpoint_port}")
   if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
     _cli+=(-a "${VALKEY_DEFAULT_PASSWORD}")
   fi
@@ -48,10 +49,15 @@ build_cli() {
   fi
 }
 
+get_role_at_endpoint() {
+  local host="${1}" endpoint_port="${2}"
+  build_cli "${host}" "${endpoint_port}"
+  "${_cli[@]}" info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2
+}
+
 get_role() {
   local fqdn="${1}"
-  build_cli "${fqdn}"
-  "${_cli[@]}" info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2
+  get_role_at_endpoint "${fqdn}" "${port}"
 }
 
 read_action_candidate_announced_endpoint() {
@@ -247,6 +253,7 @@ canonical_sentinel_fqdns() {
 # Resolve the current master only from a strict majority of the configured,
 # unique Sentinel endpoints. Reachable-only quorum is not authoritative.
 sentinel_master_host() {
+  local resolution_mode="${1:-strict}"
   local endpoints fqdn output host reported_port canonical_host i found winner="" winner_count=0
   local hosts=() counts=()
   endpoints=$(canonical_sentinel_fqdns) || return 1
@@ -259,7 +266,7 @@ sentinel_master_host() {
     output=$("${_sentinel_cli[@]}" SENTINEL GET-MASTER-ADDR-BY-NAME "${VALKEY_COMPONENT_NAME}" 2>/dev/null | tr -d '\r') || continue
     host=$(printf '%s\n' "${output}" | sed -n '1p')
     reported_port=$(printf '%s\n' "${output}" | sed -n '2p')
-    canonical_host=$(resolve_sentinel_master_endpoint "${host}" "${reported_port}") || continue
+    canonical_host=$(resolve_sentinel_master_endpoint "${host}" "${reported_port}" "${resolution_mode}") || continue
     found=0
     for i in "${!hosts[@]}"; do
       if [ "${hosts[$i]}" = "${canonical_host}" ]; then
@@ -286,21 +293,69 @@ sentinel_master_host() {
   printf '%s\n' "${winner}"
 }
 
+is_external_master_identity() {
+  case "${1}" in
+    '@sentinel-external|'*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+parse_external_master_identity() {
+  local identity="${1}"
+  local marker endpoint_host endpoint_port extra
+  IFS='|' read -r marker endpoint_host endpoint_port extra <<< "${identity}"
+  [ "${marker}" = "@sentinel-external" ] &&
+    [ -n "${endpoint_host}" ] &&
+    [ -z "${extra}" ] || return 1
+  case "${endpoint_port}" in
+    ""|*[!0-9]*) return 1 ;;
+  esac
+  printf '%s\n%s\n' "${endpoint_host}" "${endpoint_port}"
+}
+
+get_role_for_master_identity() {
+  local identity="${1}" parsed endpoint_host endpoint_port
+  if ! is_external_master_identity "${identity}"; then
+    get_role "${identity}"
+    return
+  fi
+  parsed=$(parse_external_master_identity "${identity}") || return 1
+  endpoint_host=$(printf '%s\n' "${parsed}" | sed -n '1p')
+  endpoint_port=$(printf '%s\n' "${parsed}" | sed -n '2p')
+  get_role_at_endpoint "${endpoint_host}" "${endpoint_port}"
+}
+
+master_identity_display() {
+  local identity="${1}" parsed endpoint_host endpoint_port
+  if ! is_external_master_identity "${identity}"; then
+    printf '%s\n' "${identity}"
+    return
+  fi
+  parsed=$(parse_external_master_identity "${identity}") || return 1
+  endpoint_host=$(printf '%s\n' "${parsed}" | sed -n '1p')
+  endpoint_port=$(printf '%s\n' "${parsed}" | sed -n '2p')
+  printf '%s:%s\n' "${endpoint_host}" "${endpoint_port}"
+}
+
 same_pod_identity() {
+  is_external_master_identity "${1}" && return 1
+  is_external_master_identity "${2}" && return 1
   [ "${1%%.*}" = "${2%%.*}" ]
 }
 
 sentinel_switchover_converged() {
   local expected_fqdn="${1}" old_fqdn="${2}" master_host candidate_role old_role
-  master_host=$(sentinel_master_host) || return 1
+  local resolution_mode="strict"
+  [ -n "${expected_fqdn}" ] || resolution_mode="allow-external"
+  master_host=$(sentinel_master_host "${resolution_mode}") || return 1
   if [ -n "${expected_fqdn}" ] && ! same_pod_identity "${master_host}" "${expected_fqdn}"; then
     return 1
   fi
   same_pod_identity "${master_host}" "${old_fqdn}" && return 1
-  candidate_role=$(get_role "${master_host}") || return 1
+  candidate_role=$(get_role_for_master_identity "${master_host}") || return 1
   old_role=$(get_role "${old_fqdn}") || return 1
   [ "${candidate_role}" = "master" ] && [ "${old_role}" = "slave" ] || return 1
-  SENTINEL_CONFIRMED_MASTER="${master_host}"
+  SENTINEL_CONFIRMED_MASTER=$(master_identity_display "${master_host}") || return 1
   return 0
 }
 
