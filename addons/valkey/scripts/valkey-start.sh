@@ -129,6 +129,18 @@ build_announce_addr() {
 build_replicaof_config() {
   local primary_fqdn=""
   local primary_port="${service_port}"
+  local recovery_marker recovery_marker_status recovery_pending=0
+  local recovery_finalization_required=0
+
+  recovery_marker=$(parallel_bootstrap_recovery_marker)
+  if parallel_bootstrap_recovery_is_pending; then
+    recovery_pending=1
+  else
+    recovery_marker_status=$?
+    if [ "${recovery_marker_status}" -ne 1 ]; then
+      return 1
+    fi
+  fi
 
   if ! is_empty "${SENTINEL_COMPONENT_NAME}" && ! is_empty "${SENTINEL_POD_FQDN_LIST}"; then
     # ── Path A: sentinel-managed cluster ────────────────────────────────
@@ -194,59 +206,90 @@ build_replicaof_config() {
       if ! is_empty "${primary_fqdn}"; then
         : # already logged above
       else
-        # Step A-3: no peer is a master yet. Only a fresh empty component may
-        # seed topology by lexicographic order. Existing data cannot distinguish
-        # a full restart from a partition, so it must wait for Sentinel or one
-        # unambiguous running peer to provide authority.
-        if ! is_fresh_bootstrap_data_dir; then
-          echo "ERROR: Sentinel topology has no trusted master and ${DATA_DIR:-/data} contains existing data — refusing to guess whether this is a full restart or a network partition." >&2
+        if [ "${recovery_pending}" -eq 1 ]; then
+          echo "ERROR: pending recovery marker requires a unique trusted authority; Sentinel and the direct pod scan proved none." >&2
           return 1
         fi
-        # Elect the lowest-ordinal pod as the bootstrap primary, then verify it
-        # is actually reporting role:master.
-        # During rolling restarts the lexicographic pod may itself be a slave
-        # (sentinel already failed over to a different pod); connecting to it
-        # would create a cascading topology that sentinel will not auto-correct.
-        echo "INFO: no running master found — electing bootstrap primary by lexicographic order." >&2
-        local heuristic_fqdn
-        heuristic_fqdn=$(elect_lexicographic_primary)
-        local heuristic_role
-        heuristic_role=$(verify_pod_role "${heuristic_fqdn}") || true
-        if [ "${heuristic_role}" = "master" ] || is_empty "${heuristic_role}"; then
-          # Confirmed master, or pod unreachable. When this pod is the fresh
-          # lowest-ordinal bootstrap candidate, peers may already have started
-          # as replicas of it under podManagementPolicy=Parallel. Accept that
-          # narrow view only when every configured peer is reachable as a
-          # replica and points back here.
-          if is_empty "${heuristic_role}" && contains "${heuristic_fqdn}" "${CURRENT_POD_NAME}."; then
-            if ! validate_parallel_bootstrap_replica_view "${heuristic_fqdn}"; then
-              return 1
-            fi
+        # Step A-3: no peer is a master yet. A non-lowest existing-data peer may
+        # start on an inert local upstream so its preserved state is observable
+        # before the lowest pod decides whether bootstrap is safe. It never
+        # contacts a data pod or self-elects here. The lowest existing-data pod
+        # still fails closed because it cannot distinguish a full restart from
+        # a partition.
+        if ! is_fresh_bootstrap_data_dir; then
+          if ! validate_parallel_bootstrap_roster; then
+            return 1
           fi
-          primary_fqdn="${heuristic_fqdn}"
-        else
-          # Heuristic pod is a slave — follow its replication chain to find the
-          # real master and avoid creating a cascading sub-slave topology.
-          echo "INFO: heuristic pod ${heuristic_fqdn} is '${heuristic_role}' — finding real master." >&2
-          local chained
-          chained=$(follow_slave_to_master "${heuristic_fqdn}") || true
-          if ! is_empty "${chained}"; then
-            echo "INFO: real master via replication chain: ${chained}" >&2
-            primary_fqdn="${chained}"
-          else
-            # Last resort: 3 extra quorum retries (10s apart).
-            local retry
-            for retry in 1 2 3; do
-              sleep_when_ut_mode_false 10
-              primary_fqdn=$(query_sentinel_quorum_for_master) || true
-              if ! is_empty "${primary_fqdn}"; then
-                echo "INFO: sentinel quorum found master on retry ${retry}: ${primary_fqdn}" >&2
-                break
-              fi
-            done
-            if is_empty "${primary_fqdn}"; then
-              echo "ERROR: heuristic pod ${heuristic_fqdn} is a replica but neither its upstream nor Sentinel can prove a current master." >&2
+          local staging_primary_fqdn
+          staging_primary_fqdn=$(elect_lexicographic_primary)
+          case "${staging_primary_fqdn}" in
+            "${CURRENT_POD_NAME}".*)
+              echo "ERROR: Sentinel topology has no trusted master and ${DATA_DIR:-/data} contains existing data — refusing to guess whether this is a full restart or a network partition." >&2
               return 1
+              ;;
+            *)
+              # Keep preserved state readable without contacting the ambiguous
+              # lowest target. The fresh lowest candidate will repoint this
+              # replica only after it proves the whole roster is empty.
+              primary_fqdn=$(parallel_bootstrap_hold_host)
+              primary_port=$(parallel_bootstrap_hold_port)
+              echo "INFO: no trusted master yet; existing-data peer ${CURRENT_POD_NAME} is starting as a fail-closed staging replica on inert upstream ${primary_fqdn}:${primary_port} so its preserved state can be inspected before any synchronization." >&2
+              ;;
+          esac
+        else
+          # Elect the lowest-ordinal pod as the bootstrap primary, then verify
+          # it is actually reporting role:master.
+          # During rolling restarts the lexicographic pod may itself be a slave
+          # (sentinel already failed over to a different pod); connecting to it
+          # would create a cascading topology that sentinel will not auto-correct.
+          echo "INFO: no running master found — electing bootstrap primary by lexicographic order." >&2
+          local heuristic_fqdn
+          heuristic_fqdn=$(elect_lexicographic_primary)
+          local heuristic_role
+          heuristic_role=$(verify_pod_role "${heuristic_fqdn}") || true
+          if [ "${heuristic_role}" = "master" ] || is_empty "${heuristic_role}"; then
+            # Confirmed master, or pod unreachable. When this pod is the fresh
+            # lowest-ordinal bootstrap candidate, peers may already have started
+            # as replicas of it under podManagementPolicy=Parallel. Accept that
+            # narrow view only when every configured peer is reachable as a
+            # replica and points back here.
+            if is_empty "${heuristic_role}"; then
+              case "${heuristic_fqdn}" in
+                "${CURRENT_POD_NAME}".*)
+                  local converged_primary_fqdn
+                  if ! converged_primary_fqdn=$(validate_parallel_bootstrap_replica_view \
+                      "${heuristic_fqdn}"); then
+                    return 1
+                  fi
+                  heuristic_fqdn="${converged_primary_fqdn}"
+                  ;;
+              esac
+            fi
+            primary_fqdn="${heuristic_fqdn}"
+          else
+            # Heuristic pod is a slave — follow its replication chain to find the
+            # real master and avoid creating a cascading sub-slave topology.
+            echo "INFO: heuristic pod ${heuristic_fqdn} is '${heuristic_role}' — finding real master." >&2
+            local chained
+            chained=$(follow_slave_to_master "${heuristic_fqdn}") || true
+            if ! is_empty "${chained}"; then
+              echo "INFO: real master via replication chain: ${chained}" >&2
+              primary_fqdn="${chained}"
+            else
+              # Last resort: 3 extra quorum retries (10s apart).
+              local retry
+              for retry in 1 2 3; do
+                sleep_when_ut_mode_false 10
+                primary_fqdn=$(query_sentinel_quorum_for_master) || true
+                if ! is_empty "${primary_fqdn}"; then
+                  echo "INFO: sentinel quorum found master on retry ${retry}: ${primary_fqdn}" >&2
+                  break
+                fi
+              done
+              if is_empty "${primary_fqdn}"; then
+                echo "ERROR: heuristic pod ${heuristic_fqdn} is a replica but neither its upstream nor Sentinel can prove a current master." >&2
+                return 1
+              fi
             fi
           fi
         fi
@@ -254,8 +297,54 @@ build_replicaof_config() {
     fi
   else
     # ── Path B: no sentinel (standalone or fresh cluster) ───────────────
+    if [ "${recovery_pending}" -eq 1 ]; then
+      echo "ERROR: pending recovery marker requires a unique trusted authority; heuristic standalone election is forbidden." >&2
+      return 1
+    fi
     echo "INFO: no sentinel configured — electing primary by lexicographic order." >&2
     primary_fqdn=$(elect_lexicographic_primary)
+  fi
+
+  # A trusted master may appear after a fresh lowest pod has already repointed
+  # staging peers to itself but before it starts. Repair that partial topology
+  # before writing the local replicaof edge, otherwise the peers would retain a
+  # cascading peer -> current -> authority chain across retries.
+  if ! is_empty "${primary_fqdn}" && is_fresh_bootstrap_data_dir; then
+    local bootstrap_candidate_fqdn
+    bootstrap_candidate_fqdn=$(elect_lexicographic_primary)
+    case "${bootstrap_candidate_fqdn}" in
+      "${CURRENT_POD_NAME}".*)
+        if [ "${primary_fqdn}" != "${bootstrap_candidate_fqdn}" ]; then
+          local recovered_primary_fqdn recovery_status
+          if recovered_primary_fqdn=$(converge_partial_parallel_bootstrap_to_authority \
+              "${bootstrap_candidate_fqdn}" "${primary_fqdn}"); then
+            primary_fqdn="${recovered_primary_fqdn}"
+            recovery_finalization_required=1
+          else
+            recovery_status=$?
+            if [ "${recovery_status}" -ne 2 ]; then
+              return 1
+            fi
+            if [ "${recovery_pending}" -eq 1 ]; then
+              echo "ERROR: pending recovery marker disappeared before strict topology recovery could complete." >&2
+              return 1
+            fi
+          fi
+        elif [ "${recovery_pending}" -eq 1 ]; then
+          echo "ERROR: pending recovery marker requires an authority distinct from bootstrap candidate ${bootstrap_candidate_fqdn}." >&2
+          return 1
+        fi
+        ;;
+      *)
+        if [ "${recovery_pending}" -eq 1 ]; then
+          echo "ERROR: pending recovery marker belongs to fresh bootstrap candidate ${bootstrap_candidate_fqdn}, not current pod ${CURRENT_POD_NAME}." >&2
+          return 1
+        fi
+        ;;
+    esac
+  elif [ "${recovery_pending}" -eq 1 ]; then
+    echo "ERROR: pending recovery marker is invalid outside a fresh bootstrap data directory." >&2
+    return 1
   fi
 
   if is_empty "${primary_fqdn}"; then
@@ -274,12 +363,26 @@ build_replicaof_config() {
   fi
 
   # If this pod is the elected primary, no replicaof directive needed.
-  if contains "${primary_fqdn}" "${CURRENT_POD_NAME}."; then
-    echo "INFO: this pod is the primary — no replicaof directive needed." >&2
-    return
-  fi
+  case "${primary_fqdn}" in
+    "${CURRENT_POD_NAME}".*)
+      if [ "${recovery_finalization_required}" -eq 1 ] || [ -e "${recovery_marker}" ]; then
+        echo "ERROR: pending recovery marker cannot commit current pod ${CURRENT_POD_NAME} as primary." >&2
+        return 1
+      fi
+      echo "INFO: this pod is the primary — no replicaof directive needed." >&2
+      return
+      ;;
+  esac
 
   echo "replicaof ${primary_fqdn} ${primary_port}" >> "${CONF_RUNTIME}"
+  if [ "${recovery_finalization_required}" -eq 1 ]; then
+    local finalized_candidate_fqdn
+    finalized_candidate_fqdn=$(elect_lexicographic_primary)
+    if ! finalize_parallel_bootstrap_recovery \
+        "${finalized_candidate_fqdn}" "${primary_fqdn}"; then
+      return 1
+    fi
+  fi
 }
 
 is_fresh_bootstrap_data_dir() {
@@ -289,6 +392,43 @@ is_fresh_bootstrap_data_dir() {
   [ ! -d "${dir}/appendonlydir" ] || return 1
   [ ! -e "${dir}/nodes.conf" ] || return 1
   return 0
+}
+
+parallel_bootstrap_hold_host() {
+  echo "127.0.0.1"
+}
+
+parallel_bootstrap_hold_port() {
+  echo "1"
+}
+
+parallel_bootstrap_recovery_marker() {
+  echo "${DATA_DIR:-/data}/.parallel-bootstrap-recovery"
+}
+
+parallel_bootstrap_recovery_is_pending() {
+  local recovery_marker recovery_marker_value
+  recovery_marker=$(parallel_bootstrap_recovery_marker)
+  if [ ! -e "${recovery_marker}" ] && [ ! -L "${recovery_marker}" ]; then
+    return 1
+  fi
+  if [ -L "${recovery_marker}" ] || [ ! -f "${recovery_marker}" ] || \
+     ! recovery_marker_value=$(cat "${recovery_marker}") || \
+     [ "${recovery_marker_value}" != "pending" ]; then
+    echo "ERROR: partial bootstrap recovery marker ${recovery_marker} is invalid." >&2
+    return 2
+  fi
+  return 0
+}
+
+persist_parallel_bootstrap_recovery_marker() {
+  local recovery_marker
+  recovery_marker=$(parallel_bootstrap_recovery_marker)
+  if ! printf 'pending\n' > "${recovery_marker}" || \
+     [ "$(cat "${recovery_marker}" 2>/dev/null)" != "pending" ]; then
+    echo "ERROR: cannot persist partial bootstrap recovery marker ${recovery_marker}." >&2
+    return 1
+  fi
 }
 
 # query_sentinel_quorum_for_master — query ALL sentinel pods and return the
@@ -442,6 +582,45 @@ get_replica_master_host() {
   master_host=$(timeout 3 "${cli_base[@]}" -h "${replica_fqdn}" info replication 2>/dev/null \
     | grep "^master_host:" | tr -d '\r\n' | cut -d: -f2) || true
   echo "${master_host}"
+}
+
+get_replica_master_port() {
+  local replica_fqdn="$1"
+  # shellcheck disable=SC2206
+  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
+  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
+    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
+  fi
+
+  local master_port
+  master_port=$(timeout 3 "${cli_base[@]}" -h "${replica_fqdn}" info replication 2>/dev/null \
+    | grep "^master_port:" | tr -d '\r\n' | cut -d: -f2) || true
+  echo "${master_port}"
+}
+
+configure_replica_upstream() {
+  local replica_fqdn="$1"
+  local master_fqdn="$2"
+  local master_port="$3"
+  # shellcheck disable=SC2206
+  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
+  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
+    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
+  fi
+
+  local response
+  if ! response=$(timeout 3 "${cli_base[@]}" -h "${replica_fqdn}" \
+      REPLICAOF "${master_fqdn}" "${master_port}" 2>/dev/null); then
+    echo "ERROR: cannot repoint staging replica ${replica_fqdn} to ${master_fqdn}:${master_port} — refusing bootstrap." >&2
+    return 1
+  fi
+  response="${response//$'\r'/}"
+  response="${response//$'\n'/}"
+  if [ "${response}" != "OK" ]; then
+    echo "ERROR: staging replica ${replica_fqdn} rejected REPLICAOF ${master_fqdn}:${master_port} with '${response:-<empty>}' — refusing bootstrap." >&2
+    return 1
+  fi
+  return 0
 }
 
 get_replica_keyspace_info() {
@@ -693,11 +872,324 @@ validate_parallel_bootstrap_roster() {
   return 0
 }
 
+classify_parallel_bootstrap_replica_upstream() {
+  local replica_fqdn="$1"
+  local expected_primary_fqdn="$2"
+  local accepted_authority_fqdn="${3:-}"
+  local master_host master_port resolved_master
+  local hold_host hold_port
+
+  master_host=$(get_replica_master_host "${replica_fqdn}") || true
+  if is_empty "${master_host}"; then
+    echo "ERROR: replica ${replica_fqdn} has no readable upstream — refusing bootstrap." >&2
+    return 1
+  fi
+  master_port=$(get_replica_master_port "${replica_fqdn}") || true
+  if is_empty "${master_port}"; then
+    echo "ERROR: replica ${replica_fqdn} has no readable upstream port — refusing bootstrap." >&2
+    return 1
+  fi
+
+  hold_host=$(parallel_bootstrap_hold_host)
+  hold_port=$(parallel_bootstrap_hold_port)
+  if [ "${master_host}" = "${hold_host}" ]; then
+    if [ "${master_port}" != "${hold_port}" ]; then
+      echo "ERROR: replica ${replica_fqdn} uses invalid inert staging upstream ${master_host}:${master_port:-<unreadable>} — refusing bootstrap." >&2
+      return 1
+    fi
+    echo "hold"
+    return 0
+  fi
+
+  if ! resolved_master=$(resolve_master_host_to_roster_fqdn "${master_host}"); then
+    echo "ERROR: replica ${replica_fqdn} points outside an unambiguous data-pod roster — refusing bootstrap." >&2
+    return 1
+  fi
+  if [ "${resolved_master}" = "${expected_primary_fqdn}" ]; then
+    if [ "${master_port}" != "${service_port}" ]; then
+      echo "ERROR: replica ${replica_fqdn} points to bootstrap candidate ${expected_primary_fqdn} on unexpected port ${master_port} — refusing bootstrap." >&2
+      return 1
+    fi
+    echo "candidate"
+    return 0
+  fi
+  if ! is_empty "${accepted_authority_fqdn}" && \
+     [ "${resolved_master}" = "${accepted_authority_fqdn}" ]; then
+    if [ "${master_port}" != "${service_port}" ]; then
+      echo "ERROR: replica ${replica_fqdn} points to authority ${accepted_authority_fqdn} on unexpected port ${master_port} — refusing topology recovery." >&2
+      return 1
+    fi
+    echo "authority"
+    return 0
+  fi
+  if ! is_empty "${accepted_authority_fqdn}"; then
+    if [ "${master_port}" != "${service_port}" ]; then
+      echo "ERROR: replica ${replica_fqdn} points through roster peer ${resolved_master} on unexpected port ${master_port} — refusing topology recovery." >&2
+      return 1
+    fi
+    echo "roster"
+    return 0
+  else
+    echo "ERROR: replica ${replica_fqdn} points to ${resolved_master}, not bootstrap candidate ${expected_primary_fqdn} — refusing conflicting replica targets." >&2
+  fi
+  return 1
+}
+
+verify_parallel_bootstrap_recovery_topology() {
+  local bootstrap_candidate_fqdn="$1"
+  local authority_fqdn="$2"
+  local authority_role pod_fqdn rechecked_role upstream_state
+  local pod_fqdns=()
+
+  if ! validate_parallel_bootstrap_roster; then
+    return 1
+  fi
+  authority_role=$(verify_pod_role "${authority_fqdn}") || true
+  if [ "${authority_role}" != "master" ]; then
+    echo "ERROR: bootstrap recovery authority ${authority_fqdn} reports '${authority_role:-unreachable}', not master at the recovery commit boundary." >&2
+    return 1
+  fi
+
+  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    case "${pod_fqdn}" in
+      "${CURRENT_POD_NAME}".*|"${authority_fqdn}") continue ;;
+    esac
+    rechecked_role=$(verify_pod_role "${pod_fqdn}") || true
+    if [ "${rechecked_role}" != "slave" ]; then
+      echo "ERROR: bootstrap recovery peer ${pod_fqdn} reports '${rechecked_role:-unreachable}', not slave at the recovery commit boundary." >&2
+      return 1
+    fi
+    upstream_state=$(classify_parallel_bootstrap_replica_upstream \
+      "${pod_fqdn}" "${bootstrap_candidate_fqdn}" "${authority_fqdn}") || return 1
+    if [ "${upstream_state}" != "authority" ]; then
+      echo "ERROR: bootstrap recovery peer ${pod_fqdn} retained ${upstream_state} instead of direct authority ${authority_fqdn}." >&2
+      return 1
+    fi
+  done
+}
+
+converge_partial_parallel_bootstrap_to_authority() {
+  local bootstrap_candidate_fqdn="$1"
+  local authority_host="$2"
+  local authority_fqdn authority_role
+  local recovery_needed=0
+  local pod_fqdns=()
+  local pod_fqdn master_host master_port resolved_master
+  local role upstream_state
+
+  if ! validate_parallel_bootstrap_roster; then
+    return 1
+  fi
+  if ! authority_fqdn=$(resolve_master_host_to_roster_fqdn "${authority_host}"); then
+    echo "ERROR: bootstrap recovery authority ${authority_host:-<empty>} is not unique in the data-pod roster." >&2
+    return 1
+  fi
+  if [ "${authority_fqdn}" = "${bootstrap_candidate_fqdn}" ]; then
+    return 2
+  fi
+  authority_role=$(verify_pod_role "${authority_fqdn}") || true
+  if [ "${authority_role}" != "master" ]; then
+    echo "ERROR: bootstrap recovery authority ${authority_fqdn} reports '${authority_role:-unreachable}', not master." >&2
+    return 1
+  fi
+
+  if parallel_bootstrap_recovery_is_pending; then
+    recovery_needed=1
+  else
+    case "$?" in
+      1) ;;
+      *) return 1 ;;
+    esac
+  fi
+
+  # Discovery is read-only. Preserve ordinary trusted-master startup unless at
+  # least one peer still carries an exact inert-hold or bootstrap-candidate edge.
+  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    case "${pod_fqdn}" in
+      "${CURRENT_POD_NAME}".*|"${authority_fqdn}") continue ;;
+    esac
+    master_host=$(get_replica_master_host "${pod_fqdn}") || true
+    master_port=$(get_replica_master_port "${pod_fqdn}") || true
+    if [ "${master_host}" = "$(parallel_bootstrap_hold_host)" ] && \
+       [ "${master_port}" = "$(parallel_bootstrap_hold_port)" ]; then
+      recovery_needed=1
+      continue
+    fi
+    if resolved_master=$(resolve_master_host_to_roster_fqdn "${master_host}"); then
+      if [ "${resolved_master}" != "${authority_fqdn}" ] && \
+         [ "${master_port}" = "${service_port}" ]; then
+        recovery_needed=1
+      fi
+    fi
+  done
+  if [ "${recovery_needed}" -eq 0 ]; then
+    return 2
+  fi
+
+  # Phase 1 is read-only: require a complete strict plan before the first write.
+  # This prevents a later invalid peer from stranding an earlier rewritten edge.
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    case "${pod_fqdn}" in
+      "${CURRENT_POD_NAME}".*) continue ;;
+      "${authority_fqdn}")
+        authority_role=$(verify_pod_role "${pod_fqdn}") || true
+        if [ "${authority_role}" != "master" ]; then
+          echo "ERROR: bootstrap recovery authority ${pod_fqdn} changed role to '${authority_role:-unreachable}'." >&2
+          return 1
+        fi
+        continue
+        ;;
+    esac
+    role=$(verify_pod_role "${pod_fqdn}") || true
+    if [ "${role}" != "slave" ]; then
+      echo "ERROR: bootstrap recovery peer ${pod_fqdn} reports '${role:-unreachable}', not slave." >&2
+      return 1
+    fi
+    upstream_state=$(classify_parallel_bootstrap_replica_upstream \
+      "${pod_fqdn}" "${bootstrap_candidate_fqdn}" "${authority_fqdn}") || return 1
+  done
+
+  # Persist retry intent before the first remote write. If the process exits or
+  # any later re-read fails, the next invocation must re-enter strict recovery
+  # even when all observable bootstrap-candidate edges were already rewritten.
+  if ! persist_parallel_bootstrap_recovery_marker; then
+    return 1
+  fi
+
+  # Phase 2 re-reads each peer immediately before mutation. The marker keeps
+  # every partial outcome retryable; only the final all-authority proof clears it.
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    case "${pod_fqdn}" in
+      "${CURRENT_POD_NAME}".*) continue ;;
+      "${authority_fqdn}")
+        authority_role=$(verify_pod_role "${pod_fqdn}") || true
+        if [ "${authority_role}" != "master" ]; then
+          echo "ERROR: bootstrap recovery authority ${pod_fqdn} changed role before topology write." >&2
+          return 1
+        fi
+        continue
+        ;;
+    esac
+    role=$(verify_pod_role "${pod_fqdn}") || true
+    if [ "${role}" != "slave" ]; then
+      echo "ERROR: bootstrap recovery peer ${pod_fqdn} changed role before topology write (${role:-unreachable})." >&2
+      return 1
+    fi
+    upstream_state=$(classify_parallel_bootstrap_replica_upstream \
+      "${pod_fqdn}" "${bootstrap_candidate_fqdn}" "${authority_fqdn}") || return 1
+    if [ "${upstream_state}" != "authority" ]; then
+      if ! configure_replica_upstream \
+          "${pod_fqdn}" "${authority_fqdn}" "${service_port}"; then
+        echo "ERROR: partial bootstrap topology could not converge ${pod_fqdn} directly to authority ${authority_fqdn}:${service_port}." >&2
+        return 1
+      fi
+    fi
+  done
+
+  # The marker intentionally remains pending here. The caller must first write
+  # its local replicaof edge, then finalize against a fresh authority/roster
+  # proof before clearing the retry intent.
+  if ! verify_parallel_bootstrap_recovery_topology \
+      "${bootstrap_candidate_fqdn}" "${authority_fqdn}"; then
+    return 1
+  fi
+  echo "INFO: converged partial bootstrap topology: every non-authority peer now points directly to ${authority_fqdn}:${service_port}; recovery marker remains pending until the local replica edge is committed." >&2
+  echo "${authority_fqdn}"
+}
+
+finalize_parallel_bootstrap_recovery() {
+  local bootstrap_candidate_fqdn="$1"
+  local authority_fqdn="$2"
+  local recovery_marker
+
+  recovery_marker=$(parallel_bootstrap_recovery_marker)
+  if ! parallel_bootstrap_recovery_is_pending; then
+    echo "ERROR: partial bootstrap recovery cannot finalize without an exact pending marker." >&2
+    return 1
+  fi
+  if ! grep -Fqx "replicaof ${authority_fqdn} ${service_port}" "${CONF_RUNTIME}"; then
+    echo "ERROR: local replicaof edge does not point to recovery authority ${authority_fqdn}:${service_port}." >&2
+    return 1
+  fi
+  if ! verify_parallel_bootstrap_recovery_topology \
+      "${bootstrap_candidate_fqdn}" "${authority_fqdn}"; then
+    return 1
+  fi
+
+  if ! rm -f "${recovery_marker}" || [ -e "${recovery_marker}" ]; then
+    echo "ERROR: converged topology is safe, but recovery marker ${recovery_marker} could not be cleared." >&2
+    return 1
+  fi
+
+  # Closing the marker is itself a commit boundary. Re-read the authority and
+  # whole peer roster after removal so a clear-time failover cannot commit a
+  # stale local edge. Restore retry intent before returning any such failure.
+  if ! verify_parallel_bootstrap_recovery_topology \
+      "${bootstrap_candidate_fqdn}" "${authority_fqdn}"; then
+    if ! persist_parallel_bootstrap_recovery_marker; then
+      echo "ERROR: authority drifted after recovery marker clear or the roster changed, and retry intent could not be restored." >&2
+      return 1
+    fi
+    echo "ERROR: authority drifted after recovery marker clear or the roster changed; restored pending recovery intent." >&2
+    return 1
+  fi
+
+  echo "INFO: finalized partial bootstrap recovery after the local replica edge and post-clear authority/roster proof." >&2
+}
+
+validate_parallel_bootstrap_peer_snapshot() {
+  local replica_fqdn="$1"
+  local expected_primary_fqdn="$2"
+  local role upstream_state rechecked_role rechecked_upstream_state
+
+  role=$(verify_pod_role "${replica_fqdn}") || true
+  case "${role}" in
+    "")
+      echo "ERROR: bootstrap peer ${replica_fqdn} is unreachable — refusing bootstrap." >&2
+      return 1
+      ;;
+    slave)
+      ;;
+    master)
+      echo "ERROR: ${replica_fqdn} changed role before bootstrap commit — refusing bootstrap and a second primary." >&2
+      return 1
+      ;;
+    *)
+      echo "ERROR: ${replica_fqdn} reports unexpected replication role '${role}' — refusing bootstrap." >&2
+      return 1
+      ;;
+  esac
+
+  upstream_state=$(classify_parallel_bootstrap_replica_upstream \
+    "${replica_fqdn}" "${expected_primary_fqdn}") || return 1
+  if ! validate_replica_keyspace_empty "${replica_fqdn}"; then
+    return 1
+  fi
+  if ! validate_replica_function_state_empty "${replica_fqdn}"; then
+    return 1
+  fi
+
+  rechecked_role=$(verify_pod_role "${replica_fqdn}") || true
+  if [ "${rechecked_role}" != "slave" ]; then
+    echo "ERROR: ${replica_fqdn} changed role during bootstrap validation (${rechecked_role:-unreachable}) — refusing bootstrap." >&2
+    return 1
+  fi
+  rechecked_upstream_state=$(classify_parallel_bootstrap_replica_upstream \
+    "${replica_fqdn}" "${expected_primary_fqdn}") || return 1
+  if [ "${rechecked_upstream_state}" != "${upstream_state}" ]; then
+    echo "ERROR: replica ${replica_fqdn} upstream changed from ${upstream_state} to ${rechecked_upstream_state} during bootstrap validation — refusing bootstrap." >&2
+    return 1
+  fi
+  echo "${upstream_state}"
+}
+
 validate_parallel_bootstrap_replica_view() {
   local expected_primary_fqdn="$1"
   local observed_replicas=0
   local pod_fqdns=()
-  local pod_fqdn role master_host resolved_master rechecked_role rechecked_master rechecked_resolved_master
+  local pod_fqdn upstream_state late_master rechecked_role
   local roster_primary_fqdn
 
   if ! validate_parallel_bootstrap_roster; then
@@ -717,84 +1209,121 @@ validate_parallel_bootstrap_replica_view() {
     case "${pod_fqdn}" in
       "${CURRENT_POD_NAME}".*) continue ;;
     esac
-    role=$(verify_pod_role "${pod_fqdn}") || true
-    case "${role}" in
-      "")
-        echo "ERROR: bootstrap peer ${pod_fqdn} is unreachable — refusing bootstrap." >&2
-        return 1
-        ;;
-      slave)
-        observed_replicas=$(( observed_replicas + 1 ))
-        master_host=$(get_replica_master_host "${pod_fqdn}") || true
-        if is_empty "${master_host}"; then
-          echo "ERROR: replica ${pod_fqdn} has no readable upstream — refusing bootstrap." >&2
-          return 1
-        fi
-        if ! resolved_master=$(resolve_master_host_to_roster_fqdn "${master_host}"); then
-          echo "ERROR: replica ${pod_fqdn} points outside an unambiguous data-pod roster — refusing bootstrap." >&2
-          return 1
-        fi
-        if [ "${resolved_master}" != "${expected_primary_fqdn}" ]; then
-          echo "ERROR: replica ${pod_fqdn} points to ${resolved_master}, not bootstrap candidate ${expected_primary_fqdn} — refusing conflicting replica targets." >&2
-          return 1
-        fi
-        if ! validate_replica_keyspace_empty "${pod_fqdn}"; then
-          return 1
-        fi
-        if ! validate_replica_function_state_empty "${pod_fqdn}"; then
-          return 1
-        fi
-        rechecked_role=$(verify_pod_role "${pod_fqdn}") || true
-        if [ "${rechecked_role}" != "slave" ]; then
-          echo "ERROR: ${pod_fqdn} changed role during bootstrap validation (${rechecked_role:-unreachable}) — refusing bootstrap." >&2
-          return 1
-        fi
-        rechecked_master=$(get_replica_master_host "${pod_fqdn}") || true
-        if ! rechecked_resolved_master=$(resolve_master_host_to_roster_fqdn "${rechecked_master}"); then
-          echo "ERROR: replica ${pod_fqdn} upstream changed during bootstrap validation — refusing bootstrap." >&2
-          return 1
-        fi
-        if [ "${rechecked_resolved_master}" != "${expected_primary_fqdn}" ]; then
-          echo "ERROR: replica ${pod_fqdn} upstream changed to ${rechecked_resolved_master} during bootstrap validation — refusing bootstrap." >&2
-          return 1
-        fi
-        ;;
-      master)
-        echo "ERROR: ${pod_fqdn} became master during bootstrap validation — refusing a second primary." >&2
-        return 1
-        ;;
-      *)
-        echo "ERROR: ${pod_fqdn} reports unexpected replication role '${role}' — refusing bootstrap." >&2
-        return 1
-        ;;
-    esac
+    upstream_state=$(validate_parallel_bootstrap_peer_snapshot \
+      "${pod_fqdn}" "${expected_primary_fqdn}") || return 1
+    observed_replicas=$(( observed_replicas + 1 ))
   done
 
-  # Re-read the complete peer roster at the success boundary. A peer validated
-  # early in the first pass may change while a later peer is being inspected.
+  # Re-read the whole roster before any mutation. A peer validated early in
+  # the first pass may change while a later peer is being inspected.
   for pod_fqdn in "${pod_fqdns[@]}"; do
     case "${pod_fqdn}" in
       "${CURRENT_POD_NAME}".*) continue ;;
     esac
-    rechecked_role=$(verify_pod_role "${pod_fqdn}") || true
-    if [ "${rechecked_role}" != "slave" ]; then
-      echo "ERROR: ${pod_fqdn} changed role before bootstrap commit (${rechecked_role:-unreachable}) — refusing bootstrap." >&2
-      return 1
-    fi
-    rechecked_master=$(get_replica_master_host "${pod_fqdn}") || true
-    if ! rechecked_resolved_master=$(resolve_master_host_to_roster_fqdn "${rechecked_master}"); then
-      echo "ERROR: replica ${pod_fqdn} upstream changed before bootstrap commit — refusing bootstrap." >&2
-      return 1
-    fi
-    if [ "${rechecked_resolved_master}" != "${expected_primary_fqdn}" ]; then
-      echo "ERROR: replica ${pod_fqdn} upstream changed to ${rechecked_resolved_master} before bootstrap commit — refusing bootstrap." >&2
+    upstream_state=$(validate_parallel_bootstrap_peer_snapshot \
+      "${pod_fqdn}" "${expected_primary_fqdn}") || return 1
+  done
+
+  # Authority may appear while the roster is being inspected. Do not rewrite
+  # any peer if Sentinel or a direct scan now proves a running master.
+  late_master=$(query_sentinel_quorum_for_master) || true
+  if ! is_empty "${late_master}"; then
+    echo "ERROR: Sentinel published master ${late_master} during bootstrap validation — refusing heuristic bootstrap." >&2
+    return 1
+  fi
+  if ! late_master=$(scan_pods_for_master); then
+    echo "ERROR: data pod scan became ambiguous during bootstrap validation — refusing startup." >&2
+    return 1
+  fi
+  if ! is_empty "${late_master}"; then
+    echo "ERROR: data pod ${late_master} became master during bootstrap validation — refusing heuristic bootstrap." >&2
+    return 1
+  fi
+
+  # Only after every peer has twice proved empty and stable may inert staging
+  # replicas be pointed at the fresh candidate. Until this boundary they cannot
+  # contact any data pod, so preserved state cannot be synchronized away.
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    case "${pod_fqdn}" in
+      "${CURRENT_POD_NAME}".*) continue ;;
+    esac
+    upstream_state=$(classify_parallel_bootstrap_replica_upstream \
+      "${pod_fqdn}" "${expected_primary_fqdn}") || return 1
+    case "${upstream_state}" in
+      candidate)
+        ;;
+      hold)
+        rechecked_role=$(verify_pod_role "${pod_fqdn}") || true
+        if [ "${rechecked_role}" != "slave" ]; then
+          echo "ERROR: ${pod_fqdn} changed role before staging release (${rechecked_role:-unreachable}) — refusing bootstrap." >&2
+          return 1
+        fi
+        if ! validate_replica_keyspace_empty "${pod_fqdn}" || \
+           ! validate_replica_function_state_empty "${pod_fqdn}"; then
+          return 1
+        fi
+        if ! configure_replica_upstream \
+            "${pod_fqdn}" "${expected_primary_fqdn}" "${service_port}"; then
+          return 1
+        fi
+        echo "INFO: repointed inert staging replica ${pod_fqdn} to bootstrap candidate ${expected_primary_fqdn}:${service_port} after full empty-state validation." >&2
+        ;;
+      *)
+        echo "ERROR: unexpected bootstrap upstream state '${upstream_state}' for ${pod_fqdn}." >&2
+        return 1
+        ;;
+    esac
+  done
+
+  # Final success boundary: every peer must now be a stable, empty replica of
+  # the exact candidate. No inert hold is allowed to leak past this point.
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    case "${pod_fqdn}" in
+      "${CURRENT_POD_NAME}".*) continue ;;
+    esac
+    upstream_state=$(validate_parallel_bootstrap_peer_snapshot \
+      "${pod_fqdn}" "${expected_primary_fqdn}") || return 1
+    if [ "${upstream_state}" != "candidate" ]; then
+      echo "ERROR: replica ${pod_fqdn} remained on inert staging upstream before bootstrap commit — refusing bootstrap." >&2
       return 1
     fi
   done
 
+  # REPLICAOF is a write boundary. Authority may appear while hold peers are
+  # being released, so close the same Sentinel/direct-master contract again
+  # after the final all-candidate roster pass and before reporting success.
+  late_master=$(query_sentinel_quorum_for_master) || true
+  if ! is_empty "${late_master}"; then
+    if [ "${late_master}" != "${expected_primary_fqdn}" ]; then
+      if ! late_master=$(converge_partial_parallel_bootstrap_to_authority \
+          "${expected_primary_fqdn}" "${late_master}"); then
+        echo "ERROR: Sentinel published master ${late_master:-<unresolved>} after staging release, but the partial bootstrap topology could not safely converge." >&2
+        return 1
+      fi
+      echo "${late_master}"
+      return 0
+    fi
+  fi
+  if ! late_master=$(scan_pods_for_master); then
+    echo "ERROR: data pod scan became ambiguous after staging release — refusing startup." >&2
+    return 1
+  fi
+  if ! is_empty "${late_master}"; then
+    if [ "${late_master}" != "${expected_primary_fqdn}" ]; then
+      if ! late_master=$(converge_partial_parallel_bootstrap_to_authority \
+          "${expected_primary_fqdn}" "${late_master}"); then
+        echo "ERROR: data pod ${late_master:-<unresolved>} became master after staging release, but the partial bootstrap topology could not safely converge." >&2
+        return 1
+      fi
+      echo "${late_master}"
+      return 0
+    fi
+  fi
+
   if [ "${observed_replicas}" -gt 0 ]; then
     echo "INFO: parallel cold-start replica view is consistent: all ${observed_replicas} configured peer(s) have empty keyspace and Function state and stably point to ${expected_primary_fqdn}." >&2
   fi
+  echo "${expected_primary_fqdn}"
   return 0
 }
 
