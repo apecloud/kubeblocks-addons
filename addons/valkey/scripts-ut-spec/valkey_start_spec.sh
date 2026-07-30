@@ -357,7 +357,6 @@ Describe "Valkey Start Bash Script Tests"
       It "never falls back to a heuristic node already observed as a replica"
         query_sentinel_quorum_for_master() { echo ""; }
         scan_pods_for_master() { echo ""; }
-        find_known_slave_pod() { echo ""; }
         verify_pod_role() { echo "slave"; }
         follow_slave_to_master() { echo ""; }
         When call build_replicaof_config
@@ -366,19 +365,22 @@ Describe "Valkey Start Bash Script Tests"
         The stderr should include "can prove a current master"
       End
 
-      It "fails closed when any peer is already a slave even if this pod data dir is fresh"
+      It "allows the fresh lowest-ordinal pod to bootstrap when every observed replica points to it"
+        export VALKEY_POD_NAME_LIST="valkey-0,valkey-1,valkey-2"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local,valkey-2.valkey-headless.default.svc.cluster.local"
         query_sentinel_quorum_for_master() { echo ""; }
         scan_pods_for_master() { echo ""; }
         verify_pod_role() {
           case "$1" in
-            valkey-1.*) echo "slave" ;;
+            valkey-1.*|valkey-2.*) echo "slave" ;;
             *) echo "" ;;
           esac
         }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
         When call build_replicaof_config
-        The status should be failure
-        The stderr should include "reports role:slave"
-        The stderr should include "refusing lexicographic primary guess"
+        The status should be success
+        The stderr should include "parallel cold-start replica view"
+        The contents of file "${CONF_RUNTIME}" should not include "replicaof"
       End
 
       It "fails closed when any peer is already a slave even if this pod data dir has existing data"
@@ -393,8 +395,85 @@ Describe "Valkey Start Bash Script Tests"
         }
         When call build_replicaof_config
         The status should be failure
-        The stderr should include "reports role:slave"
-        The stderr should include "refusing lexicographic primary guess"
+        The stderr should include "contains existing data"
+        The stderr should include "refusing to guess whether this is a full restart or a network partition"
+      End
+
+      It "rejects a fresh bootstrap replica whose upstream is outside the data pod roster"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "retired-valkey-9.other-headless.default.svc.cluster.local"; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "outside an unambiguous data-pod roster"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects an ambiguous data pod roster before fresh bootstrap"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-0.valkey-headless.default.svc.cluster.local"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() { echo ""; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "data pod roster contains duplicate FQDN"
+        The stderr should include "not unique in the data-pod roster"
+      End
+
+      It "rejects conflicting replica upstream targets during fresh bootstrap"
+        export VALKEY_POD_NAME_LIST="valkey-0,valkey-1,valkey-2"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local,valkey-2.valkey-headless.default.svc.cluster.local"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*|valkey-2.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() {
+          case "$1" in
+            valkey-1.*) echo "valkey-0.valkey-headless.default.svc.cluster.local" ;;
+            valkey-2.*) echo "valkey-2.valkey-headless.default.svc.cluster.local" ;;
+          esac
+        }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "refusing conflicting replica targets"
+      End
+
+      It "never lets a non-lowest ordinal pod self-bootstrap"
+        export CURRENT_POD_NAME="valkey-1"
+        export VALKEY_POD_NAME_LIST="valkey-0,valkey-1,valkey-2"
+        export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local,valkey-2.valkey-headless.default.svc.cluster.local"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() { echo ""; }
+        When call build_replicaof_config
+        The status should be success
+        The stderr should include "electing bootstrap primary by lexicographic order"
+        The contents of file "${CONF_RUNTIME}" should include "replicaof valkey-0.valkey-headless.default.svc.cluster.local 6379"
+      End
+
+      It "does not use the cold-start fallback when Sentinel already proves a master"
+        query_sentinel_quorum_for_master() {
+          echo "valkey-1.valkey-headless.default.svc.cluster.local"
+        }
+        verify_pod_role() { echo "master"; }
+        validate_parallel_bootstrap_replica_view() {
+          echo "unexpected cold-start fallback" >&2
+          return 1
+        }
+        When call build_replicaof_config
+        The status should be success
+        The stderr should not include "unexpected cold-start fallback"
+        The contents of file "${CONF_RUNTIME}" should include "replicaof valkey-1.valkey-headless.default.svc.cluster.local 6379"
       End
 
       It "fails closed instead of falling through when the peer master view is ambiguous"

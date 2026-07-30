@@ -198,12 +198,6 @@ build_replicaof_config() {
         # seed topology by lexicographic order. Existing data cannot distinguish
         # a full restart from a partition, so it must wait for Sentinel or one
         # unambiguous running peer to provide authority.
-        local known_slave_fqdn
-        known_slave_fqdn=$(find_known_slave_pod) || true
-        if ! is_empty "${known_slave_fqdn}"; then
-          echo "ERROR: Sentinel topology has no trusted master but ${known_slave_fqdn} reports role:slave — refusing lexicographic primary guess." >&2
-          return 1
-        fi
         if ! is_fresh_bootstrap_data_dir; then
           echo "ERROR: Sentinel topology has no trusted master and ${DATA_DIR:-/data} contains existing data — refusing to guess whether this is a full restart or a network partition." >&2
           return 1
@@ -219,7 +213,15 @@ build_replicaof_config() {
         local heuristic_role
         heuristic_role=$(verify_pod_role "${heuristic_fqdn}") || true
         if [ "${heuristic_role}" = "master" ] || is_empty "${heuristic_role}"; then
-          # Confirmed master, or pod unreachable (fresh cluster bootstrap).
+          # Confirmed master, or pod unreachable. When this pod is the fresh
+          # lowest-ordinal bootstrap candidate, peers may already have started
+          # as replicas of it under podManagementPolicy=Parallel. Accept that
+          # narrow view only when every observed replica points back here.
+          if is_empty "${heuristic_role}" && contains "${heuristic_fqdn}" "${CURRENT_POD_NAME}."; then
+            if ! validate_parallel_bootstrap_replica_view "${heuristic_fqdn}"; then
+              return 1
+            fi
+          fi
           primary_fqdn="${heuristic_fqdn}"
         else
           # Heuristic pod is a slave — follow its replication chain to find the
@@ -427,17 +429,123 @@ scan_pods_for_master() {
   return 0
 }
 
-find_known_slave_pod() {
+get_replica_master_host() {
+  local replica_fqdn="$1"
+  # shellcheck disable=SC2206
+  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
+  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
+    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
+  fi
+
+  local master_host
+  master_host=$(timeout 3 "${cli_base[@]}" -h "${replica_fqdn}" info replication 2>/dev/null \
+    | grep "^master_host:" | tr -d '\r\n' | cut -d: -f2) || true
+  echo "${master_host}"
+}
+
+resolve_master_host_to_roster_fqdn() {
+  local master_host="$1"
+  if is_empty "${master_host}"; then
+    echo "ERROR: replica upstream is empty." >&2
+    return 1
+  fi
+
+  local matches=()
+  local unique_fqdns=()
+  local pod_fqdns=()
+  local pod_fqdn known pod_ip
+
+  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
+  for pod_fqdn in "${pod_fqdns[@]}"; do
+    if is_empty "${pod_fqdn}"; then
+      echo "ERROR: data pod roster contains an empty FQDN." >&2
+      return 1
+    fi
+    for known in "${unique_fqdns[@]}"; do
+      if [ "${known}" = "${pod_fqdn}" ]; then
+        echo "ERROR: data pod roster contains duplicate FQDN ${pod_fqdn}." >&2
+        return 1
+      fi
+    done
+    unique_fqdns+=("${pod_fqdn}")
+
+    if [ "${master_host}" = "${pod_fqdn}" ] || \
+       contains "${pod_fqdn}" "${master_host}."; then
+      matches+=("${pod_fqdn}")
+      continue
+    fi
+
+    pod_ip=$(getent hosts "${pod_fqdn}" 2>/dev/null | awk '{print $1}' | head -n1) || true
+    if ! is_empty "${pod_ip}" && [ "${master_host}" = "${pod_ip}" ]; then
+      matches+=("${pod_fqdn}")
+    fi
+  done
+
+  if [ "${#matches[@]}" -ne 1 ]; then
+    echo "ERROR: replica upstream '${master_host}' resolves to ${#matches[@]} roster members; expected exactly one." >&2
+    return 1
+  fi
+  echo "${matches[0]}"
+}
+
+# A fresh lowest-ordinal pod can start after a faster peer has already become
+# its replica. This is the only safe replica-present bootstrap view: every
+# observed replica must resolve to this exact pod, with no master or unknown
+# role appearing during the second observation.
+validate_parallel_bootstrap_replica_view() {
+  local expected_primary_fqdn="$1"
+  local observed_replicas=0
+  local pod_fqdns=()
+  local pod_fqdn role master_host resolved_master
+  local roster_primary_fqdn
+
+  if ! roster_primary_fqdn=$(resolve_master_host_to_roster_fqdn "${expected_primary_fqdn}"); then
+    echo "ERROR: bootstrap candidate ${expected_primary_fqdn:-<empty>} is not unique in the data-pod roster — refusing bootstrap." >&2
+    return 1
+  fi
+  if [ "${roster_primary_fqdn}" != "${expected_primary_fqdn}" ]; then
+    echo "ERROR: bootstrap candidate ${expected_primary_fqdn} resolved to ${roster_primary_fqdn} — refusing bootstrap." >&2
+    return 1
+  fi
+
   IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
   for pod_fqdn in "${pod_fqdns[@]}"; do
     contains "${pod_fqdn}" "${CURRENT_POD_NAME}." && continue
-    local role
     role=$(verify_pod_role "${pod_fqdn}") || true
-    if [ "${role}" = "slave" ]; then
-      echo "${pod_fqdn}"
-      return 0
-    fi
+    case "${role}" in
+      "")
+        continue
+        ;;
+      slave)
+        observed_replicas=$(( observed_replicas + 1 ))
+        master_host=$(get_replica_master_host "${pod_fqdn}") || true
+        if is_empty "${master_host}"; then
+          echo "ERROR: replica ${pod_fqdn} has no readable upstream — refusing bootstrap." >&2
+          return 1
+        fi
+        if ! resolved_master=$(resolve_master_host_to_roster_fqdn "${master_host}"); then
+          echo "ERROR: replica ${pod_fqdn} points outside an unambiguous data-pod roster — refusing bootstrap." >&2
+          return 1
+        fi
+        if [ "${resolved_master}" != "${expected_primary_fqdn}" ]; then
+          echo "ERROR: replica ${pod_fqdn} points to ${resolved_master}, not bootstrap candidate ${expected_primary_fqdn} — refusing conflicting replica targets." >&2
+          return 1
+        fi
+        ;;
+      master)
+        echo "ERROR: ${pod_fqdn} became master during bootstrap validation — refusing a second primary." >&2
+        return 1
+        ;;
+      *)
+        echo "ERROR: ${pod_fqdn} reports unexpected replication role '${role}' — refusing bootstrap." >&2
+        return 1
+        ;;
+    esac
   done
+
+  if [ "${observed_replicas}" -gt 0 ]; then
+    echo "INFO: parallel cold-start replica view is consistent: ${observed_replicas} replica(s) point to ${expected_primary_fqdn}." >&2
+  fi
   return 0
 }
 
@@ -473,26 +581,10 @@ verify_pod_role() {
 # replicates from.  Returns empty if the chain cannot be resolved to a known pod.
 follow_slave_to_master() {
   local slave_fqdn="$1"
-  # shellcheck disable=SC2206
-  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
-  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
-  fi
   local master_host
-  master_host=$("${cli_base[@]}" -h "${slave_fqdn}" info replication 2>/dev/null \
-    | grep "^master_host:" | tr -d '\r\n' | cut -d: -f2) || true
+  master_host=$(get_replica_master_host "${slave_fqdn}") || true
   is_empty "${master_host}" && return 0
-  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
-  for pod_fqdn in "${pod_fqdns[@]}"; do
-    local pod_ip
-    pod_ip=$(getent hosts "${pod_fqdn}" 2>/dev/null | awk '{print $1}' | head -n1) || true
-    if [ "${master_host}" = "${pod_ip}" ] || [ "${master_host}" = "${pod_fqdn}" ] || \
-       contains "${pod_fqdn}" "${master_host}."; then
-      echo "${pod_fqdn}"
-      return 0
-    fi
-  done
-  return 0
+  resolve_master_host_to_roster_fqdn "${master_host}" || true
 }
 
 rebuild_acl_file() {
