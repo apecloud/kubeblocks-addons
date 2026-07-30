@@ -13,6 +13,7 @@ generate_common_library $common_library_file
 
 Describe "Valkey Switchover Bash Script Tests"
   Include $common_library_file
+  Include ../scripts/sentinel-endpoint.sh
   Include ../scripts/switchover.sh
 
   init() {
@@ -707,6 +708,7 @@ Describe "Valkey Switchover Bash Script Tests"
       export VALKEY_COMPONENT_NAME="mycluster-valkey"
       export SENTINEL_POD_FQDN_LIST="sentinel-0,sentinel-1,sentinel-2"
       export SENTINEL_SERVICE_PORT=26379
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
       export KB_SWITCHOVER_CURRENT_FQDN="valkey-0.headless.default.svc.cluster.local"
     }
     Before "authority_env"
@@ -729,6 +731,117 @@ Describe "Valkey Switchover Bash Script Tests"
         "valkey-1.headless.default.svc.cluster.local" \
         "valkey-0.headless.default.svc.cluster.local"
       The status should be success
+    End
+
+    It "maps a strict NodePort Sentinel majority back to the internal candidate identity"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001,valkey-advertised-2:31002"
+      sentinel_cli_for() { _sentinel_cli=(mock_nodeport_master "$1"); }
+      mock_nodeport_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf '10.0.0.21\n31001\n' ;;
+          *) printf '10.0.0.22\n31002\n' ;;
+        esac
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-1*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-1.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "maps a strict LoadBalancer Sentinel majority back to the internal candidate identity"
+      export VALKEY_LB_ADVERTISED_PORT="valkey-lb-advertised-0:6379,valkey-lb-advertised-1:6379,valkey-lb-advertised-2:6379"
+      export VALKEY_LB_ADVERTISED_HOST="valkey-lb-advertised-0:lb-0.example.com,valkey-lb-advertised-1:lb-1.example.com,valkey-lb-advertised-2:lb-2.example.com"
+      sentinel_cli_for() { _sentinel_cli=(mock_load_balancer_master "$1"); }
+      mock_load_balancer_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf 'lb-1.example.com\n6379\n' ;;
+          *) printf 'lb-2.example.com\n6379\n' ;;
+        esac
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-1*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-1.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "includes a targeted scale-out candidate that is absent from the creation-time roster"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export KB_SWITCHOVER_CANDIDATE_FQDN="valkey-3.headless.default.svc.cluster.local"
+      sentinel_cli_for() { _sentinel_cli=(mock_scale_out_master "$1"); }
+      mock_scale_out_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf 'valkey-3.headless.default.svc.cluster.local\n6379\n' ;;
+          *) printf 'valkey-1.headless.default.svc.cluster.local\n6379\n' ;;
+        esac
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-3*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-3.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "maps a fresh candidate NodePort through its action-time announce readback"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001"
+      export KB_SWITCHOVER_CANDIDATE_FQDN="valkey-3.headless.default.svc.cluster.local"
+      sentinel_cli_for() { _sentinel_cli=(mock_fresh_nodeport_master "$1"); }
+      mock_fresh_nodeport_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf '10.0.0.23\n31003\n' ;;
+          *) printf '10.0.0.21\n31001\n' ;;
+        esac
+      }
+      read_action_candidate_announced_endpoint() {
+        [ "$1" = "valkey-3.headless.default.svc.cluster.local" ] || return 1
+        printf '10.0.0.23\n31003\n'
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-3*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-3.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "rejects an ambiguous NodePort-to-roster mapping instead of counting the vote"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31001,valkey-advertised-1:31001"
+      sentinel_cli_for() { _sentinel_cli=(mock_ambiguous_nodeport); }
+      mock_ambiguous_nodeport() { printf '10.0.0.21\n31001\n'; }
+      When call sentinel_master_host
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
+    End
+
+    It "rejects an ambiguous LoadBalancer-host-to-roster mapping instead of counting the vote"
+      export VALKEY_LB_ADVERTISED_PORT="valkey-lb-advertised-0:6379,valkey-lb-advertised-1:6379"
+      export VALKEY_LB_ADVERTISED_HOST="valkey-lb-advertised-0:shared.example.com,valkey-lb-advertised-1:shared.example.com"
+      sentinel_cli_for() { _sentinel_cli=(mock_ambiguous_load_balancer); }
+      mock_ambiguous_load_balancer() { printf 'shared.example.com\n6379\n'; }
+      When call sentinel_master_host
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
     End
 
     It "rejects duplicate Sentinel endpoints instead of counting duplicate votes"

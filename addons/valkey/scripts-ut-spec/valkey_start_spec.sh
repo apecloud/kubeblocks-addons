@@ -377,10 +377,92 @@ Describe "Valkey Start Bash Script Tests"
           esac
         }
         get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
         When call build_replicaof_config
         The status should be success
         The stderr should include "parallel cold-start replica view"
         The contents of file "${CONF_RUNTIME}" should not include "replicaof"
+      End
+
+      It "rejects fresh bootstrap when an observed replica still has keys in any database"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() {
+          printf '# Keyspace\r\ndb2:keys=30,expires=0,avg_ttl=0\r\n'
+        }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "retains 30 key(s) in db2"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects fresh bootstrap when replica keyspace evidence is unreadable"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { return 1; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "keyspace evidence is unreadable"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects fresh bootstrap when replica keyspace evidence is malformed"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*) echo "slave" ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { printf 'ERR invalid response\n'; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "keyspace evidence is malformed"
+        The stderr should include "refusing bootstrap"
+      End
+
+      It "rejects fresh bootstrap when a replica changes role during validation"
+        query_sentinel_quorum_for_master() { echo ""; }
+        scan_pods_for_master() { echo ""; }
+        peer_role_state="${DATA_DIR}/peer-role-reads"
+        printf '0\n' > "${peer_role_state}"
+        verify_pod_role() {
+          case "$1" in
+            valkey-1.*)
+              peer_role_reads=$(cat "${peer_role_state}")
+              peer_role_reads=$((peer_role_reads + 1))
+              printf '%s\n' "${peer_role_reads}" > "${peer_role_state}"
+              if [ "${peer_role_reads}" -eq 1 ]; then
+                echo "slave"
+              else
+                echo "master"
+              fi
+              ;;
+            *) echo "" ;;
+          esac
+        }
+        get_replica_master_host() { echo "valkey-0.valkey-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
+        When call build_replicaof_config
+        The status should be failure
+        The stderr should include "changed role during bootstrap validation"
+        The stderr should include "refusing bootstrap"
       End
 
       It "fails closed when any peer is already a slave even if this pod data dir has existing data"
@@ -409,6 +491,7 @@ Describe "Valkey Start Bash Script Tests"
           esac
         }
         get_replica_master_host() { echo "retired-valkey-9.other-headless.default.svc.cluster.local"; }
+        get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
         When call build_replicaof_config
         The status should be failure
         The stderr should include "outside an unambiguous data-pod roster"
@@ -443,6 +526,7 @@ Describe "Valkey Start Bash Script Tests"
             valkey-2.*) echo "valkey-2.valkey-headless.default.svc.cluster.local" ;;
           esac
         }
+        get_replica_keyspace_info() { printf '# Keyspace\r\n'; }
         When call build_replicaof_config
         The status should be failure
         The stderr should include "refusing conflicting replica targets"

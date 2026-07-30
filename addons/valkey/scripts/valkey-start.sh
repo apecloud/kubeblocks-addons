@@ -443,6 +443,92 @@ get_replica_master_host() {
   echo "${master_host}"
 }
 
+get_replica_keyspace_info() {
+  local replica_fqdn="$1"
+  # shellcheck disable=SC2206
+  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
+  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
+    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
+  fi
+
+  timeout 3 "${cli_base[@]}" -h "${replica_fqdn}" info keyspace 2>/dev/null
+}
+
+# A replica that already points at an unreachable fresh bootstrap candidate
+# cannot have synchronized from that candidate. Its loaded keyspace therefore
+# proves whether it still carries data from an older topology.
+validate_replica_keyspace_empty() {
+  local replica_fqdn="$1"
+  local keyspace_info
+  if ! keyspace_info=$(get_replica_keyspace_info "${replica_fqdn}"); then
+    echo "ERROR: replica ${replica_fqdn} keyspace evidence is unreadable — refusing bootstrap." >&2
+    return 1
+  fi
+
+  local line db_name metrics keys
+  local header_count=0
+  local seen_dbs=()
+  local seen_db
+  while IFS= read -r line; do
+    line="${line//$'\r'/}"
+    case "${line}" in
+      "")
+        continue
+        ;;
+      "# Keyspace")
+        header_count=$(( header_count + 1 ))
+        [ "${header_count}" -eq 1 ] || {
+          echo "ERROR: replica ${replica_fqdn} keyspace evidence is malformed — refusing bootstrap." >&2
+          return 1
+        }
+        ;;
+      db[0-9]*:keys=*)
+        [ "${header_count}" -eq 1 ] || {
+          echo "ERROR: replica ${replica_fqdn} keyspace evidence is malformed — refusing bootstrap." >&2
+          return 1
+        }
+        db_name="${line%%:*}"
+        metrics="${line#*:}"
+        keys="${metrics%%,*}"
+        keys="${keys#keys=}"
+        case "${db_name#db}" in
+          ""|*[!0-9]*)
+            echo "ERROR: replica ${replica_fqdn} keyspace evidence is malformed — refusing bootstrap." >&2
+            return 1
+            ;;
+        esac
+        case "${keys}" in
+          ""|*[!0-9]*)
+            echo "ERROR: replica ${replica_fqdn} keyspace evidence is malformed — refusing bootstrap." >&2
+            return 1
+            ;;
+        esac
+        for seen_db in "${seen_dbs[@]}"; do
+          [ "${seen_db}" != "${db_name}" ] || {
+            echo "ERROR: replica ${replica_fqdn} keyspace evidence is malformed — refusing bootstrap." >&2
+            return 1
+          }
+        done
+        seen_dbs+=("${db_name}")
+        if [ -n "${keys//0/}" ]; then
+          echo "ERROR: replica ${replica_fqdn} retains ${keys} key(s) in ${db_name} — refusing bootstrap." >&2
+          return 1
+        fi
+        ;;
+      *)
+        echo "ERROR: replica ${replica_fqdn} keyspace evidence is malformed — refusing bootstrap." >&2
+        return 1
+        ;;
+    esac
+  done <<< "${keyspace_info}"
+
+  if [ "${header_count}" -ne 1 ]; then
+    echo "ERROR: replica ${replica_fqdn} keyspace evidence is malformed — refusing bootstrap." >&2
+    return 1
+  fi
+  return 0
+}
+
 resolve_master_host_to_roster_fqdn() {
   local master_host="$1"
   if is_empty "${master_host}"; then
@@ -490,13 +576,13 @@ resolve_master_host_to_roster_fqdn() {
 
 # A fresh lowest-ordinal pod can start after a faster peer has already become
 # its replica. This is the only safe replica-present bootstrap view: every
-# observed replica must resolve to this exact pod, with no master or unknown
-# role appearing during the second observation.
+# observed replica must resolve to this exact pod, prove an empty loaded
+# keyspace, and remain a replica of this pod when topology is re-read.
 validate_parallel_bootstrap_replica_view() {
   local expected_primary_fqdn="$1"
   local observed_replicas=0
   local pod_fqdns=()
-  local pod_fqdn role master_host resolved_master
+  local pod_fqdn role master_host resolved_master rechecked_role rechecked_master rechecked_resolved_master
   local roster_primary_fqdn
 
   if ! roster_primary_fqdn=$(resolve_master_host_to_roster_fqdn "${expected_primary_fqdn}"); then
@@ -531,6 +617,23 @@ validate_parallel_bootstrap_replica_view() {
           echo "ERROR: replica ${pod_fqdn} points to ${resolved_master}, not bootstrap candidate ${expected_primary_fqdn} — refusing conflicting replica targets." >&2
           return 1
         fi
+        if ! validate_replica_keyspace_empty "${pod_fqdn}"; then
+          return 1
+        fi
+        rechecked_role=$(verify_pod_role "${pod_fqdn}") || true
+        if [ "${rechecked_role}" != "slave" ]; then
+          echo "ERROR: ${pod_fqdn} changed role during bootstrap validation (${rechecked_role:-unreachable}) — refusing bootstrap." >&2
+          return 1
+        fi
+        rechecked_master=$(get_replica_master_host "${pod_fqdn}") || true
+        if ! rechecked_resolved_master=$(resolve_master_host_to_roster_fqdn "${rechecked_master}"); then
+          echo "ERROR: replica ${pod_fqdn} upstream changed during bootstrap validation — refusing bootstrap." >&2
+          return 1
+        fi
+        if [ "${rechecked_resolved_master}" != "${expected_primary_fqdn}" ]; then
+          echo "ERROR: replica ${pod_fqdn} upstream changed to ${rechecked_resolved_master} during bootstrap validation — refusing bootstrap." >&2
+          return 1
+        fi
         ;;
       master)
         echo "ERROR: ${pod_fqdn} became master during bootstrap validation — refusing a second primary." >&2
@@ -544,7 +647,7 @@ validate_parallel_bootstrap_replica_view() {
   done
 
   if [ "${observed_replicas}" -gt 0 ]; then
-    echo "INFO: parallel cold-start replica view is consistent: ${observed_replicas} replica(s) point to ${expected_primary_fqdn}." >&2
+    echo "INFO: parallel cold-start replica view is consistent: ${observed_replicas} empty replica(s) stably point to ${expected_primary_fqdn}." >&2
   fi
   return 0
 }

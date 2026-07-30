@@ -32,6 +32,8 @@ port="${SERVICE_PORT:-6379}"
 load_common_library() {
   # shellcheck source=/dev/null
   source /scripts/common.sh
+  # shellcheck source=/dev/null
+  source /scripts/sentinel-endpoint.sh
 }
 
 build_cli() {
@@ -50,6 +52,30 @@ get_role() {
   local fqdn="${1}"
   build_cli "${fqdn}"
   "${_cli[@]}" info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2
+}
+
+read_action_candidate_announced_endpoint() {
+  local fqdn="${1}" host_output port_output
+  local host_key host_value host_extra port_key port_value port_extra
+  build_cli "${fqdn}"
+  host_output=$("${_cli[@]}" CONFIG GET replica-announce-ip 2>/dev/null) || return 1
+  port_output=$("${_cli[@]}" CONFIG GET replica-announce-port 2>/dev/null) || return 1
+  host_output="${host_output//$'\r'/}"
+  port_output="${port_output//$'\r'/}"
+  host_key=$(printf '%s\n' "${host_output}" | sed -n '1p')
+  host_value=$(printf '%s\n' "${host_output}" | sed -n '2p')
+  host_extra=$(printf '%s\n' "${host_output}" | sed -n '3p')
+  port_key=$(printf '%s\n' "${port_output}" | sed -n '1p')
+  port_value=$(printf '%s\n' "${port_output}" | sed -n '2p')
+  port_extra=$(printf '%s\n' "${port_output}" | sed -n '3p')
+  [ "${host_key}" = "replica-announce-ip" ] && [ -n "${host_value}" ] &&
+    [ -z "${host_extra}" ] || return 1
+  [ "${port_key}" = "replica-announce-port" ] && [ -n "${port_value}" ] &&
+    [ -z "${port_extra}" ] || return 1
+  case "${port_value}" in
+    *[!0-9]*) return 1 ;;
+  esac
+  printf '%s\n%s\n' "${host_value}" "${port_value}"
 }
 
 pod_fqdns_with_candidate() {
@@ -221,7 +247,7 @@ canonical_sentinel_fqdns() {
 # Resolve the current master only from a strict majority of the configured,
 # unique Sentinel endpoints. Reachable-only quorum is not authoritative.
 sentinel_master_host() {
-  local endpoints fqdn output host reported_port i found winner="" winner_count=0
+  local endpoints fqdn output host reported_port canonical_host i found winner="" winner_count=0
   local hosts=() counts=()
   endpoints=$(canonical_sentinel_fqdns) || return 1
   local configured_count
@@ -233,18 +259,17 @@ sentinel_master_host() {
     output=$("${_sentinel_cli[@]}" SENTINEL GET-MASTER-ADDR-BY-NAME "${VALKEY_COMPONENT_NAME}" 2>/dev/null | tr -d '\r') || continue
     host=$(printf '%s\n' "${output}" | sed -n '1p')
     reported_port=$(printf '%s\n' "${output}" | sed -n '2p')
-    [ -n "${host}" ] || continue
-    [ "${reported_port}" = "${port}" ] || continue
+    canonical_host=$(resolve_sentinel_master_endpoint "${host}" "${reported_port}") || continue
     found=0
     for i in "${!hosts[@]}"; do
-      if [ "${hosts[$i]}" = "${host}" ]; then
+      if [ "${hosts[$i]}" = "${canonical_host}" ]; then
         counts[$i]=$((counts[$i] + 1))
         found=1
         break
       fi
     done
     if [ "${found}" -eq 0 ]; then
-      hosts+=("${host}")
+      hosts+=("${canonical_host}")
       counts+=(1)
     fi
   done <<< "${endpoints}"

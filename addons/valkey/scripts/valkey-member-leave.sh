@@ -33,6 +33,8 @@ port="${SERVICE_PORT:-6379}"
 load_common_library() {
   # shellcheck source=/dev/null
   source /scripts/common.sh
+  # shellcheck source=/dev/null
+  source /scripts/sentinel-endpoint.sh
 }
 sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
 ACTION_CLIENT_TIMEOUT_SECONDS="${ACTION_CLIENT_TIMEOUT_SECONDS:-3}"
@@ -151,14 +153,8 @@ sentinel_master_state() {
     fi
     host="${fields[0]}"
     reported_port="${fields[1]}"
-    if is_empty "${host}" || [ "${host}" = "(nil)" ] || [ "${reported_port}" != "${port}" ]; then
-      continue
-    fi
-
-    vote_host="${host}"
-    if [ "${host}" = "${KB_LEAVE_MEMBER_POD_FQDN}" ] || \
-       contains "${host}" "${KB_LEAVE_MEMBER_POD_NAME}." || \
-       { ! is_empty "${leaving_ip}" && [ "${host}" = "${leaving_ip}" ]; }; then
+    vote_host=$(resolve_sentinel_master_endpoint "${host}" "${reported_port}" member-leave) || continue
+    if [ "${vote_host%%.*}" = "${KB_LEAVE_MEMBER_POD_FQDN%%.*}" ]; then
       vote_host="__leaving__"
     fi
     votes["${vote_host}"]=$(( ${votes["${vote_host}"]:-0} + 1 ))

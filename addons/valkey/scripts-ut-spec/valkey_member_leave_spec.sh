@@ -13,6 +13,7 @@ generate_common_library $common_library_file
 
 Describe "Valkey Member-Leave Bash Script Tests"
   Include $common_library_file
+  Include ../scripts/sentinel-endpoint.sh
   Include ../scripts/valkey-member-leave.sh
 
   init() {
@@ -294,6 +295,59 @@ Describe "Valkey Member-Leave Bash Script Tests"
       When call sentinel_master_state
       The status should be success
       The stdout should eq "different"
+    End
+
+    It "maps a NodePort Sentinel majority to the leaving pod identity"
+      master_name="mycluster-valkey"
+      KB_LEAVE_MEMBER_POD_NAME="valkey-0"
+      KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
+      VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001"
+      leaving_ip="10.0.0.10"
+      canonicalize_sentinel_endpoints "sentinel-0,sentinel-1,sentinel-2"
+      run_sentinel_cli_for_host() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf "10.0.0.20\n31000\n" ;;
+          sentinel-2) printf "10.0.0.21\n31001\n" ;;
+        esac
+      }
+      When call sentinel_master_state
+      The status should be success
+      The stdout should eq "leaving"
+    End
+
+    It "maps a LoadBalancer Sentinel majority to the leaving pod identity"
+      master_name="mycluster-valkey"
+      KB_LEAVE_MEMBER_POD_NAME="valkey-0"
+      KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
+      VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      VALKEY_LB_ADVERTISED_PORT="valkey-lb-advertised-0:6379,valkey-lb-advertised-1:6379"
+      VALKEY_LB_ADVERTISED_HOST="valkey-lb-advertised-0:lb-0.example.com,valkey-lb-advertised-1:lb-1.example.com"
+      leaving_ip="10.0.0.10"
+      canonicalize_sentinel_endpoints "sentinel-0,sentinel-1,sentinel-2"
+      run_sentinel_cli_for_host() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf "lb-0.example.com\n6379\n" ;;
+          sentinel-2) printf "lb-1.example.com\n6379\n" ;;
+        esac
+      }
+      When call sentinel_master_state
+      The status should be success
+      The stdout should eq "leaving"
+    End
+
+    It "treats duplicate NodePort mappings as unknown"
+      master_name="mycluster-valkey"
+      KB_LEAVE_MEMBER_POD_NAME="valkey-0"
+      KB_LEAVE_MEMBER_POD_FQDN="valkey-0.headless.default.svc.cluster.local"
+      VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31000"
+      leaving_ip="10.0.0.10"
+      canonicalize_sentinel_endpoints "sentinel-0,sentinel-1,sentinel-2"
+      run_sentinel_cli_for_host() { printf "10.0.0.20\n31000\n"; }
+      When call sentinel_master_state
+      The status should be success
+      The stdout should eq "unknown"
     End
 
     It "treats split Sentinel answers as unknown instead of already-safe"
