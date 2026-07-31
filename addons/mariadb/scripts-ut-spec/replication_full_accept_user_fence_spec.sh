@@ -155,13 +155,6 @@ authoritative_primary_write_commit() {
   GLOBAL_READ_ONLY=0
   READ_ONLY_MODE=OFF
   trace_event global-read-only-off
-  if [ "${MODE}" = "ready-publish-failure" ]; then
-    trace_event ready-publish-failed-after-global-open
-    return 1
-  fi
-  command touch "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
-  trace_event ready-published
-  trace_event replication-ready-published
   trace_event syncer-authority-commit-pass
   POST_COMMIT_RETURNED=1
 }
@@ -240,10 +233,19 @@ set_fail_closed_read_only() {
   fi
 }
 mark_replication_pending() {
-  rm -f "${DATA_DIR}/.primary-read-write-ready"
+  rm -f "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
   trace_event replication-pending
 }
-mark_replication_ready() { trace_event unexpected-addon-ready-publication; return 1; }
+mark_replication_ready() {
+  if [ "${MODE}" = "ready-publish-failure" ]; then
+    trace_event ready-publish-failed-after-global-open
+    return 1
+  fi
+  command touch "${DATA_DIR}/.replication-ready"
+  command rm -f "${DATA_DIR}/.replication-pending"
+  trace_event ready-published
+  trace_event replication-ready-published
+}
 prestop_watchdog_log() {
   trace_event "log:$*"
 }
@@ -286,7 +288,6 @@ case "${MODE}" in
     [ "${remote_line}" -lt "${replication_ready_line}" ]
     [ "${replication_ready_line}" -lt "${commit_unlock_line}" ]
     grep -q '^ready-observed-after-return$' "${TRACE_FILE}"
-    ! grep -q '^unexpected-addon-ready-publication$' "${TRACE_FILE}"
     ! grep -q 'open-before-required-gates' "${TRACE_FILE}"
     grep -q '^ordinary-business-writable$' "${TRACE_FILE}"
     grep -q '^local-root-writable$' "${TRACE_FILE}"
@@ -311,13 +312,17 @@ case "${MODE}" in
     [ "${accept_rc}" -eq 0 ]
     [ "${READ_ONLY_MODE}" = "ON" ]
     grep -q '^run-cycle-demote-after-authority-commit$' "${TRACE_FILE}"
+    ready_line="$(grep -n '^replication-ready-published$' "${TRACE_FILE}" | cut -d: -f1)"
+    demote_line="$(grep -n '^run-cycle-demote-after-authority-commit$' "${TRACE_FILE}" | cut -d: -f1)"
+    unlock_line="$(grep -n '^commit-lock-released$' "${TRACE_FILE}" | cut -d: -f1)"
+    [ "${ready_line}" -lt "${demote_line}" ]
+    [ "${demote_line}" -lt "${unlock_line}" ]
     grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
     grep -q '^local-root-rejected$' "${TRACE_FILE}"
     grep -q '^remote-root-rejected$' "${TRACE_FILE}"
     [ ! -f "${DATA_DIR}/.primary-read-write-ready" ]
     [ ! -f "${DATA_DIR}/.replication-ready" ]
     ! grep -q '^visible-transition-after-demote$' "${TRACE_FILE}"
-    ! grep -q '^unexpected-addon-ready-publication$' "${TRACE_FILE}"
     ;;
 esac
 HARNESS
@@ -337,7 +342,7 @@ HARNESS
     The output should not include "open-before-required-gates"
   End
 
-  It "has no addon-visible transition after the authority commit returns"
+  It "does not republish readiness after a demote wins before commit-lock release"
     When call run_accept_case post-commit-demote
     The status should be success
     The output should include "run-cycle-demote-after-authority-commit"

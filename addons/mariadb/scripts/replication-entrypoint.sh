@@ -633,6 +633,16 @@ set_primary_read_write() {
       rollback_locked_primary_accept "${label}" "authority-commit-rejected"
       return $?
     fi
+    # Syncer intentionally leaves both addon-facing markers unpublished. Its
+    # exact success receipt means the handler finished every DCS/database
+    # mutation and delegated publication to this caller. If timeout releases
+    # us while the handler is still alive, this branch is not entered and the
+    # rollback below cannot be crossed by a late server marker.
+    if ! touch "${DATA_DIR}/.primary-read-write-ready" || \
+       ! mark_replication_ready; then
+      rollback_locked_primary_accept "${label}" "ready-publish"
+      return $?
+    fi
   else
     if ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null && \
        ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 'OFF';" 2>/dev/null; then

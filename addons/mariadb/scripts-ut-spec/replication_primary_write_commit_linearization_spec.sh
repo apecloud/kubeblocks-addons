@@ -132,6 +132,134 @@ HARNESS
     return "${rc}"
   }
 
+  run_authoritative_success_then_publish_markers() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    trace="${work_dir}/trace"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}"
+    printf '%s\n' NO_LOCK_NO_ADMIN > "${data_dir}/global"
+    touch "${data_dir}/local-locked" "${data_dir}/remote-locked"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" set_primary_read_write
+      cat <<'HARNESS'
+PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
+prestop_watchdog_log() { trace_event "accept:$*"; }
+mark_replication_pending() {
+  rm -f "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
+  touch "${DATA_DIR}/.replication-pending"
+}
+mark_replication_ready() {
+  touch "${DATA_DIR}/.replication-ready"
+  rm -f "${DATA_DIR}/.replication-pending"
+  trace_event replication-ready-published-by-caller
+}
+read_only_is_fail_closed() { return 0; }
+primary_write_gates_ready() { return 0; }
+rollback_locked_primary_accept() { trace_event unexpected-rollback; return 2; }
+rollback_fenced_primary_accept() { trace_event unexpected-rollback; return 0; }
+unlock_local_root_writes() { rm -f "${DATA_DIR}/local-locked"; }
+unlock_remote_root_writes() { rm -f "${DATA_DIR}/remote-locked"; }
+authoritative_primary_write_commit() {
+  printf '%s\n' OFF > "${DATA_DIR}/global"
+  trace_event syncer-terminal-success-received
+  return 0
+}
+
+set_primary_read_write caller-publication require-dcs-primary
+[ "$?" -eq 0 ]
+[ -f "${DATA_DIR}/.primary-read-write-ready" ]
+[ -f "${DATA_DIR}/.replication-ready" ]
+[ ! -f "${DATA_DIR}/.replication-pending" ]
+syncer_line="$(grep -n '^syncer-terminal-success-received$' "${TRACE_FILE}" | cut -d: -f1)"
+replication_line="$(grep -n '^replication-ready-published-by-caller$' "${TRACE_FILE}" | cut -d: -f1)"
+[ -n "${syncer_line}" ]
+[ -n "${replication_line}" ]
+[ "${syncer_line}" -lt "${replication_line}" ]
+cat "${TRACE_FILE}"
+HARNESS
+    } > "${harness}"
+
+    TRACE_FILE="${trace}" DATA_DIR="${data_dir}" bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_authoritative_failure_after_writer_open_rolls_back() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    trace="${work_dir}/trace"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}"
+    printf '%s\n' NO_LOCK_NO_ADMIN > "${data_dir}/global"
+    touch "${data_dir}/local-locked" "${data_dir}/remote-locked"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" force_release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" set_primary_read_write
+      cat <<'HARNESS'
+PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
+prestop_watchdog_log() { trace_event "accept:$*"; }
+mark_replication_pending() {
+  rm -f "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
+  touch "${DATA_DIR}/.replication-pending"
+}
+mark_replication_ready() {
+  touch "${DATA_DIR}/.replication-ready"
+  rm -f "${DATA_DIR}/.replication-pending"
+  trace_event unexpected-ready-publication
+}
+read_only_is_fail_closed() { return 0; }
+primary_write_gates_ready() { return 0; }
+unlock_local_root_writes() { rm -f "${DATA_DIR}/local-locked"; }
+unlock_remote_root_writes() { rm -f "${DATA_DIR}/remote-locked"; }
+authoritative_primary_write_commit() {
+  printf '%s\n' OFF > "${DATA_DIR}/global"
+  trace_event syncer-opened-writers-before-error
+  return 1
+}
+rollback_fenced_primary_accept() {
+  mark_replication_pending
+  printf '%s\n' NO_LOCK_NO_ADMIN > "${DATA_DIR}/global"
+  touch "${DATA_DIR}/local-locked" "${DATA_DIR}/remote-locked"
+  trace_event caller-rollback-strongest-fence
+  return 0
+}
+rollback_locked_primary_accept() {
+  rollback_fenced_primary_accept "$1" "$2"
+  release_primary_write_commit_lock
+  return 2
+}
+
+accept_rc=0
+set_primary_read_write caller-rollback require-dcs-primary || accept_rc=$?
+[ "${accept_rc}" -eq 2 ]
+[ "$(cat "${DATA_DIR}/global")" = NO_LOCK_NO_ADMIN ]
+[ -f "${DATA_DIR}/local-locked" ]
+[ -f "${DATA_DIR}/remote-locked" ]
+[ -f "${DATA_DIR}/.replication-pending" ]
+[ ! -f "${DATA_DIR}/.replication-ready" ]
+[ ! -f "${DATA_DIR}/.primary-read-write-ready" ]
+cat "${TRACE_FILE}"
+HARNESS
+    } > "${harness}"
+
+    TRACE_FILE="${trace}" DATA_DIR="${data_dir}" bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
   run_accept_held_past_prestop_lock_budget() {
     work_dir="$(mktemp -d)"
     harness="${work_dir}/harness.sh"
@@ -252,6 +380,22 @@ HARNESS
     The output should include "syncer-authority-commit-pass"
     The output should include "prestop-strongest-fence-complete"
     The output should not include "unexpected-rollback"
+  End
+
+  It "publishes primary and replication readiness only after terminal syncer success"
+    When call run_authoritative_success_then_publish_markers
+    The status should be success
+    The output should include "syncer-terminal-success-received"
+    The output should include "replication-ready-published-by-caller"
+    The output should not include "unexpected-rollback"
+  End
+
+  It "restores the strongest fence when syncer errors after opening writers"
+    When call run_authoritative_failure_after_writer_open_rolls_back
+    The status should be success
+    The output should include "syncer-opened-writers-before-error"
+    The output should include "caller-rollback-strongest-fence"
+    The output should not include "unexpected-ready-publication"
   End
 
   It "does not let an accept publish ready after preStop exhausts its commit-lock budget"
