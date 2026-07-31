@@ -10,7 +10,6 @@ spec:
   provider: kubeblocks.io
   description: wescale controller
   serviceKind: wescale-ctrl
-  serviceVersion: "0.2.7"
   serviceRefDeclarations:
     - name: etcd
       serviceRefDeclarationSpecs:

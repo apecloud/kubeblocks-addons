@@ -12,7 +12,6 @@ spec:
   labels:
     app.kubernetes.io/part-of: memberlist
   serviceKind: loki-read
-  serviceVersion: 1.0.0
   services:
     - name: loki-read
       spec:

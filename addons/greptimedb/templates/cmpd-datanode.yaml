@@ -10,7 +10,6 @@ spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
   configs:
     - name: greptimedb-datanode
       template: {{ include "greptimedb-datanode.configTemplateName" . }}

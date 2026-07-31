@@ -10,7 +10,6 @@ spec:
   provider: community
   serviceKind: {{ .Chart.Name }}-broker
   description: RocketMQ Broker
-  serviceVersion: 4.9.6
   minReadySeconds: 10
   podManagementPolicy: Parallel
   configs:

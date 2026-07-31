@@ -17,7 +17,6 @@ spec:
   provider: Community
   description: MariaDB replication component definition (async/semisync via replicationMode parameter)
   serviceKind: mariadb
-  serviceVersion: {{ .Values.defaultServiceVersion.replication }}
   updateStrategy: BestEffortParallel
   podManagementPolicy: OrderedReady
   exporter:

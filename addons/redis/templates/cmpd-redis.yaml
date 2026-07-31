@@ -16,7 +16,6 @@ spec:
   provider: kubeblocks
   description: A Redis v{{ .major }}.0 component definition for Kubernetes
   serviceKind: redis
-  serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: OrderedReady
   podUpgradePolicy: ReCreate
   minReadySeconds: 10

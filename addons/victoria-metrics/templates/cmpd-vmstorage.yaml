@@ -10,7 +10,6 @@ spec:
   provider: kubeblocks
   description: A VictoriaMetrics component definition for Kubernetes
   serviceKind: vmstorage
-  serviceVersion: 1.0.0
   services:
     - name: vmstorage
       spec:

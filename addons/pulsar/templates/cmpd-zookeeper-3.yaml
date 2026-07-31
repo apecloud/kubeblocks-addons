@@ -10,7 +10,6 @@ spec:
   provider: kubeblocks
   description: Pulsar zookeeper component definition
   serviceKind: pulsar
-  serviceVersion: {{ .Values.defaultServiceVersion.zookeeper.major3 }}
   updateStrategy: BestEffortParallel
   services:
     - name: zookeeper
