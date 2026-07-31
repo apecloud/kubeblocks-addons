@@ -39,11 +39,13 @@ Describe "replication primary-write commit linearization"
       printf '%s\n' '#!/usr/bin/env bash' 'set -u'
       extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" persist_primary_write_accept_guard
       extract_function_from "$(entrypoint_file)" set_primary_read_write
       extract_function_from "$(prestop_file)" acquire_primary_write_commit_lock_for_prestop
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
 prestop_log() { trace_event "prestop:$*"; }
@@ -74,6 +76,7 @@ authoritative_primary_write_commit() {
   trace_event syncer-authority-commit-pass
 }
 authoritative_primary_write_publish() {
+  printf '%s\n' "$2" > "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}"
   rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"
   trace_event syncer-publication-commit-pass
 }
@@ -150,10 +153,12 @@ HARNESS
       printf '%s\n' '#!/usr/bin/env bash' 'set -u'
       extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" persist_primary_write_accept_guard
       extract_function_from "$(entrypoint_file)" set_primary_read_write
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
 mark_replication_pending() {
@@ -177,6 +182,7 @@ authoritative_primary_write_commit() {
   return 0
 }
 authoritative_primary_write_publish() {
+  printf '%s\n' "$2" > "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}"
   rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"
   trace_event syncer-publication-commit-pass
 }
@@ -216,12 +222,14 @@ HARNESS
       extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" force_release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" persist_primary_write_accept_guard
       extract_function_from "$(entrypoint_file)" rollback_ambiguous_primary_publish
       extract_function_from "$(entrypoint_file)" set_primary_read_write
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
 PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
 mark_replication_pending() {
@@ -300,12 +308,17 @@ HARNESS
       extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" force_release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" force_release_primary_write_publication_lock_after_commit_receipt
+      extract_function_from "$(entrypoint_file)" primary_write_publication_receipt_matches
+      extract_function_from "$(entrypoint_file)" recover_committed_primary_write_publication
+      extract_function_from "$(entrypoint_file)" persist_primary_write_accept_guard
       extract_function_from "$(entrypoint_file)" rollback_ambiguous_primary_publish
       extract_function_from "$(entrypoint_file)" set_primary_read_write
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
 PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
 mark_replication_pending() {
@@ -391,11 +404,13 @@ HARNESS
       printf '%s\n' '#!/usr/bin/env bash' 'set -u'
       extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" persist_primary_write_accept_guard
       extract_function_from "$(entrypoint_file)" set_primary_read_write
       extract_function_from "$(prestop_file)" acquire_primary_write_commit_lock_for_prestop
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
 prestop_log() { trace_event "prestop:$*"; }

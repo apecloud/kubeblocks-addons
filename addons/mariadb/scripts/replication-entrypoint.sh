@@ -218,6 +218,7 @@ LIFECYCLE_PENDING_MARKER="${LIFECYCLE_MARKER}.pending"
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
 PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
 if [ ! -f "${LIFECYCLE_MARKER}" ]; then
   # The pending marker is the retry journal for this container lifecycle.
   # Persist it before destructive cleanup, and publish the completion marker
@@ -264,8 +265,10 @@ if [ ! -f "${LIFECYCLE_MARKER}" ]; then
   # branch is allowed to clear a stale owner after process death.
   if ! rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" \
       "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" || \
+     ! rm -f "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" || \
      [ -e "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" ] || \
-     [ -e "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" ]; then
+     [ -e "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" ] || \
+     [ -e "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" ]; then
     echo "failed to clear stale primary-write lock owners" >&2
     exit 1
   fi
@@ -587,6 +590,47 @@ acquire_primary_write_publication_lock_for_rollback() {
 release_primary_write_publication_lock() {
   rmdir "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" 2>/dev/null
 }
+force_release_primary_write_publication_lock_after_commit_receipt() {
+  # The exact durable receipt proves the handler has crossed its atomic
+  # publication commit point. Its remaining tail may only clean this lock and
+  # return, so an ambiguous caller may safely finish stale-lock cleanup.
+  rm -rf "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" 2>/dev/null && \
+    [ ! -e "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" ]
+}
+primary_write_publication_receipt_matches() {
+  local expected_token="$1"
+  local actual_token
+  [ -n "${expected_token}" ] || return 1
+  [ ! -e "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] || return 1
+  [ -f "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" ] || return 1
+  actual_token="$(cat "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" 2>/dev/null)" || return 1
+  [ "${actual_token}" = "${expected_token}" ]
+}
+recover_committed_primary_write_publication() {
+  local expected_token="$1"
+  local label="${2:-fenced-primary-accept}"
+  primary_write_publication_receipt_matches "${expected_token}" || return 1
+  if ! force_release_primary_write_publication_lock_after_commit_receipt; then
+    prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=committed-receipt-lock-cleanup-failed fail_closed=false"
+    return 3
+  fi
+  prestop_watchdog_log "primary-write-publish label=${label} rc=0 authority=fresh-lease-cas publication=durable-exact-receipt recovery=ambiguous-response"
+  return 0
+}
+persist_primary_write_accept_guard() {
+  local transaction_token="$1"
+  local tmp_file="${PRIMARY_WRITE_ACCEPT_PENDING_FILE}.tmp.$$"
+  [ -n "${transaction_token}" ] || return 1
+  if ! (umask 077 && printf '%s\n' "${transaction_token}" > "${tmp_file}"); then
+    rm -f "${tmp_file}" 2>/dev/null || true
+    return 1
+  fi
+  if ! mv -f "${tmp_file}" "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
+    rm -f "${tmp_file}" 2>/dev/null || true
+    return 1
+  fi
+  [ "$(cat "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" 2>/dev/null)" = "${transaction_token}" ]
+}
 authoritative_primary_write_commit() {
   local label="${1:-primary-write-commit}"
   local rc
@@ -606,6 +650,7 @@ authoritative_primary_write_commit() {
 }
 authoritative_primary_write_publish() {
   local label="${1:-primary-write-publish}"
+  local expected_token="${2:-}"
   local rc
   if [ ! -x /tools/syncerctl ]; then
     prestop_watchdog_log "primary-write-publish label=${label} rc=1 reason=syncerctl-missing"
@@ -614,9 +659,17 @@ authoritative_primary_write_publish() {
   timeout 5 /tools/syncerctl --host 127.0.0.1 --port 3601 primary-write-publish \
     >> "${DATA_DIR}/log/prestop-watchdog.log" 2>&1
   rc=$?
-  if [ "${rc}" -eq 0 ]; then
-    prestop_watchdog_log "primary-write-publish label=${label} rc=0 authority=fresh-lease-cas publication=ha-mutex"
+  if primary_write_publication_receipt_matches "${expected_token}"; then
+    if ! force_release_primary_write_publication_lock_after_commit_receipt; then
+      prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=committed-receipt-lock-cleanup-failed command_rc=${rc} fail_closed=false"
+      return 3
+    fi
+    prestop_watchdog_log "primary-write-publish label=${label} rc=0 authority=fresh-lease-cas publication=durable-exact-receipt command_rc=${rc}"
     return 0
+  fi
+  if [ "${rc}" -eq 0 ]; then
+    prestop_watchdog_log "primary-write-publish label=${label} rc=1 reason=exact-durable-receipt-missing"
+    return 1
   fi
   prestop_watchdog_log "primary-write-publish label=${label} rc=${rc} authority=rejected"
   return "${rc}"
@@ -640,9 +693,15 @@ rollback_locked_primary_accept() {
 rollback_ambiguous_primary_publish() {
   local label="${1:-fenced-primary-accept}"
   local reason="${2:-publication-commit-rejected}"
+  local expected_token="${3:-}"
   local rollback_rc=0
+  local guard_restore_rc=0
   local publication_release_rc=0
   local commit_release_rc=0
+
+  if recover_committed_primary_write_publication "${expected_token}" "${label}"; then
+    return 0
+  fi
 
   # The syncer live handler owns this shared data-volume lock from marker/DB
   # validation through final DCS CAS and guard removal. On an ambiguous
@@ -650,11 +709,25 @@ rollback_ambiguous_primary_publish() {
   # it starts), then re-guard and roll back while still owning the same lock.
   # This prevents a late handler from deleting the caller's recovered guard.
   if ! acquire_primary_write_publication_lock_for_rollback; then
+    if recover_committed_primary_write_publication "${expected_token}" "${label}"; then
+      return 0
+    fi
+    # The bounded wait exceeds the live handler's operation deadline. If no
+    # exact durable receipt exists, the only safe terminal is a restored exact
+    # guard plus the strongest writer fence; a mismatched/stale receipt must
+    # never authorize committed recovery.
+    persist_primary_write_accept_guard "${expected_token}" || guard_restore_rc=1
     rollback_locked_primary_accept "${label}" "${reason}-publication-lock-timeout" || rollback_rc=$?
-    prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=publication-lock-timeout rollback_rc=${rollback_rc} fail_closed=false"
+    if [ "$(cat "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" 2>/dev/null)" != "${expected_token}" ]; then
+      guard_restore_rc=2
+    fi
+    prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=publication-lock-timeout rollback_rc=${rollback_rc} guard_restore_rc=${guard_restore_rc} fail_closed=false"
     return 3
   fi
-  if ! touch "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
+  if recover_committed_primary_write_publication "${expected_token}" "${label}"; then
+    return 0
+  fi
+  if ! persist_primary_write_accept_guard "${expected_token}"; then
     rollback_rc=1
   fi
   rollback_fenced_primary_accept "${label}" "${reason}" || rollback_rc=1
@@ -674,7 +747,7 @@ rollback_ambiguous_primary_publish() {
 set_primary_read_write() {
   local label="${1:-primary-read-write}"
   local role_guard="${2:-no-dcs-check}"
-  local accept_rc
+  local accept_rc accept_token publish_recovery_rc
 
   # Do not let any user-facing writer open before all required gates pass.
   # LOCAL is the user-facing root and remains fenced here; INTERNAL_LOCAL is
@@ -719,10 +792,20 @@ set_primary_read_write() {
   # primary-write-commit receipt and stages both ready markers, then syncer
   # removes it inside the RunCycle HA mutex as the final publication step.
   # Rollback deliberately leaves or recreates it.
-  if [ "${role_guard}" = "require-dcs-primary" ] && \
-     ! touch "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
-    rollback_locked_primary_accept "${label}" "accept-pending-publish"
-    return $?
+  if [ "${role_guard}" = "require-dcs-primary" ]; then
+    # Each accept owns a new exact transaction token. Clear only the previous
+    # completed receipt while the caller commit lock is held, then atomically
+    # publish the new durable guard before opening any writer plane.
+    if ! rm -f "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" || \
+       [ -e "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" ]; then
+      rollback_locked_primary_accept "${label}" "stale-publication-receipt-clear"
+      return $?
+    fi
+    accept_token="${POD_NAME:-unknown}:$$:$(date +%s):${RANDOM:-0}"
+    if ! persist_primary_write_accept_guard "${accept_token}"; then
+      rollback_locked_primary_accept "${label}" "accept-pending-publish"
+      return $?
+    fi
   fi
 
   # Unlock both user-root account planes while global read_only=ON still
@@ -765,9 +848,12 @@ set_primary_read_write() {
     # publication lock before recreating the guard and rolling back. The live
     # handler owns the same lock from validation through actual guard removal,
     # so caller recovery cannot race a stale server snapshot.
-    if ! authoritative_primary_write_publish "${label}"; then
-      rollback_ambiguous_primary_publish "${label}" "publication-commit-rejected"
-      return $?
+    if ! authoritative_primary_write_publish "${label}" "${accept_token}"; then
+      publish_recovery_rc=0
+      rollback_ambiguous_primary_publish "${label}" "publication-commit-rejected" "${accept_token}" || publish_recovery_rc=$?
+      if [ "${publish_recovery_rc}" -ne 0 ]; then
+        return "${publish_recovery_rc}"
+      fi
     fi
   else
     if ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null && \
