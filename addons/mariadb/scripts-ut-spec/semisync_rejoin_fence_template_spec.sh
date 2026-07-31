@@ -110,6 +110,83 @@ Describe "cmpd-replication.yaml rejoin fence template"
     [ "${primary_query_line}" -lt "${reconcile_line}" ]
   }
 
+  guarded_primary_accept_retry_precedes_published_role_query() {
+    awk '
+      index($0, "reconcile_sql_listener_for_syncer_primary_once() {") { fn = 1 }
+      fn && index($0, "PRIMARY_WRITE_ACCEPT_PENDING_FILE") { pending_guard = NR }
+      fn && pending_guard && index($0, "master.info") { guard = NR }
+      fn && index($0, "runtime-primary-accept-retry-begin") { trace = NR }
+      fn && index($0, "expose_sql_listener_for_primary_role \"syncer-primary-accept-pending-retry\" \"fenced-promotion\"") { retry = NR }
+      fn && index($0, "role=\"$(query_local_syncer_role || true)\"") { role = NR; exit }
+      END { exit(guard && trace && retry && role && guard < trace && trace < retry && retry < role ? 0 : 1) }
+    ' "$(template_file)"
+  }
+
+  guarded_primary_accept_retry_uses_authoritative_path() {
+    tmpdir="$(mktemp -d)" || return 1
+    DATA_DIR="${tmpdir}"
+    PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+    touch "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" || return 1
+
+    eval "$(extract_function_definition reconcile_sql_listener_for_syncer_primary_once)"
+
+    trace=""
+    exposed=""
+    role_queries=0
+    prestop_watchdog_log() { trace="${trace}|$*"; }
+    mariadbd_listen_on_all_interfaces() { return 0; }
+    expose_sql_listener_for_primary_role() {
+      exposed="$1|$2"
+      return 0
+    }
+    query_local_syncer_role() {
+      role_queries=$((role_queries + 1))
+      printf '%s' secondary
+    }
+
+    reconcile_sql_listener_for_syncer_primary_once
+    reconcile_rc=$?
+    guard_after=absent
+    [ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] || guard_after=present
+    rm -rf "${tmpdir}"
+
+    [ "${reconcile_rc}" -eq 0 ] &&
+      [ "${exposed}" = "syncer-primary-accept-pending-retry|fenced-promotion" ] &&
+      [ "${role_queries}" -eq 0 ] &&
+      [ "${guard_after}" = present ] &&
+      case "${trace}" in *runtime-primary-accept-retry-complete*) true ;; *) false ;; esac
+  }
+
+  guarded_primary_accept_rejection_stays_fail_closed() {
+    tmpdir="$(mktemp -d)" || return 1
+    DATA_DIR="${tmpdir}"
+    PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+    touch "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" || return 1
+
+    eval "$(extract_function_definition reconcile_sql_listener_for_syncer_primary_once)"
+
+    trace=""
+    role_queries=0
+    prestop_watchdog_log() { trace="${trace}|$*"; }
+    mariadbd_listen_on_all_interfaces() { return 0; }
+    expose_sql_listener_for_primary_role() { return 1; }
+    query_local_syncer_role() {
+      role_queries=$((role_queries + 1))
+      printf '%s' secondary
+    }
+
+    reconcile_sql_listener_for_syncer_primary_once
+    reconcile_rc=$?
+    guard_after=absent
+    [ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] || guard_after=present
+    rm -rf "${tmpdir}"
+
+    [ "${reconcile_rc}" -eq 1 ] &&
+      [ "${role_queries}" -eq 0 ] &&
+      [ "${guard_after}" = present ] &&
+      case "${trace}" in *runtime-primary-accept-retry-defer*guard=preserved*) true ;; *) false ;; esac
+  }
+
   runtime_secondary_follow_starts_io_before_health_cleanup() {
     begin_line="$(grep -n 'runtime-secondary-follow-configure-begin' "$(template_file)" | head -1 | cut -d: -f1)"
     io_line="$(awk -v begin="${begin_line}" 'NR > begin && index($0, "START SLAVE IO_THREAD;") { print NR; exit }' "$(template_file)")"
@@ -427,6 +504,21 @@ Describe "cmpd-replication.yaml rejoin fence template"
 
   It "repairs a syncer primary whose SQL listener is exposed before local write access is ready"
     When call function_contains "reconcile_sql_listener_for_syncer_primary_once" "primary-role-state-drift"
+    The status should be success
+  End
+
+  It "retries a durable guarded primary accept through the authoritative commit path before requiring published role"
+    When call guarded_primary_accept_retry_precedes_published_role_query
+    The status should be success
+  End
+
+  It "delegates durable guard removal to a successful authoritative retry before querying published role"
+    When call guarded_primary_accept_retry_uses_authoritative_path
+    The status should be success
+  End
+
+  It "keeps a rejected durable accept fail-closed without falling through to published role"
+    When call guarded_primary_accept_rejection_stays_fail_closed
     The status should be success
   End
 

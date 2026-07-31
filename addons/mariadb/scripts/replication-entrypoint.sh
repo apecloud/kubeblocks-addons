@@ -2278,8 +2278,33 @@ local_has_user_tables() {
   [ "${table_count}" -gt 0 ]
 }
 reconcile_sql_listener_for_syncer_primary_once() {
-  local now primary_sid role primary_ready remote_root_fence master_info listener_wildcard
+  local now primary_sid role primary_ready remote_root_fence master_info listener_wildcard retry_rc
   [ ! -f "${DATA_DIR}/.prestop-fence-started" ] || return 0
+  # A durable accept guard means an earlier exact primary-write transaction
+  # failed closed before publication. While that guard exists, getrole must
+  # continue to report the database truth (secondary/read-only), so waiting
+  # for a published `primary` here creates a permanent self-denying state.
+  # Retry only through the same DCS/lease-CAS commit path that created the
+  # transaction: a non-authoritative member is rejected and rolled back with
+  # the guard preserved, while the member whose HA loop retains the deferred
+  # lease can finish commit+publication. Never remove the guard here.
+  if [ -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] && \
+     [ ! -f "${DATA_DIR}/master.info" ]; then
+    prestop_watchdog_log "runtime-primary-accept-retry-begin reason=durable-accept-pending authority=syncer-lease-cas"
+    if mariadbd_listen_on_all_interfaces; then
+      expose_sql_listener_for_primary_role "syncer-primary-accept-pending-retry" "fenced-promotion"
+      retry_rc=$?
+    else
+      set_primary_read_write "syncer-primary-accept-pending-retry" "require-dcs-primary"
+      retry_rc=$?
+    fi
+    if [ "${retry_rc}" -eq 0 ]; then
+      prestop_watchdog_log "runtime-primary-accept-retry-complete authority=syncer-lease-cas"
+      return 0
+    fi
+    prestop_watchdog_log "runtime-primary-accept-retry-defer rc=${retry_rc} guard=preserved"
+    return "${retry_rc}"
+  fi
   # alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_is_fresh`
   # early-skip has been removed. alpha.79 v1 minimalist deleted the
   # marker writer in switchover.sh, so this check could never observe
