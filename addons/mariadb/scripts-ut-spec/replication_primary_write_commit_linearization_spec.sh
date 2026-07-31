@@ -43,6 +43,7 @@ Describe "replication primary-write commit linearization"
       extract_function_from "$(prestop_file)" acquire_primary_write_commit_lock_for_prestop
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
 prestop_log() { trace_event "prestop:$*"; }
@@ -72,6 +73,7 @@ authoritative_primary_write_commit() {
   printf '%s\n' OFF > "${DATA_DIR}/global"
   trace_event syncer-authority-commit-pass
 }
+query_local_syncer_role() { printf '%s\n' primary; }
 
 run_accept() {
   set_primary_read_write linearization require-dcs-primary
@@ -148,6 +150,7 @@ HARNESS
       extract_function_from "$(entrypoint_file)" set_primary_read_write
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
 mark_replication_pending() {
@@ -170,12 +173,14 @@ authoritative_primary_write_commit() {
   trace_event syncer-terminal-success-received
   return 0
 }
+query_local_syncer_role() { printf '%s\n' primary; }
 
 set_primary_read_write caller-publication require-dcs-primary
 [ "$?" -eq 0 ]
 [ -f "${DATA_DIR}/.primary-read-write-ready" ]
 [ -f "${DATA_DIR}/.replication-ready" ]
 [ ! -f "${DATA_DIR}/.replication-pending" ]
+[ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
 syncer_line="$(grep -n '^syncer-terminal-success-received$' "${TRACE_FILE}" | cut -d: -f1)"
 replication_line="$(grep -n '^replication-ready-published-by-caller$' "${TRACE_FILE}" | cut -d: -f1)"
 [ -n "${syncer_line}" ]
@@ -208,6 +213,7 @@ HARNESS
       extract_function_from "$(entrypoint_file)" set_primary_read_write
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
 mark_replication_pending() {
@@ -243,14 +249,17 @@ rollback_locked_primary_accept() {
 
 accept_rc=0
 set_primary_read_write caller-rollback require-dcs-primary || accept_rc=$?
-[ "${accept_rc}" -eq 2 ]
-[ "$(cat "${DATA_DIR}/global")" = NO_LOCK_NO_ADMIN ]
-[ -f "${DATA_DIR}/local-locked" ]
-[ -f "${DATA_DIR}/remote-locked" ]
-[ -f "${DATA_DIR}/.replication-pending" ]
-[ ! -f "${DATA_DIR}/.replication-ready" ]
-[ ! -f "${DATA_DIR}/.primary-read-write-ready" ]
+failure=0
+[ "${accept_rc}" -eq 2 ] || failure=1
+[ "$(cat "${DATA_DIR}/global")" = NO_LOCK_NO_ADMIN ] || failure=1
+[ -f "${DATA_DIR}/local-locked" ] || failure=1
+[ -f "${DATA_DIR}/remote-locked" ] || failure=1
+[ -f "${DATA_DIR}/.replication-pending" ] || failure=1
+[ -f "${DATA_DIR}/.primary-write-accept-pending" ] || failure=1
+[ ! -f "${DATA_DIR}/.replication-ready" ] || failure=1
+[ ! -f "${DATA_DIR}/.primary-read-write-ready" ] || failure=1
 cat "${TRACE_FILE}"
+exit "${failure}"
 HARNESS
     } > "${harness}"
 
@@ -277,6 +286,7 @@ HARNESS
       extract_function_from "$(prestop_file)" acquire_primary_write_commit_lock_for_prestop
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
 prestop_log() { trace_event "prestop:$*"; }
@@ -306,6 +316,7 @@ authoritative_primary_write_commit() {
   printf '%s\n' OFF > "${DATA_DIR}/global"
   trace_event syncer-authority-commit-pass
 }
+query_local_syncer_role() { printf '%s\n' primary; }
 
 run_accept() {
   accept_rc=0

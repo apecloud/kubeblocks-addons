@@ -215,6 +215,7 @@ INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASS
 LOCAL=("${ROOT_LOCAL[@]}")
 LIFECYCLE_MARKER="/tmp/.mariadb-startup-lifecycle"
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 if [ ! -f "${LIFECYCLE_MARKER}" ]; then
   touch "${LIFECYCLE_MARKER}" 2>/dev/null || true
   if [ -f "${DATA_DIR}/.prestop-fence-started" ] || \
@@ -571,7 +572,7 @@ rollback_locked_primary_accept() {
 set_primary_read_write() {
   local label="${1:-primary-read-write}"
   local role_guard="${2:-no-dcs-check}"
-  local accept_rc
+  local accept_rc role
 
   # Do not let any user-facing writer open before all required gates pass.
   # LOCAL is the user-facing root and remains fenced here; INTERNAL_LOCAL is
@@ -610,6 +611,17 @@ set_primary_read_write() {
     return $?
   fi
 
+  # A DCS-guarded accept owns durable HA authority state across addon and
+  # syncer process lifetimes. Ordinary RunCycle promotion must see this marker
+  # and remain fail-closed until this exact caller receives the terminal
+  # primary-write-commit receipt, publishes both ready markers, and removes it
+  # as the final transaction step. Rollback deliberately leaves it in place.
+  if [ "${role_guard}" = "require-dcs-primary" ] && \
+     ! touch "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
+    rollback_locked_primary_accept "${label}" "accept-pending-publish"
+    return $?
+  fi
+
   # Unlock both user-root account planes while global read_only=ON still
   # rejects every user writer.  The authoritative syncer operation is the
   # final visible commit: under the HA mutex it refreshes DCS, renews the lease
@@ -638,9 +650,21 @@ set_primary_read_write() {
     # mutation and delegated publication to this caller. If timeout releases
     # us while the handler is still alive, this branch is not entered and the
     # rollback below cannot be crossed by a late server marker.
+    # Revalidate local authority after the exact receipt and while the durable
+    # guard still blocks ordinary RunCycle promotion. This closes the receipt
+    # to first-marker drift window; a non-primary/unknown role is fail-closed.
+    role="$(query_local_syncer_role || true)"
+    if [ "${role}" != "primary" ]; then
+      rollback_locked_primary_accept "${label}" "authority-drift-before-ready"
+      return $?
+    fi
     if ! touch "${DATA_DIR}/.primary-read-write-ready" || \
        ! mark_replication_ready; then
       rollback_locked_primary_accept "${label}" "ready-publish"
+      return $?
+    fi
+    if ! rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
+      rollback_locked_primary_accept "${label}" "accept-pending-clear"
       return $?
     fi
   else
@@ -712,9 +736,9 @@ mark_replication_pending() {
   touch ${DATA_DIR}/.replication-pending
 }
 mark_replication_ready() {
-  touch ${DATA_DIR}/.replication-ready
-  touch ${DATA_DIR}/.sql-listener-ready
-  rm -f ${DATA_DIR}/.replication-pending ${DATA_DIR}/.replication-divergence-pending
+  touch "${DATA_DIR}/.replication-ready" || return 1
+  touch "${DATA_DIR}/.sql-listener-ready" || return 1
+  rm -f "${DATA_DIR}/.replication-pending" "${DATA_DIR}/.replication-divergence-pending" || return 1
 }
 mark_replication_divergence_pending() {
   mark_replication_pending

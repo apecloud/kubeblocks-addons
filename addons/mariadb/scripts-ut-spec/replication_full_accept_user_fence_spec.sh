@@ -52,6 +52,7 @@ REMOTE_ROOT_LOCKED=1
 REQUIRED_GATES_PASSED=0
 POST_COMMIT_RETURNED=0
 DEMOTED_AFTER_COMMIT=0
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 
 trace_event() {
   printf '%s\n' "$1" >> "${TRACE_FILE}"
@@ -113,6 +114,11 @@ primary_internal_root_write_ready() {
   trace_event required-gate-pass
 }
 query_local_syncer_role() {
+  if [ "${MODE}" = "authority-drift-before-first-marker" ] && [ "${POST_COMMIT_RETURNED}" -eq 1 ]; then
+    trace_event authority-drift-before-first-marker
+    printf '%s\n' secondary
+    return 0
+  fi
   if [ "${MODE}" = "role-drift" ] || [ "${MODE}" = "role-drift-rollback-failure" ] || [ "${MODE}" = "role-drift-strongest-failure" ]; then
     printf '%s\n' secondary
   else
@@ -292,8 +298,9 @@ case "${MODE}" in
     grep -q '^ordinary-business-writable$' "${TRACE_FILE}"
     grep -q '^local-root-writable$' "${TRACE_FILE}"
     grep -q '^remote-root-writable$' "${TRACE_FILE}"
+    [ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
     ;;
-  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|authority-lost|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift)
+  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|authority-lost|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift|authority-drift-before-first-marker)
     [ "${accept_rc}" -eq 2 ]
     grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
     grep -q '^local-root-rejected$' "${TRACE_FILE}"
@@ -302,6 +309,9 @@ case "${MODE}" in
     [ "${LOCAL_ROOT_LOCKED}" -eq 1 ]
     [ "${REMOTE_ROOT_LOCKED}" -eq 1 ]
     ! grep -q '^ready-published$' "${TRACE_FILE}"
+    if [ "${MODE}" = "authority-drift-before-first-marker" ]; then
+      [ -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
+    fi
     ;;
   rollback-failure|role-drift-rollback-failure|role-drift-strongest-failure)
     [ "${accept_rc}" -eq 3 ]
@@ -329,6 +339,37 @@ HARNESS
     } > "${harness}"
 
     TRACE_FILE="${trace}" DATA_DIR="${data_dir}" MODE="${mode}" bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_mark_replication_ready_first_touch_failure() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}"
+    command touch "${data_dir}/.replication-pending"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function mark_replication_ready
+      cat <<'HARNESS'
+touch() {
+  if [ "$1" = "${DATA_DIR}/.replication-ready" ]; then
+    return 1
+  fi
+  command touch "$@"
+}
+rc=0
+mark_replication_ready || rc=$?
+[ "${rc}" -ne 0 ]
+[ -f "${DATA_DIR}/.replication-pending" ]
+[ ! -f "${DATA_DIR}/.replication-ready" ]
+HARNESS
+    } > "${harness}"
+
+    DATA_DIR="${data_dir}" bash "${harness}"
     rc=$?
     rm -rf "${work_dir}"
     return "${rc}"
@@ -466,6 +507,15 @@ HARNESS
     The output should not include "ready-published"
   End
 
+  It "rechecks authority after the exact receipt and before publishing the first ready marker"
+    When call run_accept_case authority-drift-before-first-marker
+    The status should be success
+    The output should include "syncer-authority-commit-pass"
+    The output should include "authority-drift-before-first-marker"
+    The output should include "global-read-only-strongest"
+    The output should not include "ready-published"
+  End
+
   It "rolls all user writers back when local-root unlock fails before the authority commit"
     When call run_accept_case local-unlock-failure
     The status should be success
@@ -480,6 +530,11 @@ HARNESS
     The output should include "ready-publish-failed-after-global-open"
     The output should include "global-read-only-strongest"
     The output should not include "ready-published"
+  End
+
+  It "returns failure immediately when the first replication-ready marker touch fails"
+    When call run_mark_replication_ready_first_touch_failure
+    The status should be success
   End
 
   It "surfaces rollback failure instead of publishing a false fail-closed state"
