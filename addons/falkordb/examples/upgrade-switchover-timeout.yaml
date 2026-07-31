@@ -1,0 +1,12 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: falkordb-switchover-timeout-upgrade
+  namespace: demo
+spec:
+  clusterName: falkordb-replication
+  type: Upgrade
+  upgrade:
+    components:
+      - componentName: falkordb
+        componentDefinitionName: falkordb-4-1.2.0-alpha.1

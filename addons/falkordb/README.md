@@ -40,6 +40,33 @@ FalkorDB is an open source (SSPL licensed) in-memory graph database based on Red
 
 ## Examples
 
+### Upgrade an existing Cluster to the bounded switchover definition
+
+FalkorDB addon `1.2.0-alpha.1` publishes the standalone and replication
+FalkorDB component as `falkordb-4-1.2.0-alpha.1`. This new definition disables
+kbagent's 30-second default action timeout while the switchover script enforces
+its own bounded deadline.
+
+Upgrading the addon definitions does not change an existing Cluster's resolved
+ComponentDefinition or restart its Pods. After upgrading the addon, edit the
+namespace, Cluster name, and OpsRequest name in
+`examples/upgrade-switchover-timeout.yaml`, then run the bounded migration
+verifier:
+
+```bash
+./examples/upgrade-switchover-timeout.sh
+```
+
+The OpsRequest changes only the `falkordb` component to
+`falkordb-4-1.2.0-alpha.1`; KubeBlocks then recreates its Pods from the new
+definition. Do not patch the resolved Component directly or add `force: true`.
+The verifier does not trust the OpsRequest phase by itself. It returns success
+only after the OpsRequest is `Succeed`, the Component references the new
+definition, every original Pod UID is gone, every replacement Pod is `Ready`,
+and every replacement kbagent has the serialized switchover timeout `-1`.
+It fails after 10 minutes unless `UPGRADE_VERIFY_TIMEOUT_SECONDS` overrides the
+bounded deadline. Request a switchover only after this verification succeeds.
+
 ### Create
 
 Create a FalkorDB replication cluster with two components, one for FalkorDB, and one for Sentinel[^1].
