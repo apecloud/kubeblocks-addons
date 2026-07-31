@@ -477,12 +477,13 @@ HARNESS
     return "${rc}"
   }
 
-  startup_clears_only_stale_commit_lock() {
+  startup_clears_only_stale_primary_write_locks() {
     awk '
       /^if \[ ! -f "\$\{LIFECYCLE_MARKER\}" \]; then$/ { startup = 1 }
       startup && /^elif \[ -f "\$\{DATA_DIR\}\/\.prestop-fence-started" \]; then$/ { startup = 0 }
-      startup && index($0, "rm -rf \"${PRIMARY_WRITE_COMMIT_LOCK_DIR}\"") { print; found++ }
-      END { exit(found == 1 ? 0 : 1) }
+      startup && index($0, "\"${PRIMARY_WRITE_COMMIT_LOCK_DIR}\"") { print; commit++ }
+      startup && index($0, "\"${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}\"") { print; publication++ }
+      END { exit(commit == 1 && publication == 1 ? 0 : 1) }
     ' "$(entrypoint_file)"
   }
 
@@ -532,10 +533,11 @@ HARNESS
     The output should not include "replication-ready-published"
   End
 
-  It "clears a stale commit owner only on a fresh container lifecycle"
-    When call startup_clears_only_stale_commit_lock
+  It "clears stale commit and publication owners only on a fresh container lifecycle"
+    When call startup_clears_only_stale_primary_write_locks
     The status should be success
     The output should include 'PRIMARY_WRITE_COMMIT_LOCK_DIR'
+    The output should include 'PRIMARY_WRITE_PUBLICATION_LOCK_DIR'
   End
 
   It "makes preStop own the commit lock before publishing its fence marker"
