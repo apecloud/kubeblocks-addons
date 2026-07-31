@@ -73,7 +73,10 @@ authoritative_primary_write_commit() {
   printf '%s\n' OFF > "${DATA_DIR}/global"
   trace_event syncer-authority-commit-pass
 }
-query_local_syncer_role() { printf '%s\n' primary; }
+authoritative_primary_write_publish() {
+  rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"
+  trace_event syncer-publication-commit-pass
+}
 
 run_accept() {
   set_primary_read_write linearization require-dcs-primary
@@ -173,7 +176,10 @@ authoritative_primary_write_commit() {
   trace_event syncer-terminal-success-received
   return 0
 }
-query_local_syncer_role() { printf '%s\n' primary; }
+authoritative_primary_write_publish() {
+  rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"
+  trace_event syncer-publication-commit-pass
+}
 
 set_primary_read_write caller-publication require-dcs-primary
 [ "$?" -eq 0 ]
@@ -251,6 +257,89 @@ accept_rc=0
 set_primary_read_write caller-rollback require-dcs-primary || accept_rc=$?
 failure=0
 [ "${accept_rc}" -eq 2 ] || failure=1
+[ "$(cat "${DATA_DIR}/global")" = NO_LOCK_NO_ADMIN ] || failure=1
+[ -f "${DATA_DIR}/local-locked" ] || failure=1
+[ -f "${DATA_DIR}/remote-locked" ] || failure=1
+[ -f "${DATA_DIR}/.replication-pending" ] || failure=1
+[ -f "${DATA_DIR}/.primary-write-accept-pending" ] || failure=1
+[ ! -f "${DATA_DIR}/.replication-ready" ] || failure=1
+[ ! -f "${DATA_DIR}/.primary-read-write-ready" ] || failure=1
+cat "${TRACE_FILE}"
+exit "${failure}"
+HARNESS
+    } > "${harness}"
+
+    TRACE_FILE="${trace}" DATA_DIR="${data_dir}" bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_authority_drift_after_marker_stage_before_publication_commit() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    trace="${work_dir}/trace"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}"
+    printf '%s\n' NO_LOCK_NO_ADMIN > "${data_dir}/global"
+    printf '%s\n' primary > "${data_dir}/authority"
+    touch "${data_dir}/local-locked" "${data_dir}/remote-locked"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" force_release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" set_primary_read_write
+      cat <<'HARNESS'
+PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
+prestop_watchdog_log() { trace_event "accept:$*"; }
+mark_replication_pending() {
+  rm -f "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
+  touch "${DATA_DIR}/.replication-pending"
+}
+mark_replication_ready() {
+  touch "${DATA_DIR}/.replication-ready"
+  rm -f "${DATA_DIR}/.replication-pending"
+  trace_event caller-markers-staged
+}
+read_only_is_fail_closed() { return 0; }
+primary_write_gates_ready() { return 0; }
+unlock_local_root_writes() { rm -f "${DATA_DIR}/local-locked"; }
+unlock_remote_root_writes() { rm -f "${DATA_DIR}/remote-locked"; }
+authoritative_primary_write_commit() {
+  printf '%s\n' OFF > "${DATA_DIR}/global"
+  trace_event syncer-writer-open-committed
+  return 0
+}
+authoritative_primary_write_publish() {
+  # Model RunCycle winning the HA mutex after the writer-open receipt but
+  # before publication. The production finalize operation must refresh
+  # authority and reject without deleting the durable guard.
+  printf '%s\n' secondary > "${DATA_DIR}/authority"
+  trace_event run-cycle-demoted-before-publication-commit
+  return 1
+}
+rollback_fenced_primary_accept() {
+  mark_replication_pending
+  printf '%s\n' NO_LOCK_NO_ADMIN > "${DATA_DIR}/global"
+  touch "${DATA_DIR}/local-locked" "${DATA_DIR}/remote-locked"
+  trace_event caller-rollback-strongest-fence
+  return 0
+}
+rollback_locked_primary_accept() {
+  rollback_fenced_primary_accept "$1" "$2"
+  release_primary_write_commit_lock
+  return 2
+}
+
+accept_rc=0
+set_primary_read_write post-marker-drift require-dcs-primary || accept_rc=$?
+failure=0
+[ "${accept_rc}" -eq 2 ] || failure=1
+[ "$(cat "${DATA_DIR}/authority")" = secondary ] || failure=1
 [ "$(cat "${DATA_DIR}/global")" = NO_LOCK_NO_ADMIN ] || failure=1
 [ -f "${DATA_DIR}/local-locked" ] || failure=1
 [ -f "${DATA_DIR}/remote-locked" ] || failure=1
@@ -407,6 +496,13 @@ HARNESS
     The output should include "syncer-opened-writers-before-error"
     The output should include "caller-rollback-strongest-fence"
     The output should not include "unexpected-ready-publication"
+  End
+
+  It "rejects authority drift after marker staging before the mutex-linearized publication commit"
+    When call run_authority_drift_after_marker_stage_before_publication_commit
+    The status should be success
+    The output should include "run-cycle-demoted-before-publication-commit"
+    The output should include "caller-rollback-strongest-fence"
   End
 
   It "does not let an accept publish ready after preStop exhausts its commit-lock budget"

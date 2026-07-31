@@ -182,6 +182,23 @@ authoritative_primary_write_commit() {
   trace_event syncer-authority-commit-pass
   POST_COMMIT_RETURNED=1
 }
+authoritative_primary_write_publish() {
+  if [ "${MODE}" = "publish-receipt-lost-after-guard-clear" ]; then
+    command rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"
+    trace_event syncer-cleared-guard-before-receipt-loss
+    return 1
+  fi
+  if [ "${MODE}" = "authority-drift-before-first-marker" ]; then
+    trace_event authority-drift-before-publication-commit
+    return 1
+  fi
+  if [ "${MODE}" = "authority-drift-after-check-before-first-marker" ]; then
+    trace_event authority-drift-after-marker-stage
+    return 1
+  fi
+  command rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"
+  trace_event syncer-publication-commit-pass
+}
 local_sql() {
   case "$*" in
     *"SHOW GRANTS FOR"*)
@@ -318,7 +335,7 @@ case "${MODE}" in
     grep -q '^remote-root-writable$' "${TRACE_FILE}"
     [ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
     ;;
-  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|authority-lost|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift|authority-drift-before-first-marker|authority-drift-after-check-before-first-marker)
+  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|authority-lost|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift|authority-drift-before-first-marker|authority-drift-after-check-before-first-marker|publish-receipt-lost-after-guard-clear)
     [ "${accept_rc}" -eq 2 ]
     grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
     grep -q '^local-root-rejected$' "${TRACE_FILE}"
@@ -326,7 +343,9 @@ case "${MODE}" in
     [ "${READ_ONLY_MODE}" = "NO_LOCK_NO_ADMIN" ]
     [ "${LOCAL_ROOT_LOCKED}" -eq 1 ]
     [ "${REMOTE_ROOT_LOCKED}" -eq 1 ]
-    if [ "${MODE}" = "authority-drift-after-check-before-first-marker" ]; then
+    if [ "${MODE}" = "authority-drift-before-first-marker" ] || \
+       [ "${MODE}" = "authority-drift-after-check-before-first-marker" ] || \
+       [ "${MODE}" = "publish-receipt-lost-after-guard-clear" ]; then
       grep -q '^ready-published$' "${TRACE_FILE}"
       [ ! -f "${DATA_DIR}/.primary-read-write-ready" ]
       [ ! -f "${DATA_DIR}/.replication-ready" ]
@@ -334,7 +353,8 @@ case "${MODE}" in
       ! grep -q '^ready-published$' "${TRACE_FILE}"
     fi
     if [ "${MODE}" = "authority-drift-before-first-marker" ] || \
-       [ "${MODE}" = "authority-drift-after-check-before-first-marker" ]; then
+       [ "${MODE}" = "authority-drift-after-check-before-first-marker" ] || \
+       [ "${MODE}" = "publish-receipt-lost-after-guard-clear" ]; then
       [ -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
     fi
     ;;
@@ -532,21 +552,32 @@ HARNESS
     The output should not include "ready-published"
   End
 
-  It "rechecks authority after the exact receipt and before publishing the first ready marker"
+  It "rejects authority drift after the writer-open receipt at the mutex-linearized publication commit"
     When call run_accept_case authority-drift-before-first-marker
     The status should be success
     The output should include "syncer-authority-commit-pass"
-    The output should include "authority-drift-before-first-marker"
+    The output should include "authority-drift-before-publication-commit"
     The output should include "global-read-only-strongest"
-    The output should not include "ready-published"
+    The output should include "ready-published"
   End
 
-  It "rolls back when authority drifts after the pre-marker check but before the first marker"
+  It "rolls back when authority drifts after marker staging but before publication commit"
     When call run_accept_case authority-drift-after-check-before-first-marker
     The status should be success
     The output should include "authority-drift-after-check-before-first-marker"
+    The output should include "authority-drift-after-marker-stage"
     The output should include "global-read-only-strongest"
     The output should include "ready-published"
+    The output should not include "ready-observed-after-return"
+  End
+
+  It "recreates the guard before strongest rollback when the publication receipt is lost after server-side clear"
+    When call run_accept_case publish-receipt-lost-after-guard-clear
+    The status should be success
+    The output should include "syncer-cleared-guard-before-receipt-loss"
+    The output should include "global-read-only-strongest"
+    The output should include "local-root-locked"
+    The output should include "remote-root-locked"
     The output should not include "ready-observed-after-return"
   End
 

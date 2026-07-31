@@ -553,6 +553,23 @@ authoritative_primary_write_commit() {
   prestop_watchdog_log "primary-write-commit label=${label} rc=${rc} authority=rejected"
   return "${rc}"
 }
+authoritative_primary_write_publish() {
+  local label="${1:-primary-write-publish}"
+  local rc
+  if [ ! -x /tools/syncerctl ]; then
+    prestop_watchdog_log "primary-write-publish label=${label} rc=1 reason=syncerctl-missing"
+    return 1
+  fi
+  timeout 5 /tools/syncerctl --host 127.0.0.1 --port 3601 primary-write-publish \
+    >> "${DATA_DIR}/log/prestop-watchdog.log" 2>&1
+  rc=$?
+  if [ "${rc}" -eq 0 ]; then
+    prestop_watchdog_log "primary-write-publish label=${label} rc=0 authority=fresh-lease-cas publication=ha-mutex"
+    return 0
+  fi
+  prestop_watchdog_log "primary-write-publish label=${label} rc=${rc} authority=rejected"
+  return "${rc}"
+}
 rollback_locked_primary_accept() {
   local label="${1:-fenced-primary-accept}"
   local reason="${2:-unknown}"
@@ -572,7 +589,7 @@ rollback_locked_primary_accept() {
 set_primary_read_write() {
   local label="${1:-primary-read-write}"
   local role_guard="${2:-no-dcs-check}"
-  local accept_rc role
+  local accept_rc
 
   # Do not let any user-facing writer open before all required gates pass.
   # LOCAL is the user-facing root and remains fenced here; INTERNAL_LOCAL is
@@ -614,8 +631,9 @@ set_primary_read_write() {
   # A DCS-guarded accept owns durable HA authority state across addon and
   # syncer process lifetimes. Ordinary RunCycle promotion must see this marker
   # and remain fail-closed until this exact caller receives the terminal
-  # primary-write-commit receipt, publishes both ready markers, and removes it
-  # as the final transaction step. Rollback deliberately leaves it in place.
+  # primary-write-commit receipt and stages both ready markers, then syncer
+  # removes it inside the RunCycle HA mutex as the final publication step.
+  # Rollback deliberately leaves or recreates it.
   if [ "${role_guard}" = "require-dcs-primary" ] && \
      ! touch "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
     rollback_locked_primary_accept "${label}" "accept-pending-publish"
@@ -624,10 +642,9 @@ set_primary_read_write() {
 
   # Unlock both user-root account planes while global read_only=ON still
   # rejects every user writer.  The authoritative syncer operation is the
-  # final visible commit: under the HA mutex it refreshes DCS, renews the lease
-  # by resourceVersion CAS, opens/readbacks global writes, and publishes both
-  # ready markers before its HTTP response.  Nothing below that response may
-  # unlock or publish, otherwise the next RunCycle could demote/release first.
+  # first authoritative phase: under the HA mutex it refreshes DCS, renews the
+  # lease by resourceVersion CAS, and opens/readbacks global writes. Marker
+  # staging and a second mutex-linearized publication phase follow below.
   if ! unlock_local_root_writes "${label}"; then
     rollback_locked_primary_accept "${label}" "local-root-unlock"
     return $?
@@ -650,31 +667,24 @@ set_primary_read_write() {
     # mutation and delegated publication to this caller. If timeout releases
     # us while the handler is still alive, this branch is not entered and the
     # rollback below cannot be crossed by a late server marker.
-    # Revalidate local authority after the exact receipt and while the durable
-    # guard still blocks ordinary RunCycle promotion. This closes the receipt
-    # to first-marker drift window; a non-primary/unknown role is fail-closed.
-    role="$(query_local_syncer_role || true)"
-    if [ "${role}" != "primary" ]; then
-      rollback_locked_primary_accept "${label}" "authority-drift-before-ready"
-      return $?
-    fi
     if ! touch "${DATA_DIR}/.primary-read-write-ready" || \
        ! mark_replication_ready; then
       rollback_locked_primary_accept "${label}" "ready-publish"
       return $?
     fi
-    # A demote can win after the pre-marker read but before the first touch.
-    # Recheck once more after the complete marker set and before clearing the
-    # durable guard. If demote won earlier, remove the partial publication and
-    # restore strongest fencing; if it wins later, its own pending transition
-    # removes these markers after our final read.
-    role="$(query_local_syncer_role || true)"
-    if [ "${role}" != "primary" ]; then
-      rollback_locked_primary_accept "${label}" "authority-drift-after-ready"
-      return $?
-    fi
-    if ! rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
-      rollback_locked_primary_accept "${label}" "accept-pending-clear"
+    # Marker staging is not publication: the durable guard keeps roleProbe
+    # closed. Commit visibility with a second bounded syncer operation that
+    # owns the same HA mutex as RunCycle across fresh DCS authority/lease CAS,
+    # exact marker+DB validation, and guard removal. Any error (including an
+    # ambiguous transport timeout after server-side removal) recreates the
+    # guard before strongest rollback so no caller check-to-act window opens.
+    if ! authoritative_primary_write_publish "${label}"; then
+      if ! touch "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
+        rollback_locked_primary_accept "${label}" "publication-commit-rejected-reguard-failed" || accept_rc=$?
+        prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=reguard-failed rollback_rc=${accept_rc:-0} fail_closed=false"
+        return 3
+      fi
+      rollback_locked_primary_accept "${label}" "publication-commit-rejected"
       return $?
     fi
   else
@@ -695,7 +705,7 @@ set_primary_read_write() {
     prestop_watchdog_log "primary-write-commit-lock label=${label} rc=3 reason=release-failed rollback_rc=${accept_rc:-0} fail_closed=false"
     return 3
   fi
-  prestop_watchdog_log "primary-write-accept label=${label} rc=0 required-gates=passed authority-commit-acknowledged=true"
+  prestop_watchdog_log "primary-write-accept label=${label} rc=0 required-gates=passed authority-commit-acknowledged=true publication-commit=ha-mutex"
   return 0
 }
 rollback_fenced_primary_accept() {
