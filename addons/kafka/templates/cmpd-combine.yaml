@@ -13,7 +13,6 @@ spec:
     are simpler to operate for small use cases like a development environment. Combined mode is not recommended in critical
     deployment environments.
   serviceKind: kafka
-  serviceVersion: {{ .Values.defaultServiceVersion.combine }}
   services:
     - name: advertised-listener
       serviceName: advertised-listener

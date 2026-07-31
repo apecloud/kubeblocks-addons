@@ -10,7 +10,6 @@ spec:
   provider: kubeblocks
   description: Pulsar bookies recovery component definition
   serviceKind: pulsar
-  serviceVersion: {{ .Values.defaultServiceVersion.recovery.major2 }}
   serviceRefDeclarations:
     - name: pulsarZookeeper
       serviceRefDeclarationSpecs:

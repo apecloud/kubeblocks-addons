@@ -10,7 +10,6 @@ spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: risingwave
-  serviceVersion: {{ .Chart.AppVersion }}
   services:
     - name: default
       spec:
