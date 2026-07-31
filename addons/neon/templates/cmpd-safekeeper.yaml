@@ -10,7 +10,6 @@ spec:
   description: A neon safekeeper component definition for Kubernetes
   provider: KubeBlocks
   serviceKind: neon-safekeeper
-  serviceVersion: {{ .Values.defaultComponentServiceVersion }}
   services:
     - name: neon-safekeeper
       serviceName: neon-safekeeper

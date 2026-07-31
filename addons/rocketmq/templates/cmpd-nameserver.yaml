@@ -10,7 +10,6 @@ spec:
   provider: community
   serviceKind: {{ .Chart.Name }}-namesrv
   description: RocketMQ NameServer
-  serviceVersion: 4.9.6
   minReadySeconds: 10
   configs:
     - name: rocketmq-namesrv-config

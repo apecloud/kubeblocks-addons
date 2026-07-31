@@ -10,7 +10,6 @@ spec:
   description: A neon compute component definition for Kubernetes
   provider: KubeBlocks
   serviceKind: neon-compute
-  serviceVersion: {{ .Values.defaultComponentServiceVersion }}
   services:
     - name: neon-compute
       serviceName: neon-compute
