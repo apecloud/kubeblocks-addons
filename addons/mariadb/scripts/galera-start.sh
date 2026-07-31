@@ -193,23 +193,40 @@ setup_data_dir() {
   chown -R mysql:mysql "${DATA_DIR}" || true
 }
 
+remove_stale_galera_sst_auth() {
+  local stale_sst_auth="${DATA_DIR}/.galera-sst-auth.cnf"
+
+  # A broken symlink is still a credential-path residue, so test both normal
+  # existence and symlink existence before deciding there is nothing to scrub.
+  if [ ! -e "${stale_sst_auth}" ] && [ ! -L "${stale_sst_auth}" ]; then
+    return 0
+  fi
+  if ! rm -f "${DATA_DIR}/.galera-sst-auth.cnf" 2>/dev/null; then
+    echo "Galera startup failed: failed to delete stale SST credential ${stale_sst_auth}" >&2
+    return 1
+  fi
+  if [ -e "${stale_sst_auth}" ] || [ -L "${stale_sst_auth}" ]; then
+    echo "Galera startup failed: stale SST credential ${stale_sst_auth} still exists after deletion" >&2
+    return 1
+  fi
+}
+
 main() {
   setup_data_dir
 
   local cluster_address
   cluster_address=$(build_cluster_address)
 
-  # wsrep_sst_auth must not appear on the command line (visible in ps output).
-  # Write it to a file under DATA_DIR (the persistent volume, always writable)
-  # and load it via --defaults-extra-file so MariaDB picks it up at startup.
-  local sst_conf="${DATA_DIR}/.galera-sst-auth.cnf"
-  printf '[mysqld]\nwsrep_sst_auth=%s:%s\n' \
-    "${MARIADB_ROOT_USER}" "${MARIADB_ROOT_PASSWORD}" > "$sst_conf"
-  chown mysql:mysql "$sst_conf"
-  chmod 600 "$sst_conf"
+  # Do NOT persist wsrep_sst_auth. It is only consumed by the mariabackup/
+  # xtrabackup/mysqldump SST methods; this addon uses `wsrep_sst_method = rsync`
+  # (config/mariadb-galera.tpl), which does not authenticate via wsrep_sst_auth,
+  # so the credential was unused. Worse, it was written to DATA_DIR — a
+  # `needSnapshot: true` volume — so the plaintext root password rode into every
+  # volume snapshot / backup. Remove any stale file left by a previous chart
+  # version; do not recreate it.
+  remove_stale_galera_sst_auth || return 1
 
   local wsrep_args=(
-    "--defaults-extra-file=${sst_conf}"
     "--wsrep-cluster-address=${cluster_address}"
     "--wsrep-cluster-name=${CLUSTER_NAME:-mariadb-galera}"
     "--wsrep-node-name=${POD_NAME}"
