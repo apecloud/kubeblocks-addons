@@ -29,6 +29,9 @@ if [ "${FAKE_RELOAD_RC:-0}" -ne 0 ]; then
   exit "${FAKE_RELOAD_RC}"
 fi
 echo "$1 $2" >> "${APPLIED_VALUES}"
+if [ "${FAKE_CONFIG_DRIFT:-0}" -eq 1 ]; then
+  printf '%s\n' 'maxmemory 536870912' > "${CONFIG_FILE}"
+fi
 exit 0
 SH
     chmod +x "${_spec_dir}/reload-parameter.sh"
@@ -76,9 +79,19 @@ SH
     rm -rf "${_spec_dir:-}"
     unset CONFIG_FILE RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT
     unset GLOBAL_DEADLINE MARKER_FILE RELOAD_LOG APPLIED_VALUES VERIFY_VALUES
-    unset VERIFY_EMPTY_KEY FAKE_RELOAD_RC FAKE_STATIC_KEY
+    unset VERIFY_EMPTY_KEY FAKE_RELOAD_RC FAKE_STATIC_KEY FAKE_CONFIG_DRIFT
+    unset KB_CONFIG_FILES_UPDATED maxmemory MAXMEMORY REAL_SHA256SUM SHA_HOOK
   }
   After "cleanup"
+
+  run_kbagent_rows() {
+    bash ../scripts/reload-config.sh hash-max-listpack-entries 512
+    _first_rc=$?
+    bash ../scripts/reload-config.sh io-threads-do-reads yes
+    _second_rc=$?
+    printf 'first_rc=%s second_rc=%s\n' "$_first_rc" "$_second_rc"
+    return "$_second_rc"
+  }
 
   It "applies a file that differs from runtime and verifies the readback"
     printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
@@ -105,6 +118,242 @@ SH
     The status should be failure
     The stderr should include "freshness unconfirmed"
     The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "accepts an idempotent no-op after kbagent attests the exact target file"
+    cat >> "${CONFIG_FILE}" <<'CONF'
+io-threads-do-reads yes
+CONF
+    export VERIFY_EMPTY_KEY=io-threads-do-reads
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be success
+    The stderr should include "target checksum verified"
+    The stderr should not include "io-threads-do-reads"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "fails closed when a changed dynamic target is unreadable despite exact file attestation"
+    export VERIFY_EMPTY_KEY=maxmemory
+    export maxmemory=268435456
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be failure
+    The stderr should include "updated target maxmemory is uncheckable"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "does not scan or apply an unrelated snapshot key"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    printf '%s\n' "bind * -::*" "tcp-backlog 999" "timeout 0" \
+      "maxmemory-policy volatile-lru" "maxmemory 268435456" \
+      > "${VERIFY_VALUES}"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be success
+    The stderr should not include "tcp-backlog"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "keeps sequential kbagent rows isolated when a later target is unreadable"
+    cat >> "${CONFIG_FILE}" <<'CONF'
+hash-max-listpack-entries 512
+io-threads-do-reads yes
+CONF
+    printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+      "maxmemory-policy volatile-lru" "maxmemory 268435456" \
+      "hash-max-listpack-entries 256" > "${VERIFY_VALUES}"
+    export VERIFY_EMPTY_KEY=io-threads-do-reads
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When call run_kbagent_rows
+    The status should be failure
+    The output should include "first_rc=0 second_rc=1"
+    The stderr should include "pre-check hash-max-listpack-entries: diff"
+    The stderr should include "updated target io-threads-do-reads is uncheckable"
+    The contents of file "${RELOAD_LOG}" should include "RELOAD: hash-max-listpack-entries 512"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD: io-threads-do-reads"
+  End
+
+  It "rejects a mismatched target checksum before any parameter mutation"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(printf '0%.0s' {1..64})"
+    printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+      "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+      > "${VERIFY_VALUES}"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be failure
+    The stderr should include "target checksum mismatch"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "rejects a malformed target checksum before any parameter mutation"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:not-a-sha256"
+    When run bash ../scripts/reload-config.sh
+    The status should be failure
+    The stderr should include "target checksum is malformed"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "rejects exact attestation without a current-action row"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh
+    The status should be failure
+    The stderr should include "current-action row is malformed"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "rejects an incomplete current-action row"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh maxmemory
+    The status should be failure
+    The stderr should include "current-action row is malformed"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "rejects more than one current-action row in one process"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh maxmemory 1 maxmemory 2
+    The status should be failure
+    The stderr should include "expected exactly one key/value pair"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "rejects a current-action target absent from the immutable config snapshot"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh not-in-config value
+    The status should be failure
+    The stderr should include "current-action target not-in-config is absent"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "rejects a current-action value that is not in the attested snapshot"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh maxmemory 536870912
+    The status should be failure
+    The stderr should include "does not match immutable config snapshot"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "rejects a duplicate current-action target in the attested snapshot"
+    printf '%s\n' 'maxmemory 268435456' >> "${CONFIG_FILE}"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be failure
+    The stderr should include "current-action target maxmemory is ambiguous"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "rejects duplicate target-file attestations as ambiguous"
+    _target_sha=$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:${_target_sha},${CONFIG_FILE}:${_target_sha}"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be failure
+    The stderr should include "target checksum attestation is ambiguous"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "does not treat an ordinary container environment variable as a changed argument"
+    export VERIFY_EMPTY_KEY=maxmemory
+    export maxmemory=268435456
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh tcp-backlog 511
+    The status should be success
+    The stderr should not include "maxmemory"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "does not let template environment precedence replace the current row"
+    export VERIFY_EMPTY_KEY=maxmemory
+    export maxmemory=template-value
+    export MAXMEMORY=alias-template-value
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh tcp-backlog 511
+    The status should be success
+    The stderr should not include "maxmemory"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "does not treat a shell-safe alias alone as a changed argument"
+    export VERIFY_EMPTY_KEY=maxmemory
+    export MAXMEMORY=268435456
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh tcp-backlog 511
+    The status should be success
+    The stderr should not include "maxmemory"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "does not accept an attestation for an unrelated file"
+    export KB_CONFIG_FILES_UPDATED="/tmp/unrelated:$(printf '0%.0s' {1..64})"
+    When run bash ../scripts/reload-config.sh
+    The status should be failure
+    The stderr should include "freshness unconfirmed"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "rechecks attested bytes before mutation"
+    _real_sha256sum=$(command -v sha256sum)
+    export REAL_SHA256SUM="${_real_sha256sum}"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$("${_real_sha256sum}" "${CONFIG_FILE}" | awk '{print $1}')"
+    cat > "${_spec_dir}/bin/sha256sum" <<'SH'
+#!/bin/sh
+"${REAL_SHA256SUM}" "$@"
+printf '%s\n' 'maxmemory 536870912' > "${CONFIG_FILE}"
+SH
+    chmod +x "${_spec_dir}/bin/sha256sum"
+    printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+      "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+      > "${VERIFY_VALUES}"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be failure
+    The stderr should include "target file drifted after snapshot verification"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "does not apply live bytes that drift after final checksum verification"
+    _real_sha256sum=$(command -v sha256sum)
+    export REAL_SHA256SUM="${_real_sha256sum}"
+    export SHA_HOOK="${_spec_dir}/sha-hook-fired"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$("${_real_sha256sum}" "${CONFIG_FILE}" | awk '{print $1}')"
+    cat > "${_spec_dir}/bin/sha256sum" <<'SH'
+#!/bin/sh
+"${REAL_SHA256SUM}" "$@"
+if [ "$1" = "${CONFIG_FILE}" ] && [ ! -f "${SHA_HOOK}" ]; then
+  : > "${SHA_HOOK}"
+  printf '%s\n' 'maxmemory 536870912' > "${CONFIG_FILE}"
+fi
+SH
+    chmod +x "${_spec_dir}/bin/sha256sum"
+    printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+      "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+      > "${VERIFY_VALUES}"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be failure
+    The stderr should include "target file drifted after snapshot verification"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "fails after row apply when the live file drifts before marker write"
+    export FAKE_CONFIG_DRIFT=1
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
+      "maxmemory-policy volatile-lru" "maxmemory 214748364" \
+      > "${VERIFY_VALUES}"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be failure
+    The stderr should include "target file drifted after snapshot verification"
+    The contents of file "${RELOAD_LOG}" should include "RELOAD: maxmemory 268435456"
+  End
+
+  It "normalizes surrounding row whitespace and configuration quotes"
+    cat > "${CONFIG_FILE}" <<'CONF'
+logfile "/data/running.log"
+CONF
+    printf '%s\n' 'logfile /data/old.log' > "${VERIFY_VALUES}"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh logfile ' "/data/running.log" '
+    The status should be success
+    The stderr should include "pre-check logfile: diff"
+    The contents of file "${RELOAD_LOG}" should include "RELOAD: logfile /data/running.log"
+    The contents of file "${RELOAD_LOG}" should not include '"'
   End
 
   It "applies when a fresh projection changes the file during the bounded wait"
