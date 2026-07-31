@@ -480,11 +480,167 @@ HARNESS
   startup_clears_only_stale_primary_write_locks() {
     awk '
       /^if \[ ! -f "\$\{LIFECYCLE_MARKER\}" \]; then$/ { startup = 1 }
-      startup && /^elif \[ -f "\$\{DATA_DIR\}\/\.prestop-fence-started" \]; then$/ { startup = 0 }
+      startup && /^rm -f "\$\{LIFECYCLE_PENDING_MARKER\}"/ { startup = 0 }
       startup && index($0, "\"${PRIMARY_WRITE_COMMIT_LOCK_DIR}\"") { print; commit++ }
       startup && index($0, "\"${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}\"") { print; publication++ }
-      END { exit(commit == 1 && publication == 1 ? 0 : 1) }
+      END { exit(commit >= 1 && publication >= 1 ? 0 : 1) }
     ' "$(entrypoint_file)"
+  }
+
+  extract_startup_lifecycle_gate() {
+    awk '
+      /^LIFECYCLE_MARKER="\/tmp\/\.mariadb-startup-lifecycle"$/ { inside = 1 }
+      inside && /^if \[ -f "\$\{DATA_DIR\}\/\.prestop-fence-started" \]; then$/ { exit }
+      inside {
+        print
+      }
+      END { if (!inside) exit 1 }
+    ' "$(entrypoint_file)"
+  }
+
+  emit_startup_lifecycle_gate_function() {
+    printf '%s\n' 'run_startup_lifecycle_gate() {'
+    extract_startup_lifecycle_gate \
+      | sed 's#LIFECYCLE_MARKER="/tmp/.mariadb-startup-lifecycle"#LIFECYCLE_MARKER="${TEST_LIFECYCLE_MARKER}"#'
+    printf '%s\n' '}'
+  }
+
+  run_lifecycle_marker_touch_failure_preserves_live_publication_owner() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    data_dir="${work_dir}/data"
+    lifecycle_marker="${work_dir}/startup-lifecycle"
+    mkdir -p \
+      "${data_dir}/.primary-write-commit-lock" \
+      "${data_dir}/.primary-write-publication-lock"
+    printf '%s\n' live-commit-owner \
+      > "${data_dir}/.primary-write-commit-lock/owner"
+    printf '%s\n' live-publication-owner \
+      > "${data_dir}/.primary-write-publication-lock/owner"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      cat <<'HARNESS'
+touch() {
+  if [ "$1" = "${TEST_LIFECYCLE_MARKER}.pending" ]; then
+    printf '%s\n' pending-lifecycle-marker-touch-failed
+    return 1
+  fi
+  command touch "$@"
+}
+HARNESS
+      emit_startup_lifecycle_gate_function
+      cat <<'HARNESS'
+( run_startup_lifecycle_gate ) 2>&1
+gate_rc=$?
+printf 'entrypoint_rc=%s lifecycle_marker_exists=%s commit_lock_exists=%s publication_lock_exists=%s\n' \
+  "${gate_rc}" \
+  "$([ -f "${TEST_LIFECYCLE_MARKER}" ] && printf true || printf false)" \
+  "$([ -f "${DATA_DIR}/.primary-write-commit-lock/owner" ] && printf true || printf false)" \
+  "$([ -f "${DATA_DIR}/.primary-write-publication-lock/owner" ] && printf true || printf false)"
+[ "${gate_rc}" -ne 0 ]
+[ ! -f "${TEST_LIFECYCLE_MARKER}" ]
+[ "$(cat "${DATA_DIR}/.primary-write-commit-lock/owner")" = live-commit-owner ]
+[ "$(cat "${DATA_DIR}/.primary-write-publication-lock/owner")" = live-publication-owner ]
+HARNESS
+    } > "${harness}"
+
+    TEST_LIFECYCLE_MARKER="${lifecycle_marker}" DATA_DIR="${data_dir}" \
+      bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_precleanup_crash_then_retry_converges_stale_lock_cleanup() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    data_dir="${work_dir}/data"
+    lifecycle_marker="${work_dir}/startup-lifecycle"
+    mkdir -p \
+      "${data_dir}/.primary-write-commit-lock" \
+      "${data_dir}/.primary-write-publication-lock"
+    printf '%s\n' stale-commit-owner \
+      > "${data_dir}/.primary-write-commit-lock/owner"
+    printf '%s\n' stale-publication-owner \
+      > "${data_dir}/.primary-write-publication-lock/owner"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      cat <<'HARNESS'
+rm() {
+  if [ "${CRASH_BEFORE_CLEANUP:-0}" -eq 1 ]; then
+    printf '%s\n' injected-process-death-before-cleanup
+    exit 99
+  fi
+  command rm "$@"
+}
+HARNESS
+      emit_startup_lifecycle_gate_function
+      cat <<'HARNESS'
+( CRASH_BEFORE_CLEANUP=1 run_startup_lifecycle_gate ) 2>&1
+first_rc=$?
+pending_after_crash=false
+[ -f "${TEST_LIFECYCLE_MARKER}.pending" ] && pending_after_crash=true
+( CRASH_BEFORE_CLEANUP=0 run_startup_lifecycle_gate ) 2>&1
+retry_rc=$?
+printf 'first_rc=%s retry_rc=%s pending_after_crash=%s lifecycle_marker_exists=%s commit_lock_exists=%s publication_lock_exists=%s\n' \
+  "${first_rc}" "${retry_rc}" "${pending_after_crash}" \
+  "$([ -f "${TEST_LIFECYCLE_MARKER}" ] && printf true || printf false)" \
+  "$([ -d "${DATA_DIR}/.primary-write-commit-lock" ] && printf true || printf false)" \
+  "$([ -d "${DATA_DIR}/.primary-write-publication-lock" ] && printf true || printf false)"
+[ "${first_rc}" -eq 99 ]
+[ "${pending_after_crash}" = true ]
+[ "${retry_rc}" -eq 0 ]
+[ -f "${TEST_LIFECYCLE_MARKER}" ]
+[ ! -f "${TEST_LIFECYCLE_MARKER}.pending" ]
+[ ! -d "${DATA_DIR}/.primary-write-commit-lock" ]
+[ ! -d "${DATA_DIR}/.primary-write-publication-lock" ]
+HARNESS
+    } > "${harness}"
+
+    TEST_LIFECYCLE_MARKER="${lifecycle_marker}" DATA_DIR="${data_dir}" \
+      bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_committed_lifecycle_preserves_same_process_live_owner() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    data_dir="${work_dir}/data"
+    lifecycle_marker="${work_dir}/startup-lifecycle"
+    mkdir -p \
+      "${data_dir}/.primary-write-commit-lock" \
+      "${data_dir}/.primary-write-publication-lock"
+    touch "${lifecycle_marker}"
+    printf '%s\n' live-commit-owner \
+      > "${data_dir}/.primary-write-commit-lock/owner"
+    printf '%s\n' live-publication-owner \
+      > "${data_dir}/.primary-write-publication-lock/owner"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      emit_startup_lifecycle_gate_function
+      cat <<'HARNESS'
+run_startup_lifecycle_gate
+gate_rc=$?
+printf 'entrypoint_rc=%s commit_lock_exists=%s publication_lock_exists=%s\n' \
+  "${gate_rc}" \
+  "$([ -f "${DATA_DIR}/.primary-write-commit-lock/owner" ] && printf true || printf false)" \
+  "$([ -f "${DATA_DIR}/.primary-write-publication-lock/owner" ] && printf true || printf false)"
+[ "${gate_rc}" -eq 0 ]
+[ "$(cat "${DATA_DIR}/.primary-write-commit-lock/owner")" = live-commit-owner ]
+[ "$(cat "${DATA_DIR}/.primary-write-publication-lock/owner")" = live-publication-owner ]
+HARNESS
+    } > "${harness}"
+
+    TEST_LIFECYCLE_MARKER="${lifecycle_marker}" DATA_DIR="${data_dir}" \
+      bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
   }
 
   prestop_acquires_commit_lock_before_marker() {
@@ -538,6 +694,34 @@ HARNESS
     The status should be success
     The output should include 'PRIMARY_WRITE_COMMIT_LOCK_DIR'
     The output should include 'PRIMARY_WRITE_PUBLICATION_LOCK_DIR'
+  End
+
+  It "fails closed without clearing a live publication owner when lifecycle identity cannot be persisted"
+    When call run_lifecycle_marker_touch_failure_preserves_live_publication_owner
+    The status should be success
+    The output should include "entrypoint_rc=1"
+    The output should include "lifecycle_marker_exists=false"
+    The output should include "commit_lock_exists=true"
+    The output should include "publication_lock_exists=true"
+  End
+
+  It "retries stale lock cleanup after process death before lifecycle completion"
+    When call run_precleanup_crash_then_retry_converges_stale_lock_cleanup
+    The status should be success
+    The output should include "first_rc=99"
+    The output should include "retry_rc=0"
+    The output should include "pending_after_crash=true"
+    The output should include "lifecycle_marker_exists=true"
+    The output should include "commit_lock_exists=false"
+    The output should include "publication_lock_exists=false"
+  End
+
+  It "does not clear a same-process live owner after lifecycle completion"
+    When call run_committed_lifecycle_preserves_same_process_live_owner
+    The status should be success
+    The output should include "entrypoint_rc=0"
+    The output should include "commit_lock_exists=true"
+    The output should include "publication_lock_exists=true"
   End
 
   It "makes preStop own the commit lock before publishing its fence marker"

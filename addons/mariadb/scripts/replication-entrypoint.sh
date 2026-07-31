@@ -214,11 +214,23 @@ ROOT_LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${
 INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
 LOCAL=("${ROOT_LOCAL[@]}")
 LIFECYCLE_MARKER="/tmp/.mariadb-startup-lifecycle"
+LIFECYCLE_PENDING_MARKER="${LIFECYCLE_MARKER}.pending"
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
 PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 if [ ! -f "${LIFECYCLE_MARKER}" ]; then
-  touch "${LIFECYCLE_MARKER}" 2>/dev/null || true
+  # The pending marker is the retry journal for this container lifecycle.
+  # Persist it before destructive cleanup, and publish the completion marker
+  # only after every stale owner is gone. A child-process death anywhere in
+  # between therefore retries cleanup instead of misclassifying the restart
+  # as a completed same-lifecycle startup.
+  if [ ! -f "${LIFECYCLE_PENDING_MARKER}" ]; then
+    if ! touch "${LIFECYCLE_PENDING_MARKER}" 2>/dev/null || \
+       [ ! -f "${LIFECYCLE_PENDING_MARKER}" ]; then
+      echo "failed to persist pending startup lifecycle identity; refusing stale primary-write lock cleanup" >&2
+      exit 1
+    fi
+  fi
   if [ -f "${DATA_DIR}/.prestop-fence-started" ] || \
      [ -f "${DATA_DIR}/.prestop-fence-complete" ] || \
      [ -f "${DATA_DIR}/.prestop-fence-failed" ]; then
@@ -237,19 +249,34 @@ if [ ! -f "${LIFECYCLE_MARKER}" ]; then
   # publish markers describe the old process, not the new one.
   # Clear them together with the stale preStop fence so startup
   # must re-prove listener exposure and role readiness.
-  rm -f ${DATA_DIR}/.prestop-fence-started \
-    ${DATA_DIR}/.prestop-fence-complete \
-    ${DATA_DIR}/.prestop-fence-failed \
-    ${DATA_DIR}/.prestop-fence-watchdog-active \
-    ${DATA_DIR}/.sql-listener-ready \
-    ${DATA_DIR}/.primary-read-write-ready \
-    ${DATA_DIR}/.replication-ready
+  if ! rm -f ${DATA_DIR}/.prestop-fence-started \
+      ${DATA_DIR}/.prestop-fence-complete \
+      ${DATA_DIR}/.prestop-fence-failed \
+      ${DATA_DIR}/.prestop-fence-watchdog-active \
+      ${DATA_DIR}/.sql-listener-ready \
+      ${DATA_DIR}/.primary-read-write-ready \
+      ${DATA_DIR}/.replication-ready; then
+    echo "failed to clear stale lifecycle publication markers" >&2
+    exit 1
+  fi
   # The lock directory belongs to the previous container process. A live
   # container never removes another invocation's lock; only this new-lifecycle
   # branch is allowed to clear a stale owner after process death.
-  rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" \
-    "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}"
-elif [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
+  if ! rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" \
+      "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" || \
+     [ -e "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" ] || \
+     [ -e "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" ]; then
+    echo "failed to clear stale primary-write lock owners" >&2
+    exit 1
+  fi
+  if ! touch "${LIFECYCLE_MARKER}" 2>/dev/null || \
+     [ ! -f "${LIFECYCLE_MARKER}" ]; then
+    echo "failed to commit startup lifecycle identity after stale lock cleanup" >&2
+    exit 1
+  fi
+fi
+rm -f "${LIFECYCLE_PENDING_MARKER}" 2>/dev/null || true
+if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
   mkdir -p ${DATA_DIR}/log 2>/dev/null || true
   {
     printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
