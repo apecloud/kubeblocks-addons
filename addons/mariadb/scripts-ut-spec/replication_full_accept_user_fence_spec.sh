@@ -38,6 +38,7 @@ Describe "replication full-primary acceptance user fence"
       extract_function read_only_is_strongest_fail_closed
       extract_function rollback_fenced_primary_accept
       extract_function rollback_locked_primary_accept
+      extract_function rollback_ambiguous_primary_publish
       extract_function set_primary_read_write
       cat <<'HARNESS'
 if [ "${MODE}" = "entry-not-fenced" ]; then
@@ -150,6 +151,18 @@ try_acquire_primary_write_commit_lock() {
 release_primary_write_commit_lock() {
   inject_demote_after_commit_return
   trace_event commit-lock-released
+  return 0
+}
+acquire_primary_write_publication_lock_for_rollback() {
+  trace_event publication-lock-acquired-by-caller-rollback
+  return 0
+}
+release_primary_write_publication_lock() {
+  trace_event publication-lock-released-by-caller-rollback
+  return 0
+}
+force_release_primary_write_commit_lock() {
+  trace_event commit-lock-force-released
   return 0
 }
 inject_demote_after_commit_return() {
@@ -356,6 +369,13 @@ case "${MODE}" in
        [ "${MODE}" = "authority-drift-after-check-before-first-marker" ] || \
        [ "${MODE}" = "publish-receipt-lost-after-guard-clear" ]; then
       [ -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
+    fi
+    if [ "${MODE}" = "publish-receipt-lost-after-guard-clear" ]; then
+      handler_line="$(grep -n '^syncer-cleared-guard-before-receipt-loss$' "${TRACE_FILE}" | cut -d: -f1)"
+      recovery_lock_line="$(grep -n '^publication-lock-acquired-by-caller-rollback$' "${TRACE_FILE}" | cut -d: -f1)"
+      recovery_unlock_line="$(grep -n '^publication-lock-released-by-caller-rollback$' "${TRACE_FILE}" | cut -d: -f1)"
+      [ "${handler_line}" -lt "${recovery_lock_line}" ]
+      [ "${recovery_lock_line}" -lt "${recovery_unlock_line}" ]
     fi
     ;;
   rollback-failure|role-drift-rollback-failure|role-drift-strongest-failure)

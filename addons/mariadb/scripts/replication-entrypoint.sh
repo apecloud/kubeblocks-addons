@@ -215,6 +215,7 @@ INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASS
 LOCAL=("${ROOT_LOCAL[@]}")
 LIFECYCLE_MARKER="/tmp/.mariadb-startup-lifecycle"
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 if [ ! -f "${LIFECYCLE_MARKER}" ]; then
   touch "${LIFECYCLE_MARKER}" 2>/dev/null || true
@@ -246,7 +247,8 @@ if [ ! -f "${LIFECYCLE_MARKER}" ]; then
   # The lock directory belongs to the previous container process. A live
   # container never removes another invocation's lock; only this new-lifecycle
   # branch is allowed to clear a stale owner after process death.
-  rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}"
+  rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" \
+    "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}"
 elif [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
   mkdir -p ${DATA_DIR}/log 2>/dev/null || true
   {
@@ -536,6 +538,28 @@ force_release_primary_write_commit_lock() {
   # unexpected payload made the owner-private directory non-empty.
   rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" 2>/dev/null
 }
+try_acquire_primary_write_publication_lock() {
+  mkdir "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" 2>/dev/null
+}
+acquire_primary_write_publication_lock_for_rollback() {
+  local attempt=0
+  # The syncer endpoint has a 4s operation deadline and the CLI has a bounded
+  # terminal wait. A 7s recovery budget therefore covers a live handler without
+  # approaching the kbagent 60s clamp.
+  while [ "${attempt}" -lt 70 ]; do
+    if try_acquire_primary_write_publication_lock; then
+      prestop_watchdog_log "primary-write-publication-lock rc=0 owner=caller-rollback attempts=${attempt}"
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 0.1
+  done
+  prestop_watchdog_log "primary-write-publication-lock rc=1 owner=live-handler attempts=${attempt} fail_closed=false"
+  return 1
+}
+release_primary_write_publication_lock() {
+  rmdir "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" 2>/dev/null
+}
 authoritative_primary_write_commit() {
   local label="${1:-primary-write-commit}"
   local rc
@@ -584,6 +608,40 @@ rollback_locked_primary_accept() {
     return 2
   fi
   prestop_watchdog_log "primary-write-commit-cleanup label=${label} reason=${reason} rollback_rc=${rollback_rc} release_rc=${release_rc} fail_closed=false"
+  return 3
+}
+rollback_ambiguous_primary_publish() {
+  local label="${1:-fenced-primary-accept}"
+  local reason="${2:-publication-commit-rejected}"
+  local rollback_rc=0
+  local publication_release_rc=0
+  local commit_release_rc=0
+
+  # The syncer live handler owns this shared data-volume lock from marker/DB
+  # validation through final DCS CAS and guard removal. On an ambiguous
+  # transport result, wait for that handler to finish (or win the lock before
+  # it starts), then re-guard and roll back while still owning the same lock.
+  # This prevents a late handler from deleting the caller's recovered guard.
+  if ! acquire_primary_write_publication_lock_for_rollback; then
+    rollback_locked_primary_accept "${label}" "${reason}-publication-lock-timeout" || rollback_rc=$?
+    prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=publication-lock-timeout rollback_rc=${rollback_rc} fail_closed=false"
+    return 3
+  fi
+  if ! touch "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
+    rollback_rc=1
+  fi
+  rollback_fenced_primary_accept "${label}" "${reason}" || rollback_rc=1
+  release_primary_write_publication_lock || publication_release_rc=1
+  if ! release_primary_write_commit_lock; then
+    commit_release_rc=1
+    force_release_primary_write_commit_lock || commit_release_rc=2
+  fi
+  if [ "${rollback_rc}" -eq 0 ] && \
+     [ "${publication_release_rc}" -eq 0 ] && \
+     [ "${commit_release_rc}" -eq 0 ]; then
+    return 2
+  fi
+  prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=${reason} rollback_rc=${rollback_rc} publication_release_rc=${publication_release_rc} commit_release_rc=${commit_release_rc} fail_closed=false"
   return 3
 }
 set_primary_read_write() {
@@ -676,15 +734,12 @@ set_primary_read_write() {
     # closed. Commit visibility with a second bounded syncer operation that
     # owns the same HA mutex as RunCycle across fresh DCS authority/lease CAS,
     # exact marker+DB validation, and guard removal. Any error (including an
-    # ambiguous transport timeout after server-side removal) recreates the
-    # guard before strongest rollback so no caller check-to-act window opens.
+    # ambiguous transport timeout after server-side removal) enters a shared
+    # publication lock before recreating the guard and rolling back. The live
+    # handler owns the same lock from validation through actual guard removal,
+    # so caller recovery cannot race a stale server snapshot.
     if ! authoritative_primary_write_publish "${label}"; then
-      if ! touch "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
-        rollback_locked_primary_accept "${label}" "publication-commit-rejected-reguard-failed" || accept_rc=$?
-        prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=reguard-failed rollback_rc=${accept_rc:-0} fail_closed=false"
-        return 3
-      fi
-      rollback_locked_primary_accept "${label}" "publication-commit-rejected"
+      rollback_ambiguous_primary_publish "${label}" "publication-commit-rejected"
       return $?
     fi
   else

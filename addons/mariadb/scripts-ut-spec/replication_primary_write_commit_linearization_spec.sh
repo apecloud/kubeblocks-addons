@@ -216,9 +216,11 @@ HARNESS
       extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" force_release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" rollback_ambiguous_primary_publish
       extract_function_from "$(entrypoint_file)" set_primary_read_write
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
@@ -251,6 +253,14 @@ rollback_locked_primary_accept() {
   rollback_fenced_primary_accept "$1" "$2"
   release_primary_write_commit_lock
   return 2
+}
+acquire_primary_write_publication_lock_for_rollback() {
+  mkdir "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}"
+  trace_event caller-acquired-publication-lock
+}
+release_primary_write_publication_lock() {
+  rmdir "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}"
+  trace_event caller-released-publication-lock
 }
 
 accept_rc=0
@@ -290,9 +300,11 @@ HARNESS
       extract_function_from "$(entrypoint_file)" try_acquire_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" release_primary_write_commit_lock
       extract_function_from "$(entrypoint_file)" force_release_primary_write_commit_lock
+      extract_function_from "$(entrypoint_file)" rollback_ambiguous_primary_publish
       extract_function_from "$(entrypoint_file)" set_primary_read_write
       cat <<'HARNESS'
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
 prestop_watchdog_log() { trace_event "accept:$*"; }
@@ -333,6 +345,14 @@ rollback_locked_primary_accept() {
   rollback_fenced_primary_accept "$1" "$2"
   release_primary_write_commit_lock
   return 2
+}
+acquire_primary_write_publication_lock_for_rollback() {
+  mkdir "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}"
+  trace_event caller-acquired-publication-lock
+}
+release_primary_write_publication_lock() {
+  rmdir "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}"
+  trace_event caller-released-publication-lock
 }
 
 accept_rc=0
