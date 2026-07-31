@@ -47,6 +47,10 @@ pending_file() {
   printf "%s/.replication-pending" "$(data_dir)"
 }
 
+primary_write_accept_pending_file() {
+  printf "%s/.primary-write-accept-pending" "$(data_dir)"
+}
+
 remote_root_fence_file() {
   printf "%s/.remote-root-fence-role" "$(data_dir)"
 }
@@ -765,6 +769,7 @@ check_role() {
     apply_remote_root_fence "secondary" || { not_ready; return $?; }
     printf '%s' "secondary"
   else
+    [ ! -f "$(primary_write_accept_pending_file)" ] || { not_ready; return $?; }
     primary_listener_ready || { not_ready; return $?; }
     primary_read_write_ready || { not_ready; return $?; }
     apply_remote_root_fence "primary" || { not_ready; return $?; }

@@ -585,6 +585,22 @@ Last_SQL_Errno: 0"
       End
     End
 
+    Context "when caller marker files are staged behind a durable accept guard"
+      setup_primary_accept_pending() {
+        touch "${TEST_DIR}/.replication-ready"
+        touch "${TEST_DIR}/.sql-listener-ready"
+        touch "${TEST_DIR}/.primary-read-write-ready"
+        touch "${TEST_DIR}/.primary-write-accept-pending"
+      }
+      Before "setup_primary_accept_pending"
+
+      It "does not publish primary until the exact caller clears the accept guard"
+        When call check_role
+        The status should be failure
+        The output should eq "initializing"
+      End
+    End
+
     Context "when sql listener readiness is required but marker is missing"
       setup_primary_without_listener_marker() {
         export MARIADB_ROLEPROBE_REQUIRE_SQL_LISTENER_READY="true"

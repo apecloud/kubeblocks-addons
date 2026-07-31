@@ -663,6 +663,16 @@ set_primary_read_write() {
       rollback_locked_primary_accept "${label}" "ready-publish"
       return $?
     fi
+    # A demote can win after the pre-marker read but before the first touch.
+    # Recheck once more after the complete marker set and before clearing the
+    # durable guard. If demote won earlier, remove the partial publication and
+    # restore strongest fencing; if it wins later, its own pending transition
+    # removes these markers after our final read.
+    role="$(query_local_syncer_role || true)"
+    if [ "${role}" != "primary" ]; then
+      rollback_locked_primary_accept "${label}" "authority-drift-after-ready"
+      return $?
+    fi
     if ! rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
       rollback_locked_primary_accept "${label}" "accept-pending-clear"
       return $?
@@ -2151,6 +2161,7 @@ query_primary_service_server_id() {
 }
 local_primary_role_published() {
   [ ! -f "${DATA_DIR}/master.info" ] && \
+  [ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] && \
   [ -f "${DATA_DIR}/.primary-read-write-ready" ] && \
   [ -f "${DATA_DIR}/.sql-listener-ready" ] && \
   mariadbd_listen_on_all_interfaces

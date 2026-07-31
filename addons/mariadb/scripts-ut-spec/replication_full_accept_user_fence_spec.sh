@@ -52,10 +52,23 @@ REMOTE_ROOT_LOCKED=1
 REQUIRED_GATES_PASSED=0
 POST_COMMIT_RETURNED=0
 DEMOTED_AFTER_COMMIT=0
+DRIFTED_BEFORE_FIRST_MARKER=0
 PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
 
 trace_event() {
   printf '%s\n' "$1" >> "${TRACE_FILE}"
+}
+touch() {
+  if [ "${MODE}" = "authority-drift-after-check-before-first-marker" ] && \
+     [ "$1" = "${DATA_DIR}/.primary-read-write-ready" ] && \
+     [ "${DRIFTED_BEFORE_FIRST_MARKER}" -eq 0 ]; then
+    GLOBAL_READ_ONLY=1
+    READ_ONLY_MODE=ON
+    DRIFTED_BEFORE_FIRST_MARKER=1
+    command rm -f "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
+    trace_event authority-drift-after-check-before-first-marker
+  fi
+  command touch "$@"
 }
 ordinary_business_can_write() {
   [ "${GLOBAL_READ_ONLY}" -eq 0 ]
@@ -114,6 +127,11 @@ primary_internal_root_write_ready() {
   trace_event required-gate-pass
 }
 query_local_syncer_role() {
+  if [ "${MODE}" = "authority-drift-after-check-before-first-marker" ] && \
+     [ "${DRIFTED_BEFORE_FIRST_MARKER}" -eq 1 ]; then
+    printf '%s\n' secondary
+    return 0
+  fi
   if [ "${MODE}" = "authority-drift-before-first-marker" ] && [ "${POST_COMMIT_RETURNED}" -eq 1 ]; then
     trace_event authority-drift-before-first-marker
     printf '%s\n' secondary
@@ -300,7 +318,7 @@ case "${MODE}" in
     grep -q '^remote-root-writable$' "${TRACE_FILE}"
     [ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
     ;;
-  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|authority-lost|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift|authority-drift-before-first-marker)
+  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|authority-lost|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift|authority-drift-before-first-marker|authority-drift-after-check-before-first-marker)
     [ "${accept_rc}" -eq 2 ]
     grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
     grep -q '^local-root-rejected$' "${TRACE_FILE}"
@@ -308,8 +326,15 @@ case "${MODE}" in
     [ "${READ_ONLY_MODE}" = "NO_LOCK_NO_ADMIN" ]
     [ "${LOCAL_ROOT_LOCKED}" -eq 1 ]
     [ "${REMOTE_ROOT_LOCKED}" -eq 1 ]
-    ! grep -q '^ready-published$' "${TRACE_FILE}"
-    if [ "${MODE}" = "authority-drift-before-first-marker" ]; then
+    if [ "${MODE}" = "authority-drift-after-check-before-first-marker" ]; then
+      grep -q '^ready-published$' "${TRACE_FILE}"
+      [ ! -f "${DATA_DIR}/.primary-read-write-ready" ]
+      [ ! -f "${DATA_DIR}/.replication-ready" ]
+    else
+      ! grep -q '^ready-published$' "${TRACE_FILE}"
+    fi
+    if [ "${MODE}" = "authority-drift-before-first-marker" ] || \
+       [ "${MODE}" = "authority-drift-after-check-before-first-marker" ]; then
       [ -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
     fi
     ;;
@@ -514,6 +539,15 @@ HARNESS
     The output should include "authority-drift-before-first-marker"
     The output should include "global-read-only-strongest"
     The output should not include "ready-published"
+  End
+
+  It "rolls back when authority drifts after the pre-marker check but before the first marker"
+    When call run_accept_case authority-drift-after-check-before-first-marker
+    The status should be success
+    The output should include "authority-drift-after-check-before-first-marker"
+    The output should include "global-read-only-strongest"
+    The output should include "ready-published"
+    The output should not include "ready-observed-after-return"
   End
 
   It "rolls all user writers back when local-root unlock fails before the authority commit"
