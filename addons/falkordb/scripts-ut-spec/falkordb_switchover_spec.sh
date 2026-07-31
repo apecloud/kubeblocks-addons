@@ -372,10 +372,16 @@ master_host:redis-master"
         ORIGINAL_PRIORITIES["redis1"]=100
         ORIGINAL_PRIORITIES["redis2"]=100
         ORIGINAL_PRIORITIES["redis3"]=0
+        redis_replica_announce_address() {
+          case "$1" in
+            redis2) printf '%s\t%s\n' "10.0.0.2" "31002" ;;
+            redis3) printf '%s\t%s\n' "10.0.0.3" "31003" ;;
+          esac
+        }
         sentinel_observed_replica_priority() {
-          case "$1:$2" in
-            sentinel1:redis2|sentinel2:redis2) echo "1" ;;
-            sentinel1:redis3|sentinel2:redis3) echo "0" ;;
+          case "$1:$2:$3" in
+            sentinel1:10.0.0.2:31002|sentinel2:10.0.0.2:31002) echo "1" ;;
+            sentinel1:10.0.0.3:31003|sentinel2:10.0.0.3:31003) echo "0" ;;
           esac
         }
         When call wait_sentinel_sees_priority_bias "redis2" "redis1"
@@ -383,7 +389,7 @@ master_host:redis-master"
         The stdout should include "All Sentinel replica priority caches confirmed"
       End
 
-      It "should parse the target priority from Sentinel replica output"
+      It "should parse the target priority by its advertised address"
         export REDIS_CLI_TLS_CMD=""
         export CUSTOM_SENTINEL_MASTER_NAME="redis"
         export SENTINEL_SERVICE_PORT="26379"
@@ -395,30 +401,21 @@ master_host:redis-master"
 3) "slave-priority"
 4) "100"
 5) "name"
-6) "redis2.redis-headless.default.svc.cluster.local:6379"
+6) "10.0.0.2:31002"
 7) "ip"
-8) "redis2.redis-headless.default.svc.cluster.local"
-9) "slave-priority"
-10) "1"
-11) "name"
-12) "redis3.redis-headless.default.svc.cluster.local:6379"
-13) "slave-priority"
-14) "100"
+8) "10.0.0.2"
+9) "port"
+10) "31002"
+11) "slave-priority"
+12) "1"
 EOF
         }
-        When call sentinel_observed_replica_priority "sentinel1" "redis2.redis-headless.default.svc.cluster.local"
+        When call sentinel_observed_replica_priority "sentinel1" "10.0.0.2" "31002"
         The status should be success
         The output should equal "1"
       End
 
-      It "should not accept a different FQDN with the same pod label"
-        When call same_fqdn \
-          "redis2.other-headless.other.svc.cluster.local" \
-          "redis2.redis-headless.default.svc.cluster.local"
-        The status should be failure
-      End
-
-      It "should parse an exact target after a same-label collision"
+      It "should parse an exact target after an address collision"
         export REDIS_CLI_TLS_CMD=""
         export CUSTOM_SENTINEL_MASTER_NAME="redis"
         export SENTINEL_SERVICE_PORT="26379"
@@ -426,18 +423,90 @@ EOF
         redis-cli() {
           cat <<'EOF'
 1) "name"
-2) "redis2.other-headless.other.svc.cluster.local:6379"
-3) "slave-priority"
-4) "100"
-5) "name"
-6) "redis2.redis-headless.default.svc.cluster.local:6379"
+2) "10.0.0.2:31001"
+3) "ip"
+4) "10.0.0.2"
+5) "port"
+6) "31001"
 7) "slave-priority"
-8) "1"
+8) "100"
+9) "name"
+10) "10.0.0.2:31002"
+11) "ip"
+12) "10.0.0.2"
+13) "port"
+14) "31002"
+15) "slave-priority"
+16) "1"
 EOF
         }
-        When call sentinel_observed_replica_priority "sentinel1" "redis2.redis-headless.default.svc.cluster.local"
+        When call sentinel_observed_replica_priority "sentinel1" "10.0.0.2" "31002"
         The status should be success
         The output should equal "1"
+      End
+
+      It "should read and resolve an advertised hostname from Redis"
+        getent() {
+          printf '%s\n' "10.0.0.2 advertised.example"
+        }
+        redis_config_get() {
+          printf '%s\n' \
+            "replica-announce-ip" "advertised.example" \
+            "replica-announce-port" "31002"
+        }
+        When call redis_replica_announce_address "redis2.redis-headless.default.svc.cluster.local"
+        The status should be success
+        The output should equal "$(printf 'advertised.example,10.0.0.2\t31002')"
+      End
+
+      It "should use the service port for a fixed Pod IP with announce-port zero"
+        redis_service_port="6379"
+        redis_config_get() {
+          printf '%s\n' \
+            "replica-announce-ip" "10.0.0.22" \
+            "replica-announce-port" "0"
+        }
+        When call redis_replica_announce_address "redis2.redis-headless.default.svc.cluster.local"
+        The status should be success
+        The output should equal "$(printf '10.0.0.22\t6379')"
+      End
+
+      It "should reject an exact announce address collision across replicas"
+        register_exact_collision() {
+          ANNOUNCE_TUPLE_OWNERS=()
+          ANNOUNCE_IDENTITY_ERROR=""
+          register_replica_announce_identity "redis2" "10.0.0.2" "31002"
+          register_replica_announce_identity "redis3" "10.0.0.2" "31002"
+        }
+        When call register_exact_collision
+        The status should be failure
+        The stderr should include "Replica announce identity 10.0.0.2:31002 is shared by redis2 and redis3"
+      End
+
+      It "should reject a resolved address collision across advertised hostnames"
+        register_alias_collision() {
+          ANNOUNCE_TUPLE_OWNERS=()
+          ANNOUNCE_IDENTITY_ERROR=""
+          register_replica_announce_identity \
+            "redis2" "replica-a.example,10.0.0.9" "31002"
+          register_replica_announce_identity \
+            "redis3" "replica-b.example,10.0.0.9" "31002"
+        }
+        When call register_alias_collision
+        The status should be failure
+        The stderr should include "Replica announce identity 10.0.0.9:31002 is shared by redis2 and redis3"
+      End
+
+      It "should allow replicas to share an address when their ports differ"
+        register_distinct_ports() {
+          ANNOUNCE_TUPLE_OWNERS=()
+          ANNOUNCE_IDENTITY_ERROR=""
+          register_replica_announce_identity "redis2" "10.0.0.2" "31002"
+          register_replica_announce_identity "redis3" "10.0.0.2" "31003"
+        }
+        When call register_distinct_ports
+        The status should be success
+        The stderr should equal ""
       End
 
       It "should reject a requested candidate absent from the exact pod list"

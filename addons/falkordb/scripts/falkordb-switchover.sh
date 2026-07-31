@@ -21,6 +21,8 @@ test || __() {
 }
 
 declare -A ORIGINAL_PRIORITIES
+declare -A ANNOUNCE_TUPLE_OWNERS
+ANNOUNCE_IDENTITY_ERROR=""
 redis_service_port=${SERVICE_PORT:-6379}
 readonly redis_cli_timeout_seconds=5
 readonly switchover_action_timeout_seconds=420
@@ -266,6 +268,16 @@ redis_config_get() {
   return 0
 }
 
+resolve_host_addresses() {
+  local host="$1"
+  command -v getent >/dev/null 2>&1 || return 0
+  if [[ "$ut_mode" == "true" ]]; then
+    getent hosts "$host"
+  else
+    timeout -k 2 "$redis_cli_timeout_seconds" getent hosts "$host"
+  fi
+}
+
 execute_sentinel_failover() {
   local master_name=$1
   local success=false
@@ -293,12 +305,91 @@ execute_sentinel_failover() {
   return 0
 }
 
+redis_replica_announce_address() {
+  local replica_fqdn="$1"
+  local output
+  local announce_host
+  local announce_hosts
+  local announce_port
+
+  if ! output=$(redis_config_get \
+    "$replica_fqdn" "$redis_service_port" "$REDIS_DEFAULT_PASSWORD" \
+    "CONFIG GET replica-announce-*"); then
+    echo "Error: Failed to get replica announce address for $replica_fqdn" >&2
+    return 1
+  fi
+
+  announce_host=$(printf '%s\n' "$output" | awk '
+    previous == "replica-announce-ip" { print; exit }
+    { previous = $0 }
+  ')
+  announce_port=$(printf '%s\n' "$output" | awk '
+    previous == "replica-announce-port" { print; exit }
+    { previous = $0 }
+  ')
+
+  if [[ -z "$announce_host" ]]; then
+    echo "Error: Empty replica-announce-ip for $replica_fqdn" >&2
+    return 1
+  fi
+  if [[ ! "$announce_port" =~ ^[0-9]+$ ]]; then
+    echo "Error: Invalid replica-announce-port for $replica_fqdn: $announce_port" >&2
+    return 1
+  fi
+  if [[ "$announce_port" == "0" ]]; then
+    announce_port="$redis_service_port"
+  fi
+
+  announce_hosts=$(normalize_fqdn "$announce_host")
+  local resolution_output
+  resolution_output=$(resolve_host_addresses "$announce_host" 2>/dev/null) || true
+  local resolved_host
+  while read -r resolved_host _; do
+    [[ -n "$resolved_host" ]] || continue
+    if ! fqdn_in_csv "$resolved_host" "$announce_hosts"; then
+      announce_hosts+=",$(normalize_fqdn "$resolved_host")"
+    fi
+  done <<< "$resolution_output"
+
+  printf '%s\t%s\n' "$announce_hosts" "$announce_port"
+}
+
+register_replica_announce_identity() {
+  local replica_fqdn="$1"
+  local announce_hosts_csv="$2"
+  local announce_port="$3"
+  local -a announce_hosts
+  local announce_host
+  local normalized_host
+  local identity_key
+  local current_owner
+
+  IFS=',' read -ra announce_hosts <<< "$announce_hosts_csv"
+  for announce_host in "${announce_hosts[@]}"; do
+    normalized_host=$(normalize_fqdn "$announce_host")
+    [[ -n "$normalized_host" ]] || continue
+    identity_key="${normalized_host}|port=${announce_port}"
+    current_owner="${ANNOUNCE_TUPLE_OWNERS[$identity_key]:-}"
+    if [[ -n "$current_owner" ]] && ! same_fqdn "$current_owner" "$replica_fqdn"; then
+      ANNOUNCE_IDENTITY_ERROR="Replica announce identity ${normalized_host}:${announce_port} is shared by $current_owner and $replica_fqdn"
+      echo "Error: $ANNOUNCE_IDENTITY_ERROR" >&2
+      return 1
+    fi
+  done
+
+  for announce_host in "${announce_hosts[@]}"; do
+    normalized_host=$(normalize_fqdn "$announce_host")
+    [[ -n "$normalized_host" ]] || continue
+    identity_key="${normalized_host}|port=${announce_port}"
+    ANNOUNCE_TUPLE_OWNERS["$identity_key"]="$replica_fqdn"
+  done
+}
+
 sentinel_observed_replica_priority() {
   local sentinel_fqdn="$1"
-  local replica_fqdn="$2"
+  local replica_announce_hosts="$2"
+  local replica_announce_port="$3"
   local master_name="${CUSTOM_SENTINEL_MASTER_NAME:-$REDIS_COMPONENT_NAME}"
-  local replica_identity
-  replica_identity=$(normalize_fqdn "$replica_fqdn")
   local output
 
   unset_xtrace_when_ut_mode_false
@@ -316,14 +407,32 @@ sentinel_observed_replica_priority() {
   printf '%s\n' "$output" \
     | tr -d '"' \
     | sed 's/.*) //' \
-    | awk -v candidate="$replica_identity" '
-        previous == "name" {
-          identity = tolower($0)
-          sub(/:[0-9]+$/, "", identity)
-          sub(/\.$/, "", identity)
-          in_candidate = (identity == candidate)
+    | awk \
+      -v candidate_hosts="$replica_announce_hosts" \
+      -v candidate_port="$replica_announce_port" '
+        BEGIN {
+          candidate_count = split(candidate_hosts, host_list, ",")
+          for (i = 1; i <= candidate_count; i++) {
+            accepted_hosts[host_list[i]] = 1
+          }
         }
-        in_candidate && previous == "slave-priority" { print; exit }
+        previous == "name" {
+          replica_host = ""
+          replica_port = ""
+        }
+        previous == "ip" {
+          replica_host = tolower($0)
+          sub(/\.$/, "", replica_host)
+        }
+        previous == "port" {
+          replica_port = $0
+        }
+        previous == "slave-priority" {
+          if (accepted_hosts[replica_host] && replica_port == candidate_port) {
+            print
+            exit
+          }
+        }
         { previous = $0 }
       '
 }
@@ -337,9 +446,31 @@ wait_sentinel_sees_priority_bias() {
   while [[ $SECONDS -lt $deadline ]]; do
     IFS=',' read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
     IFS=',' read -ra redis_pod_fqdn_list <<< "${REDIS_POD_FQDN_LIST}"
+    local -A announce_hosts=()
+    local -A announce_ports=()
+    local announce_identity_conflict=false
+    ANNOUNCE_TUPLE_OWNERS=()
+    ANNOUNCE_IDENTITY_ERROR=""
+    local redis_pod_fqdn
+    for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
+      same_fqdn "$redis_pod_fqdn" "$current_master" && continue
+      local announce_address
+      if announce_address=$(redis_replica_announce_address "$redis_pod_fqdn"); then
+        IFS=$'\t' read -r \
+          announce_hosts["$redis_pod_fqdn"] \
+          announce_ports["$redis_pod_fqdn"] <<< "$announce_address"
+        if ! register_replica_announce_identity \
+          "$redis_pod_fqdn" \
+          "${announce_hosts[$redis_pod_fqdn]}" \
+          "${announce_ports[$redis_pod_fqdn]}" 2>/dev/null; then
+          announce_identity_conflict=true
+        fi
+      fi
+    done
+
     local total=0
     local confirmed=0
-    local sentinel_pod_fqdn redis_pod_fqdn
+    local sentinel_pod_fqdn
 
     for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
       for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
@@ -354,19 +485,26 @@ wait_sentinel_sees_priority_bias() {
           && expected_priority=0
 
         total=$((total + 1))
+        [[ -n "${announce_hosts[$redis_pod_fqdn]:-}" ]] || continue
         observed_priority=$(sentinel_observed_replica_priority \
-          "$sentinel_pod_fqdn" "$redis_pod_fqdn") || true
+          "$sentinel_pod_fqdn" \
+          "${announce_hosts[$redis_pod_fqdn]}" \
+          "${announce_ports[$redis_pod_fqdn]}") || true
         [[ "$observed_priority" == "$expected_priority" ]] && confirmed=$((confirmed + 1))
       done
     done
 
-    if [[ $total -gt 0 && $confirmed -eq $total ]]; then
+    if [[ "$announce_identity_conflict" == "false" \
+      && $total -gt 0 \
+      && $confirmed -eq $total ]]; then
       echo "All Sentinel replica priority caches confirmed targeted bias for $candidate_fqdn."
       return 0
     fi
     sleep_when_ut_mode_false 1
   done
 
+  [[ -z "$ANNOUNCE_IDENTITY_ERROR" ]] \
+    || echo "Error: $ANNOUNCE_IDENTITY_ERROR" >&2
   echo "Error: Sentinel did not confirm targeted priority bias for $candidate_fqdn within ${sentinel_priority_wait_seconds}s" >&2
   return 1
 }
