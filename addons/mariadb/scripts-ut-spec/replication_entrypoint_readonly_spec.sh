@@ -14,10 +14,10 @@ Describe "replication-entrypoint read_only fail-closed startup contract"
   ENTRYPOINT="${SHELLSPEC_CWD:?}/addons/mariadb/scripts/replication-entrypoint.sh"
 
   extract_mariadbd_launch() {
-    # The bootstrap launch: from the `docker-entrypoint.sh mariadbd \`
+    # The bootstrap launch: from the addon-owned image-entrypoint wrapper
     # line to the line ending the backslash-continued argv (bind-address).
     awk '
-      /docker-entrypoint\.sh mariadbd \\/ { in_cmd = 1 }
+      /mariadb-image-entrypoint\.sh run .* mariadbd \\/ { in_cmd = 1 }
       in_cmd { print }
       in_cmd && /--bind-address=/ { exit }
     ' "${ENTRYPOINT}"

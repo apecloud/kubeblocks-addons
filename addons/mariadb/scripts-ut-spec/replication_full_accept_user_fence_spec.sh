@@ -38,6 +38,11 @@ Describe "replication full-primary acceptance user fence"
       extract_function read_only_is_strongest_fail_closed
       extract_function rollback_fenced_primary_accept
       extract_function rollback_locked_primary_accept
+      extract_function force_release_primary_write_publication_lock_after_commit_receipt
+      extract_function primary_write_publication_receipt_matches
+      extract_function recover_committed_primary_write_publication
+      extract_function rollback_ambiguous_primary_publish
+      extract_function persist_primary_write_accept_guard
       extract_function set_primary_read_write
       cat <<'HARNESS'
 if [ "${MODE}" = "entry-not-fenced" ]; then
@@ -52,9 +57,24 @@ REMOTE_ROOT_LOCKED=1
 REQUIRED_GATES_PASSED=0
 POST_COMMIT_RETURNED=0
 DEMOTED_AFTER_COMMIT=0
+DRIFTED_BEFORE_FIRST_MARKER=0
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
 
 trace_event() {
   printf '%s\n' "$1" >> "${TRACE_FILE}"
+}
+touch() {
+  if [ "${MODE}" = "authority-drift-after-check-before-first-marker" ] && \
+     [ "$1" = "${DATA_DIR}/.primary-read-write-ready" ] && \
+     [ "${DRIFTED_BEFORE_FIRST_MARKER}" -eq 0 ]; then
+    GLOBAL_READ_ONLY=1
+    READ_ONLY_MODE=ON
+    DRIFTED_BEFORE_FIRST_MARKER=1
+    command rm -f "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
+    trace_event authority-drift-after-check-before-first-marker
+  fi
+  command touch "$@"
 }
 ordinary_business_can_write() {
   [ "${GLOBAL_READ_ONLY}" -eq 0 ]
@@ -113,6 +133,16 @@ primary_internal_root_write_ready() {
   trace_event required-gate-pass
 }
 query_local_syncer_role() {
+  if [ "${MODE}" = "authority-drift-after-check-before-first-marker" ] && \
+     [ "${DRIFTED_BEFORE_FIRST_MARKER}" -eq 1 ]; then
+    printf '%s\n' secondary
+    return 0
+  fi
+  if [ "${MODE}" = "authority-drift-before-first-marker" ] && [ "${POST_COMMIT_RETURNED}" -eq 1 ]; then
+    trace_event authority-drift-before-first-marker
+    printf '%s\n' secondary
+    return 0
+  fi
   if [ "${MODE}" = "role-drift" ] || [ "${MODE}" = "role-drift-rollback-failure" ] || [ "${MODE}" = "role-drift-strongest-failure" ]; then
     printf '%s\n' secondary
   else
@@ -126,6 +156,18 @@ try_acquire_primary_write_commit_lock() {
 release_primary_write_commit_lock() {
   inject_demote_after_commit_return
   trace_event commit-lock-released
+  return 0
+}
+acquire_primary_write_publication_lock_for_rollback() {
+  trace_event publication-lock-acquired-by-caller-rollback
+  return 0
+}
+release_primary_write_publication_lock() {
+  trace_event publication-lock-released-by-caller-rollback
+  return 0
+}
+force_release_primary_write_commit_lock() {
+  trace_event commit-lock-force-released
   return 0
 }
 inject_demote_after_commit_return() {
@@ -155,15 +197,27 @@ authoritative_primary_write_commit() {
   GLOBAL_READ_ONLY=0
   READ_ONLY_MODE=OFF
   trace_event global-read-only-off
-  if [ "${MODE}" = "ready-publish-failure" ]; then
-    trace_event ready-publish-failed-after-global-open
-    return 1
-  fi
-  command touch "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
-  trace_event ready-published
-  trace_event replication-ready-published
   trace_event syncer-authority-commit-pass
   POST_COMMIT_RETURNED=1
+}
+authoritative_primary_write_publish() {
+  expected_token="$2"
+  if [ "${MODE}" = "publish-receipt-lost-after-guard-clear" ]; then
+    command rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"
+    trace_event syncer-cleared-guard-before-receipt-loss
+    return 1
+  fi
+  if [ "${MODE}" = "authority-drift-before-first-marker" ]; then
+    trace_event authority-drift-before-publication-commit
+    return 1
+  fi
+  if [ "${MODE}" = "authority-drift-after-check-before-first-marker" ]; then
+    trace_event authority-drift-after-marker-stage
+    return 1
+  fi
+  printf '%s\n' "${expected_token}" > "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}"
+  command rm -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"
+  trace_event syncer-publication-commit-pass
 }
 local_sql() {
   case "$*" in
@@ -240,10 +294,19 @@ set_fail_closed_read_only() {
   fi
 }
 mark_replication_pending() {
-  rm -f "${DATA_DIR}/.primary-read-write-ready"
+  rm -f "${DATA_DIR}/.primary-read-write-ready" "${DATA_DIR}/.replication-ready"
   trace_event replication-pending
 }
-mark_replication_ready() { trace_event unexpected-addon-ready-publication; return 1; }
+mark_replication_ready() {
+  if [ "${MODE}" = "ready-publish-failure" ]; then
+    trace_event ready-publish-failed-after-global-open
+    return 1
+  fi
+  command touch "${DATA_DIR}/.replication-ready"
+  command rm -f "${DATA_DIR}/.replication-pending"
+  trace_event ready-published
+  trace_event replication-ready-published
+}
 prestop_watchdog_log() {
   trace_event "log:$*"
 }
@@ -286,13 +349,13 @@ case "${MODE}" in
     [ "${remote_line}" -lt "${replication_ready_line}" ]
     [ "${replication_ready_line}" -lt "${commit_unlock_line}" ]
     grep -q '^ready-observed-after-return$' "${TRACE_FILE}"
-    ! grep -q '^unexpected-addon-ready-publication$' "${TRACE_FILE}"
     ! grep -q 'open-before-required-gates' "${TRACE_FILE}"
     grep -q '^ordinary-business-writable$' "${TRACE_FILE}"
     grep -q '^local-root-writable$' "${TRACE_FILE}"
     grep -q '^remote-root-writable$' "${TRACE_FILE}"
+    [ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
     ;;
-  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|authority-lost|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift)
+  prestop|gate-prestop|entry-not-fenced|bypass-failure|bypass-super|bypass-all|gate-mode-failure|gate-failure|authority-lost|open-failure|local-unlock-failure|remote-unlock-failure|ready-publish-failure|role-drift|authority-drift-before-first-marker|authority-drift-after-check-before-first-marker|publish-receipt-lost-after-guard-clear)
     [ "${accept_rc}" -eq 2 ]
     grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
     grep -q '^local-root-rejected$' "${TRACE_FILE}"
@@ -300,7 +363,27 @@ case "${MODE}" in
     [ "${READ_ONLY_MODE}" = "NO_LOCK_NO_ADMIN" ]
     [ "${LOCAL_ROOT_LOCKED}" -eq 1 ]
     [ "${REMOTE_ROOT_LOCKED}" -eq 1 ]
-    ! grep -q '^ready-published$' "${TRACE_FILE}"
+    if [ "${MODE}" = "authority-drift-before-first-marker" ] || \
+       [ "${MODE}" = "authority-drift-after-check-before-first-marker" ] || \
+       [ "${MODE}" = "publish-receipt-lost-after-guard-clear" ]; then
+      grep -q '^ready-published$' "${TRACE_FILE}"
+      [ ! -f "${DATA_DIR}/.primary-read-write-ready" ]
+      [ ! -f "${DATA_DIR}/.replication-ready" ]
+    else
+      ! grep -q '^ready-published$' "${TRACE_FILE}"
+    fi
+    if [ "${MODE}" = "authority-drift-before-first-marker" ] || \
+       [ "${MODE}" = "authority-drift-after-check-before-first-marker" ] || \
+       [ "${MODE}" = "publish-receipt-lost-after-guard-clear" ]; then
+      [ -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ]
+    fi
+    if [ "${MODE}" = "publish-receipt-lost-after-guard-clear" ]; then
+      handler_line="$(grep -n '^syncer-cleared-guard-before-receipt-loss$' "${TRACE_FILE}" | cut -d: -f1)"
+      recovery_lock_line="$(grep -n '^publication-lock-acquired-by-caller-rollback$' "${TRACE_FILE}" | cut -d: -f1)"
+      recovery_unlock_line="$(grep -n '^publication-lock-released-by-caller-rollback$' "${TRACE_FILE}" | cut -d: -f1)"
+      [ "${handler_line}" -lt "${recovery_lock_line}" ]
+      [ "${recovery_lock_line}" -lt "${recovery_unlock_line}" ]
+    fi
     ;;
   rollback-failure|role-drift-rollback-failure|role-drift-strongest-failure)
     [ "${accept_rc}" -eq 3 ]
@@ -311,19 +394,165 @@ case "${MODE}" in
     [ "${accept_rc}" -eq 0 ]
     [ "${READ_ONLY_MODE}" = "ON" ]
     grep -q '^run-cycle-demote-after-authority-commit$' "${TRACE_FILE}"
+    ready_line="$(grep -n '^replication-ready-published$' "${TRACE_FILE}" | cut -d: -f1)"
+    demote_line="$(grep -n '^run-cycle-demote-after-authority-commit$' "${TRACE_FILE}" | cut -d: -f1)"
+    unlock_line="$(grep -n '^commit-lock-released$' "${TRACE_FILE}" | cut -d: -f1)"
+    [ "${ready_line}" -lt "${demote_line}" ]
+    [ "${demote_line}" -lt "${unlock_line}" ]
     grep -q '^ordinary-business-rejected$' "${TRACE_FILE}"
     grep -q '^local-root-rejected$' "${TRACE_FILE}"
     grep -q '^remote-root-rejected$' "${TRACE_FILE}"
     [ ! -f "${DATA_DIR}/.primary-read-write-ready" ]
     [ ! -f "${DATA_DIR}/.replication-ready" ]
     ! grep -q '^visible-transition-after-demote$' "${TRACE_FILE}"
-    ! grep -q '^unexpected-addon-ready-publication$' "${TRACE_FILE}"
     ;;
 esac
 HARNESS
     } > "${harness}"
 
     TRACE_FILE="${trace}" DATA_DIR="${data_dir}" MODE="${mode}" bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_mark_replication_ready_first_touch_failure() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}"
+    command touch "${data_dir}/.replication-pending"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function mark_replication_ready
+      cat <<'HARNESS'
+touch() {
+  if [ "$1" = "${DATA_DIR}/.replication-ready" ]; then
+    return 1
+  fi
+  command touch "$@"
+}
+rc=0
+mark_replication_ready || rc=$?
+[ "${rc}" -ne 0 ]
+[ -f "${DATA_DIR}/.replication-pending" ]
+[ ! -f "${DATA_DIR}/.replication-ready" ]
+HARNESS
+    } > "${harness}"
+
+    DATA_DIR="${data_dir}" bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_publication_handler_crash_after_guard_commit_recovers_exact_terminal() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    trace="${work_dir}/trace"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}/.primary-write-publication-lock"
+    printf '%s\n' reviewer-crash-boundary-transaction > \
+      "${data_dir}/.primary-write-publication-committed"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function force_release_primary_write_publication_lock_after_commit_receipt
+      extract_function primary_write_publication_receipt_matches
+      extract_function recover_committed_primary_write_publication
+      extract_function rollback_ambiguous_primary_publish
+      cat <<'HARNESS'
+PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
+prestop_watchdog_log() { trace_event "log:$*"; }
+acquire_primary_write_publication_lock_for_rollback() {
+  trace_event stale-publication-lock-timeout
+  return 1
+}
+rollback_locked_primary_accept() {
+  trace_event unexpected-strongest-rollback
+  return 3
+}
+release_primary_write_commit_lock() {
+  trace_event commit-lock-released
+  return 0
+}
+
+rc=0
+rollback_ambiguous_primary_publish reviewer-crash publication-commit-rejected \
+  reviewer-crash-boundary-transaction || rc=$?
+failure=0
+[ "${rc}" -eq 0 ] || failure=1
+[ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] || failure=1
+[ -f "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" ] || failure=1
+[ ! -e "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" ] || failure=1
+grep -q 'publication=durable-exact-receipt recovery=ambiguous-response' "${TRACE_FILE}" || failure=1
+! grep -q '^unexpected-strongest-rollback$' "${TRACE_FILE}" || failure=1
+cat "${TRACE_FILE}"
+exit "${failure}"
+HARNESS
+    } > "${harness}"
+
+    TRACE_FILE="${trace}" DATA_DIR="${data_dir}" bash "${harness}"
+    rc=$?
+    rm -rf "${work_dir}"
+    return "${rc}"
+  }
+
+  run_publication_handler_crash_without_exact_receipt_restores_guard() {
+    work_dir="$(mktemp -d)"
+    harness="${work_dir}/harness.sh"
+    trace="${work_dir}/trace"
+    data_dir="${work_dir}/data"
+    mkdir -p "${data_dir}/.primary-write-publication-lock"
+    printf '%s\n' different-transaction > \
+      "${data_dir}/.primary-write-publication-committed"
+
+    {
+      printf '%s\n' '#!/usr/bin/env bash' 'set -u'
+      extract_function force_release_primary_write_publication_lock_after_commit_receipt
+      extract_function primary_write_publication_receipt_matches
+      extract_function recover_committed_primary_write_publication
+      extract_function persist_primary_write_accept_guard
+      extract_function rollback_ambiguous_primary_publish
+      cat <<'HARNESS'
+PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+trace_event() { printf '%s\n' "$1" >> "${TRACE_FILE}"; }
+prestop_watchdog_log() { trace_event "log:$*"; }
+acquire_primary_write_publication_lock_for_rollback() {
+  trace_event stale-publication-lock-timeout
+  return 1
+}
+rollback_locked_primary_accept() {
+  trace_event strongest-rollback
+  return 2
+}
+
+expected_token=reviewer-crash-boundary-transaction
+rc=0
+rollback_ambiguous_primary_publish reviewer-crash publication-commit-rejected \
+  "${expected_token}" || rc=$?
+failure=0
+[ "${rc}" -eq 3 ] || failure=1
+[ -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] || failure=1
+[ "$(cat "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" 2>/dev/null)" = "${expected_token}" ] || failure=1
+[ -e "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" ] || failure=1
+[ "$(cat "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}")" = different-transaction ] || failure=1
+grep -q '^strongest-rollback$' "${TRACE_FILE}" || failure=1
+! grep -q 'publication=durable-exact-receipt' "${TRACE_FILE}" || failure=1
+cat "${TRACE_FILE}"
+exit "${failure}"
+HARNESS
+    } > "${harness}"
+
+    TRACE_FILE="${trace}" DATA_DIR="${data_dir}" bash "${harness}"
     rc=$?
     rm -rf "${work_dir}"
     return "${rc}"
@@ -337,7 +566,7 @@ HARNESS
     The output should not include "open-before-required-gates"
   End
 
-  It "has no addon-visible transition after the authority commit returns"
+  It "does not republish readiness after a demote wins before commit-lock release"
     When call run_accept_case post-commit-demote
     The status should be success
     The output should include "run-cycle-demote-after-authority-commit"
@@ -461,6 +690,50 @@ HARNESS
     The output should not include "ready-published"
   End
 
+  It "rejects authority drift after the writer-open receipt at the mutex-linearized publication commit"
+    When call run_accept_case authority-drift-before-first-marker
+    The status should be success
+    The output should include "syncer-authority-commit-pass"
+    The output should include "authority-drift-before-publication-commit"
+    The output should include "global-read-only-strongest"
+    The output should include "ready-published"
+  End
+
+  It "rolls back when authority drifts after marker staging but before publication commit"
+    When call run_accept_case authority-drift-after-check-before-first-marker
+    The status should be success
+    The output should include "authority-drift-after-check-before-first-marker"
+    The output should include "authority-drift-after-marker-stage"
+    The output should include "global-read-only-strongest"
+    The output should include "ready-published"
+    The output should not include "ready-observed-after-return"
+  End
+
+  It "recreates the guard before strongest rollback when the publication receipt is lost after server-side clear"
+    When call run_accept_case publish-receipt-lost-after-guard-clear
+    The status should be success
+    The output should include "syncer-cleared-guard-before-receipt-loss"
+    The output should include "global-read-only-strongest"
+    The output should include "local-root-locked"
+    The output should include "remote-root-locked"
+    The output should not include "ready-observed-after-return"
+  End
+
+  It "recovers the exact durable terminal after the handler dies between guard commit and lock cleanup"
+    When call run_publication_handler_crash_after_guard_commit_recovers_exact_terminal
+    The status should be success
+    The output should include "publication=durable-exact-receipt recovery=ambiguous-response"
+    The output should not include "unexpected-strongest-rollback"
+  End
+
+  It "restores the exact guard and stays fail-closed when a stale lock has no matching terminal receipt"
+    When call run_publication_handler_crash_without_exact_receipt_restores_guard
+    The status should be success
+    The output should include "stale-publication-lock-timeout"
+    The output should include "strongest-rollback"
+    The output should not include "publication=durable-exact-receipt"
+  End
+
   It "rolls all user writers back when local-root unlock fails before the authority commit"
     When call run_accept_case local-unlock-failure
     The status should be success
@@ -475,6 +748,11 @@ HARNESS
     The output should include "ready-publish-failed-after-global-open"
     The output should include "global-read-only-strongest"
     The output should not include "ready-published"
+  End
+
+  It "returns failure immediately when the first replication-ready marker touch fails"
+    When call run_mark_replication_ready_first_touch_failure
+    The status should be success
   End
 
   It "surfaces rollback failure instead of publishing a false fail-closed state"

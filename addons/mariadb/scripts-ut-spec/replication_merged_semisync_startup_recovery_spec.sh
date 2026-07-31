@@ -212,7 +212,7 @@ Describe "cmpd-replication.yaml semisync startup recovery"
   End
 
   It "keeps the preStop fence on later startup attempts in the same container lifecycle"
-    When call template_contains 'elif [ -f "${DATA_DIR}/.prestop-fence-started" ]; then'
+    When call template_contains 'if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then'
     The status should be success
     The output should include ".prestop-fence-started"
   End

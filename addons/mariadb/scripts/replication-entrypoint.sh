@@ -79,6 +79,18 @@ if [ -n "${MARIADB_REPLICATION_MODE:-}" ]; then
     exit 1
   fi
 fi
+# The official MariaDB image entrypoint treats the presence of the mysql
+# system directory as "initialization complete", although the directory is
+# created before the temporary server and account setup have committed.  If a
+# fresh init crosses the image's old 30-second temporary-server boundary, the
+# next container restart otherwise skips account setup permanently.  Recover
+# only a fresh init that this addon explicitly marked in progress; legacy and
+# already-existing datadirs have no marker and are never erased.
+if [ ! -x /scripts/mariadb-image-entrypoint.sh ]; then
+  echo "MariaDB image entrypoint wrapper is missing or not executable; refusing to start" >&2
+  exit 1
+fi
+/scripts/mariadb-image-entrypoint.sh recover "${DATA_DIR}"
 # Signal to roleProbe that this pod is initializing — prevents spurious "primary"
 # reports that would cause KubeBlocks to auto-trigger a switchover.
 rm -f ${DATA_DIR}/.replication-ready
@@ -202,9 +214,24 @@ ROOT_LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${
 INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
 LOCAL=("${ROOT_LOCAL[@]}")
 LIFECYCLE_MARKER="/tmp/.mariadb-startup-lifecycle"
+LIFECYCLE_PENDING_MARKER="${LIFECYCLE_MARKER}.pending"
 PRIMARY_WRITE_COMMIT_LOCK_DIR="${DATA_DIR}/.primary-write-commit-lock"
+PRIMARY_WRITE_PUBLICATION_LOCK_DIR="${DATA_DIR}/.primary-write-publication-lock"
+PRIMARY_WRITE_ACCEPT_PENDING_FILE="${DATA_DIR}/.primary-write-accept-pending"
+PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE="${DATA_DIR}/.primary-write-publication-committed"
 if [ ! -f "${LIFECYCLE_MARKER}" ]; then
-  touch "${LIFECYCLE_MARKER}" 2>/dev/null || true
+  # The pending marker is the retry journal for this container lifecycle.
+  # Persist it before destructive cleanup, and publish the completion marker
+  # only after every stale owner is gone. A child-process death anywhere in
+  # between therefore retries cleanup instead of misclassifying the restart
+  # as a completed same-lifecycle startup.
+  if [ ! -f "${LIFECYCLE_PENDING_MARKER}" ]; then
+    if ! touch "${LIFECYCLE_PENDING_MARKER}" 2>/dev/null || \
+       [ ! -f "${LIFECYCLE_PENDING_MARKER}" ]; then
+      echo "failed to persist pending startup lifecycle identity; refusing stale primary-write lock cleanup" >&2
+      exit 1
+    fi
+  fi
   if [ -f "${DATA_DIR}/.prestop-fence-started" ] || \
      [ -f "${DATA_DIR}/.prestop-fence-complete" ] || \
      [ -f "${DATA_DIR}/.prestop-fence-failed" ]; then
@@ -223,18 +250,36 @@ if [ ! -f "${LIFECYCLE_MARKER}" ]; then
   # publish markers describe the old process, not the new one.
   # Clear them together with the stale preStop fence so startup
   # must re-prove listener exposure and role readiness.
-  rm -f ${DATA_DIR}/.prestop-fence-started \
-    ${DATA_DIR}/.prestop-fence-complete \
-    ${DATA_DIR}/.prestop-fence-failed \
-    ${DATA_DIR}/.prestop-fence-watchdog-active \
-    ${DATA_DIR}/.sql-listener-ready \
-    ${DATA_DIR}/.primary-read-write-ready \
-    ${DATA_DIR}/.replication-ready
+  if ! rm -f ${DATA_DIR}/.prestop-fence-started \
+      ${DATA_DIR}/.prestop-fence-complete \
+      ${DATA_DIR}/.prestop-fence-failed \
+      ${DATA_DIR}/.prestop-fence-watchdog-active \
+      ${DATA_DIR}/.sql-listener-ready \
+      ${DATA_DIR}/.primary-read-write-ready \
+      ${DATA_DIR}/.replication-ready; then
+    echo "failed to clear stale lifecycle publication markers" >&2
+    exit 1
+  fi
   # The lock directory belongs to the previous container process. A live
   # container never removes another invocation's lock; only this new-lifecycle
   # branch is allowed to clear a stale owner after process death.
-  rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}"
-elif [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
+  if ! rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" \
+      "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" || \
+     ! rm -f "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" || \
+     [ -e "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" ] || \
+     [ -e "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" ] || \
+     [ -e "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" ]; then
+    echo "failed to clear stale primary-write lock owners" >&2
+    exit 1
+  fi
+  if ! touch "${LIFECYCLE_MARKER}" 2>/dev/null || \
+     [ ! -f "${LIFECYCLE_MARKER}" ]; then
+    echo "failed to commit startup lifecycle identity after stale lock cleanup" >&2
+    exit 1
+  fi
+fi
+rm -f "${LIFECYCLE_PENDING_MARKER}" 2>/dev/null || true
+if [ -f "${DATA_DIR}/.prestop-fence-started" ]; then
   mkdir -p ${DATA_DIR}/log 2>/dev/null || true
   {
     printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -265,6 +310,16 @@ read_only_is_fail_closed() {
   value="$(read_only_value || true)"
   case "${value}" in
     1|ON|NO_LOCK|NO_LOCK_NO_ADMIN)
+      return 0
+      ;;
+  esac
+  return 1
+}
+read_only_is_writable() {
+  local value
+  value="$(read_only_value || true)"
+  case "${value}" in
+    0|OFF)
       return 0
       ;;
   esac
@@ -513,6 +568,69 @@ force_release_primary_write_commit_lock() {
   # unexpected payload made the owner-private directory non-empty.
   rm -rf "${PRIMARY_WRITE_COMMIT_LOCK_DIR}" 2>/dev/null
 }
+try_acquire_primary_write_publication_lock() {
+  mkdir "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" 2>/dev/null
+}
+acquire_primary_write_publication_lock_for_rollback() {
+  local attempt=0
+  # The syncer endpoint has a 4s operation deadline and the CLI has a bounded
+  # terminal wait. A 7s recovery budget therefore covers a live handler without
+  # approaching the kbagent 60s clamp.
+  while [ "${attempt}" -lt 70 ]; do
+    if try_acquire_primary_write_publication_lock; then
+      prestop_watchdog_log "primary-write-publication-lock rc=0 owner=caller-rollback attempts=${attempt}"
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 0.1
+  done
+  prestop_watchdog_log "primary-write-publication-lock rc=1 owner=live-handler attempts=${attempt} fail_closed=false"
+  return 1
+}
+release_primary_write_publication_lock() {
+  rmdir "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" 2>/dev/null
+}
+force_release_primary_write_publication_lock_after_commit_receipt() {
+  # The exact durable receipt proves the handler has crossed its atomic
+  # publication commit point. Its remaining tail may only clean this lock and
+  # return, so an ambiguous caller may safely finish stale-lock cleanup.
+  rm -rf "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" 2>/dev/null && \
+    [ ! -e "${PRIMARY_WRITE_PUBLICATION_LOCK_DIR}" ]
+}
+primary_write_publication_receipt_matches() {
+  local expected_token="$1"
+  local actual_token
+  [ -n "${expected_token}" ] || return 1
+  [ ! -e "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] || return 1
+  [ -f "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" ] || return 1
+  actual_token="$(cat "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" 2>/dev/null)" || return 1
+  [ "${actual_token}" = "${expected_token}" ]
+}
+recover_committed_primary_write_publication() {
+  local expected_token="$1"
+  local label="${2:-fenced-primary-accept}"
+  primary_write_publication_receipt_matches "${expected_token}" || return 1
+  if ! force_release_primary_write_publication_lock_after_commit_receipt; then
+    prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=committed-receipt-lock-cleanup-failed fail_closed=false"
+    return 3
+  fi
+  prestop_watchdog_log "primary-write-publish label=${label} rc=0 authority=fresh-lease-cas publication=durable-exact-receipt recovery=ambiguous-response"
+  return 0
+}
+persist_primary_write_accept_guard() {
+  local transaction_token="$1"
+  local tmp_file="${PRIMARY_WRITE_ACCEPT_PENDING_FILE}.tmp.$$"
+  [ -n "${transaction_token}" ] || return 1
+  if ! (umask 077 && printf '%s\n' "${transaction_token}" > "${tmp_file}"); then
+    rm -f "${tmp_file}" 2>/dev/null || true
+    return 1
+  fi
+  if ! mv -f "${tmp_file}" "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}"; then
+    rm -f "${tmp_file}" 2>/dev/null || true
+    return 1
+  fi
+  [ "$(cat "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" 2>/dev/null)" = "${transaction_token}" ]
+}
 authoritative_primary_write_commit() {
   local label="${1:-primary-write-commit}"
   local rc
@@ -528,6 +646,32 @@ authoritative_primary_write_commit() {
     return 0
   fi
   prestop_watchdog_log "primary-write-commit label=${label} rc=${rc} authority=rejected"
+  return "${rc}"
+}
+authoritative_primary_write_publish() {
+  local label="${1:-primary-write-publish}"
+  local expected_token="${2:-}"
+  local rc
+  if [ ! -x /tools/syncerctl ]; then
+    prestop_watchdog_log "primary-write-publish label=${label} rc=1 reason=syncerctl-missing"
+    return 1
+  fi
+  timeout 5 /tools/syncerctl --host 127.0.0.1 --port 3601 primary-write-publish \
+    >> "${DATA_DIR}/log/prestop-watchdog.log" 2>&1
+  rc=$?
+  if primary_write_publication_receipt_matches "${expected_token}"; then
+    if ! force_release_primary_write_publication_lock_after_commit_receipt; then
+      prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=committed-receipt-lock-cleanup-failed command_rc=${rc} fail_closed=false"
+      return 3
+    fi
+    prestop_watchdog_log "primary-write-publish label=${label} rc=0 authority=fresh-lease-cas publication=durable-exact-receipt command_rc=${rc}"
+    return 0
+  fi
+  if [ "${rc}" -eq 0 ]; then
+    prestop_watchdog_log "primary-write-publish label=${label} rc=1 reason=exact-durable-receipt-missing"
+    return 1
+  fi
+  prestop_watchdog_log "primary-write-publish label=${label} rc=${rc} authority=rejected"
   return "${rc}"
 }
 rollback_locked_primary_accept() {
@@ -546,10 +690,64 @@ rollback_locked_primary_accept() {
   prestop_watchdog_log "primary-write-commit-cleanup label=${label} reason=${reason} rollback_rc=${rollback_rc} release_rc=${release_rc} fail_closed=false"
   return 3
 }
+rollback_ambiguous_primary_publish() {
+  local label="${1:-fenced-primary-accept}"
+  local reason="${2:-publication-commit-rejected}"
+  local expected_token="${3:-}"
+  local rollback_rc=0
+  local guard_restore_rc=0
+  local publication_release_rc=0
+  local commit_release_rc=0
+
+  if recover_committed_primary_write_publication "${expected_token}" "${label}"; then
+    return 0
+  fi
+
+  # The syncer live handler owns this shared data-volume lock from marker/DB
+  # validation through final DCS CAS and guard removal. On an ambiguous
+  # transport result, wait for that handler to finish (or win the lock before
+  # it starts), then re-guard and roll back while still owning the same lock.
+  # This prevents a late handler from deleting the caller's recovered guard.
+  if ! acquire_primary_write_publication_lock_for_rollback; then
+    if recover_committed_primary_write_publication "${expected_token}" "${label}"; then
+      return 0
+    fi
+    # The bounded wait exceeds the live handler's operation deadline. If no
+    # exact durable receipt exists, the only safe terminal is a restored exact
+    # guard plus the strongest writer fence; a mismatched/stale receipt must
+    # never authorize committed recovery.
+    persist_primary_write_accept_guard "${expected_token}" || guard_restore_rc=1
+    rollback_locked_primary_accept "${label}" "${reason}-publication-lock-timeout" || rollback_rc=$?
+    if [ "$(cat "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" 2>/dev/null)" != "${expected_token}" ]; then
+      guard_restore_rc=2
+    fi
+    prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=publication-lock-timeout rollback_rc=${rollback_rc} guard_restore_rc=${guard_restore_rc} fail_closed=false"
+    return 3
+  fi
+  if recover_committed_primary_write_publication "${expected_token}" "${label}"; then
+    return 0
+  fi
+  if ! persist_primary_write_accept_guard "${expected_token}"; then
+    rollback_rc=1
+  fi
+  rollback_fenced_primary_accept "${label}" "${reason}" || rollback_rc=1
+  release_primary_write_publication_lock || publication_release_rc=1
+  if ! release_primary_write_commit_lock; then
+    commit_release_rc=1
+    force_release_primary_write_commit_lock || commit_release_rc=2
+  fi
+  if [ "${rollback_rc}" -eq 0 ] && \
+     [ "${publication_release_rc}" -eq 0 ] && \
+     [ "${commit_release_rc}" -eq 0 ]; then
+    return 2
+  fi
+  prestop_watchdog_log "primary-write-publish label=${label} rc=3 reason=${reason} rollback_rc=${rollback_rc} publication_release_rc=${publication_release_rc} commit_release_rc=${commit_release_rc} fail_closed=false"
+  return 3
+}
 set_primary_read_write() {
   local label="${1:-primary-read-write}"
   local role_guard="${2:-no-dcs-check}"
-  local accept_rc
+  local accept_rc accept_token publish_recovery_rc
 
   # Do not let any user-facing writer open before all required gates pass.
   # LOCAL is the user-facing root and remains fenced here; INTERNAL_LOCAL is
@@ -588,12 +786,33 @@ set_primary_read_write() {
     return $?
   fi
 
+  # A DCS-guarded accept owns durable HA authority state across addon and
+  # syncer process lifetimes. Ordinary RunCycle promotion must see this marker
+  # and remain fail-closed until this exact caller receives the terminal
+  # primary-write-commit receipt and stages both ready markers, then syncer
+  # removes it inside the RunCycle HA mutex as the final publication step.
+  # Rollback deliberately leaves or recreates it.
+  if [ "${role_guard}" = "require-dcs-primary" ]; then
+    # Each accept owns a new exact transaction token. Clear only the previous
+    # completed receipt while the caller commit lock is held, then atomically
+    # publish the new durable guard before opening any writer plane.
+    if ! rm -f "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" || \
+       [ -e "${PRIMARY_WRITE_PUBLICATION_COMMITTED_FILE}" ]; then
+      rollback_locked_primary_accept "${label}" "stale-publication-receipt-clear"
+      return $?
+    fi
+    accept_token="${POD_NAME:-unknown}:$$:$(date +%s):${RANDOM:-0}"
+    if ! persist_primary_write_accept_guard "${accept_token}"; then
+      rollback_locked_primary_accept "${label}" "accept-pending-publish"
+      return $?
+    fi
+  fi
+
   # Unlock both user-root account planes while global read_only=ON still
   # rejects every user writer.  The authoritative syncer operation is the
-  # final visible commit: under the HA mutex it refreshes DCS, renews the lease
-  # by resourceVersion CAS, opens/readbacks global writes, and publishes both
-  # ready markers before its HTTP response.  Nothing below that response may
-  # unlock or publish, otherwise the next RunCycle could demote/release first.
+  # first authoritative phase: under the HA mutex it refreshes DCS, renews the
+  # lease by resourceVersion CAS, and opens/readbacks global writes. Marker
+  # staging and a second mutex-linearized publication phase follow below.
   if ! unlock_local_root_writes "${label}"; then
     rollback_locked_primary_accept "${label}" "local-root-unlock"
     return $?
@@ -610,6 +829,31 @@ set_primary_read_write() {
     if ! authoritative_primary_write_commit "${label}"; then
       rollback_locked_primary_accept "${label}" "authority-commit-rejected"
       return $?
+    fi
+    # Syncer intentionally leaves both addon-facing markers unpublished. Its
+    # exact success receipt means the handler finished every DCS/database
+    # mutation and delegated publication to this caller. If timeout releases
+    # us while the handler is still alive, this branch is not entered and the
+    # rollback below cannot be crossed by a late server marker.
+    if ! touch "${DATA_DIR}/.primary-read-write-ready" || \
+       ! mark_replication_ready; then
+      rollback_locked_primary_accept "${label}" "ready-publish"
+      return $?
+    fi
+    # Marker staging is not publication: the durable guard keeps roleProbe
+    # closed. Commit visibility with a second bounded syncer operation that
+    # owns the same HA mutex as RunCycle across fresh DCS authority/lease CAS,
+    # exact marker+DB validation, and guard removal. Any error (including an
+    # ambiguous transport timeout after server-side removal) enters a shared
+    # publication lock before recreating the guard and rolling back. The live
+    # handler owns the same lock from validation through actual guard removal,
+    # so caller recovery cannot race a stale server snapshot.
+    if ! authoritative_primary_write_publish "${label}" "${accept_token}"; then
+      publish_recovery_rc=0
+      rollback_ambiguous_primary_publish "${label}" "publication-commit-rejected" "${accept_token}" || publish_recovery_rc=$?
+      if [ "${publish_recovery_rc}" -ne 0 ]; then
+        return "${publish_recovery_rc}"
+      fi
     fi
   else
     if ! "${INTERNAL_LOCAL[@]}" -e "SET GLOBAL read_only = 0;" 2>/dev/null && \
@@ -629,7 +873,7 @@ set_primary_read_write() {
     prestop_watchdog_log "primary-write-commit-lock label=${label} rc=3 reason=release-failed rollback_rc=${accept_rc:-0} fail_closed=false"
     return 3
   fi
-  prestop_watchdog_log "primary-write-accept label=${label} rc=0 required-gates=passed authority-commit-acknowledged=true"
+  prestop_watchdog_log "primary-write-accept label=${label} rc=0 required-gates=passed authority-commit-acknowledged=true publication-commit=ha-mutex"
   return 0
 }
 rollback_fenced_primary_accept() {
@@ -680,9 +924,9 @@ mark_replication_pending() {
   touch ${DATA_DIR}/.replication-pending
 }
 mark_replication_ready() {
-  touch ${DATA_DIR}/.replication-ready
-  touch ${DATA_DIR}/.sql-listener-ready
-  rm -f ${DATA_DIR}/.replication-pending ${DATA_DIR}/.replication-divergence-pending
+  touch "${DATA_DIR}/.replication-ready" || return 1
+  touch "${DATA_DIR}/.sql-listener-ready" || return 1
+  rm -f "${DATA_DIR}/.replication-pending" "${DATA_DIR}/.replication-divergence-pending" || return 1
 }
 mark_replication_divergence_pending() {
   mark_replication_pending
@@ -704,12 +948,21 @@ accept_syncer_primary_promotion_from_replica_path() {
   prestop_watchdog_log "replica-path-accept-dcs-primary label=${label} action=accept-primary-promotion"
 
   # r9 first-red: replica fencing can begin while syncer still reports
-  # secondary, then race with syncer promoting this same Pod. Keep the
-  # global read_only fence ON until the existing full-primary acceptance
-  # takes control. MariaDB read_only is server-global, so turning it OFF here
-  # would also expose ordinary business users, not just kb_internal_root.
+  # secondary, then race with syncer promoting this same Pod. Promotion can
+  # win before set_replica_read_only reaches its first lock operation, so an
+  # rc=2 from that path does not itself prove that global read_only is ON.
+  # Positively establish the fail-closed fence before the existing full-
+  # primary acceptance takes control. MariaDB read_only is server-global, so
+  # turning it OFF here would also expose ordinary business users, not just
+  # kb_internal_root.
   # Syncer's DCS-authoritative local leader heartbeat must instead use its
   # dedicated READ_ONLY ADMIN connection while suppressing binlog output.
+  if ! read_only_is_fail_closed; then
+    if ! set_fail_closed_read_only "${label}-pre-accept"; then
+      prestop_watchdog_log "replica-path-primary-accept-rollback label=${label} rc=1 reason=pre-accept-fence-failed fail_closed=false"
+      return 3
+    fi
+  fi
   # Re-check DCS immediately before the full acceptance to close the role
   # decision window without opening a write window first.
   role="$(query_local_syncer_role || true)"
@@ -1876,7 +2129,7 @@ start_mariadbd_process() {
   # 11.4 AND 11.8), turning fail-closed intent into fail-open on every shipped
   # version. The portable boolean ON is used here; set_fail_closed_read_only
   # still upgrades to NO_LOCK_NO_ADMIN post-start where the engine supports it.
-  docker-entrypoint.sh mariadbd \
+  /scripts/mariadb-image-entrypoint.sh run "${DATA_DIR}" mariadbd \
     --defaults-extra-file=${DATA_DIR}/runtime-overrides.cnf \
     --server-id=${SERVICE_ID} \
     --gtid-domain-id=${SERVICE_ID} \
@@ -2086,6 +2339,7 @@ query_primary_service_server_id() {
 }
 local_primary_role_published() {
   [ ! -f "${DATA_DIR}/master.info" ] && \
+  [ ! -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] && \
   [ -f "${DATA_DIR}/.primary-read-write-ready" ] && \
   [ -f "${DATA_DIR}/.sql-listener-ready" ] && \
   mariadbd_listen_on_all_interfaces
@@ -2110,8 +2364,33 @@ local_has_user_tables() {
   [ "${table_count}" -gt 0 ]
 }
 reconcile_sql_listener_for_syncer_primary_once() {
-  local now primary_sid role primary_ready remote_root_fence master_info listener_wildcard
+  local now primary_sid role primary_ready remote_root_fence master_info listener_wildcard retry_rc
   [ ! -f "${DATA_DIR}/.prestop-fence-started" ] || return 0
+  # A durable accept guard means an earlier exact primary-write transaction
+  # failed closed before publication. While that guard exists, getrole must
+  # continue to report the database truth (secondary/read-only), so waiting
+  # for a published `primary` here creates a permanent self-denying state.
+  # Retry only through the same DCS/lease-CAS commit path that created the
+  # transaction: a non-authoritative member is rejected and rolled back with
+  # the guard preserved, while the member whose HA loop retains the deferred
+  # lease can finish commit+publication. Never remove the guard here.
+  if [ -f "${PRIMARY_WRITE_ACCEPT_PENDING_FILE}" ] && \
+     [ ! -f "${DATA_DIR}/master.info" ]; then
+    prestop_watchdog_log "runtime-primary-accept-retry-begin reason=durable-accept-pending authority=syncer-lease-cas"
+    if mariadbd_listen_on_all_interfaces; then
+      expose_sql_listener_for_primary_role "syncer-primary-accept-pending-retry" "fenced-promotion"
+      retry_rc=$?
+    else
+      set_primary_read_write "syncer-primary-accept-pending-retry" "require-dcs-primary"
+      retry_rc=$?
+    fi
+    if [ "${retry_rc}" -eq 0 ]; then
+      prestop_watchdog_log "runtime-primary-accept-retry-complete authority=syncer-lease-cas"
+      return 0
+    fi
+    prestop_watchdog_log "runtime-primary-accept-retry-defer rc=${retry_rc} guard=preserved"
+    return "${retry_rc}"
+  fi
   # alpha.80 v1 (Helen): the alpha.76 `switchover_fence_active_is_fresh`
   # early-skip has been removed. alpha.79 v1 minimalist deleted the
   # marker writer in switchover.sh, so this check could never observe
@@ -2282,6 +2561,22 @@ reconcile_sql_listener_for_syncer_secondary_once() {
   [ ! -f "${DATA_DIR}/.prestop-fence-started" ] || return 0
   role="$(query_local_syncer_role || true)"
   [ "${role}" = "secondary" ] || return 0
+  # Fresh pod-0 is intentionally published locally before the DCS leader
+  # ConfigMap exists. During that short bootstrap window syncerctl must report
+  # secondary: primary publication is DCS-authoritative. Do not feed that
+  # pre-DCS observation back into the database by fencing the only writable
+  # bootstrap member, or InitializeDCS can no longer discover a leader and the
+  # cluster deadlocks with every member secondary.
+  #
+  # This defer is narrow and fail-closed on uncertainty: it requires the full
+  # local-primary marker/listener contract plus an explicit read_only=OFF
+  # result. During a real switchover syncer demotes the former primary first;
+  # once read_only is ON this guard no longer applies and normal secondary
+  # fencing/follow proceeds.
+  if local_primary_role_published && read_only_is_writable; then
+    prestop_watchdog_log "runtime-secondary-listener-reconcile-defer role=${role} reason=pre-dcs-local-primary-writable"
+    return 0
+  fi
   set_replica_read_only "runtime-secondary-reconcile"
   slave_rejoin_rc=$?
   if [ "${slave_rejoin_rc}" -eq 2 ]; then
