@@ -16,9 +16,11 @@ _trace() { echo "TRACE: $*" >&2; }
 
 _snapshot_file=
 _verify_file=
+_config_get_file=
 
 _cleanup() {
-  rm -f "${_snapshot_file:-}" "${_verify_file:-}" 2>/dev/null || true
+  rm -f "${_snapshot_file:-}" "${_verify_file:-}" \
+    "${_config_get_file:-}" 2>/dev/null || true
 }
 trap '_cleanup' 0
 trap '_cleanup; exit 1' 1 2 15
@@ -217,20 +219,37 @@ if [ -n "$RELOAD_VERIFY_CMD" ]; then
   _get_cmd="$RELOAD_VERIFY_CMD"
 else
   _port="${SERVICE_PORT:-6379}"
-  _get_cmd="timeout 5 valkey-cli --no-auth-warning -h 127.0.0.1 -p $_port"
+  _get_cmd="timeout 5 valkey-cli --no-auth-warning --raw -h 127.0.0.1 -p $_port"
   [ -n "${VALKEY_DEFAULT_PASSWORD:-}" ] && _get_cmd="$_get_cmd -a $VALKEY_DEFAULT_PASSWORD"
   [ -n "${VALKEY_CLI_TLS_ARGS:-}" ] && _get_cmd="$_get_cmd $VALKEY_CLI_TLS_ARGS"
 fi
 
+_config_value=
+_read_config_value() {
+  _rcv_key=$1
+  if [ -z "$_config_get_file" ]; then
+    _config_get_file=$(mktemp "${TMPDIR:-/tmp}/reload-config-get.XXXXXX") || return 1
+  fi
+  : > "$_config_get_file" || return 1
+  if ! $_get_cmd CONFIG GET "$_rcv_key" > "$_config_get_file" 2>/dev/null; then
+    return 1
+  fi
+
+  _rcv_lines=$(awk 'END { print NR }' "$_config_get_file") || return 1
+  [ "$_rcv_lines" -eq 2 ] || return 1
+  _rcv_returned_key=$(sed -n '1p' "$_config_get_file") || return 1
+  [ "$_rcv_returned_key" = "$_rcv_key" ] || return 1
+  _config_value=$(sed -n '2p' "$_config_get_file") || return 1
+}
+
 _run_attested_action_row() {
   _check_deadline
-  _raa_actual=""
-  _raa_actual=$($_get_cmd CONFIG GET "$_target_key" 2>/dev/null | tail -1) || true
-  if [ -z "$_raa_actual" ]; then
+  if ! _read_config_value "$_target_key"; then
     echo "ERROR: updated target ${_target_key} is uncheckable by CONFIG GET" >&2
     echo "retry-safe: yes" >&2
     return 1
   fi
+  _raa_actual=$_config_value
 
   if [ "$_raa_actual" = "$_target_value" ]; then
     _check_live_matches_snapshot || return 1
@@ -261,12 +280,11 @@ _run_attested_action_row() {
   esac
 
   _check_deadline
-  _raa_post=""
-  _raa_post=$($_get_cmd CONFIG GET "$_target_key" 2>/dev/null | tail -1) || true
-  if [ -z "$_raa_post" ]; then
-    echo "VERIFY FAIL: ${_target_key}: CONFIG GET returned empty or failed" >&2
+  if ! _read_config_value "$_target_key"; then
+    echo "VERIFY FAIL: ${_target_key}: CONFIG GET response is missing or malformed" >&2
     return 1
   fi
+  _raa_post=$_config_value
   if [ "$_raa_post" != "$_target_value" ]; then
     echo "VERIFY FAIL: ${_target_key}: runtime='${_raa_post}' desired='${_target_value}'" >&2
     return 1

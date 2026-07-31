@@ -46,12 +46,19 @@ SH
     cat > "${_spec_dir}/verify-cmd.sh" <<'SH'
 #!/bin/sh
 key="$3"
+if [ "$key" = "${VERIFY_FAIL_KEY:-}" ]; then
+  exit 1
+fi
+if [ "$key" = "${VERIFY_ABSENT_KEY:-}" ]; then
+  exit 0
+fi
 if [ "$key" = "${VERIFY_EMPTY_KEY:-}" ]; then
   printf '%s\n\n' "$key"
   exit 0
 fi
-value=$(grep "^${key} " "${APPLIED_VALUES}" 2>/dev/null | tail -1 | cut -d' ' -f2-)
-if [ -z "$value" ]; then
+if grep -q "^${key} " "${APPLIED_VALUES}" 2>/dev/null; then
+  value=$(grep "^${key} " "${APPLIED_VALUES}" | tail -1 | cut -d' ' -f2-)
+else
   value=$(grep "^${key} " "${VERIFY_VALUES}" 2>/dev/null | head -1 | cut -d' ' -f2-)
 fi
 printf '%s\n%s\n' "$key" "$value"
@@ -79,7 +86,8 @@ SH
     rm -rf "${_spec_dir:-}"
     unset CONFIG_FILE RELOAD_PARAM_SCRIPT RELOAD_VERIFY_CMD MAX_WAIT
     unset GLOBAL_DEADLINE MARKER_FILE RELOAD_LOG APPLIED_VALUES VERIFY_VALUES
-    unset VERIFY_EMPTY_KEY FAKE_RELOAD_RC FAKE_STATIC_KEY FAKE_CONFIG_DRIFT
+    unset VERIFY_EMPTY_KEY VERIFY_ABSENT_KEY VERIFY_FAIL_KEY
+    unset FAKE_RELOAD_RC FAKE_STATIC_KEY FAKE_CONFIG_DRIFT
     unset KB_CONFIG_FILES_UPDATED maxmemory MAXMEMORY REAL_SHA256SUM SHA_HOOK
   }
   After "cleanup"
@@ -91,6 +99,10 @@ SH
     _second_rc=$?
     printf 'first_rc=%s second_rc=%s\n' "$_first_rc" "$_second_rc"
     return "$_second_rc"
+  }
+
+  run_empty_row() {
+    bash ../scripts/reload-config.sh "$1" ""
   }
 
   It "applies a file that differs from runtime and verifies the readback"
@@ -134,8 +146,38 @@ CONF
   End
 
   It "fails closed when a changed dynamic target is unreadable despite exact file attestation"
-    export VERIFY_EMPTY_KEY=maxmemory
+    export VERIFY_ABSENT_KEY=maxmemory
     export maxmemory=268435456
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When run bash ../scripts/reload-config.sh maxmemory 268435456
+    The status should be failure
+    The stderr should include "updated target maxmemory is uncheckable"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "accepts an attested idempotent row whose supported runtime value is empty"
+    printf '%s\n' 'notify-keyspace-events ""' > "${CONFIG_FILE}"
+    printf '%s\n' 'notify-keyspace-events ' > "${VERIFY_VALUES}"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When call run_empty_row notify-keyspace-events
+    The status should be success
+    The stderr should include "accepting idempotent no-op"
+    The contents of file "${RELOAD_LOG}" should not include "RELOAD:"
+  End
+
+  It "applies and verifies an attested row that changes a supported value to empty"
+    printf '%s\n' 'save ""' > "${CONFIG_FILE}"
+    printf '%s\n' 'save 900 1' > "${VERIFY_VALUES}"
+    export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
+    When call run_empty_row save
+    The status should be success
+    The stderr should include "pre-check save: diff"
+    The stderr should include "verify save: actual='' expected='' -> ok"
+    The contents of file "${RELOAD_LOG}" should include "RELOAD: save "
+  End
+
+  It "fails closed when CONFIG GET exits unsuccessfully for the attested row"
+    export VERIFY_FAIL_KEY=maxmemory
     export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
     When run bash ../scripts/reload-config.sh maxmemory 268435456
     The status should be failure
@@ -162,7 +204,7 @@ CONF
     printf '%s\n' "bind * -::*" "tcp-backlog 511" "timeout 0" \
       "maxmemory-policy volatile-lru" "maxmemory 268435456" \
       "hash-max-listpack-entries 256" > "${VERIFY_VALUES}"
-    export VERIFY_EMPTY_KEY=io-threads-do-reads
+    export VERIFY_ABSENT_KEY=io-threads-do-reads
     export KB_CONFIG_FILES_UPDATED="${CONFIG_FILE}:$(sha256sum "${CONFIG_FILE}" | awk '{print $1}')"
     When call run_kbagent_rows
     The status should be failure
