@@ -295,6 +295,41 @@ EOF
   fi
 }
 
+query_authoritative_frontends() {
+  local phase="$1"
+  local expected_leader
+
+  query_frontends "${phase}" || return 1
+  parse_frontends "${MYSQL_OUTPUT}" || return 1
+  if [ "${LEADER_COUNT}" -ne 1 ]; then
+    diagnose_failure "leader-not-converged" "true" "1" \
+      "discovery SHOW FRONTENDS has no single leader"
+    return 1
+  fi
+
+  expected_leader="${LEADER_HOST}"
+  query_frontends "${phase}-leader" "${expected_leader}" || return 1
+  parse_frontends "${MYSQL_OUTPUT}" || return 1
+  if [ "${LEADER_COUNT}" -ne 1 ] || [ "${LEADER_HOST}" != "${expected_leader}" ]; then
+    diagnose_failure "leader-endpoint-not-authoritative" "true" "1" \
+      "the discovered leader endpoint did not identify itself as leader"
+    return 1
+  fi
+}
+
+query_known_leader_frontends() {
+  local phase="$1"
+  local expected_leader="$2"
+
+  query_frontends "${phase}" "${expected_leader}" || return 1
+  parse_frontends "${MYSQL_OUTPUT}" || return 1
+  if [ "${LEADER_COUNT}" -ne 1 ] || [ "${LEADER_HOST}" != "${expected_leader}" ]; then
+    diagnose_failure "leader-endpoint-not-authoritative" "true" "1" \
+      "the expected leader endpoint did not identify itself as leader"
+    return 1
+  fi
+}
+
 exact_member_present() {
   local output="$1"
   local expected_host="$2"
@@ -352,14 +387,7 @@ run_leader_transfer() {
 }
 
 wait_for_new_leader() {
-  query_frontends "leader-transfer-query" || return 1
-  parse_frontends "${MYSQL_OUTPUT}" || return 1
-
-  if [ "${LEADER_COUNT}" -ne 1 ]; then
-    diagnose_failure "leader-transfer-not-converged" "true" "1" \
-      "leadership has not converged after the transfer attempt"
-    return 1
-  fi
+  query_authoritative_frontends "leader-transfer-query" || return 1
   if [ -z "${LEAVE_HOST}" ] || [ -z "${LEAVE_PORT}" ]; then
     log "leaving member disappeared while leadership was transferring"
     return 0
@@ -387,13 +415,7 @@ verify_member_absent() {
   local port="$2"
   local leader="$3"
 
-  query_frontends "post-drop-query" "${leader}" || return 1
-  parse_frontends "${MYSQL_OUTPUT}" || return 1
-  if [ "${LEADER_COUNT}" -ne 1 ]; then
-    diagnose_failure "leader-not-converged" "true" "1" \
-      "SHOW FRONTENDS has no leader after DROP FOLLOWER"
-    return 1
-  fi
+  query_known_leader_frontends "post-drop-query" "${leader}" || return 1
   if [ "${TARGET_MATCH_COUNT}" -eq 0 ] && \
       ! exact_member_present "${MYSQL_OUTPUT}" "${host}" "${port}"; then
     log "membership convergence proved: ${host}:${port} is absent"
@@ -411,14 +433,7 @@ member_leave() {
   ACTION_DEADLINE=$((SECONDS + MEMBER_LEAVE_INTERNAL_DEADLINE_SECS))
   validate_required_inputs || return 1
   member_leave_runtime_check || return 1
-  query_frontends "query-frontends" || return 1
-  parse_frontends "${MYSQL_OUTPUT}" || return 1
-
-  if [ "${LEADER_COUNT}" -ne 1 ]; then
-    diagnose_failure "leader-not-converged" "true" "1" \
-      "SHOW FRONTENDS has no leader; refusing memberLeave success or DROP FOLLOWER"
-    return 1
-  fi
+  query_authoritative_frontends "query-frontends" || return 1
 
   log "leaving member: ${LEAVE_HOST}:${LEAVE_PORT}"
   log "current leader: ${LEADER_HOST}"

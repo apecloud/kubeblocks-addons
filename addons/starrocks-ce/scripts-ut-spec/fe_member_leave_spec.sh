@@ -34,57 +34,56 @@ case " $* " in
     count=$((count + 1))
     printf '%s' "${count}" > "${count_file}"
     printf '%s' "$*" > "${fixture_dir}/last-query-args"
-    case "${SCENARIO}:${count}" in
-      query_fail:1) echo "access denied for secret-value" >&2; exit 42 ;;
-      query_hang:1) /bin/sleep 2 ;;
-      empty_snapshot:*) : ;;
-      malformed_snapshot:*) printf 'fe-0\tstarrocks-fe-0.starrocks-fe-headless\t9010\t8030\t9030\t9020\tLEADER\n' ;;
-      duplicate_identity:*)
+    altered="false"
+    transferred="false"
+    [ -f "${fixture_dir}/alter-count" ] && altered="true"
+    [ -f "${fixture_dir}/java-count" ] && transferred="true"
+    case "${SCENARIO}" in
+      query_fail) echo "access denied for secret-value" >&2; exit 42 ;;
+      query_hang) /bin/sleep 2 ;;
+      empty_snapshot) : ;;
+      malformed_snapshot) printf 'fe-0\tstarrocks-fe-0.starrocks-fe-headless\t9010\t8030\t9030\t9020\tLEADER\n' ;;
+      duplicate_identity)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "FOLLOWER"
         ;;
-      multiple_leaders:*)
+      multiple_leaders)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
         ;;
-      already_absent:*)
+      already_absent)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
         ;;
-      prefix_collision:*)
+      prefix_collision)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-20" "starrocks-fe-20.starrocks-fe-headless" "9010" "FOLLOWER"
         ;;
-      non_leader_removed:1|alter_fail:1)
+      non_leader_removed|alter_fail)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
-        frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
+        if [ "${altered}" = "false" ]; then
+          frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
+        fi
         ;;
-      post_drop_identity_change:1)
+      discovery_absent_leader_present)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
-        frontend "fe-2" "starrocks-fe-2.old-headless" "9010" "FOLLOWER"
-        ;;
-      post_drop_identity_change:*)
-        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
-        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
-        frontend "fe-2" "starrocks-fe-2.new-headless" "9011" "FOLLOWER"
-        ;;
-      non_leader_removed:*)
-        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
-        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
-        ;;
-      discovery_stale_after_drop:1)
-        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
-        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
-        frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
-        ;;
-      discovery_stale_after_drop:*)
         case " $* " in
           *" -h starrocks-fe-0.starrocks-fe-headless "*)
-            frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
-            frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+            if [ "${altered}" = "false" ]; then
+              frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
+            fi
+            ;;
+        esac
+        ;;
+      leader_endpoint_stale)
+        case " $* " in
+          *" -h starrocks-fe-0.starrocks-fe-headless "*)
+            frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "FOLLOWER"
+            frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "LEADER"
+            frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
             ;;
           *)
             frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
@@ -93,31 +92,53 @@ case " $* " in
             ;;
         esac
         ;;
-      leader_timeout:*|leader_transfer_fail:*)
+      post_drop_identity_change)
+        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
+        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+        if [ "${altered}" = "true" ]; then
+          frontend "fe-2" "starrocks-fe-2.new-headless" "9011" "FOLLOWER"
+        else
+          frontend "fe-2" "starrocks-fe-2.old-headless" "9010" "FOLLOWER"
+        fi
+        ;;
+      discovery_stale_after_drop)
+        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
+        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+        case " $* " in
+          *" -h starrocks-fe-0.starrocks-fe-headless "*)
+            if [ "${altered}" = "false" ]; then
+              frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
+            fi
+            ;;
+          *)
+            frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
+            ;;
+        esac
+        ;;
+      leader_timeout|leader_transfer_fail)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "FOLLOWER"
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
         frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "LEADER"
         ;;
-      leader_identity_change:1)
-        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "FOLLOWER"
-        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
-        frontend "fe-2" "starrocks-fe-2.old-headless" "9010" "LEADER"
+      leader_identity_change)
+        if [ "${transferred}" = "false" ]; then
+          frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "FOLLOWER"
+          frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+          frontend "fe-2" "starrocks-fe-2.old-headless" "9010" "LEADER"
+        else
+          frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
+          frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
+          if [ "${altered}" = "false" ]; then
+            frontend "fe-2" "starrocks-fe-2.new-headless" "9011" "FOLLOWER"
+          fi
+        fi
         ;;
-      leader_identity_change:2)
-        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
-        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
-        frontend "fe-2" "starrocks-fe-2.new-headless" "9011" "FOLLOWER"
-        ;;
-      leader_identity_change:*)
-        frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
-        frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
-        ;;
-      no_leader:*)
+      no_leader)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "FOLLOWER"
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
         frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
         ;;
-      drop_still_present:*)
+      drop_still_present)
         frontend "fe-0" "starrocks-fe-0.starrocks-fe-headless" "9010" "LEADER"
         frontend "fe-1" "starrocks-fe-1.starrocks-fe-headless" "9010" "FOLLOWER"
         frontend "fe-2" "starrocks-fe-2.starrocks-fe-headless" "9010" "FOLLOWER"
@@ -245,7 +266,7 @@ TIMEOUT_MOCK
     The status should be success
     The stdout should include "member leave completed"
     The stdout should include "ALTER_COUNT=1"
-    The stdout should include "QUERY_COUNT=2"
+    The stdout should include "QUERY_COUNT=3"
   End
 
   It "returns success without ALTER when the member is already absent"
@@ -254,6 +275,16 @@ TIMEOUT_MOCK
     The status should be success
     The stdout should include "already removed"
     The stdout should include "ALTER_COUNT=0"
+    The stdout should include "QUERY_COUNT=2"
+  End
+
+  It "does not trust discovery absence until the leader confirms it"
+    SCENARIO="discovery_absent_leader_present"
+    When call run_member_leave
+    The status should be success
+    The stdout should include "ALTER_COUNT=1"
+    The stdout should include "QUERY_COUNT=3"
+    The stdout should include "member leave completed"
   End
 
   It "does not confuse a longer pod-name prefix for the leaving member"
@@ -300,6 +331,16 @@ TIMEOUT_MOCK
     The stdout should include "ALTER_COUNT=0"
   End
 
+  It "fails closed when the discovered leader endpoint does not identify itself"
+    SCENARIO="leader_endpoint_stale"
+    When call run_member_leave
+    The status should be failure
+    The stderr should include "phase=leader-endpoint-not-authoritative"
+    The stderr should include "retry_safe=true"
+    The stdout should include "QUERY_COUNT=2"
+    The stdout should include "ALTER_COUNT=0"
+  End
+
   It "fails closed when ALTER returns zero but the exact member remains"
     SCENARIO="drop_still_present"
     When call run_member_leave
@@ -314,7 +355,7 @@ TIMEOUT_MOCK
     When call run_member_leave
     The status should be success
     The stdout should include "LAST_QUERY_ARGS=--connect-timeout=5 -N -B -h starrocks-fe-0.starrocks-fe-headless"
-    The stdout should include "QUERY_COUNT=2"
+    The stdout should include "QUERY_COUNT=3"
     The stdout should include "member leave completed"
   End
 
@@ -336,7 +377,7 @@ TIMEOUT_MOCK
     The stderr should include "phase=leader-transfer-not-converged"
     The stderr should include "retry_safe=true"
     The stdout should include "ALTER_COUNT=0"
-    The stdout should include "QUERY_COUNT=2"
+    The stdout should include "QUERY_COUNT=4"
   End
 
   It "drops and verifies the refreshed target endpoint after leader transfer"
@@ -345,7 +386,7 @@ TIMEOUT_MOCK
     The status should be success
     The stdout should include "ALTER_ARGS=--connect-timeout=5 -N -B -h starrocks-fe-0.starrocks-fe-headless -P 9030 -uroot -e ALTER SYSTEM DROP FOLLOWER 'starrocks-fe-2.new-headless:9011'"
     The stdout should include "ALTER_COUNT=1"
-    The stdout should include "QUERY_COUNT=3"
+    The stdout should include "QUERY_COUNT=5"
   End
 
   It "fails closed when SHOW FRONTENDS has not converged on a leader"
