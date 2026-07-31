@@ -49,22 +49,33 @@ its own bounded deadline.
 
 Upgrading the addon definitions does not change an existing Cluster's resolved
 ComponentDefinition or restart its Pods. After upgrading the addon, edit the
-namespace, Cluster name, and OpsRequest name in
+namespace, Cluster name, OpsRequest name, and `serviceVersion` in
 `examples/upgrade-switchover-timeout.yaml`, then run the bounded migration
-verifier:
+verifier. The example pins `4.12.5`; the value must exactly equal the live
+FalkorDB Component's current `spec.serviceVersion`.
 
 ```bash
 ./examples/upgrade-switchover-timeout.sh
 ```
 
-The OpsRequest changes only the `falkordb` component to
-`falkordb-4-1.2.0-alpha.1`; KubeBlocks then recreates its Pods from the new
-definition. Do not patch the resolved Component directly or add `force: true`.
-The verifier does not trust the OpsRequest phase by itself. It returns success
-only after the OpsRequest is `Succeed`, the Component references the new
-definition, every original Pod UID is gone, every replacement Pod is `Ready`,
-and every replacement kbagent has the serialized switchover timeout `-1`.
-It fails after 10 minutes unless `UPGRADE_VERIFY_TIMEOUT_SECONDS` overrides the
+The OpsRequest changes only the `falkordb` component definition. The new main
+definition uses the stable `falkordb-sent-4` prefix for all Sentinel references,
+so an existing replication Cluster keeps its authoritative Sentinel sibling
+without recreating it. Do not patch the resolved Component directly or add
+`force: true`.
+
+The verifier does not trust the OpsRequest phase by itself. Before creation it
+rejects a manifest whose explicit `serviceVersion` differs from the live
+Component. It returns success only after the OpsRequest is `Succeed`, the
+Component references the new definition and the same service version, every
+original Pod UID is gone, every replacement Pod is `Ready`, Pod image names and
+image IDs are unchanged, and every replacement kbagent has the serialized
+switchover timeout `-1`. For replication, the old main Pods must agree on all
+six Sentinel variables, exactly one non-terminating Sentinel sibling must match
+that contract, the same sibling name and UID must remain after the upgrade, and
+every replacement main Pod must preserve the six variables exactly. Standalone
+Pods must have neither that environment contract nor a Sentinel sibling. It
+fails after 10 minutes unless `UPGRADE_VERIFY_TIMEOUT_SECONDS` overrides the
 bounded deadline. Request a switchover only after this verification succeeds.
 
 ### Create

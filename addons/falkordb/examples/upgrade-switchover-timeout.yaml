@@ -10,3 +10,4 @@ spec:
     components:
       - componentName: falkordb
         componentDefinitionName: falkordb-4-1.2.0-alpha.1
+        serviceVersion: "4.12.5"

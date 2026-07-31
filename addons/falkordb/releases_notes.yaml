@@ -2,7 +2,7 @@ releases:
   - version: "1.2.0-alpha.1"
     released_at: ""
     status: "alpha"
-    notes: "Bound standalone switchover execution and publish it under a new ComponentDefinition identity. Existing standalone and replication Clusters must use the shipped Upgrade OpsRequest and bounded readback verifier to recreate the FalkorDB Pods with the new kbagent action timeout."
+    notes: "Bound standalone switchover execution and publish it under a new ComponentDefinition identity. Existing standalone and replication Clusters must use the shipped version-pinned Upgrade OpsRequest and bounded readback verifier to recreate the FalkorDB Pods with the new kbagent action timeout. The new main definition resolves any same-major Sentinel sibling through the stable falkordb-sent-4 prefix."
     git_branch: "main"
     git_tag: ""
     commit_sha: ""
