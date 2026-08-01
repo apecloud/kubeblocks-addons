@@ -22,13 +22,13 @@ spec:
           versionMapping:
           - serviceVersions:
             - "8.4"
-            mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:8.4"
+            mappedValue: "{{ include "mysql.xtrabackup.image84" . }}"
           - serviceVersions:
             - "8.0"
             mappedValue: "{{ include "mysql.xtrabackup.image80" . }}"
           - serviceVersions:
             - "5.7"
-            mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:2.4"
+            mappedValue: "{{ include "mysql.xtrabackup.image57" . }}"
       - name: IMAGE_TAG
         valueFrom:
           versionMapping:
@@ -55,13 +55,13 @@ spec:
           versionMapping:
           - serviceVersions:
             - "8.4"
-            mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:8.4"
+            mappedValue: "{{ include "mysql.xtrabackup.image84" . }}"
           - serviceVersions:
             - "8.0"
             mappedValue: "{{ include "mysql.xtrabackup.image80" . }}"
           - serviceVersions:
             - "5.7"
-            mappedValue: "{{ include "mysql.xtrabackup.repository" . }}:2.4"
+            mappedValue: "{{ include "mysql.xtrabackup.image57" . }}"
       - name: IMAGE_TAG
         valueFrom:
           versionMapping:

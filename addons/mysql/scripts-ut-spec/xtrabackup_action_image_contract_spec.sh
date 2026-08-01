@@ -204,9 +204,9 @@ printf '%s' \"\${lock_per_table_ddl}\""
       for method in xtrabackup xtrabackup-inc; do
         for service_version in 5.7.44 8.0.46 8.4.10; do
           case "$service_version" in
-            5.7.44) expected="docker.io/apecloud/percona-xtrabackup:2.4" ;;
+            5.7.44) expected="docker.io/apecloud/percona-xtrabackup:2.4@sha256:29ab5ecc6f1902b7e8713d5e9d108eeec7d484e1302b63bbcdaad1bc3494eabc" ;;
             8.0.46) expected="docker.io/apecloud/percona-xtrabackup:8.0@sha256:72ef9231ecc7dc1e323e0e7a45d2a93ff2b6fbdb685d6e28570dea9a26f15d6a" ;;
-            8.4.10) expected="docker.io/apecloud/percona-xtrabackup:8.4" ;;
+            8.4.10) expected="docker.io/apecloud/percona-xtrabackup:8.4@sha256:22bfd0eeb3984c75760127316c276c5ccf059ea28a04e7b7ea3f9c60fc2163b6" ;;
           esac
           actual=$(mapped_xtrabackup_image "$template" "$method" "$service_version") || return 1
           [ "$actual" = "$expected" ] || return 1
@@ -240,10 +240,17 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     [ "$(printf '%s\n' "$output" | grep -c '^      - bash$')" -eq 4 ]
   }
 
+  verify_v2_restore_image_contracts() {
+    for action_template in actionset-xtrabackup-v2.yaml actionset-xtrabackup-inc-v2.yaml; do
+      [ "$(action_restore_image "$action_template")" = '$(XTRABACKUP_IMAGE)' ] || return 1
+    done
+    verify_all_action_image_mappings
+  }
+
   It "resolves the exact MySQL 5.7 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 5.7.44
     The status should be success
-    The output should equal "docker.io/apecloud/percona-xtrabackup:2.4"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:2.4@sha256:29ab5ecc6f1902b7e8713d5e9d108eeec7d484e1302b63bbcdaad1bc3494eabc"
   End
 
   It "resolves the exact MySQL 8.0 full-backup Job image"
@@ -255,7 +262,7 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
   It "resolves the exact MySQL 8.4 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.4.10
     The status should be success
-    The output should equal "docker.io/apecloud/percona-xtrabackup:8.4"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:8.4@sha256:22bfd0eeb3984c75760127316c276c5ccf059ea28a04e7b7ea3f9c60fc2163b6"
   End
 
   It "uses the exact MySQL 8.0 image for incremental backup Jobs"
@@ -267,13 +274,13 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
   It "uses the exact MySQL 8.4 image for ORC full-backup Jobs"
     When call resolve_action_image backuppolicytemplate-orc.yaml xtrabackup actionset-xtrabackup-v2.yaml 8.4.10
     The status should be success
-    The output should equal "docker.io/apecloud/percona-xtrabackup:8.4"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:8.4@sha256:22bfd0eeb3984c75760127316c276c5ccf059ea28a04e7b7ea3f9c60fc2163b6"
   End
 
   It "uses the exact MySQL 5.7 image for ORC incremental backup Jobs"
     When call resolve_action_image backuppolicytemplate-orc.yaml xtrabackup-inc actionset-xtrabackup-inc-v2.yaml 5.7.44
     The status should be success
-    The output should equal "docker.io/apecloud/percona-xtrabackup:2.4"
+    The output should equal "docker.io/apecloud/percona-xtrabackup:2.4@sha256:29ab5ecc6f1902b7e8713d5e9d108eeec7d484e1302b63bbcdaad1bc3494eabc"
   End
 
   It "preserves the bash-capable image override in the final MySQL 8.0 Job image"
@@ -290,12 +297,32 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     The error should include "image.xtraBackup.digest80 is required"
   End
 
+  It "fails closed when an immutable xtrabackup image digest is malformed"
+    When call render_template backuppolicytemplate.yaml \
+      --set-string image.xtraBackup.digest80=not-a-digest
+    The status should be failure
+    The error should include "image.xtraBackup.digest80 must be sha256:<64 lowercase hex>"
+  End
+
+  It "fails closed when the immutable MySQL 5.7 image digest is empty"
+    When call render_template backuppolicytemplate.yaml --set-string image.xtraBackup.digest57=
+    The status should be failure
+    The error should include "image.xtraBackup.digest57 is required"
+  End
+
+  It "fails closed when the immutable MySQL 8.4 image digest is malformed"
+    When call render_template backuppolicytemplate.yaml \
+      --set-string image.xtraBackup.digest84=sha256:1234
+    The status should be failure
+    The error should include "image.xtraBackup.digest84 must be sha256:<64 lowercase hex>"
+  End
+
   It "preserves the legacy-image override in the final MySQL 5.7 Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 5.7.44 \
       --set image.xtraBackup.registry=registry.example.com \
       --set image.xtraBackup.repository=team/xtrabackup
     The status should be success
-    The output should equal "registry.example.com/team/xtrabackup:2.4"
+    The output should equal "registry.example.com/team/xtrabackup:2.4@sha256:29ab5ecc6f1902b7e8713d5e9d108eeec7d484e1302b63bbcdaad1bc3494eabc"
   End
 
   It "fails closed when the service version has no xtrabackup image mapping"
@@ -319,6 +346,11 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "keeps every v2 backup and restore script on bash"
     When call verify_v2_action_shells
+    The status should be success
+  End
+
+  It "binds every v2 restore action to the immutable image persisted by its policy mapping"
+    When call verify_v2_restore_image_contracts
     The status should be success
   End
 

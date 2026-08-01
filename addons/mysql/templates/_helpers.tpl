@@ -341,8 +341,24 @@ mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.regi
 {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}
 {{- end -}}
 
+{{- define "mysql.xtrabackup.image" -}}
+{{- $digest := required (printf "image.xtraBackup.%s is required" .digestName) .digest -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $digest) -}}
+{{- fail (printf "image.xtraBackup.%s must be sha256:<64 lowercase hex>" .digestName) -}}
+{{- end -}}
+{{- printf "%s:%s@%s" (include "mysql.xtrabackup.repository" .root) .tag $digest -}}
+{{- end -}}
+
+{{- define "mysql.xtrabackup.image57" -}}
+{{- include "mysql.xtrabackup.image" (dict "root" . "tag" "2.4" "digestName" "digest57" "digest" .Values.image.xtraBackup.digest57) -}}
+{{- end -}}
+
 {{- define "mysql.xtrabackup.image80" -}}
-{{ include "mysql.xtrabackup.repository" . }}:8.0@{{ required "image.xtraBackup.digest80 is required" .Values.image.xtraBackup.digest80 }}
+{{- include "mysql.xtrabackup.image" (dict "root" . "tag" "8.0" "digestName" "digest80" "digest" .Values.image.xtraBackup.digest80) -}}
+{{- end -}}
+
+{{- define "mysql.xtrabackup.image84" -}}
+{{- include "mysql.xtrabackup.image" (dict "root" . "tag" "8.4" "digestName" "digest84" "digest" .Values.image.xtraBackup.digest84) -}}
 {{- end -}}
 
 {{- define "mysql.xtrabackup.minimalRepository" -}}
