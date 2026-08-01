@@ -17,6 +17,7 @@ spec:
   lifecycleActions:
     shardRemove:
       nonBlocking: true
+      timeoutSeconds: 3600
       exec:
         container: mongodb
         command:
@@ -27,4 +28,3 @@ spec:
         matchingKey: primary
       retryPolicy:
         maxRetries: 10
-

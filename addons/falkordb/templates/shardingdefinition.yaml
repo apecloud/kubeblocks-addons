@@ -20,7 +20,7 @@ spec:
   lifecycleActions:
     shardRemove:
       nonBlocking: true
-      timeoutSeconds: 600
+      timeoutSeconds: 3600
       exec:
         container: falkordb-cluster
         command:
