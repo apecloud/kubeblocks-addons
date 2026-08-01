@@ -18,6 +18,7 @@ spec:
     shardRemove:
       # Each attempt is idempotent; the controller tracks non-blocking completion.
       nonBlocking: true
+      timeoutSeconds: 3600
       exec:
         container: mongodb
         command:
