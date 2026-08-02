@@ -270,7 +270,7 @@ spec:
   runtime:
     containers:
       - name: valkey-cluster
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ $.Values.image.pullPolicy | quote }}
         command: ["/scripts/valkey-cluster-server-start.sh"]
         ports:
           - name: valkey-cluster

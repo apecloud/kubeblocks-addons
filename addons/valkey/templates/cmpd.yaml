@@ -520,7 +520,7 @@ spec:
   runtime:
     containers:
       - name: valkey
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ $.Values.image.pullPolicy | quote }}
         # The startup script is responsible for:
         #   1. Writing the dynamic parts of valkey.conf (passwords, replicaof, port)
         #   2. exec-ing valkey-server
@@ -571,7 +571,7 @@ spec:
               - /scripts/valkey-ping.sh
       {{- if $.Values.metrics.enabled }}
       - name: metrics
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
         securityContext:
           runAsNonRoot: true
           runAsUser: 1001

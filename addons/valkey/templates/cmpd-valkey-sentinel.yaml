@@ -200,7 +200,7 @@ spec:
   runtime:
     containers:
       - name: valkey-sentinel
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ $.Values.image.pullPolicy | quote }}
         ports:
           - name: valkey-sentinel
             containerPort: 26379
