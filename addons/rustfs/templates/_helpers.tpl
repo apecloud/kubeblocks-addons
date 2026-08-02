@@ -79,13 +79,6 @@ Define the exact rustfs component definition selector for this chart version
 {{- end -}}
 
 {{/*
-Create a release-scoped name for the pre-upgrade ComponentDefinition retention hook.
-*/}}
-{{- define "rustfs.cmpdRetentionHookName" -}}
-{{- printf "%s-%s-rustfs-cmpd-retain-%s" .Release.Namespace .Release.Name .Chart.Version | replace "." "-" | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
-{{/*
 Define rustfs script template name
 */}}
 {{- define "rustfs.scriptTplName" -}}
