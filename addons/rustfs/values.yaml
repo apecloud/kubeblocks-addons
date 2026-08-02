@@ -28,3 +28,12 @@ certsPath: "/etc/rustfs/certs/"
 ## kblib required values
 extra:
   keepResource: true
+
+## Preserve versioned ComponentDefinitions that leave the regular Helm manifest.
+migration:
+  componentDefinitionRetention:
+    image:
+      registry: docker.io
+      repository: apecloud/kubectl
+      tag: "1.29"
+      pullPolicy: IfNotPresent

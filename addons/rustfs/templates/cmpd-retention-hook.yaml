@@ -1,0 +1,102 @@
+{{- $retention := .Values.migration.componentDefinitionRetention -}}
+{{- if .Release.IsUpgrade -}}
+{{- $hookName := include "rustfs.cmpdRetentionHookName" . -}}
+{{- /* Add every earlier chart-versioned identity here before it leaves the regular manifest. */ -}}
+{{- $legacyComponentDefinitions := list "rustfs-0.1.0" -}}
+{{- $imageRegistry := required "migration.componentDefinitionRetention.image.registry is required" $retention.image.registry -}}
+{{- $imageRepository := required "migration.componentDefinitionRetention.image.repository is required" $retention.image.repository -}}
+{{- $imageTag := required "migration.componentDefinitionRetention.image.tag is required" $retention.image.tag -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $hookName }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-30"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $hookName }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-30"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+rules:
+  - apiGroups:
+      - apps.kubeblocks.io
+    resources:
+      - componentdefinitions
+    verbs:
+      - get
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $hookName }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-20"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $hookName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $hookName }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $hookName }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        {{- include "rustfs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: componentdefinition-retention
+    spec:
+      serviceAccountName: {{ $hookName }}
+      restartPolicy: Never
+      containers:
+        - name: retain-componentdefinitions
+          image: {{ printf "%s/%s:%s" $imageRegistry $imageRepository $imageTag | quote }}
+          imagePullPolicy: {{ $retention.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -ec
+          args:
+            - |
+              for name in "$@"; do
+                state="$(kubectl get componentdefinition.apps.kubeblocks.io "$name" --ignore-not-found -o 'jsonpath={.metadata.name}{"|"}{.metadata.deletionTimestamp}')"
+                if [ -z "$state" ]; then
+                  echo "ComponentDefinition $name is absent; retention is not needed"
+                  continue
+                fi
+                case "$state" in
+                  *'|') object="${state%|}" ;;
+                  *) echo "ComponentDefinition $name is terminating; refusing to treat it as retained" >&2; exit 1 ;;
+                esac
+                kubectl annotate componentdefinition.apps.kubeblocks.io "$object" helm.sh/resource-policy=keep --overwrite
+                retained_state="$(kubectl get componentdefinition.apps.kubeblocks.io "$object" -o 'jsonpath={.metadata.name}{"|"}{.metadata.deletionTimestamp}{"|"}{.metadata.annotations.helm\.sh/resource-policy}')"
+                if [ "$retained_state" != "$object||keep" ]; then
+                  echo "ComponentDefinition $name did not converge to a retained non-terminating object" >&2
+                  exit 1
+                fi
+              done
+            - rustfs-componentdefinition-retention
+            {{- range $legacyComponentDefinitions }}
+            - {{ . | quote }}
+            {{- end }}
+{{- end }}
