@@ -72,10 +72,10 @@ rustfs-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define the exact rustfs component definition selector for this chart version
+Define rustfs component definition regular expression name prefix
 */}}
 {{- define "rustfs.cmpdRegexpPattern" -}}
-^rustfs-{{ .Chart.Version | replace "." "\\." }}$
+^rustfs-
 {{- end -}}
 
 {{/*
