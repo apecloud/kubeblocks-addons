@@ -7,7 +7,8 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
-    - componentDef: rustfs
+    - componentDef: rustfs-{{ .Chart.Version }}
+      serviceVersion: {{ .Chart.AppVersion }}
       name: rustfs
       replicas: {{ .Values.replicas }}
       {{- with .Values.buckets }}
