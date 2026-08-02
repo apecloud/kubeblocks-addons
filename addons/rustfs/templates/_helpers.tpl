@@ -68,14 +68,14 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 Define rustfs component definition name
 */}}
 {{- define "rustfs.cmpdName" -}}
-rustfs-{{ .Chart.Version }}
+rustfs-0.1.0
 {{- end -}}
 
 {{/*
-Define rustfs component definition regular expression name prefix
+Define the exact stable rustfs component definition name pattern
 */}}
 {{- define "rustfs.cmpdRegexpPattern" -}}
-^rustfs-
+^rustfs-0\.1\.0$
 {{- end -}}
 
 {{/*
