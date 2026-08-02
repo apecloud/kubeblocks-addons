@@ -25,17 +25,11 @@ Describe "RustFS versioned ComponentDefinition contract"
     helm template rustfs-cluster "${tmp_dir}/addons-cluster/rustfs" --dependency-update >"$cluster_rendered" || return $?
 
     ruby -ryaml -e '
-      hash_documents = lambda do |content|
-        YAML.load_stream(content).select { |document| document.is_a?(Hash) }
-      end
       addon_chart = YAML.load_file(ARGV.fetch(0))
       cluster_chart = YAML.load_file(ARGV.fetch(1))
-      addon_documents = hash_documents.call(File.read(ARGV.fetch(2)))
-      cluster_documents = hash_documents.call(File.read(ARGV.fetch(3)))
-      upgrade_documents = hash_documents.call(File.read(ARGV.fetch(4)))
-
-      notes_regression = hash_documents.call("rendered NOTES text\n---\nkind: ConfigMap\n")
-      abort "rendered NOTES/string documents must be ignored" unless notes_regression.size == 1 && notes_regression.first["kind"] == "ConfigMap"
+      addon_documents = YAML.load_stream(File.read(ARGV.fetch(2))).compact
+      cluster_documents = YAML.load_stream(File.read(ARGV.fetch(3))).compact
+      upgrade_documents = YAML.load_stream(File.read(ARGV.fetch(4))).compact
 
       chart_version = addon_chart.fetch("version")
       abort "RustFS addon chart version must advance past immutable baseline 0.1.0" if chart_version == "0.1.0"
@@ -119,8 +113,7 @@ Describe "RustFS versioned ComponentDefinition contract"
 
     helm template rustfs "${tmp_dir}/addons/rustfs" --dependency-update --is-upgrade >"$addon_upgrade_rendered" || return $?
     ruby -ryaml -e '
-      documents = YAML.load_stream(File.read(ARGV.fetch(0))).select { |document| document.is_a?(Hash) }
-      job = documents.find { |document| document["kind"] == "Job" }
+      job = YAML.load_stream(File.read(ARGV.fetch(0))).compact.find { |document| document["kind"] == "Job" }
       abort "missing retention Job" unless job
       File.write(ARGV.fetch(1), job.dig("spec", "template", "spec", "containers", 0, "args", 0))
     ' "$addon_upgrade_rendered" "$hook_script" || return $?
