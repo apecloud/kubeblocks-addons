@@ -107,6 +107,34 @@ EOF
       The status should be failure
       The output should include "not Primary, skipping"
     End
+
+    It "treats a TCP timeout as uncertain instead of proof that the peer is absent"
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive
+      The status should be success
+      The output should include "reachability is uncertain"
+      The variable GALERA_PEER_OBSERVATION should equal "uncertain"
+    End
+
+    It "treats an immediate TCP failure as uncertain instead of proof that the peer is absent"
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 1 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive
+      The status should be success
+      The output should include "reachability is uncertain"
+      The variable GALERA_PEER_OBSERVATION should equal "uncertain"
+    End
   End
 
   Describe "_wait_for_primary_peer()"
@@ -151,6 +179,22 @@ EOF
       When call should_bootstrap
       The status should be success
       The output should include "grastate.dat: safe_to_bootstrap=1"
+    End
+
+    It "defers a safe-marked node when peer reachability is uncertain"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 9 1
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Peer state is uncertain"
+      The variable GALERA_BOOTSTRAP_DEFER_REASON should include "peer reachability uncertain"
     End
 
     It "allows non-pod-0 bootstrap when Galera marks it safe after clean shutdown"

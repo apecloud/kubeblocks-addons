@@ -26,19 +26,27 @@ build_cluster_address() {
 # start in join mode with 3306 open, and a TCP-only check would make
 # pod-0 also join → all three deadlocked in non-Primary.
 #
-# Instead, query wsrep_cluster_status on each reachable peer. Only
-# "Primary" means the peer belongs to a functioning cluster.
+# Instead, query wsrep_cluster_status on every peer. Only an explicit
+# non-Primary answer from every remote peer proves that no Primary is visible.
+# A DNS/TCP failure is uncertainty, not evidence that the peer is absent: the
+# failed path may be a network partition hiding a still-writable Primary.
 _any_peer_alive() {
   local quiet="${1:-}"
   local fqdns="${PEER_FQDNS:-}"
-  [ -z "$fqdns" ] && return 1
-  local peer
+  GALERA_PEER_OBSERVATION="uncertain"
+  export GALERA_PEER_OBSERVATION
+  if [ -z "$fqdns" ]; then
+    [ -z "${quiet}" ] && echo "Peer FQDN list is empty; peer reachability is uncertain, treating as possibly alive to avoid split-brain bootstrap."
+    return 0
+  fi
+  local peer remote_peer_count=0 non_primary_peer_count=0
   for peer in $(echo "$fqdns" | tr ',' ' '); do
     # Boundary self-match: "pod-1" must not match "pod-10". Compare the FQDN
     # host segment (up to the first dot) exactly against POD_NAME.
     case "${peer}" in
       "${POD_NAME}."*|"${POD_NAME}") continue ;;
     esac
+    remote_peer_count=$((remote_peer_count + 1))
     if timeout 3 bash -c "echo > /dev/tcp/${peer}/3306" 2>/dev/null; then
       # Port 3306 is open — something is listening. Query wsrep_cluster_status
       # to classify. A refused/dead peer never reaches here (TCP connect
@@ -64,6 +72,8 @@ _any_peer_alive() {
         sleep 1
       done
       if [ "${cluster_status}" = "Primary" ]; then
+        GALERA_PEER_OBSERVATION="primary"
+        export GALERA_PEER_OBSERVATION
         echo "Peer ${peer} is alive with wsrep_cluster_status=Primary."
         return 0
       fi
@@ -75,10 +85,21 @@ _any_peer_alive() {
       fi
       # Non-empty, non-Primary (e.g. non-Primary / Disconnected): a definitive
       # answer that the peer is not in a functioning cluster — safe to skip.
+      non_primary_peer_count=$((non_primary_peer_count + 1))
       [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status=${cluster_status} (not Primary, skipping)."
+    else
+      [ -z "${quiet}" ] && echo "Peer ${peer} TCP reachability is uncertain; treating as possibly alive to avoid split-brain bootstrap."
+      return 0
     fi
   done
-  return 1
+  if [ "${remote_peer_count}" -gt 0 ] \
+    && [ "${non_primary_peer_count}" -eq "${remote_peer_count}" ]; then
+    GALERA_PEER_OBSERVATION="non-primary"
+    export GALERA_PEER_OBSERVATION
+    return 1
+  fi
+  [ -z "${quiet}" ] && echo "No remote peer could be classified; peer reachability is uncertain, treating as possibly alive to avoid split-brain bootstrap."
+  return 0
 }
 
 # Wait until at least one peer has a Primary component before starting
@@ -202,6 +223,13 @@ should_bootstrap() {
     # If any peer is already running, join instead of bootstrapping.
     # This handles single-pod restart and rolling restart correctly.
     if _any_peer_alive; then
+      if [ "${GALERA_PEER_OBSERVATION:-primary}" = "uncertain" ] \
+        && grep -qE "^safe_to_bootstrap:[[:space:]]+1[[:space:]]*$" "${DATA_DIR}/grastate.dat"; then
+        GALERA_BOOTSTRAP_DEFER_REASON="peer reachability uncertain; refuse automatic bootstrap"
+        export GALERA_BOOTSTRAP_DEFER_REASON
+        echo "Peer state is uncertain. Refusing automatic Galera bootstrap until every remote peer is explicitly non-Primary."
+        return 1
+      fi
       echo "Peers alive. ${POD_NAME} will join existing cluster."
       return 1
     fi
