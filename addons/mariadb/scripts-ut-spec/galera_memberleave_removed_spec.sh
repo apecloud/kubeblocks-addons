@@ -12,6 +12,13 @@ Describe "galera memberLeave removal (H10)"
   CMPD_GALERA="${SHELLSPEC_CWD:?}/addons/mariadb/templates/cmpd-galera.yaml"
   CFGMAP_GALERA="${SHELLSPEC_CWD:?}/addons/mariadb/templates/configmap-scripts-galera.yaml"
   SCRIPTS_DIR="${SHELLSPEC_CWD:?}/addons/mariadb/scripts"
+  CHART="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
+
+  It "advances the chart version so the immutable lifecycle-action change gets a new ComponentDefinition name"
+    When run sh -c "awk '\$1 == \"version:\" { print \$2; exit }' '${CHART}'"
+    The status should be success
+    The output should equal "1.2.0-alpha.27"
+  End
 
   It "cmpd-galera declares no memberLeave lifecycle action"
     When run sh -c "grep -E '^[[:space:]]*memberLeave:' '${CMPD_GALERA}' || true"
