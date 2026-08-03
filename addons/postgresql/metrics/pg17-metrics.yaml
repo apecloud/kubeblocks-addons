@@ -20,6 +20,65 @@ pg_replication:
         usage: "GAUGE"
         description: "Instance is master or slave"
 
+pg_stat_bgwriter:
+  query: |
+    /*kb-monitor*/SELECT
+      checkpointer.num_timed AS checkpoints_timed_total,
+      checkpointer.num_requested AS checkpoints_req_total,
+      checkpointer.write_time AS checkpoint_write_time_total,
+      checkpointer.sync_time AS checkpoint_sync_time_total,
+      checkpointer.buffers_written AS buffers_checkpoint_total,
+      bgwriter.buffers_clean AS buffers_clean_total,
+      bgwriter.maxwritten_clean AS maxwritten_clean_total,
+      bgwriter.buffers_alloc AS buffers_alloc_total,
+      io.buffers_backend AS buffers_backend_total,
+      io.buffers_backend_fsync AS buffers_backend_fsync_total,
+      bgwriter.stats_reset AS stats_reset_total
+    FROM pg_catalog.pg_stat_bgwriter AS bgwriter
+    CROSS JOIN pg_catalog.pg_stat_checkpointer AS checkpointer
+    CROSS JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(writes * op_bytes) / current_setting('block_size')::numeric, 0)::bigint AS buffers_backend,
+        COALESCE(SUM(fsyncs), 0) AS buffers_backend_fsync
+      FROM pg_catalog.pg_stat_io
+      WHERE object = 'relation'
+        AND backend_type NOT IN ('background writer', 'checkpointer')
+    ) AS io
+  metrics:
+    - checkpoints_timed_total:
+        usage: "COUNTER"
+        description: "Number of scheduled checkpoints that have been performed"
+    - checkpoints_req_total:
+        usage: "COUNTER"
+        description: "Number of requested checkpoints that have been performed"
+    - checkpoint_write_time_total:
+        usage: "COUNTER"
+        description: "Total time spent writing files during checkpoint processing, in milliseconds"
+    - checkpoint_sync_time_total:
+        usage: "COUNTER"
+        description: "Total time spent synchronizing files during checkpoint processing, in milliseconds"
+    - buffers_checkpoint_total:
+        usage: "COUNTER"
+        description: "Number of buffers written during checkpoints and restartpoints"
+    - buffers_clean_total:
+        usage: "COUNTER"
+        description: "Number of buffers written by the background writer"
+    - maxwritten_clean_total:
+        usage: "COUNTER"
+        description: "Number of times the background writer stopped after writing too many buffers"
+    - buffers_alloc_total:
+        usage: "COUNTER"
+        description: "Number of buffers allocated"
+    - buffers_backend_total:
+        usage: "COUNTER"
+        description: "Number of buffers written directly by backends"
+    - buffers_backend_fsync_total:
+        usage: "COUNTER"
+        description: "Number of fsync calls performed directly by backends"
+    - stats_reset_total:
+        usage: "GAUGE"
+        description: "Time at which the background writer statistics were last reset"
+
 pg_stat_user_tables:
   query: |
     /*kb-monitor*/SELECT
@@ -201,8 +260,8 @@ pg_stat_statements_by_mean_exec_time:
     local_blks_written,
     temp_blks_read,
     temp_blks_written,
-    blk_read_time / 1000 as blk_read_time_seconds,
-    blk_write_time / 1000 as blk_write_time_seconds,
+    shared_blk_read_time / 1000 as blk_read_time_seconds,
+    shared_blk_write_time / 1000 as blk_write_time_seconds,
     wal_records,
     wal_fpi,
     wal_bytes
@@ -346,8 +405,8 @@ pg_stat_statements_by_calls:
     local_blks_written,
     temp_blks_read,
     temp_blks_written,
-    blk_read_time / 1000 as blk_read_time_seconds,
-    blk_write_time / 1000 as blk_write_time_seconds,
+    shared_blk_read_time / 1000 as blk_read_time_seconds,
+    shared_blk_write_time / 1000 as blk_write_time_seconds,
     wal_records,
     wal_fpi,
     wal_bytes

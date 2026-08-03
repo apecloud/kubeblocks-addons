@@ -24,6 +24,14 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 | 8.0 | 8.0.45, 8.0.46 |
 | 8.4 | 8.4.9, 8.4.10 |
 
+MySQL 8.0.46 with MGR is temporarily unsupported because of an upstream Group Replication defect
+([MySQL issue #696](https://github.com/mysql/mysql-server/issues/696)) that can abort the server in
+the IP allowlist path. Support will be restored after an upstream-fixed image passes addon validation.
+Existing MGR users who explicitly selected 8.0.46 should set `serviceVersion: 8.0.45` before their next
+reconcile or upgrade; the MGR 8.0 default now resolves explicitly to 8.0.45. MySQL 8.4.9 and 8.4.10
+also remain available for MGR. Other MySQL 8.0.46 topologies remain supported, including standalone,
+replication, and Orchestrator deployments.
+
 ## Prerequisites
 
 - Kubernetes cluster >= v1.21

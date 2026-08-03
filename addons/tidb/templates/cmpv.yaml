@@ -36,6 +36,13 @@ spec:
         roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.12
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.12
         switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.12
+    - name: "7.1.6-enterprise"
+      serviceVersion: "7.1.6-enterprise"
+      images:
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6
+        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6
+        switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6
   compatibilityRules:
     - compDefs:
         - {{ include "tidb.pd7.cmpdRegexpPattern" . }}
@@ -44,6 +51,7 @@ spec:
         - "7.5.2"
         - "7.1.5"
         - "6.5.12"
+        - "7.1.6-enterprise"
 
 ---
 apiVersion: apps.kubeblocks.io/v1
@@ -84,6 +92,13 @@ spec:
         slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
         postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
         accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
+    - name: "7.1.6-enterprise"
+      serviceVersion: "7.1.6-enterprise"
+      images:
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.enterpriseRepository }}:v7.1.6
+        slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
+        postProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
   compatibilityRules:
     - compDefs:
         - {{ include "tidb.tidb7.cmpdRegexpPattern" . }}
@@ -92,6 +107,7 @@ spec:
         - "7.5.2"
         - "7.1.5"
         - "6.5.12"
+        - "7.1.6-enterprise"
 
 ---
 apiVersion: apps.kubeblocks.io/v1
@@ -124,6 +140,11 @@ spec:
       images:
         tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v6.5.12
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.12
+    - name: "7.1.6-enterprise"
+      serviceVersion: "7.1.6-enterprise"
+      images:
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.enterpriseRepository }}:v7.1.6
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.enterpriseRepository }}:v7.1.6
   compatibilityRules:
     - compDefs:
         - {{ include "tidb.tikv7.cmpdRegexpPattern" . }}
@@ -132,3 +153,4 @@ spec:
         - "7.5.2"
         - "7.1.5"
         - "6.5.12"
+        - "7.1.6-enterprise"

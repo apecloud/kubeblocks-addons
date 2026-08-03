@@ -1,201 +1,709 @@
 #!/usr/bin/env bash
 
-set -x
-set -o errtrace
-set -o nounset
-set -o pipefail
+qdrant_select_target_peer_id_for_shard() {
+  local cluster_info="$1"
+  local collection_cluster_info="$2"
+  local leave_peer_id="$3"
+  local leader_peer_id="$4"
+  local shard_id="$5"
+  local jq_bin="${JQ:-jq}"
 
-load_common_library() {
-  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
+  echo "$cluster_info" | "$jq_bin" -r \
+    --argjson collection "$collection_cluster_info" \
+    --arg leave "$leave_peer_id" \
+    --arg leader "$leader_peer_id" \
+    --argjson shard "$shard_id" \
+    '.result.peers as $peers
+     | ($collection.result // {}) as $distribution
+     | if (((($distribution.local_shards // [])
+              | map(select(.shard_id == $shard))
+              | length) > 0)
+           and (($distribution.peer_id // null) == null))
+       then error("collection cluster response has a local shard without peer_id")
+       else .
+       end
+     | ([
+          (($distribution.local_shards // [])[]?
+           | select(.shard_id == $shard)
+           | $distribution.peer_id),
+          (($distribution.remote_shards // [])[]?
+           | select(.shard_id == $shard)
+           | .peer_id),
+          (($distribution.shard_transfers // [])[]?
+           | select(.shard_id == $shard)
+           | .to)
+        ]
+        | map(select(. != null) | tostring)
+        | unique) as $occupied
+     | def eligible($peer):
+         ($peer != ""
+          and $peer != "null"
+          and $peer != $leave
+          and ($peers | has($peer))
+          and (($occupied | index($peer)) == null));
+       if eligible($leader)
+       then $leader
+       else ($peers
+             | to_entries
+             | map(.key)
+             | map(select(eligible(.)))
+             | .[0] // "")
+       end'
+}
+
+qdrant_peer_id_for_pod() {
+  local cluster_info="$1"
+  local pod_name="$2"
+  local jq_bin="${JQ:-jq}"
+
+  echo "$cluster_info" | "$jq_bin" -r \
+    --arg name "$pod_name" \
+    'def peer_host:
+       (. // "")
+       | sub("^[^:]+://"; "")
+       | split("/")[0]
+       | split(":")[0];
+     .result.peers
+     | to_entries[]
+     | select((.value.uri | peer_host) as $host
+       | ($host == $name or ($host | startswith($name + "."))))
+     | .key'
+}
+
+qdrant_peer_exists() {
+  local cluster_info="$1"
+  local peer_id="$2"
+  local jq_bin="${JQ:-jq}"
+
+  echo "$cluster_info" | "$jq_bin" -e \
+    --arg peer "$peer_id" \
+    '.result.peers | has($peer)' >/dev/null
+}
+
+qdrant_shard_transfer_exists() {
+  local collection_cluster_info="$1"
+  local shard_id="$2"
+  local from_peer_id="$3"
+  local jq_bin="${JQ:-jq}"
+
+  echo "$collection_cluster_info" | "$jq_bin" -e \
+    --argjson shard "$shard_id" \
+    --argjson from "$from_peer_id" \
+    '(.result.shard_transfers // [])
+     | any(.shard_id == $shard and .from == $from)' >/dev/null
+}
+
+qdrant_shard_on_leaving_peer() {
+  local collection_cluster_info="$1"
+  local shard_id="$2"
+  local peer_id="$3"
+  local jq_bin="${JQ:-jq}"
+  local ownership
+
+  ownership="$(echo "$collection_cluster_info" | "$jq_bin" -er \
+    --argjson shard "$shard_id" \
+    --argjson peer "$peer_id" \
+    'if ((.result.remote_shards // [])
+        | any(.peer_id == $peer and .shard_id == $shard)) then
+       "on-leaving-peer"
+     elif ((.result.local_shards // [])
+           | any(.shard_id == $shard)) then
+       if (.result.peer_id | type) == "number" then
+         if .result.peer_id == $peer then "on-leaving-peer" else "off-leaving-peer" end
+       else
+         "unknown-local-peer"
+       end
+     else
+       "off-leaving-peer"
+     end')" || {
+    echo "ERROR: failed to determine shard ${shard_id} ownership from collection cluster info" >&2
+    return 2
+  }
+
+  case "$ownership" in
+    "on-leaving-peer")
+      return 0
+      ;;
+    "off-leaving-peer")
+      return 1
+      ;;
+    *)
+      echo "ERROR: local shard without peer_id for shard ${shard_id}; refusing to infer ownership" >&2
+      return 2
+      ;;
+  esac
+}
+
+qdrant_remaining_on_leaving_count() {
+  local collection_cluster_info="$1"
+  local peer_id="$2"
+  local jq_bin="${JQ:-jq}"
+
+  echo "$collection_cluster_info" | "$jq_bin" -r \
+    --argjson peer "$peer_id" \
+    '[
+       (.result.remote_shards // [])[] | select(.peer_id == $peer)
+     ] | length'
+}
+
+qdrant_transfers_from_leaving_count() {
+  local collection_cluster_info="$1"
+  local peer_id="$2"
+  local jq_bin="${JQ:-jq}"
+
+  echo "$collection_cluster_info" | "$jq_bin" -r \
+    --argjson peer "$peer_id" \
+    '[
+       (.result.shard_transfers // [])[] | select(.from == $peer)
+     ] | length'
+}
+
+qdrant_unique_lines() {
+  awk 'NF && !seen[$0]++'
+}
+
+qdrant_initialize_member_leave_deadline() {
+  local action_seconds="${QDRANT_MEMBER_LEAVE_ACTION_SECONDS:-50}"
+
+  case "$action_seconds" in
+    ''|*[!0-9]*|0)
+      echo "ERROR: QDRANT_MEMBER_LEAVE_ACTION_SECONDS must be an integer between 1 and 50" >&2
+      return 1
+      ;;
+  esac
+  if [ "$action_seconds" -gt 50 ]; then
+    echo "ERROR: QDRANT_MEMBER_LEAVE_ACTION_SECONDS must be an integer between 1 and 50" >&2
+    return 1
+  fi
+
+  qdrant_member_leave_deadline=$((SECONDS + action_seconds))
+}
+
+qdrant_initialize_member_leave_drain_deadline() {
+  local drain_seconds="${QDRANT_MEMBER_LEAVE_WAIT_SECONDS:-20}"
+  local finalize_seconds="${QDRANT_MEMBER_LEAVE_FINALIZE_SECONDS:-10}"
+  local latest_drain_deadline
+  local requested_drain_deadline
+
+  case "$drain_seconds" in
+    ''|*[!0-9]*)
+      echo "ERROR: QDRANT_MEMBER_LEAVE_WAIT_SECONDS must be a non-negative integer" >&2
+      return 1
+      ;;
+  esac
+  case "$finalize_seconds" in
+    ''|*[!0-9]*|0)
+      echo "ERROR: QDRANT_MEMBER_LEAVE_FINALIZE_SECONDS must be a positive integer" >&2
+      return 1
+      ;;
+  esac
+
+  latest_drain_deadline=$((qdrant_member_leave_deadline - finalize_seconds))
+  requested_drain_deadline=$((SECONDS + drain_seconds))
+  if [ "$latest_drain_deadline" -le "$SECONDS" ]; then
+    echo "ERROR: memberLeave action has no budget left for shard drain before peer finalization" >&2
+    return 1
+  fi
+  if [ "$requested_drain_deadline" -lt "$latest_drain_deadline" ]; then
+    qdrant_member_leave_phase_deadline="$requested_drain_deadline"
+  else
+    qdrant_member_leave_phase_deadline="$latest_drain_deadline"
+  fi
+}
+
+qdrant_member_leave_curl() {
+  local curl_timeout="${QDRANT_MEMBER_LEAVE_CURL_TIMEOUT:-5}"
+  local deadline
+  local remaining_seconds
+
+  case "$curl_timeout" in
+    ''|*[!0-9]*|0)
+      echo "ERROR: QDRANT_MEMBER_LEAVE_CURL_TIMEOUT must be a positive integer" >&2
+      return 1
+      ;;
+  esac
+  if [ -z "${qdrant_member_leave_deadline:-}" ]; then
+    echo "ERROR: memberLeave action deadline is not initialized" >&2
+    return 1
+  fi
+
+  deadline="${qdrant_member_leave_phase_deadline:-$qdrant_member_leave_deadline}"
+  remaining_seconds=$((deadline - SECONDS))
+  if [ "$remaining_seconds" -le 0 ]; then
+    echo "ERROR: memberLeave action budget exhausted before Qdrant API call" >&2
+    return 124
+  fi
+  if [ "$curl_timeout" -gt "$remaining_seconds" ]; then
+    curl_timeout="$remaining_seconds"
+  fi
+
+  qdrant_curl -sf --max-time "$curl_timeout" "$@"
+}
+
+qdrant_control_uris_from_cluster_info() {
+  local cluster_info="$1"
+  local jq_bin="${JQ:-jq}"
+
+  echo "$cluster_info" | "$jq_bin" -r \
+    --arg name "$KB_LEAVE_MEMBER_POD_NAME" \
+    'def peer_host:
+       (. // "")
+       | sub("^[^:]+://"; "")
+       | split("/")[0]
+       | split(":")[0];
+     .result.peers
+     | to_entries[]
+     | select(((.value.uri | peer_host) as $host
+       | ($host == $name or ($host | startswith($name + ".")))) | not)
+     | .value.uri
+     | sub(":6335/?$"; ":6333")'
+}
+
+qdrant_collection_cluster_info_from_uri() {
+  local control_endpoint_uri="$1"
+  local col_name="$2"
+
+  qdrant_member_leave_curl "${control_endpoint_uri}/collections/${col_name}/cluster"
+}
+
+qdrant_collection_cluster_info_from_control() {
+  local col_name="$1"
+
+  qdrant_collection_cluster_info_from_uri "$control_uri" "$col_name"
+}
+
+qdrant_collection_cluster_info_from_leaving() {
+  local col_name="$1"
+
+  qdrant_member_leave_curl "${leave_peer_uri}/collections/${col_name}/cluster"
+}
+
+qdrant_leaving_shards_for_collection() {
+  local col_name="$1"
+  local col_cluster_info
+  local control_endpoint_uri
+  local control_endpoint_uris="${control_uris:-$control_uri}"
+  local shard_ids=""
+  local ids
+  local jq_bin="${JQ:-jq}"
+
+  col_cluster_info="$(qdrant_collection_cluster_info_from_leaving "$col_name" 2>/dev/null)" || col_cluster_info=""
+  if [ -n "$col_cluster_info" ]; then
+    ids="$(echo "$col_cluster_info" | "$jq_bin" -r '(.result.local_shards // [])[]? | .shard_id')"
+    if [ -n "$ids" ]; then
+      shard_ids="${shard_ids}${ids}
+"
+    fi
+  else
+    echo "INFO: leaving peer endpoint unavailable for ${col_name}; using control endpoint state" >&2
+  fi
+
+  for control_endpoint_uri in $control_endpoint_uris; do
+    col_cluster_info="$(qdrant_collection_cluster_info_from_uri "$control_endpoint_uri" "$col_name")" || return 1
+    ids="$(echo "$col_cluster_info" | "$jq_bin" -r \
+      --argjson peer "$leave_peer_id" \
+      '(.result.remote_shards // [])[]? | select(.peer_id == $peer) | .shard_id')"
+    if [ -n "$ids" ]; then
+      shard_ids="${shard_ids}${ids}
+"
+    fi
+  done
+
+  printf "%s" "$shard_ids" | qdrant_unique_lines
+}
+
+qdrant_remaining_on_leaving_count_from_all_views() {
+  local col_name="$1"
+  local col_cluster_info
+  local control_endpoint_uri
+  local control_endpoint_uris="${control_uris:-$control_uri}"
+  local shard_ids=""
+  local ids
+  local jq_bin="${JQ:-jq}"
+
+  col_cluster_info="$(qdrant_collection_cluster_info_from_leaving "$col_name" 2>/dev/null)" || col_cluster_info=""
+  if [ -n "$col_cluster_info" ]; then
+    ids="$(echo "$col_cluster_info" | "$jq_bin" -r '(.result.local_shards // [])[]? | .shard_id')"
+    if [ -n "$ids" ]; then
+      shard_ids="${shard_ids}${ids}
+"
+    fi
+  fi
+
+  for control_endpoint_uri in $control_endpoint_uris; do
+    col_cluster_info="$(qdrant_collection_cluster_info_from_uri "$control_endpoint_uri" "$col_name")" || return 1
+    ids="$(echo "$col_cluster_info" | "$jq_bin" -r \
+      --argjson peer "$leave_peer_id" \
+      '(.result.remote_shards // [])[]? | select(.peer_id == $peer) | .shard_id')"
+    if [ -n "$ids" ]; then
+      shard_ids="${shard_ids}${ids}
+"
+    fi
+  done
+
+  printf "%s" "$shard_ids" | qdrant_unique_lines | wc -l | tr -d ' '
+}
+
+qdrant_transfers_from_leaving_count_from_all_controls() {
+  local col_name="$1"
+  local col_cluster_info
+  local control_endpoint_uri
+  local control_endpoint_uris="${control_uris:-$control_uri}"
+  local transfer_ids=""
+  local ids
+  local jq_bin="${JQ:-jq}"
+
+  for control_endpoint_uri in $control_endpoint_uris; do
+    col_cluster_info="$(qdrant_collection_cluster_info_from_uri "$control_endpoint_uri" "$col_name")" || return 1
+    ids="$(echo "$col_cluster_info" | "$jq_bin" -r \
+      --argjson peer "$leave_peer_id" \
+      '(.result.shard_transfers // [])[]?
+       | select(.from == $peer)
+       | "\(.shard_id):\(.from):\(.to)"')"
+    if [ -n "$ids" ]; then
+      transfer_ids="${transfer_ids}${ids}
+"
+    fi
+  done
+
+  printf "%s" "$transfer_ids" | qdrant_unique_lines | wc -l | tr -d ' '
+}
+
+qdrant_collection_cluster_info_for_leaving_shard() {
+  local col_name="$1"
+  local shard_id="$2"
+  local col_cluster_info
+  local fallback_info=""
+  local control_endpoint_uri
+  local control_endpoint_uris="${control_uris:-$control_uri}"
+  local shard_owner_rc
+
+  for control_endpoint_uri in $control_endpoint_uris; do
+    col_cluster_info="$(qdrant_collection_cluster_info_from_uri "$control_endpoint_uri" "$col_name")" || return 1
+    if [ -z "$fallback_info" ]; then
+      fallback_info="$col_cluster_info"
+    fi
+    if qdrant_shard_transfer_exists "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+      printf "%s\n" "$col_cluster_info"
+      return 0
+    fi
+    if qdrant_shard_on_leaving_peer "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+      printf "%s\n" "$col_cluster_info"
+      return 0
+    else
+      shard_owner_rc=$?
+      if [ "$shard_owner_rc" -ne 1 ]; then
+        return 1
+      fi
+    fi
+  done
+
+  printf "%s\n" "$fallback_info"
+}
+
+qdrant_submit_shard_move_if_needed() {
+  local col_name="$1"
+  local shard_id="$2"
+  local col_cluster_info="$3"
+  local move_target_peer_id
+  local move_payload
+  local shard_owner_rc
+
+  if qdrant_shard_transfer_exists "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+    echo "INFO: shard ${shard_id} in ${col_name} is already moving from peer ${leave_peer_id}"
+    return 0
+  fi
+
+  if qdrant_shard_on_leaving_peer "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+    :
+  else
+    shard_owner_rc=$?
+    if [ "$shard_owner_rc" -eq 1 ]; then
+      echo "INFO: shard ${shard_id} in ${col_name} is already off peer ${leave_peer_id}"
+      return 0
+    fi
+    return 1
+  fi
+
+  move_target_peer_id="$(qdrant_select_target_peer_id_for_shard \
+    "$cluster_info" "$col_cluster_info" "$leave_peer_id" "$leader_peer_id" "$shard_id")" || {
+    echo "ERROR: failed to select a safe target for shard ${shard_id} in ${col_name}" >&2
+    return 1
+  }
+  if [ -z "$move_target_peer_id" ]; then
+    echo "ERROR: no surviving peer without shard ${shard_id} in ${col_name}; refusing to reduce replica count" >&2
+    return 1
+  fi
+
+  echo "INFO: move shard ${shard_id} in ${col_name} from peer ${leave_peer_id} to peer ${move_target_peer_id}"
+  move_payload="$(printf '{"move_shard":{"shard_id":%s,"to_peer_id":%s,"from_peer_id":%s}}' \
+    "$shard_id" "$move_target_peer_id" "$leave_peer_id")"
+
+  if qdrant_member_leave_curl -X POST -H "Content-Type: application/json" \
+      -d "$move_payload" \
+      "${control_uri}/collections/${col_name}/cluster"; then
+    return 0
+  fi
+
+  echo "WARN: move_shard request failed for shard ${shard_id} in ${col_name}; checking current state"
+  col_cluster_info="$(qdrant_collection_cluster_info_for_leaving_shard "$col_name" "$shard_id")" || return 1
+  if qdrant_shard_transfer_exists "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+    echo "INFO: shard ${shard_id} in ${col_name} is already moving after failed submit"
+    return 0
+  fi
+  if qdrant_shard_on_leaving_peer "$col_cluster_info" "$shard_id" "$leave_peer_id"; then
+    :
+  else
+    shard_owner_rc=$?
+    if [ "$shard_owner_rc" -eq 1 ]; then
+      echo "INFO: shard ${shard_id} in ${col_name} moved off peer ${leave_peer_id} after failed submit"
+      return 0
+    fi
+    return 1
+  fi
+
+  echo "ERROR: failed to initiate shard ${shard_id} move in ${col_name}"
+  return 1
+}
+
+qdrant_wait_for_collection_drained() {
+  local col_name="$1"
+  local deadline
+  local remaining
+  local remaining_seconds
+  local sleep_seconds
+  local transfers
+
+  deadline="${qdrant_member_leave_phase_deadline:-${qdrant_member_leave_deadline:-$((SECONDS + ${QDRANT_MEMBER_LEAVE_WAIT_SECONDS:-20}))}}"
+  while true; do
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "ERROR: timed out waiting for ${col_name} to drain from peer ${leave_peer_id} before the next state observation"
+      return 1
+    fi
+
+    remaining="$(qdrant_remaining_on_leaving_count_from_all_views "$col_name")" || return 1
+    transfers="$(qdrant_transfers_from_leaving_count_from_all_controls "$col_name")" || return 1
+
+    if [ "$remaining" = "0" ] && [ "$transfers" = "0" ]; then
+      echo "INFO: all shards in collection ${col_name} moved off peer ${leave_peer_id}"
+      return 0
+    fi
+
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "ERROR: timed out waiting for ${col_name} to drain from peer ${leave_peer_id}; remaining=${remaining}, transfers=${transfers}"
+      return 1
+    fi
+
+    remaining_seconds=$((deadline - SECONDS))
+    sleep_seconds="${QDRANT_MEMBER_LEAVE_POLL_SECONDS:-2}"
+    if [ "$sleep_seconds" -gt "$remaining_seconds" ]; then
+      sleep_seconds="$remaining_seconds"
+    fi
+    echo "INFO: waiting for ${col_name} drain from peer ${leave_peer_id}; remaining=${remaining}, transfers=${transfers}"
+    sleep "$sleep_seconds"
+  done
+}
+
+qdrant_move_shards() {
+  local cols
+  local col_count
+  local col_names
+  local col_name
+  local leave_shard_ids
+  local shard_id
+  local col_cluster_info
+
+  if ! cols="$(qdrant_member_leave_curl "${control_uri}/collections")"; then
+    echo "ERROR: failed to list collections from ${control_uri}"
+    return 1
+  fi
+
+  col_count="$(echo "$cols" | "$JQ" -r '.result.collections | length')"
+  if [ "$col_count" -eq 0 ]; then
+    echo "INFO: no collections found in the cluster"
+    return 0
+  fi
+
+  col_names="$(echo "$cols" | "$JQ" -r '.result.collections[].name')"
+  for col_name in $col_names; do
+    leave_shard_ids="$(qdrant_leaving_shards_for_collection "$col_name")" || return 1
+    if [ -z "$leave_shard_ids" ]; then
+      echo "INFO: no shards on leaving peer for collection ${col_name}"
+      qdrant_wait_for_collection_drained "$col_name" || return 1
+      continue
+    fi
+
+    for shard_id in $leave_shard_ids; do
+      col_cluster_info="$(qdrant_collection_cluster_info_for_leaving_shard "$col_name" "$shard_id")" || return 1
+      qdrant_submit_shard_move_if_needed "$col_name" "$shard_id" "$col_cluster_info" || return 1
+    done
+
+    qdrant_wait_for_collection_drained "$col_name" || return 1
+  done
+}
+
+qdrant_remove_peer() {
+  local latest_cluster_info
+
+  latest_cluster_info="$(qdrant_member_leave_curl "${control_uri}/cluster")" || return 1
+  if ! qdrant_peer_exists "$latest_cluster_info" "$leave_peer_id"; then
+    echo "INFO: peer ${leave_peer_id} is already absent from cluster"
+    return 0
+  fi
+
+  echo "INFO: remove peer ${leave_peer_id} from cluster"
+  if qdrant_member_leave_curl -XDELETE "${control_uri}/cluster/peer/${leave_peer_id}"; then
+    echo "INFO: peer ${leave_peer_id} removed successfully"
+    return 0
+  fi
+
+  latest_cluster_info="$(qdrant_member_leave_curl "${control_uri}/cluster")" || return 1
+  if ! qdrant_peer_exists "$latest_cluster_info" "$leave_peer_id"; then
+    echo "INFO: peer ${leave_peer_id} is absent after failed delete response"
+    return 0
+  fi
+
+  echo "ERROR: failed to remove peer ${leave_peer_id} from cluster"
+  return 1
+}
+
+qdrant_load_common_library() {
   common_library_file="/qdrant/scripts/common.sh"
   # shellcheck disable=SC1090
   source "${common_library_file}"
 }
 
-load_common_library
+qdrant_configure_client() {
+  QDRANT_CURL_BIN="${QDRANT_CURL_BIN:-/qdrant/tools/curl}"
+  export QDRANT_CURL_BIN
+  JQ="${JQ:-/qdrant/tools/jq}"
 
-QDRANT_CURL_BIN="${QDRANT_CURL_BIN:-/qdrant/tools/curl}"
-export QDRANT_CURL_BIN
-JQ=/qdrant/tools/jq
-
-if [ "${TLS_ENABLED:-}" = "true" ]; then
-  SCHEME="https"
-  CURL_TLS="-k"
-else
-  SCHEME="http"
-  CURL_TLS=""
-fi
-
-# Use the first live pod from QDRANT_POD_FQDN_LIST as the control plane endpoint.
-# The leaving pod may already be shutting down; admin operations (move shard,
-# DELETE peer) must go through a known-live peer.
-control_fqdn=$(echo "$QDRANT_POD_FQDN_LIST" | tr ',' '\n' | head -1)
-if [ -z "$control_fqdn" ]; then
-  echo "ERROR: QDRANT_POD_FQDN_LIST is empty"
-  exit 1
-fi
-control_uri=${SCHEME}://${control_fqdn}:6333
-
-# Query cluster state from a live peer.
-cluster_info=$(qdrant_curl -sf --max-time 10 ${control_uri}/cluster)
-if [ $? -ne 0 ] || [ -z "$cluster_info" ]; then
-  echo "ERROR: failed to query cluster info from ${control_uri}"
-  exit 1
-fi
-
-# Validate cluster response has a parseable peers object.
-peers_type=$(echo "$cluster_info" | $JQ -r '.result.peers | type' 2>/dev/null)
-if [ $? -ne 0 ] || [ "$peers_type" != "object" ]; then
-  echo "ERROR: cluster response missing or malformed .result.peers (type=${peers_type:-null})"
-  exit 1
-fi
-
-# Log peer URIs for diagnosis before attempting match.
-echo "KB_LEAVE_MEMBER_POD_NAME=${KB_LEAVE_MEMBER_POD_NAME}"
-echo "KB_LEAVE_MEMBER_POD_FQDN=${KB_LEAVE_MEMBER_POD_FQDN}"
-peer_uris=$(echo "$cluster_info" | $JQ -r '.result.peers | to_entries[] | "\(.key): \(.value.uri)"')
-echo "cluster peers:"
-echo "$peer_uris"
-
-# Find the leaving peer's ID by matching KB_LEAVE_MEMBER_POD_NAME in peer URIs.
-# Two-step: first confirm peers is valid (above), then match. Only "valid peers +
-# zero matches" is idempotent exit 0; parse failures always exit 1.
-leave_peer_id=$(echo "$cluster_info" | $JQ -r \
-  --arg name "$KB_LEAVE_MEMBER_POD_NAME" \
-  '.result.peers | to_entries[] | select(.value.uri | contains($name)) | .key')
-jq_rc=$?
-
-if [ $jq_rc -ne 0 ]; then
-  echo "ERROR: jq failed while searching for ${KB_LEAVE_MEMBER_POD_NAME} in peers (rc=${jq_rc})"
-  exit 1
-fi
-
-if [ -z "$leave_peer_id" ]; then
-  echo "member ${KB_LEAVE_MEMBER_POD_NAME} is not in the cluster (not found in peer URIs)"
-  exit 0
-fi
-
-# Guard against multiple matches or non-numeric peer ID.
-peer_count=$(echo "$leave_peer_id" | wc -l | tr -d ' ')
-if [ "$peer_count" -ne 1 ]; then
-  echo "ERROR: expected 1 matching peer for ${KB_LEAVE_MEMBER_POD_NAME}, found ${peer_count}"
-  exit 1
-fi
-if ! [[ "$leave_peer_id" =~ ^[0-9]+$ ]]; then
-  echo "ERROR: leave_peer_id '${leave_peer_id}' is not a valid numeric peer ID"
-  exit 1
-fi
-
-echo "leaving peer: ${KB_LEAVE_MEMBER_POD_NAME}, peer_id=${leave_peer_id}"
-leader_peer_id=$(echo "$cluster_info" | $JQ -r .result.raft_info.leader)
-echo "leader peer_id=${leader_peer_id}"
-
-# The leaving peer's HTTP endpoint for shard queries. KB calls memberLeave
-# before pod termination, so this should be reachable.
-leave_peer_uri=${SCHEME}://${KB_LEAVE_MEMBER_POD_FQDN}:6333
-
-move_shards() {
-    local cols col_count col_names
-
-    cols=$(qdrant_curl -sf ${control_uri}/collections)
-    if [ $? -ne 0 ]; then
-      echo "ERROR: failed to list collections from ${control_uri}"
-      return 1
-    fi
-
-    col_count=$(echo ${cols} | $JQ -r '.result.collections | length')
-    if [[ ${col_count} -eq 0 ]]; then
-        echo "no collections found in the cluster"
-        return
-    fi
-
-    col_names=$(echo ${cols} | $JQ -r '.result.collections[].name')
-    for col_name in ${col_names}; do
-        # Query the leaving peer for its local shards (still alive during memberLeave).
-        local col_cluster_info
-        col_cluster_info=$(qdrant_curl -sf ${leave_peer_uri}/collections/${col_name}/cluster)
-        if [ $? -ne 0 ]; then
-          echo "ERROR: failed to get collection cluster info from leaving peer for ${col_name}"
-          return 1
-        fi
-
-        local leave_shard_ids
-        leave_shard_ids=$(echo ${col_cluster_info} | $JQ -r '.result.local_shards[].shard_id')
-        if [ -z "${leave_shard_ids}" ]; then
-            echo "no local shards on leaving peer for collection ${col_name}"
-            continue
-        fi
-
-        for shard_id in ${leave_shard_ids}; do
-            echo "move shard ${shard_id} in ${col_name} from peer ${leave_peer_id} to peer ${leader_peer_id}"
-            # Submit move_shard via control endpoint (cluster-wide API).
-            qdrant_curl -sf -X POST -H "Content-Type: application/json" \
-                -d '{"move_shard":{"shard_id": '${shard_id}',"to_peer_id": '${leader_peer_id}',"from_peer_id": '${leave_peer_id}}}'' \
-                ${control_uri}/collections/${col_name}/cluster
-            if [ $? -ne 0 ]; then
-              echo "ERROR: failed to initiate shard ${shard_id} move in ${col_name}"
-              return 1
-            fi
-        done
-
-        # Wait for all shards to finish moving off the leaving peer.
-        while true; do
-            col_cluster_info=$(qdrant_curl -sf ${leave_peer_uri}/collections/${col_name}/cluster 2>/dev/null) || true
-            if [ -n "$col_cluster_info" ]; then
-              leave_shard_ids=$(echo ${col_cluster_info} | $JQ -r '.result.local_shards[].shard_id')
-              if [ -z "${leave_shard_ids}" ]; then
-                  echo "all shards in collection ${col_name} have been moved"
-                  break
-              fi
-            else
-              # Leaving peer unreachable during transfer — verify from control endpoint.
-              col_cluster_info=$(qdrant_curl -sf ${control_uri}/collections/${col_name}/cluster)
-              if [ $? -ne 0 ]; then
-                echo "ERROR: cannot check shard status for ${col_name} from either endpoint"
-                return 1
-              fi
-              local remaining
-              remaining=$(echo ${col_cluster_info} | $JQ -r \
-                --arg pid "$leave_peer_id" \
-                '[(.result.remote_shards // [])[] | select(.peer_id == ($pid | tonumber))] | length')
-              if [ "${remaining}" = "0" ]; then
-                echo "all shards in collection ${col_name} moved off peer ${leave_peer_id} (verified from control)"
-                break
-              fi
-              echo "waiting for ${remaining} shards in ${col_name} to finish transfer..."
-            fi
-            sleep 1
-        done
-    done
-}
-
-remove_peer() {
-    echo "remove peer ${leave_peer_id} from cluster"
-    # Use control endpoint — the leaving peer may be unreachable after shard migration.
-    qdrant_curl -sf -v -XDELETE ${control_uri}/cluster/peer/${leave_peer_id}
-    if [ $? -ne 0 ]; then
-      echo "ERROR: failed to remove peer ${leave_peer_id} from cluster"
-      return 1
-    fi
-    echo "peer ${leave_peer_id} removed successfully"
-}
-
-leave_member() {
-    echo "scaling in: move local shards and remove peer from cluster"
-    echo "control endpoint: ${control_uri}"
-    echo "leaving peer: ${KB_LEAVE_MEMBER_POD_NAME} (id=${leave_peer_id}, uri=${leave_peer_uri})"
-    echo "leader peer id: ${leader_peer_id}"
-    move_shards
-    remove_peer
-}
-
-# lock file to prevent concurrent leave_member
-# flock will return 1 if the lock is already held by another process, this is expected
-(
-  flock -n -x 9
-  if [ $? != 0 ]; then
-    echo "member is already in leaving"
-    exit 1
+  if [ "${TLS_ENABLED:-}" = "true" ]; then
+    SCHEME="https"
+    CURL_TLS="-k"
+  else
+    SCHEME="http"
+    CURL_TLS=""
   fi
-  set -o errexit && leave_member
-) 9>/var/lock/qdrant-leave-member-lock
+}
+
+qdrant_select_control_endpoint() {
+  local cluster_info="$1"
+  local surviving_control_uri
+
+  surviving_control_uri="$(qdrant_control_uris_from_cluster_info "$cluster_info" | head -n 1)"
+  if [ -n "$surviving_control_uri" ]; then
+    control_uri="$surviving_control_uri"
+  fi
+}
+
+qdrant_load_cluster_state() {
+  local peers_type
+  local peer_count
+
+  control_host="$(qdrant_bootstrap_service_host)"
+  control_uri="${SCHEME}://${control_host}:6333"
+
+  if ! cluster_info="$(qdrant_member_leave_curl "${control_uri}/cluster")" ||
+      [ -z "$cluster_info" ]; then
+    echo "ERROR: failed to query cluster info from ${control_uri}"
+    return 1
+  fi
+
+  peers_type="$(echo "$cluster_info" | "$JQ" -r '.result.peers | type' 2>/dev/null)"
+  if [ $? -ne 0 ] || [ "$peers_type" != "object" ]; then
+    echo "ERROR: cluster response missing or malformed .result.peers (type=${peers_type:-null})"
+    return 1
+  fi
+
+  qdrant_select_control_endpoint "$cluster_info"
+  if ! cluster_info="$(qdrant_member_leave_curl "${control_uri}/cluster")" ||
+      [ -z "$cluster_info" ]; then
+    echo "ERROR: failed to query cluster info from selected control peer ${control_uri}"
+    return 1
+  fi
+  control_uris="$(qdrant_control_uris_from_cluster_info "$cluster_info")"
+  if [ -z "$control_uris" ]; then
+    echo "ERROR: no surviving qdrant control endpoint is available for leaving peer ${KB_LEAVE_MEMBER_POD_NAME}"
+    return 1
+  fi
+  control_uri="$(printf "%s\n" "$control_uris" | head -n 1)"
+
+  echo "INFO: KB_LEAVE_MEMBER_POD_NAME=${KB_LEAVE_MEMBER_POD_NAME}"
+  echo "INFO: KB_LEAVE_MEMBER_POD_FQDN=${KB_LEAVE_MEMBER_POD_FQDN}"
+  echo "INFO: cluster peers:"
+  echo "$cluster_info" | "$JQ" -r '.result.peers | to_entries[] | "INFO: \(.key): \(.value.uri)"'
+
+  leave_peer_id="$(qdrant_peer_id_for_pod "$cluster_info" "$KB_LEAVE_MEMBER_POD_NAME")"
+  if [ -z "$leave_peer_id" ]; then
+    echo "INFO: member ${KB_LEAVE_MEMBER_POD_NAME} is not in the cluster"
+    return 10
+  fi
+
+  peer_count="$(echo "$leave_peer_id" | wc -l | tr -d ' ')"
+  if [ "$peer_count" -ne 1 ]; then
+    echo "ERROR: expected 1 matching peer for ${KB_LEAVE_MEMBER_POD_NAME}, found ${peer_count}"
+    return 1
+  fi
+  if ! [[ "$leave_peer_id" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: leave_peer_id '${leave_peer_id}' is not a valid numeric peer ID"
+    return 1
+  fi
+
+  leader_peer_id="$(echo "$cluster_info" | "$JQ" -r .result.raft_info.leader)"
+  leave_peer_uri="${SCHEME}://${KB_LEAVE_MEMBER_POD_FQDN}:6333"
+  echo "INFO: leaving peer=${KB_LEAVE_MEMBER_POD_NAME}, peer_id=${leave_peer_id}, uri=${leave_peer_uri}"
+  echo "INFO: leader peer_id=${leader_peer_id}"
+  echo "INFO: control endpoint=${control_uri}"
+  echo "INFO: control endpoints:"
+  printf "%s\n" "$control_uris" | sed 's/^/INFO: - /'
+}
+
+qdrant_leave_member() {
+  echo "INFO: scaling in: move local shards and remove peer from cluster"
+  qdrant_initialize_member_leave_drain_deadline
+  qdrant_move_shards
+  unset qdrant_member_leave_phase_deadline
+  qdrant_remove_peer
+}
+
+qdrant_member_leave_main() {
+  set -o errtrace
+  set -o errexit
+  set -o nounset
+  set -o pipefail
+
+  echo "INFO: memberLeave action started at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  if [ "${QDRANT_MEMBER_LEAVE_XTRACE:-}" = "true" ]; then
+    set -x
+  fi
+  qdrant_load_common_library
+  qdrant_configure_client
+  qdrant_initialize_member_leave_deadline
+
+  set +o errexit
+  qdrant_load_cluster_state
+  rc=$?
+  set -o errexit
+  if [ "$rc" -eq 10 ]; then
+    exit 0
+  fi
+  if [ "$rc" -ne 0 ]; then
+    exit "$rc"
+  fi
+
+  (
+    flock -n -x 9
+    if [ $? -ne 0 ]; then
+      echo "ERROR: memberLeave action is already running for this pod"
+      exit 1
+    fi
+    qdrant_leave_member
+  ) 9>/var/lock/qdrant-leave-member-lock
+}
+
+if [ "${QDRANT_MEMBER_LEAVE_UNIT_TEST:-}" = "true" ]; then
+  return 0 2>/dev/null || exit 0
+fi
+
+qdrant_member_leave_main "$@"

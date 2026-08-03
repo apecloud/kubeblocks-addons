@@ -66,6 +66,7 @@ spec:
       - schemas
       - tables
       - schema_only
+      - conflict_policy
     postReady:
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)

@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -o pipefail
 export WALG_DATASAFED_CONFIG=""
 export WALG_COMPRESSION_METHOD=zstd
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
@@ -48,6 +49,26 @@ backupName=$(getWalGSentinelInfo "wal-g-backup-name")
 
 # 2. fetch base backup
 export DATASAFED_BACKEND_BASE_PATH="${backupRepoPath}"
+
+# Retry guards:
+# - The fully-staged state (.old populated + DATA_DIR absent) means a previous
+#   run completed everything including the final staging mv. Re-running the
+#   fetch would recreate DATA_DIR and the final `mv DATA_DIR DATA_DIR.old`
+#   would then nest the fresh copy INSIDE the existing .old as .old/data —
+#   a silently corrupt, double-size PGDATA. Nothing left to do; exit.
+if [ -d "${DATA_DIR}.old" ] && [ ! -d "${DATA_DIR}" ]; then
+  echo "restore already staged in ${DATA_DIR}.old; nothing to do"
+  exit 0
+fi
+# - Any previously/partially fetched DATA_DIR must be cleared before
+#   re-fetching: wal-g backup-fetch requires an empty destination, and
+#   re-extracting over a partial tree is undefined. This also covers the
+#   DP_RESTORE_TIMESTAMP path, whose completed state leaves DATA_DIR in place.
+if [ -d "${DATA_DIR}" ] && [ -n "$(ls -A "${DATA_DIR}" 2>/dev/null)" ]; then
+  echo "clearing previous (partial) restore in ${DATA_DIR} before re-fetch"
+  rm -rf "${DATA_DIR}"
+fi
+
 mkdir -p ${DATA_DIR};
 wal-g backup-fetch ${DATA_DIR} ${backupName}
 
@@ -109,26 +130,73 @@ if [[ "${IS_REPLICA}" == "true" ]]; then
     exit 1
 fi
 
-# Primary restore: Restore from successful backup (.old directory exists)
-if [[ -d "${DATA_DIR}.old" ]] && [[ ! -d "${DATA_DIR}.failed" ]]; then
-    echo "Restoring data from ${DATA_DIR}.old..."
-    mkdir -p "${DATA_DIR}"
-    mv -f ${DATA_DIR}.old/* ${DATA_DIR}/
-    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
-    echo "Data restore completed successfully"
-fi
+HANDOFF_MARKER=".kb_walg_handoff"
 
-# Recover from failed restore attempt (.failed directory exists)
+function finalize_handoff() {
+    local source_dir="$1"
+    local mode="$2"
+    local marker_path="${DATA_DIR}/${HANDOFF_MARKER}"
+
+    if [[ -d "${source_dir}" ]]; then
+        if [[ -f "${marker_path}" ]]; then
+            if [[ "$(cat "${marker_path}")" != "${mode}" ]] \
+                || [[ -n "$(find "${source_dir}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+                echo "ERROR: WAL-G restore handoff state is inconsistent" >&2
+                exit 1
+            fi
+            rmdir "${source_dir}"
+        else
+            if [[ -d "${DATA_DIR}" ]] \
+                && [[ -n "$(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+                echo "ERROR: PostgreSQL data directory is not empty before WAL-G handoff" >&2
+                exit 1
+            fi
+            printf '%s\n' "${mode}" > "${source_dir}/${HANDOFF_MARKER}"
+            if [[ "${mode}" == "failed" ]]; then
+                rm -f "${source_dir}/recovery.signal"
+            fi
+            rm -rf "${DATA_DIR}"
+            mv "${source_dir}" "${DATA_DIR}"
+        fi
+    elif [[ ! -f "${marker_path}" ]] || [[ "$(cat "${marker_path}")" != "${mode}" ]]; then
+        echo "ERROR: WAL-G restore handoff source is missing" >&2
+        exit 1
+    fi
+
+    if [[ "${mode}" == "failed" ]]; then
+        rm -f "${DATA_DIR}/recovery.signal"
+    fi
+    sync
+    rm -f "${RESTORE_SCRIPT_DIR}/kb_restore.signal"
+}
+
 if [[ -d "${DATA_DIR}.failed" ]]; then
     echo "Recovering from failed restore..."
-    mkdir -p ${DATA_DIR}/
-    mv -f ${DATA_DIR}.failed/* ${DATA_DIR}/
-    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
-    rm -rf ${DATA_DIR}/recovery.signal
+    finalize_handoff "${DATA_DIR}.failed" "failed"
     echo "Failed restore recovery completed"
+elif [[ -d "${DATA_DIR}.old" ]]; then
+    echo "Restoring data from ${DATA_DIR}.old..."
+    finalize_handoff "${DATA_DIR}.old" "normal"
+    echo "Data restore completed successfully"
+elif [[ -f "${DATA_DIR}/${HANDOFF_MARKER}" ]]; then
+    handoff_mode="$(cat "${DATA_DIR}/${HANDOFF_MARKER}")"
+    case "${handoff_mode}" in
+        normal)
+            finalize_handoff "${DATA_DIR}.old" "normal"
+            ;;
+        failed)
+            finalize_handoff "${DATA_DIR}.failed" "failed"
+            ;;
+        *)
+            echo "ERROR: unknown WAL-G restore handoff mode" >&2
+            exit 1
+            ;;
+    esac
+    echo "Data restore handoff completed after retry"
+else
+    echo "ERROR: WAL-G restore handoff source is missing" >&2
+    exit 1
 fi
-
-sync
 EOF
 
 # Replace variables in the generated script
@@ -155,6 +223,9 @@ EOF
 
 # 6. Rename data directory (required by Patroni bootstrap)
 # Patroni expects an empty data directory, so we move the restored data to .old
-# The kb_restore.sh script will move it back during bootstrap
+# The kb_restore.sh script will move it back during bootstrap.
+# Drop any stale .old first: mv into an existing directory would NEST the
+# fresh copy inside it (.old/data) instead of replacing it.
+rm -rf ${DATA_DIR}.old
 mv ${DATA_DIR} ${DATA_DIR}.old
 sync
