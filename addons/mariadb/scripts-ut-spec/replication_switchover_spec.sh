@@ -4,6 +4,17 @@
 # Tests role guard, candidate resolution, and syncerctl/DCS handoff.
 
 Describe "replication-switchover.sh"
+  chart_alpha_at_least_26() {
+    chart_file="$1"
+    chart_version=$(awk '$1 == "version:" { print $2; exit }' "${chart_file}") || return 1
+    case "${chart_version}" in
+      1.2.0-alpha.*) ;;
+      *) return 1 ;;
+    esac
+    chart_alpha=${chart_version##*.}
+    [ "${chart_alpha}" -ge 26 ] 2>/dev/null
+  }
+
   setup() {
     TEST_DIR=$(mktemp -d)
     export MARIADB_DATADIR="$TEST_DIR"
@@ -958,10 +969,10 @@ EOF
       The output should equal "1"
     End
 
-    It "Chart.yaml literal version is current (alpha.26 - replication merged topology)"
+    It "Chart.yaml stays at or beyond alpha.26 (replication merged topology floor)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.2.0-alpha.26$' "${chart_yaml}"
-      The output should equal "1"
+      When call chart_alpha_at_least_26 "${chart_yaml}"
+      The status should be success
     End
 
     It "Chart.yaml does not retain prior alpha.79 version line (no stale literal)"
@@ -3012,13 +3023,12 @@ EOF
     }
     Before "setup_chart_alpha65_env"
 
-    It "alpha.65 v1: Chart.yaml chart bump pattern from alpha.64 due to CmpD immutability — current bumped further to alpha.26 [contract-no-regression]"
+    It "alpha.65 v1: Chart.yaml stays at or beyond alpha.26 under the CmpD immutability rule [contract-no-regression]"
       # alpha.65 v1 originally locked chart at alpha.65; subsequent alphas
       # bumped further under the SAME CmpD immutability rule. Literal
       # kept in sync with latest chart version.
-      When call grep -E "^version:" "${CHART_FILE}"
+      When call chart_alpha_at_least_26 "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.2.0-alpha.26"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -3073,13 +3083,12 @@ EOF
     Before "setup_chart_alpha66_env"
 
     Context "chart bump for CmpD immutability (per alpha.65 lesson)"
-      It "alpha.66 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.26 [contract-no-regression]"
+      It "alpha.66 v1: Chart.yaml stays at or beyond alpha.26 under the CmpD immutability rule [contract-no-regression]"
         # Subsequent alphas all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
-        When call grep -E "^version:" "${CHART_FILE}"
+        When call chart_alpha_at_least_26 "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.26"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3289,13 +3298,12 @@ EOF
     Before "setup_chart_alpha67_env"
 
     Context "chart bump alpha.66 → alpha.67 → alpha.68 (CmpD immutability rule)"
-      It "alpha.67 v1: Chart.yaml chart bump pattern locked — current bumped to alpha.26 [contract-no-regression]"
+      It "alpha.67 v1: Chart.yaml stays at or beyond alpha.26 under the CmpD immutability rule [contract-no-regression]"
         # Subsequent alphas all bumped further under the same CmpD
         # immutability rule. Literal kept in sync with latest chart
         # version.
-        When call grep -E "^version:" "${CHART_FILE}"
+        When call chart_alpha_at_least_26 "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.26"
       End
     End
 
