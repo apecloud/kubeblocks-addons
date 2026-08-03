@@ -31,6 +31,13 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
   CMPD_GALERA="${ADDON_ROOT}/templates/cmpd-galera.yaml"
   SEMISYNC_CFG="${ADDON_ROOT}/config/mariadb-semisync.tpl"
   EFFECT_SCOPE="${ADDON_ROOT}/config/mariadb-config-effect-scope.yaml"
+  CHART="${ADDON_ROOT}/Chart.yaml"
+
+  It "advances the chart version so the immutable reconfigure change gets new ComponentDefinition names"
+    When run sh -c "awk '\$1 == \"version:\" { print \$2; exit }' '${CHART}'"
+    The status should be success
+    The output should equal "1.2.0-alpha.29"
+  End
 
   extract_persisted_helper_body() {
     awk '
