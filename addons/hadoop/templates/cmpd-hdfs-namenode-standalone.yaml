@@ -10,6 +10,9 @@ spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
   serviceKind: hdfs-namenode-standalone
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 1
   exporter:
     containerName: jmx-exporter
     scrapePath: /metrics
@@ -282,11 +285,13 @@ spec:
       volumeName: hdfs-common-config
       namespace: {{ .Release.Namespace }}
       defaultMode: {{ .Values.config.defaultMode }}
+      externalManaged: true
     - name: namenode-config
       template: namenode-standalone-config-template
       volumeName: namenode-config
       namespace: {{ .Release.Namespace }}
       defaultMode: {{ .Values.config.defaultMode }}
+      externalManaged: true
   scripts:
     - name: hadoop-scripts
       template: hadoop-scripts

@@ -5,6 +5,10 @@
 {{- $journalnode_fqdns := printf "qjournal://" }}
 {{- $journalnode_rpc_port := .HDFS_JOURNALNODE_RPC_PORT }}
 {{- $name_node_ids := splitList "," .HDFS_HA_NAMENODE_IDS }}
+{{- $name_node_fqdns := splitList "," .NAMENODE_POD_FQDN_LIST }}
+{{- if ne (len $name_node_ids) (len $name_node_fqdns) }}
+{{- fail "HDFS_HA_NAMENODE_IDS and NAMENODE_POD_FQDN_LIST must have the same number of entries" }}
+{{- end }}
 {{- range $i, $fqdn := $fqnds }}
 {{- $journalnode_fqdns = printf "%s%s:%s" $journalnode_fqdns $fqdn $journalnode_rpc_port }}
 {{- if lt $i (sub (len $fqnds) 1) }}
@@ -30,15 +34,11 @@
     </property> {{- range $nn_ordinal, $nn_id :=
     $name_node_ids }} <property>
         <name>dfs.namenode.rpc-address.{{- $.CLUSTER_NAME }}.{{ $nn_id }}</name>
-        <value>{{- $.CLUSTER_NAME }}-namenode-{{ $nn_ordinal }}.{{- $.CLUSTER_NAME
-    }}-namenode-headless.{{-
-            $.NAMESPACE }}.svc.{{- $.CLUSTER_DOMAIN }}:{{- $.HDFS_NAMENODE_RPC_PORT }}</value>
+        <value>{{ trim (index $name_node_fqdns $nn_ordinal) }}:{{- $.HDFS_NAMENODE_RPC_PORT }}</value>
     </property>
     {{- end }} {{- range $nn_ordinal, $nn_id := $name_node_ids }} <property>
         <name>dfs.namenode.http-address.{{- $.CLUSTER_NAME }}.{{ $nn_id }}</name>
-        <value>{{- $.CLUSTER_NAME }}-namenode-{{ $nn_ordinal }}.{{- $.CLUSTER_NAME
-    }}-namenode-headless.{{-
-            $.NAMESPACE }}.svc.{{- $.CLUSTER_DOMAIN }}:{{- $.HDFS_NAMENODE_HTTP_PORT }}</value>
+        <value>{{ trim (index $name_node_fqdns $nn_ordinal) }}:{{- $.HDFS_NAMENODE_HTTP_PORT }}</value>
     </property>
     {{- end }} <property>
         <name>dfs.namenode.rpc-bind-host</name>

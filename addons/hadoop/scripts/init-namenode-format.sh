@@ -33,6 +33,10 @@ if [[ -z "$NAMESERVICES" ]]; then
   echo "No dfs.nameservices configured (standalone mode), using default format"
   echo "N" | "${HADOOP_HOME}/bin/hdfs" namenode -format
 else
-  echo "Formatting NameNode for nameservice ${NAMESERVICES}"
+  echo "Trying bootstrapStandby before formatting nameservice ${NAMESERVICES}"
+  if "${HADOOP_HOME}/bin/hdfs" namenode -bootstrapStandby -nonInteractive; then
+    echo "bootstrapStandby succeeded, skipping format"
+    exit 0
+  fi
   echo "N" | "${HADOOP_HOME}/bin/hdfs" namenode -format "$NAMESERVICES"
 fi

@@ -24,7 +24,8 @@
             HDFS_HADOOP_TMP_DIR: {{ .Values.hdfs.core.hadoopTmpDir | quote }}
             HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
             HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
-            HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE_PREFIX: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE_INCLUDE_CLUSTER_UID: {{ .Values.hdfs.ha.zookeeper.includeClusterUID | quote }}
             HDFS_JMX_PORT: {{ .Values.hdfs.ports.journalnode.jmx | quote }}
             HDFS_NAMENODE_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
             HDFS_DATANODE_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
@@ -98,7 +99,8 @@
             HDFS_HADOOP_TMP_DIR: {{ .Values.hdfs.core.hadoopTmpDir | quote }}
             HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
             HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
-            HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE_PREFIX: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE_INCLUDE_CLUSTER_UID: {{ .Values.hdfs.ha.zookeeper.includeClusterUID | quote }}
             HDFS_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
             HDFS_NAMENODE_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
             HDFS_DATANODE_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
@@ -189,7 +191,8 @@
             HDFS_HADOOP_TMP_DIR: {{ .Values.hdfs.core.hadoopTmpDir | quote }}
             HDFS_SECURITY_AUTHENTICATION: {{ .Values.hdfs.security.authentication | quote }}
             HDFS_SECURITY_AUTHORIZATION: {{ .Values.hdfs.security.authorization | quote }}
-            HDFS_HA_ZOOKEEPER_PARENT_ZNODE: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE_PREFIX: {{ .Values.hdfs.ha.zookeeper.parentZnodePrefix | quote }}
+            HDFS_HA_ZOOKEEPER_PARENT_ZNODE_INCLUDE_CLUSTER_UID: {{ .Values.hdfs.ha.zookeeper.includeClusterUID | quote }}
             HDFS_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}
             HDFS_NAMENODE_JMX_PORT: {{ .Values.hdfs.ports.namenode.jmx | quote }}
             HDFS_DATANODE_JMX_PORT: {{ .Values.hdfs.ports.datanode.jmx | quote }}

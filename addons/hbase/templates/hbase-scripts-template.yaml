@@ -9,6 +9,8 @@ data:
     {{- .Files.Get "scripts/start-hmaster.sh" | nindent 4 }}
   start-hregionserver.sh: |-
     {{- .Files.Get "scripts/start-hregionserver.sh" | nindent 4 }}
+  hregionserver-member-leave.sh: |-
+    {{- .Files.Get "scripts/hregionserver-member-leave.sh" | nindent 4 }}
   init-hdfs-root-layout.sh: |-
     {{- .Files.Get "scripts/init-hdfs-root-layout.sh" | nindent 4 }}
   check-hmaster-live.sh: |-

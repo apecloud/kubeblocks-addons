@@ -74,7 +74,7 @@
 	"dfs.ha.log-roll.period": int & <=86400 | *120
 
 	// 备用节点检查共享edit日志的时间间隔，单位：毫秒，默认值60000，取值范围0~864000
-	"dfs.ha.tail-edits.period": int & <=864000 | *60000
+	"dfs.ha.tail-edits.period": int & <=864000 | *60
 
 	// DataNode向NameNode发送心跳的时间间隔，单位：秒，默认值10，取值范围3~180
 	"dfs.heartbeat.interval": int & >=3 & <=180 | *10
@@ -131,7 +131,7 @@
 	"dfs.namenode.checkpoint.check.period": int & <=86400 | *60
 
 	// 两个检查点间的时间间隔，单位：秒，默认值3600
-	"dfs.namenode.checkpoint.period": int | *360
+	"dfs.namenode.checkpoint.period": int | *3600
 
 	// 让备NameNode或检查点节点创建检查点的事务数，无论"dfs.namenode.checkpoint.period"是否到达。默认值5000000，取值范围1~10000000000
 	"dfs.namenode.checkpoint.txns": int & >=1 & <=10000000000 | *5000000
@@ -170,7 +170,7 @@
 	"dfs.namenode.heartbeat.recheck-interval": int & >=1000 & <=86400000 | *300000
 
 	// Inode属性插件。默认值com.huawei.hadoop.adapter.hdfs.plugin.HWRangerHdfsAuthorizer
-	"dfs.namenode.inode.attributes.provider.class": string | *"com.huawei.hadoop.adapter.hdfs.plugin.HWRangerHdfsAuthorizer"
+	"dfs.namenode.inode.attributes.provider.class"?: string
 
 	// NameNode扫描待删除块时扫描的DataNode数量占总DN数量的百分比。默认值0.32，取值范围0~1
 	"dfs.namenode.invalidate.work.pct.per.iteration": number | *0.32

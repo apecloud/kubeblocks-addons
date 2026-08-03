@@ -122,11 +122,6 @@
     </property>
 
     <property>
-        <name>hbase.ipc.server.callqueue.type</name>
-        <value>plunger</value>
-    </property>
-
-    <property>
         <name>hbase.master.wait.on.regionservers.timeout</name>
         <value>{{ .HBASE_MASTER_WAIT_ON_REGIONSERVERS_TIMEOUT }}</value>
     </property>
@@ -209,27 +204,6 @@
     <property>
         <name>hbase.security.authorization</name>
         <value>{{ .HBASE_SECURITY_AUTHORIZATION }}</value>
-    </property>
-
-    <property>
-        <name>hbase.unsafe.stream.capability.enforce</name>
-        <value>false</value>
-    </property>
-
-    <property>
-        <name>hbase.master.logcleaner.plugins</name>
-        <value>
-            org.apache.hadoop.hbase.master.cleaner.TimeToLiveLogCleaner,org.apache.hadoop.hbase.master.cleaner.TimeToLiveProcedureWALCleaner,org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner</value>
-    </property>
-
-    <property>
-        <name>hbase.master.hfilecleaner.plugins</name>
-        <value>org.apache.hadoop.hbase.master.cleaner.TimeToLiveHFileCleaner</value>
-    </property>
-
-    <property>
-        <name>hbase.master.procedure.tlogcleaner.plugins</name>
-        <value>org.apache.hadoop.hbase.master.cleaner.TimeToLiveProcedureWALCleaner</value>
     </property>
 
     <property>

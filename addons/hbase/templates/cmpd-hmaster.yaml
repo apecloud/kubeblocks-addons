@@ -142,8 +142,8 @@ spec:
             mountPath: {{ .Values.runtime.hbaseConfDir }}/hbase-env.sh
             subPath: hbase-env.sh
           - name: hbase-config
-            mountPath: {{ .Values.runtime.hbaseConfDir }}/log4j.properties
-            subPath: log4j.properties
+            mountPath: {{ .Values.runtime.hbaseConfDir }}/log4j2.properties
+            subPath: log4j2.properties
           - name: hbase-scripts
             mountPath: {{ .Values.runtime.scriptsDir }}
           - name: hbase-logs
@@ -236,7 +236,10 @@ spec:
           name: hbase-zookeeper
           host: Required
     - name: ZOOKEEPER_CLIENT_PORT
-      value: {{ .Values.hbase.zkClientPort | quote }}
+      valueFrom:
+        serviceRefVarRef:
+          name: hbase-zookeeper
+          port: Required
     - name: ZOOKEEPER_ENDPOINTS
       valueFrom:
         serviceRefVarRef:

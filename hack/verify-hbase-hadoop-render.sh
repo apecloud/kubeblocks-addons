@@ -83,6 +83,122 @@ EOF
   }
 }
 
+# Verifies JournalNode readiness requires a reachable JMX bean with a bound RPC address.
+# Parameters: none.
+# Returns: 0 when valid JMX succeeds and empty or unreachable JMX fails.
+verify_journalnode_probe() {
+  local case_dir="${TMP_DIR}/journalnode-probe"
+  mkdir -p "${case_dir}/bin"
+  cat >"${case_dir}/bin/curl" <<'EOF'
+#!/usr/bin/env bash
+[[ "${MOCK_CURL_RESULT:-success}" == "success" ]] || exit 1
+printf '%s\n' "${MOCK_JMX_RESPONSE:-}"
+EOF
+  chmod +x "${case_dir}/bin/curl"
+
+  PATH="${case_dir}/bin:${PATH}" \
+    MOCK_JMX_RESPONSE='{"beans":[{"HostAndPort":"journalnode-0:8485","ClusterIds":[]}]}' \
+    bash "${ROOT_DIR}/addons/hadoop/scripts/check-journal-status.sh"
+
+  if PATH="${case_dir}/bin:${PATH}" \
+    MOCK_JMX_RESPONSE='{"beans":[{"HostAndPort":"","ClusterIds":[]}]}' \
+    bash "${ROOT_DIR}/addons/hadoop/scripts/check-journal-status.sh"; then
+    echo "expected JournalNode probe to reject an empty HostAndPort" >&2
+    return 1
+  fi
+
+  if PATH="${case_dir}/bin:${PATH}" \
+    MOCK_CURL_RESULT="fail" \
+    bash "${ROOT_DIR}/addons/hadoop/scripts/check-journal-status.sh"; then
+    echo "expected JournalNode probe to reject an unreachable JMX endpoint" >&2
+    return 1
+  fi
+}
+
+# Verifies RegionServer readiness performs the registration query only until a marker is written.
+# Parameters: none.
+# Returns: 0 when the first probe queries HBase and later probes reuse the marker.
+verify_regionserver_readiness_marker() {
+  local case_dir="${TMP_DIR}/regionserver-readiness"
+  local counter_file="${case_dir}/hbase-calls"
+  local marker_file="${case_dir}/pid/report-for-duty.ready"
+  mkdir -p "${case_dir}/bin" "${case_dir}/hbase/bin" "${case_dir}/pid"
+  cat >"${case_dir}/bin/curl" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${case_dir}/hbase/bin/hbase" <<'EOF'
+#!/usr/bin/env bash
+printf 'call\n' >>"${MOCK_HBASE_COUNTER}"
+printf '1 live servers\n  rs.example,16020,123456\n'
+EOF
+  chmod +x "${case_dir}/bin/curl" "${case_dir}/hbase/bin/hbase"
+
+  PATH="${case_dir}/bin:${PATH}" \
+    HBASE_HOME="${case_dir}/hbase" \
+    HBASE_PID_DIR="${case_dir}/pid" \
+    HBASE_REGIONSERVER_PORT="16020" \
+    POD_FQDN="rs.example" \
+    MOCK_HBASE_COUNTER="${counter_file}" \
+    bash "${ROOT_DIR}/addons/hbase/scripts/check-hregionserver-ready.sh"
+
+  [[ -f "${marker_file}" ]] || {
+    echo "expected RegionServer readiness to persist a reportForDuty marker" >&2
+    return 1
+  }
+
+  PATH="${case_dir}/bin:${PATH}" \
+    HBASE_HOME="${case_dir}/hbase" \
+    HBASE_PID_DIR="${case_dir}/pid" \
+    HBASE_REGIONSERVER_PORT="16020" \
+    POD_FQDN="rs.example" \
+    MOCK_HBASE_COUNTER="${counter_file}" \
+    bash "${ROOT_DIR}/addons/hbase/scripts/check-hregionserver-ready.sh"
+
+  [[ "$(wc -l <"${counter_file}" | tr -d ' ')" == "1" ]] || {
+    echo "expected RegionServer readiness to avoid repeated HBase Shell processes" >&2
+    return 1
+  }
+}
+
+# Verifies RegionServer member leave propagates unload failures and restores the balancer.
+# Parameters: none.
+# Returns: 0 when successful unload passes and failed unload returns non-zero.
+verify_regionserver_member_leave() {
+  local case_dir="${TMP_DIR}/regionserver-member-leave"
+  local balance_log="${case_dir}/balance.log"
+  mkdir -p "${case_dir}/hbase/bin"
+  cat >"${case_dir}/hbase/bin/hbase" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "org.apache.hadoop.hbase.util.RegionMover" ]]; then
+  [[ "${MOCK_REGIONMOVER_RESULT:-success}" == "success" ]]
+  exit
+fi
+cat >>"${MOCK_BALANCE_LOG}"
+EOF
+  chmod +x "${case_dir}/hbase/bin/hbase"
+
+  HBASE_HOME="${case_dir}/hbase" \
+    KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
+    MOCK_BALANCE_LOG="${balance_log}" \
+    bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"
+
+  : >"${balance_log}"
+  if HBASE_HOME="${case_dir}/hbase" \
+    KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
+    MOCK_BALANCE_LOG="${balance_log}" \
+    MOCK_REGIONMOVER_RESULT="fail" \
+    bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"; then
+    echo "expected RegionServer member leave to propagate RegionMover failure" >&2
+    return 1
+  fi
+
+  grep -Fq "balance_switch true" "${balance_log}" || {
+    echo "expected RegionServer member leave to restore the balancer" >&2
+    return 1
+  }
+}
+
 cd "${ROOT_DIR}"
 
 prepare_chart addons/hadoop
@@ -91,6 +207,9 @@ prepare_chart addons-cluster/hadoop
 prepare_chart addons-cluster/hbase
 
 verify_hadoop_decommission_host_match
+verify_journalnode_probe
+verify_regionserver_readiness_marker
+verify_regionserver_member_leave
 
 helm template test addons/hadoop > "${TMP_DIR}/hadoop-addon.yaml"
 helm template test addons/hbase > "${TMP_DIR}/hbase-addon.yaml"
@@ -154,11 +273,14 @@ assert_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_NAMENODE_RESOURCE_DU_RESE
 assert_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_DATANODE_DU_RESERVED: "1073741824"'
 assert_not_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_NAMENODE_RESOURCE_DU_RESERVED: "1.073741824e+09"'
 assert_not_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_DATANODE_DU_RESERVED: "1.073741824e+09"'
+assert_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_HA_ZOOKEEPER_PARENT_ZNODE_PREFIX: "/hadoop-ha"'
+assert_contains "${TMP_DIR}/hadoop-cluster.yaml" 'HDFS_HA_ZOOKEEPER_PARENT_ZNODE_INCLUDE_CLUSTER_UID: "true"'
 
 assert_contains "${TMP_DIR}/hbase-addon.yaml" "check-hmaster-live.sh: |-"
 assert_contains "${TMP_DIR}/hbase-addon.yaml" "check-hmaster-ready.sh: |-"
 assert_contains "${TMP_DIR}/hbase-addon.yaml" "check-hregionserver-live.sh: |-"
 assert_contains "${TMP_DIR}/hbase-addon.yaml" "check-hregionserver-ready.sh: |-"
+assert_contains "${TMP_DIR}/hbase-addon.yaml" "hregionserver-member-leave.sh: |-"
 
 assert_contains "${TMP_DIR}/hbase-cluster-default.yaml" "topology: cluster"
 assert_contains "${TMP_DIR}/hbase-cluster-default.yaml" 'HDFS_NAMESERVICE: "hdfs"'
@@ -179,6 +301,10 @@ assert_not_contains "${TMP_DIR}/hbase-cluster-standalone.yaml" 'HBASE_HREGION_ME
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/check-name-status.sh" '_NN_HTTP_PORT="${HDFS_NAMENODE_HTTP_PORT:-9870}"'
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/check-journal-status.sh" '_PORTS="${HDFS_JOURNALNODE_HTTP_PORT:-8480}"'
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/check-data-status.sh" '_PORTS="${HDFS_DATANODE_HTTP_PORT:-9864}"'
+assert_contains "${ROOT_DIR}/addons/hadoop/scripts/check-journal-status.sh" 'curl -fsS --max-time 2'
+assert_contains "${ROOT_DIR}/addons/hadoop/scripts/check-data-status.sh" 'curl -fsS --max-time 2'
+assert_not_contains "${ROOT_DIR}/addons/hadoop/scripts/check-journal-status.sh" 'grep ClusterId) || true'
+assert_not_contains "${ROOT_DIR}/addons/hadoop/scripts/check-data-status.sh" 'grep ClusterId) || true'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/paramsdef-hdfs-common.yaml" 'fileName: core-site.xml'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/paramsdef-hdfs-common-standalone.yaml" 'fileName: core-site.xml'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/paramsdef-hdfs-namenode.yaml" 'fileName: hdfs-site.xml'
@@ -216,13 +342,19 @@ assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-datanode.tpl" '<value>0.0
 assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-datanode.tpl" '<value>0.0.0.0:{{- .HDFS_DATANODE_HTTP_PORT }}</value>'
 assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-datanode.tpl" '<value>0.0.0.0:{{- .HDFS_DATANODE_IPC_PORT }}</value>'
 assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-datanode.tpl" '<value>{{- .HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE }}</value>'
+assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-datanode.tpl" 'NAMENODE_POD_FQDN_LIST'
 assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-datanode-standalone.tpl" '<value>0.0.0.0:{{- .HDFS_DATANODE_DATA_PORT }}</value>'
 assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-datanode-standalone.tpl" '<value>0.0.0.0:{{- .HDFS_DATANODE_HTTP_PORT }}</value>'
 assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-datanode-standalone.tpl" '<value>0.0.0.0:{{- .HDFS_DATANODE_IPC_PORT }}</value>'
 assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-datanode-standalone.tpl" '<value>{{- .HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE }}</value>'
 assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-namenode.tpl" '<value>{{- .HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE }}</value>'
+assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-namenode.tpl" 'NAMENODE_POD_FQDN_LIST'
 assert_contains "${ROOT_DIR}/addons/hadoop/config/hdfs-namenode-standalone.tpl" '<value>{{- .HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE }}</value>'
+assert_contains "${ROOT_DIR}/addons/hadoop/config/hadoop-env.sh.tpl" '-Ddfs.datanode.hostname=${POD_FQDN:-$(hostname -f 2>/dev/null || hostname)}'
+assert_contains "${ROOT_DIR}/addons/hadoop/config/core-site.tpl" 'HDFS_HA_ZOOKEEPER_PARENT_ZNODE_PREFIX'
+assert_contains "${ROOT_DIR}/addons/hadoop/config/core-site.tpl" 'CLUSTER_UID'
 assert_not_contains "${ROOT_DIR}/addons/hadoop/scripts/init-namenode-format.sh" '|| true'
+assert_contains "${ROOT_DIR}/addons/hadoop/scripts/init-namenode-format.sh" 'bootstrapStandby'
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/start-namenode.sh" 'refresh-decommission-state.sh'
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/start-datanode.sh" 'start_unregister_retry_loop'
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/start-datanode.sh" 'initial unregister failed, retrying in background'
@@ -235,6 +367,17 @@ assert_contains "${ROOT_DIR}/addons/hadoop/scripts/refresh-decommission-state.sh
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/refresh-decommission-state.sh" 'touch "${HDFS_DECOMMISSION_REFRESH_PENDING_FILE}"'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode.yaml" 'memberLeave:'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode-standalone.yaml" 'memberLeave:'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode.yaml" 'externalManaged: true'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode-standalone.yaml" 'externalManaged: true'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode.yaml" 'externalManaged: true'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode-standalone.yaml" 'externalManaged: true'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-journalnode.yaml" 'externalManaged: true'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode.yaml" 'minReplicas: 2'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode.yaml" 'maxReplicas: 2'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode-standalone.yaml" 'minReplicas: 1'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode-standalone.yaml" 'maxReplicas: 1'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-journalnode.yaml" 'minReplicas: 3'
+assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode.yaml" 'serviceVersion: "^.*$"'
 assert_not_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode.yaml" 'preStop:'
 assert_not_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode-standalone.yaml" 'preStop:'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode.yaml" 'HDFS_DECOMMISSION_DYNAMIC_EXCLUDE_FILE'
@@ -252,6 +395,20 @@ assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" '<value
 assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" '<value>{{ .HBASE_REGIONSERVER_INFO_PORT }}</value>'
 assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" '<name>hbase.io.compress.lz4.codec</name>'
 assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" '<value>org.apache.hadoop.hbase.io.compress.lz4.Lz4Codec</value>'
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh" 'Waiting for ZooKeeper readiness before starting HMaster...'
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" 'Waiting for ZooKeeper readiness before starting RegionServer...'
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh" "printf 'ruok\\n' >&3"
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" "printf 'ruok\\n' >&3"
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh" 'ZOOKEEPER_ENDPOINTS'
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" 'ZOOKEEPER_ENDPOINTS'
+bash -n "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh"
+bash -n "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh"
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/check-hregionserver-ready.sh" "status 'simple'"
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/check-hregionserver-ready.sh" 'REGIONSERVER_HOST'
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/check-hregionserver-ready.sh" 'report-for-duty.ready'
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" 'rm -f "${HBASE_PID_DIR}/report-for-duty.ready"'
+assert_not_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" 'RegionMover'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'hregionserver-member-leave.sh'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'name: HDFS_NAMENODE_POD_FQDNS_DEFAULT'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'name: HDFS_NAMENODE_POD_FQDNS'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'podFQDNs: Optional'
@@ -265,6 +422,11 @@ assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'na
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'name: HDFS_NAMENODE_POD_FQDNS'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'optional: true'
 assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'podFQDNs: Optional'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'serviceVersion: "^.*$"'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hbase-standalone.yaml" 'serviceVersion: "^.*$"'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hmaster.yaml" 'port: Required'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'port: Required'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hbase-standalone.yaml" 'port: Required'
 assert_not_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode.yaml" 'apiVersion: v1'
 assert_not_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode-standalone.yaml" 'apiVersion: v1'
 assert_not_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode.yaml" 'apiVersion: v1'
@@ -284,6 +446,15 @@ assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-standalone.tpl" '<va
 assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-standalone.tpl" '<value>{{ .HBASE_REGIONSERVER_INFO_PORT }}</value>'
 assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-standalone.tpl" '<name>hbase.io.compress.lz4.codec</name>'
 assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-standalone.tpl" '<value>org.apache.hadoop.hbase.io.compress.lz4.Lz4Codec</value>'
+assert_not_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" 'hbase.ipc.server.callqueue.type'
+assert_not_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" 'hbase.unsafe.stream.capability.enforce'
+assert_not_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" 'hbase.master.logcleaner.plugins'
+assert_not_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" 'hbase.master.hfilecleaner.plugins'
+assert_not_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" 'hbase.master.procedure.tlogcleaner.plugins'
+assert_not_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-standalone.tpl" 'hbase.unsafe.stream.capability.enforce'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/hbase-cluster-config-template.yaml" 'log4j2.properties'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/hbase-standalone-config-template.yaml" 'log4j2.properties'
+assert_contains "${ROOT_DIR}/addons/hbase/config/log4j2.properties" 'RollingRandomAccessFile'
 assert_contains "${ROOT_DIR}/addons/hbase/config/hdfs-common-site.tpl" 'org.apache.hadoop.hbase.io.compress.lz4.Lz4Codec'
 
 echo "render verification passed"

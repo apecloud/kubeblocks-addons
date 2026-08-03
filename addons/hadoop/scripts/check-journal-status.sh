@@ -12,12 +12,12 @@ set -o pipefail
 # Turn on traces, useful while debugging.
 set -o xtrace
 
-# Check if datanode registered with the namenode and got non-null cluster ID.
 _PORTS="${HDFS_JOURNALNODE_HTTP_PORT:-8480}"
 _URL_PATH="jmx?qry=Hadoop:service=JournalNode,name=JournalNodeInfo"
-_CLUSTER_ID=""
 for _PORT in $_PORTS; do
-  _CLUSTER_ID+=$(curl -s http://localhost:${_PORT}/$_URL_PATH |  \
-      grep ClusterId) || true
+  _RESPONSE="$(curl -fsS --max-time 2 "http://localhost:${_PORT}/${_URL_PATH}")"
+  if grep -Eq '"HostAndPort"[[:space:]]*:[[:space:]]*"[^"]+"' <<< "${_RESPONSE}"; then
+    exit 0
+  fi
 done
-echo $_CLUSTER_ID | grep -q -v null
+exit 1

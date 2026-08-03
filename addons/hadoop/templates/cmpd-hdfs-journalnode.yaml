@@ -10,6 +10,9 @@ spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
   serviceKind: hdfs-journalnode
+  replicasLimit:
+    minReplicas: 3
+    maxReplicas: 16384
   exporter:
     containerName: jmx-exporter
     scrapePath: /metrics
@@ -166,6 +169,10 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: NAMESPACE
       valueFrom:
         clusterVarRef:
@@ -203,11 +210,13 @@ spec:
       volumeName: hdfs-common-config
       namespace: {{ .Release.Namespace }}
       defaultMode: {{ .Values.config.defaultMode }}
+      externalManaged: true
     - name: journalnode-config
       template: journalnode-config-template
       volumeName: journalnode-config
       namespace: {{ .Release.Namespace }}
       defaultMode: {{ .Values.config.defaultMode }}
+      externalManaged: true
   scripts:
     - name: hadoop-scripts
       template: hadoop-scripts

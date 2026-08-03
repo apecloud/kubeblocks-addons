@@ -34,13 +34,44 @@ case "${cmd}" in
     esac
     ;;
   namenode)
-    if [[ "${1:-}" != "-format" ]]; then
+    case "${1:-}" in
+      -format)
+        if [[ "${MOCK_FORMAT_RESULT:-success}" == "fail" ]]; then
+          exit 1
+        fi
+        printf 'formatted\n'
+        ;;
+      -bootstrapStandby)
+        if [[ "${2:-}" != "-nonInteractive" ]]; then
+          exit 2
+        fi
+        if [[ "${MOCK_BOOTSTRAP_RESULT:-fail}" == "success" ]]; then
+          printf 'bootstrapped\n'
+        else
+          exit 1
+        fi
+        ;;
+      *)
+        exit 2
+        ;;
+    esac
+    ;;
+  zkfc)
+    if [[ "${1:-}" != "-formatZK" ]]; then
       exit 2
     fi
-    if [[ "${MOCK_FORMAT_RESULT:-success}" == "fail" ]]; then
-      exit 1
-    fi
-    printf 'formatted\n'
+    case "${MOCK_ZKFC_RESULT:-success}" in
+      success)
+        printf 'zkfc formatted\n'
+        ;;
+      exists)
+        printf 'Node already exists' >&2
+        exit 1
+        ;;
+      *)
+        exit 1
+        ;;
+    esac
     ;;
   *)
     exit 2
@@ -116,7 +147,37 @@ verify_existing_fsimage_skips_format() {
   }
 }
 
+# 功能：执行 init-namenode-format.sh，并断言已有 HA namespace 时优先 bootstrapStandby。
+# 参数：无，依赖临时 mock hdfs/sleep 和环境变量。
+# 返回值：成功返回 0，失败返回非 0。
+verify_bootstrap_standby_skips_format() {
+  local case_dir bin_dir hadoop_home output
+  case_dir="${TMP_DIR}/bootstrap-standby"
+  bin_dir="${case_dir}/bin"
+  hadoop_home="${case_dir}/hadoop"
+  mkdir -p "${bin_dir}" "${hadoop_home}/bin" "${case_dir}/data"
+  make_mock_hdfs "${hadoop_home}/bin"
+  make_mock_sleep "${bin_dir}"
+
+  output="$(
+    PATH="${bin_dir}:${PATH}" \
+    HADOOP_HOME="${hadoop_home}" \
+    POD_NAME="hdfs-namenode-0" \
+    MOCK_NAME_DIRS="file://${case_dir}/data" \
+    MOCK_NAMESERVICES="ns1" \
+    MOCK_BOOTSTRAP_RESULT="success" \
+    bash "${SCRIPT_PATH}" 2>&1
+  )"
+
+  grep -Fq "bootstrapStandby succeeded, skipping format" <<< "${output}" || {
+    echo "expected script to bootstrap standby before formatting" >&2
+    echo "${output}" >&2
+    return 1
+  }
+}
+
 verify_format_failure_is_not_suppressed
 verify_existing_fsimage_skips_format
+verify_bootstrap_standby_skips_format
 
 echo "namenode format verification passed"

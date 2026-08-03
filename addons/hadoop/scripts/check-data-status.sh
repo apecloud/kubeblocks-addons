@@ -6,8 +6,10 @@ set -o pipefail
 
 _PORTS="${HDFS_DATANODE_HTTP_PORT:-9864}"
 _URL_PATH="jmx?qry=Hadoop:service=DataNode,name=DataNodeInfo"
-_CLUSTER_ID=""
 for _PORT in $_PORTS; do
-  _CLUSTER_ID+=$(curl -s http://localhost:${_PORT}/$_URL_PATH | grep ClusterId) || true
+  _RESPONSE="$(curl -fsS --max-time 2 "http://localhost:${_PORT}/${_URL_PATH}")"
+  if grep -q '"ClusterId"[[:space:]]*:[[:space:]]*"[^"]\+"' <<< "${_RESPONSE}"; then
+    exit 0
+  fi
 done
-echo $_CLUSTER_ID | grep -q -v null
+exit 1

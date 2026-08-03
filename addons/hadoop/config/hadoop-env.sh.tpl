@@ -11,7 +11,7 @@ export HADOOP_JMX_BASE="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxr
 
 export HDFS_NAMENODE_OPTS="${HDFS_NAMENODE_OPTS:-} $HADOOP_JMX_BASE -Dcom.sun.management.jmxremote.port={{ .HDFS_NAMENODE_JMX_PORT }} -Dcom.sun.management.jmxremote.rmi.port={{ .HDFS_NAMENODE_JMX_PORT }} -Xms{{ .HDFS_NAMENODE_HEAP }} -Xmx{{ .HDFS_NAMENODE_HEAP }} -Dhadoop.security.logger=INFO,RFAS -Dhdfs.audit.logger=INFO,NullAppender"
 
-export HDFS_DATANODE_OPTS="${HDFS_DATANODE_OPTS:-} $HADOOP_JMX_BASE -Dcom.sun.management.jmxremote.port={{ .HDFS_DATANODE_JMX_PORT }} -Dcom.sun.management.jmxremote.rmi.port={{ .HDFS_DATANODE_JMX_PORT }} -Xms{{ .HDFS_DATANODE_HEAP }} -Xmx{{ .HDFS_DATANODE_HEAP }} -Dhadoop.security.logger=ERROR,RFAS -Ddfs.datanode.hostname=${POD_FQDN}"
+export HDFS_DATANODE_OPTS="${HDFS_DATANODE_OPTS:-} $HADOOP_JMX_BASE -Dcom.sun.management.jmxremote.port={{ .HDFS_DATANODE_JMX_PORT }} -Dcom.sun.management.jmxremote.rmi.port={{ .HDFS_DATANODE_JMX_PORT }} -Xms{{ .HDFS_DATANODE_HEAP }} -Xmx{{ .HDFS_DATANODE_HEAP }} -Dhadoop.security.logger=ERROR,RFAS -Ddfs.datanode.hostname=${POD_FQDN:-$(hostname -f 2>/dev/null || hostname)}"
 
 export HDFS_JOURNALNODE_OPTS="${HDFS_JOURNALNODE_OPTS:-} $HADOOP_JMX_BASE -Dcom.sun.management.jmxremote.port={{ .HDFS_JOURNALNODE_JMX_PORT }} -Dcom.sun.management.jmxremote.rmi.port={{ .HDFS_JOURNALNODE_JMX_PORT }} -Xms{{ .HDFS_JOURNALNODE_HEAP }} -Xmx{{ .HDFS_JOURNALNODE_HEAP }}"
 
