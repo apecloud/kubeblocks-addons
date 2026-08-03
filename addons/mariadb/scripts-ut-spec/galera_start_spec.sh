@@ -135,6 +135,58 @@ EOF
       The output should include "reachability is uncertain"
       The variable GALERA_PEER_OBSERVATION should equal "uncertain"
     End
+
+    It "keeps scanning after an uncertain peer and prefers a later explicit Primary"
+      PEER_FQDNS="uncertain-peer,primary-peer"
+      timeout() {
+        case "$*" in
+          *"/dev/tcp/uncertain-peer/3306"*) return 124 ;;
+          *"/dev/tcp/primary-peer/3306"*) return 0 ;;
+          *" mariadb "*"-h primary-peer "*) printf "wsrep_cluster_status\tPrimary\n"; return 0 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive quiet
+      The status should be success
+      The variable GALERA_PEER_OBSERVATION should equal "primary"
+      The output should include "primary-peer is alive with wsrep_cluster_status=Primary"
+    End
+
+    It "keeps the same Primary result when the explicit Primary is listed first"
+      PEER_FQDNS="primary-peer,uncertain-peer"
+      timeout() {
+        case "$*" in
+          *"/dev/tcp/uncertain-peer/3306"*) return 124 ;;
+          *"/dev/tcp/primary-peer/3306"*) return 0 ;;
+          *" mariadb "*"-h primary-peer "*) printf "wsrep_cluster_status\tPrimary\n"; return 0 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive quiet
+      The status should be success
+      The variable GALERA_PEER_OBSERVATION should equal "primary"
+      The output should include "primary-peer is alive with wsrep_cluster_status=Primary"
+    End
+
+    It "keeps scanning after unreadable SQL status and prefers a later explicit Primary"
+      PEER_FQDNS="unreadable-peer,primary-peer"
+      timeout() {
+        case "$*" in
+          *"/dev/tcp/unreadable-peer/3306"*|*"/dev/tcp/primary-peer/3306"*) return 0 ;;
+          *" mariadb "*"-h unreadable-peer "*) return 0 ;;
+          *" mariadb "*"-h primary-peer "*) printf "wsrep_cluster_status\tPrimary\n"; return 0 ;;
+        esac
+        return 1
+      }
+      sleep() { :; }
+
+      When call _any_peer_alive quiet
+      The status should be success
+      The variable GALERA_PEER_OBSERVATION should equal "primary"
+      The output should include "primary-peer is alive with wsrep_cluster_status=Primary"
+    End
   End
 
   Describe "_wait_for_primary_peer()"

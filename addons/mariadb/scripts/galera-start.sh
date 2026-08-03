@@ -39,7 +39,7 @@ _any_peer_alive() {
     [ -z "${quiet}" ] && echo "Peer FQDN list is empty; peer reachability is uncertain, treating as possibly alive to avoid split-brain bootstrap."
     return 0
   fi
-  local peer remote_peer_count=0 non_primary_peer_count=0
+  local peer remote_peer_count=0 non_primary_peer_count=0 uncertain_peer_count=0
   for peer in $(echo "$fqdns" | tr ',' ' '); do
     # Boundary self-match: "pod-1" must not match "pod-10". Compare the FQDN
     # host segment (up to the first dot) exactly against POD_NAME.
@@ -79,9 +79,12 @@ _any_peer_alive() {
       fi
       if [ -z "${cluster_status}" ]; then
         # Port open but status unreadable after retries → a possibly-live
-        # Primary. Do NOT enable bootstrap; join/wait instead (fail closed).
+        # Primary. Keep scanning because another peer may explicitly report a
+        # Primary component; if none does, the aggregate stays uncertain and
+        # automatic bootstrap remains blocked.
         [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status unreadable after retries; treating as possibly-alive to avoid split-brain bootstrap."
-        return 0
+        uncertain_peer_count=$((uncertain_peer_count + 1))
+        continue
       fi
       # Non-empty, non-Primary (e.g. non-Primary / Disconnected): a definitive
       # answer that the peer is not in a functioning cluster — safe to skip.
@@ -89,7 +92,7 @@ _any_peer_alive() {
       [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status=${cluster_status} (not Primary, skipping)."
     else
       [ -z "${quiet}" ] && echo "Peer ${peer} TCP reachability is uncertain; treating as possibly alive to avoid split-brain bootstrap."
-      return 0
+      uncertain_peer_count=$((uncertain_peer_count + 1))
     fi
   done
   if [ "${remote_peer_count}" -gt 0 ] \
@@ -97,6 +100,12 @@ _any_peer_alive() {
     GALERA_PEER_OBSERVATION="non-primary"
     export GALERA_PEER_OBSERVATION
     return 1
+  fi
+  if [ "${uncertain_peer_count}" -gt 0 ]; then
+    GALERA_PEER_OBSERVATION="uncertain"
+    export GALERA_PEER_OBSERVATION
+    [ -z "${quiet}" ] && echo "No explicit Primary was observed and at least one remote peer is uncertain; refusing automatic bootstrap."
+    return 0
   fi
   [ -z "${quiet}" ] && echo "No remote peer could be classified; peer reachability is uncertain, treating as possibly alive to avoid split-brain bootstrap."
   return 0
