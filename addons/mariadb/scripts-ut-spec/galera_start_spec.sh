@@ -15,7 +15,7 @@ Describe "galera-start.sh"
   cleanup() {
     rm -rf "${TEST_DIR}"
     unset DATA_DIR POD_NAME MARIADB_ROOT_USER MARIADB_ROOT_PASSWORD PEER_FQDNS
-    unset GALERA_PRIMARY_PEER_WAIT_SECONDS GALERA_BOOTSTRAP_DEFER_REASON
+    unset GALERA_PRIMARY_PEER_WAIT_SECONDS GALERA_BOOTSTRAP_DEFER_REASON GALERA_PEER_OBSERVATION
   }
   AfterEach "cleanup"
 
@@ -138,15 +138,125 @@ EOF
   End
 
   Describe "_wait_for_primary_peer()"
-    It "defers non-pod-0 join when no Primary peer appears within the bounded window"
+    It "returns success only for an immediate explicit Primary observation"
       GALERA_PRIMARY_PEER_WAIT_SECONDS=0
-      _any_peer_alive() {
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;
+          *" mariadb "*) printf "wsrep_cluster_status\tPrimary\n"; return 0 ;;
+        esac
+        return 1
+      }
+
+      When call _wait_for_primary_peer
+      The status should be success
+      The output should include "wsrep_cluster_status=Primary"
+    End
+
+    It "defers when an empty peer list yields an uncertain rc=0 observation"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      PEER_FQDNS=""
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "defers when the immediate observation is explicitly non-Primary"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;
+          *" mariadb "*) printf "wsrep_cluster_status\tnon-Primary\n"; return 0 ;;
+        esac
         return 1
       }
 
       When call _wait_for_primary_peer
       The status should be failure
       The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "defers when the direct peer probe times out"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "defers when the direct peer probe is refused"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 1 ;;
+        esac
+        return 1
+      }
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "defers when SQL status remains unreadable on an open peer"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;
+          *" mariadb "*) return 0 ;;
+        esac
+        return 1
+      }
+      sleep() { :; }
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "does not collapse an uncertain retry rc=0 into Primary success"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=3
+      wait_probe_count=0
+      sleep() { :; }
+      _any_peer_alive() {
+        wait_probe_count=$((wait_probe_count + 1))
+        if [ "${wait_probe_count}" -eq 1 ]; then
+          GALERA_PEER_OBSERVATION="non-primary"
+          return 1
+        fi
+        GALERA_PEER_OBSERVATION="uncertain"
+        return 0
+      }
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should not include "Found peer with Primary component"
+    End
+
+    It "returns success when a bounded retry explicitly observes Primary"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=3
+      wait_probe_count=0
+      sleep() { :; }
+      _any_peer_alive() {
+        wait_probe_count=$((wait_probe_count + 1))
+        if [ "${wait_probe_count}" -eq 1 ]; then
+          GALERA_PEER_OBSERVATION="non-primary"
+          return 1
+        fi
+        GALERA_PEER_OBSERVATION="primary"
+        return 0
+      }
+
+      When call _wait_for_primary_peer
+      The status should be success
+      The output should include "Found peer with Primary component after 3s"
     End
   End
 
