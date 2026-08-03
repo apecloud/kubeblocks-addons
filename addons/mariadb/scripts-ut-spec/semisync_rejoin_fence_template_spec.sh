@@ -476,8 +476,28 @@ Describe "cmpd-replication.yaml rejoin fence template"
     The output should include "runtime-secondary-follow-configure-blocked"
   End
 
-  It "runs secondary reconciliation in the runtime wait loop"
-    When call function_contains "wait_for_mariadbd_with_role_reconcile" "reconcile_sql_listener_for_syncer_secondary_once"
+  It "retargets surviving secondaries in the runtime wait loop"
+    When call function_contains "wait_for_mariadbd_with_role_reconcile" "reconcile_sql_listener_for_syncer_secondary_serialized_once"
+    The status should be success
+  End
+
+  It "pauses syncer around runtime secondary reconciliation"
+    When call function_contains "reconcile_sql_listener_for_syncer_secondary_serialized_once" "syncerctl pause"
+    The status should be success
+  End
+
+  It "does not pause syncer for a healthy runtime secondary"
+    When call function_contains "reconcile_sql_listener_for_syncer_secondary_serialized_once" "slave_status_is_healthy \"\${slave_status}\" && return 0"
+    The status should be success
+  End
+
+  It "always resumes syncer after runtime secondary reconciliation"
+    When call function_contains "reconcile_sql_listener_for_syncer_secondary_serialized_once" "syncerctl resume"
+    The status should be success
+  End
+
+  It "still publishes a syncer-elected primary in the runtime wait loop"
+    When call function_contains "wait_for_mariadbd_with_role_reconcile" "reconcile_sql_listener_for_syncer_primary_once"
     The status should be success
   End
 

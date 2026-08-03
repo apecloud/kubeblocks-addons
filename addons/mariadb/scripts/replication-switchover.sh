@@ -15,11 +15,10 @@ SYNCERCTL_PORT="${SYNCERCTL_PORT:-3601}"
 SWITCHOVER_POLL_SECONDS="${SWITCHOVER_POLL_SECONDS:-1}"
 # alpha.59: kbagent enforces maxActionCallTimeout=60s
 # (pkg/kbagent/service/action_utils.go). The switchover action is intentionally
-# bounded to a small budget; post-DCS convergence (Primary Service endpoint,
-# old-primary follow, secondary remote root fence, kb_health_check 1062 repair)
-# is delegated to roleProbe + KB endpoint controller. The candidate write probe
-# is still synchronous because it is part of the action's success contract:
-# action returns 0 only after we have proven the candidate is actually writable.
+# bounded to a small budget. Primary Service endpoint publication remains
+# delegated to Syncer + the KB endpoint controller, but old-primary follow is
+# part of the synchronous success contract so a following lifecycle operation
+# cannot begin from a detached branch.
 #
 # alpha.61: action now uses a single global deadline rather than per-stage
 # fixed sleeps. This avoids the trap where the sum of per-stage sleep budgets
@@ -46,7 +45,7 @@ SWITCHOVER_CANDIDATE_CONNECT_READY_POLL_SECONDS="${SWITCHOVER_CANDIDATE_CONNECT_
 SWITCHOVER_CANDIDATE_CONNECT_READY_CONNECT_TIMEOUT_SECONDS="${SWITCHOVER_CANDIDATE_CONNECT_READY_CONNECT_TIMEOUT_SECONDS:-1}"
 SWITCHOVER_DCS_STAGE_BUDGET_SECONDS="${SWITCHOVER_DCS_STAGE_BUDGET_SECONDS:-15}"
 SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS="${SWITCHOVER_FENCE_STAGE_BUDGET_SECONDS:-15}"
-CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS="${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS:-30}"
+CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS="${CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS:-90}"
 # alpha.77 v2 (Helen TL): bumped from 10s -> 30s. alpha.77 v1 N=1 verify on
 # n1y closed the pre-DCS REMOTE root fence race (stages 1-4 all PASS, no
 # `bypass_priv_residual` in stderr) but failed at stage 5 because the new
@@ -67,6 +66,7 @@ CANDIDATE_PROMOTED_VIA_SYNCERCTL_WAIT_SECONDS="${CANDIDATE_PROMOTED_VIA_SYNCERCT
 # runtime gate is now a non-mutating root primary-readiness check.
 CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS:-30}"
 CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS="${CANDIDATE_REMOTE_ROOT_PRIMARY_READY_WAIT_SECONDS:-${CANDIDATE_REMOTE_ROOT_WRITE_PROBE_WAIT_SECONDS}}"
+SWITCHOVER_OLD_PRIMARY_REJOIN_WAIT_SECONDS="${SWITCHOVER_OLD_PRIMARY_REJOIN_WAIT_SECONDS:-90}"
 MARIADB_CONNECT_TIMEOUT_SECONDS="${MARIADB_CONNECT_TIMEOUT_SECONDS:-5}"
 SYNCERCTL_PER_CALL_TIMEOUT_SECONDS="${SYNCERCTL_PER_CALL_TIMEOUT_SECONDS:-5}"
 
@@ -77,6 +77,7 @@ MYSQL_CLIENT_DIR="${MYSQL_CLIENT_DIR:-/tools/mysql-client}"
 MARIADB_CLIENT_BIN="${MARIADB_CLIENT_BIN:-}"
 MARIADB_INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
 SWITCHOVER_TRACE_FILE="${SWITCHOVER_TRACE_FILE:-}"
+SWITCHOVER_ACTION_LOCK_DIR="${SWITCHOVER_ACTION_LOCK_DIR:-/tmp/kb-mariadb-switchover-action.lock}"
 # Used only by the local old-primary fence probe. Candidate primary-readiness
 # checks must stay non-mutating and must not use this table.
 SWITCHOVER_REMOTE_ROOT_PROBE_TABLE="${SWITCHOVER_REMOTE_ROOT_PROBE_TABLE:-kubeblocks.kb_root_write_probe}"
@@ -1673,6 +1674,19 @@ candidate_is_primary() {
   syncer_role_is "${candidate_fqdn}" "primary"
 }
 
+switchover_handoff_already_committed() {
+  # A lifecycle retry can arrive just after the first invocation returned but
+  # before the old primary has fully rejoined replication. The stricter final
+  # state verifier intentionally rejects that transient, yet issuing another
+  # --force DCS request is both unnecessary and harmful. Candidate DB truth
+  # plus Syncer roles are sufficient to prove that ownership was committed by
+  # the first invocation; post-DCS old-primary follow remains roleProbe's job.
+  local candidate_fqdn="$1"
+  candidate_is_primary "${candidate_fqdn}" || return 1
+  local_read_only_is "1" || return 1
+  syncer_role_is "127.0.0.1" "secondary"
+}
+
 slave_status_is_ready_for_candidate() {
   local slave_status="$1"
   local candidate_name="$2"
@@ -1684,7 +1698,19 @@ slave_status_is_ready_for_candidate() {
   printf "%s" "${slave_status}" | grep -q "Last_IO_Errno: 0" || return 1
   printf "%s" "${slave_status}" | grep -q "Last_SQL_Errno: 0" || return 1
   printf "%s" "${slave_status}" | grep -F "Master_Host: ${candidate_fqdn}" >/dev/null 2>&1 ||
-  printf "%s" "${slave_status}" | grep -F "Master_Host: ${candidate_name}" >/dev/null 2>&1
+  printf "%s" "${slave_status}" | grep -F "Master_Host: ${candidate_name}" >/dev/null 2>&1 || return 1
+
+  # Healthy replication threads alone do not prove the demoted primary has
+  # consumed the handoff branch. Require a zero-lag sample and equality between
+  # the relay position received from the candidate and the position executed
+  # locally before allowing the lifecycle action to report success.
+  local seconds_behind read_master_pos exec_master_pos
+  seconds_behind=$(printf "%s\n" "${slave_status}" | awk -F': ' '/^[[:space:]]*Seconds_Behind_Master:/{print $2; exit}')
+  read_master_pos=$(printf "%s\n" "${slave_status}" | awk -F': ' '/^[[:space:]]*Read_Master_Log_Pos:/{print $2; exit}')
+  exec_master_pos=$(printf "%s\n" "${slave_status}" | awk -F': ' '/^[[:space:]]*Exec_Master_Log_Pos:/{print $2; exit}')
+  [ "${seconds_behind}" = "0" ] || return 1
+  [ -n "${read_master_pos}" ] || return 1
+  [ "${read_master_pos}" = "${exec_master_pos}" ]
 }
 
 slave_status_has_kb_health_check_repairable_error() {
@@ -1747,6 +1773,41 @@ current_follows_candidate() {
     slave_status=$(query_slave_status "127.0.0.1")
     slave_status_is_ready_for_candidate "${slave_status}" "${candidate_name}" "${candidate_fqdn}" && return 0
   fi
+  return 1
+}
+
+wait_current_follows_candidate() {
+  local candidate_name="$1"
+  local candidate_fqdn="$2"
+  local stage_deadline="${3:-${SWITCHOVER_OLD_PRIMARY_REJOIN_WAIT_SECONDS}}"
+  local stage_started_epoch now stage_elapsed attempt=0
+
+  stage_started_epoch=$(now_epoch)
+  if [ -z "${stage_started_epoch}" ]; then
+    log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=old_primary_rejoin; fail-closed"
+    return 1
+  fi
+
+  while :; do
+    now=$(now_epoch)
+    if [ -z "${now}" ]; then
+      log_switchover_error "Switchover failed: reason=action_clock_unavailable stage=old_primary_rejoin; fail-closed"
+      return 1
+    fi
+    stage_elapsed=$(( now - stage_started_epoch ))
+    if [ "${attempt}" -gt 0 ] && [ "${stage_elapsed}" -ge "${stage_deadline}" ]; then
+      break
+    fi
+    attempt=$((attempt + 1))
+    if current_follows_candidate "${candidate_name}" "${candidate_fqdn}"; then
+      log_switchover_info "Switchover old primary rejoin converged: candidate=${candidate_name} attempts=${attempt} elapsed=${stage_elapsed}s; local secondary threads healthy, lag=0, relay applied"
+      return 0
+    fi
+    log_switchover_info "Switchover old primary rejoin pending: candidate=${candidate_name} attempt=${attempt} elapsed=${stage_elapsed}s"
+    sleep "${SWITCHOVER_POLL_SECONDS}"
+  done
+
+  log_switchover_error "Switchover failed: reason=old_primary_not_rejoined_in_budget candidate=${candidate_name} attempts=${attempt} stage_budget=${stage_deadline}s; fail-closed"
   return 1
 }
 
@@ -2176,6 +2237,7 @@ run_switchover() {
   #                      (revoke admin-bypass + verify_post_dcs_local_root_write_fenced)
   #   5. promote       - wait_candidate_promoted_via_syncerctl
   #   6. ready         - wait_candidate_remote_root_primary_ready
+  #   7. old_primary_rejoin - wait_current_follows_candidate
   #
   # External tools that can block:
   #   - syncerctl getrole: wrapped with timeout(1) (initialize_action_clock
@@ -2184,10 +2246,9 @@ run_switchover() {
   #     ${MARIADB_CONNECT_TIMEOUT_SECONDS} on connect, and by stage budget
   #     on the polling loop (so cumulative wall time per stage is bounded).
   #
-  # Post-DCS convergence (Primary Service endpoint route, old-primary follow,
-  # secondary fence, kb_health_check 1062 repair) is delegated to roleProbe
-  # + KB endpoint controller; runner side has its own bounded post-OpsRequest
-  # gate.
+  # Primary Service endpoint publication remains asynchronous and belongs to
+  # Syncer + the KB endpoint controller. Old-primary follow is checked here
+  # synchronously because it is a data-safety boundary, not only publication.
   local candidate_name="$1"
   local candidate_fqdn="$2"
   local current_name
@@ -2242,6 +2303,13 @@ run_switchover() {
   log_switchover_info "Switchover stage dcs budget=${dcs_budget}s remaining_before=$(remaining_action_budget)s primary=${current_name} candidate=${candidate_name}"
   log_switchover_info "Switchover: creating syncer DCS switchover primary=${current_name} candidate=${candidate_name}"
   if ! syncerctl_switchover "${current_name}" "${candidate_name}" "${dcs_budget}"; then
+    if switchover_handoff_already_committed "${candidate_fqdn}"; then
+      local retry_rejoin_budget
+      retry_rejoin_budget=$(stage_budget_or_exit "old_primary_rejoin" "${SWITCHOVER_OLD_PRIMARY_REJOIN_WAIT_SECONDS}") || return 1
+      log_switchover_info "Switchover retry observed committed DCS handoff; waiting for old-primary rejoin budget=${retry_rejoin_budget}s"
+      wait_current_follows_candidate "${candidate_name}" "${candidate_fqdn}" "${retry_rejoin_budget}"
+      return $?
+    fi
     if switchover_final_state_already_reached "${current_name}" "${candidate_name}" "${candidate_fqdn}"; then
       return 0
     fi
@@ -2314,7 +2382,24 @@ run_switchover() {
     return 1
   fi
 
-  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced, candidate promoted via DCS, candidate root primary-readiness observed without mutating probe. Total elapsed=$(action_elapsed_seconds)s of ${SWITCHOVER_ACTION_DEADLINE_SECONDS}s deadline. Post-DCS convergence delegated to roleProbe + KB endpoint controller."
+  # Stage 7: the handoff is not safe for the next lifecycle operation until
+  # the demoted primary is a caught-up secondary of the candidate. This stage
+  # is bounded by the same global action deadline; slow convergence fails
+  # closed instead of publishing a false successful operation boundary.
+  local rejoin_budget
+  rejoin_budget=$(stage_budget_or_exit "old_primary_rejoin" "${SWITCHOVER_OLD_PRIMARY_REJOIN_WAIT_SECONDS}") || return 1
+  log_switchover_info "Switchover stage old_primary_rejoin budget=${rejoin_budget}s remaining_before=$(remaining_action_budget)s"
+  if ! wait_current_follows_candidate "${candidate_name}" "${candidate_fqdn}" "${rejoin_budget}"; then
+    return 1
+  fi
+  local remaining_after_rejoin
+  remaining_after_rejoin=$(remaining_action_budget)
+  if [ $? -ne 0 ] || [ "${remaining_after_rejoin}" -le 0 ]; then
+    log_switchover_error "Switchover failed: reason=action_deadline_exhausted_old_primary_rejoin_overrun elapsed=$(action_elapsed_seconds)s deadline=${SWITCHOVER_ACTION_DEADLINE_SECONDS}s; fail-closed"
+    return 1
+  fi
+
+  log_switchover_info "Switchover action returned: DCS recorded, current primary fenced and caught up as candidate secondary, candidate promoted via DCS, candidate root primary-readiness observed without mutating probe. Total elapsed=$(action_elapsed_seconds)s of ${SWITCHOVER_ACTION_DEADLINE_SECONDS}s deadline. Service endpoint publication remains owned by Syncer + KB endpoint controller."
   return 0
 }
 
@@ -2329,11 +2414,42 @@ main() {
   local candidate_fqdn
   candidate_name=$(resolve_candidate_name)
   candidate_fqdn=$(resolve_candidate_fqdn)
+
+  # KubeBlocks may retry a still-running lifecycle action. Under write load the
+  # first invocation takes long enough for a second invocation to overlap it;
+  # both used to pass the precheck and race on syncer's singleton DCS record.
+  # The loser then returned rc=255 and made the OpsRequest Failed even though
+  # the first invocation had completed the switchover successfully. Serialize
+  # invocations inside the pod and let a duplicate return idempotent success
+  # after the owner has established the requested final state.
+  if ! mkdir "${SWITCHOVER_ACTION_LOCK_DIR}" 2>/dev/null; then
+    local waited=0
+    local current_name
+    current_name=$(resolve_current_name)
+    log_switchover_info "Switchover duplicate invocation waiting for active action lock=${SWITCHOVER_ACTION_LOCK_DIR}"
+    while [ -d "${SWITCHOVER_ACTION_LOCK_DIR}" ] && [ "${waited}" -lt "${SWITCHOVER_ACTION_DEADLINE_SECONDS}" ]; do
+      sleep 1
+      waited=$((waited + 1))
+    done
+    if [ ! -d "${SWITCHOVER_ACTION_LOCK_DIR}" ] && \
+       switchover_final_state_already_reached "${current_name}" "${candidate_name}" "${candidate_fqdn}"; then
+      log_switchover_info "Switchover duplicate invocation completed idempotently after waiting ${waited}s"
+      return 0
+    fi
+    log_switchover_error "Switchover failed: duplicate invocation did not observe requested final state after waiting ${waited}s"
+    return 1
+  fi
+
+  trap 'rmdir "${SWITCHOVER_ACTION_LOCK_DIR}" 2>/dev/null || true' EXIT HUP INT TERM
   # alpha.80 v1 (Helen): the alpha.76 unconditional clear_switchover_fence_
   # active_marker call has been removed. alpha.79 v1 minimalist deleted the
   # marker writer in prepare, so no marker exists to clear. Pure dead-code
   # cleanup, no runtime behavior change.
-  run_switchover "${candidate_name}" "${candidate_fqdn}"
+  local rc=0
+  run_switchover "${candidate_name}" "${candidate_fqdn}" || rc=$?
+  rmdir "${SWITCHOVER_ACTION_LOCK_DIR}" 2>/dev/null || true
+  trap - EXIT HUP INT TERM
+  return "${rc}"
 }
 
 # This is magic for shellspec ut framework, do not modify!

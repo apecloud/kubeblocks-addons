@@ -59,6 +59,13 @@ etcd:
 ## partial state.
 replication:
   mode: ""
+  # Syncer caps each HA cycle at lease TTL * 2/3. Its MariaDB promotion path
+  # can spend 15s waiting for an empty gtid_binlog_pos to stabilize before it
+  # runs StopNResetSlave. The upstream 15s TTL leaves only a 10s cycle budget,
+  # so every planned switchover times out and leaves the old primary read-only.
+  # 30s provides a 20s cycle budget while remaining well inside the component's
+  # 120s termination grace period.
+  syncerTTLSeconds: 30
 
 ## MySQL Authentication parameters
 auth:

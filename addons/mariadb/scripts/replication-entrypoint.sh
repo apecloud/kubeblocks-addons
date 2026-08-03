@@ -572,7 +572,7 @@ accept_syncer_primary_promotion_from_replica_path() {
 gtid_state_is_covered_by() {
   local local_state="$1"
   local primary_state="$2"
-  local token ptoken domain server seq pdom pserver pseq found
+  local token ptoken domain server seq pdom pserver pseq found max_primary_seq
   [ -z "${local_state}" ] && return 0
   IFS=',' read -r -a local_tokens <<< "${local_state}"
   IFS=',' read -r -a primary_tokens <<< "${primary_state}"
@@ -582,18 +582,26 @@ gtid_state_is_covered_by() {
     IFS='-' read -r domain server seq <<< "${token}"
     [ -n "${domain}" ] && [ -n "${server}" ] && [ -n "${seq}" ] || return 1
     found=false
+    max_primary_seq=-1
     for ptoken in "${primary_tokens[@]}"; do
       ptoken="${ptoken//[[:space:]]/}"
       [ -n "${ptoken}" ] || continue
       IFS='-' read -r pdom pserver pseq <<< "${ptoken}"
-      if [ "${pdom}" = "${domain}" ] && [ "${pserver}" = "${server}" ]; then
-        if [ "${pseq}" -ge "${seq}" ] 2>/dev/null; then
-          found=true
-          break
+      # MariaDB GTID sequence numbers are ordered within a replication
+      # domain, not within a (domain, server_id) pair. After switchover the
+      # same domain legitimately continues under the promoted server_id.
+      # Requiring an exact server_id match therefore reports divergence for a
+      # valid lineage such as local 1-1-5065 vs primary 1-2-5065.
+      if [ "${pdom}" = "${domain}" ]; then
+        case "${pseq}" in ''|*[!0-9]*) return 1 ;; esac
+        if [ "${pseq}" -gt "${max_primary_seq}" ] 2>/dev/null; then
+          max_primary_seq="${pseq}"
         fi
-        return 1
       fi
     done
+    if [ "${max_primary_seq}" -ge "${seq}" ] 2>/dev/null; then
+      found=true
+    fi
     [ "${found}" = "true" ] || return 1
   done
   return 0
@@ -661,10 +669,15 @@ block_existing_datadir_self_election_without_primary() {
 fail_closed_for_gtid_divergence() {
   local primary_state local_state slave_status
   [ "${HAS_EXISTING_DATA}" = "true" ] || return 1
-  local_state=$("${LOCAL[@]}" -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null)
+  # A server that has previously been both primary and secondary owns GTIDs in
+  # two places: locally originated transactions in gtid_binlog_state and
+  # replicated transactions in gtid_slave_pos. Comparing binlog state alone
+  # falsely declares normal multi-domain failover history divergent whenever
+  # the current primary originated transactions in a different domain.
+  local_state=$("${LOCAL[@]}" -e "SELECT CONCAT_WS(',', NULLIF(@@global.gtid_binlog_state, ''), NULLIF(@@global.gtid_slave_pos, ''));" 2>/dev/null)
   [ -n "${local_state}" ] || return 1
   primary_state=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
-    -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null || echo "")
+    -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT CONCAT_WS(',', NULLIF(@@global.gtid_binlog_state, ''), NULLIF(@@global.gtid_slave_pos, ''));" 2>/dev/null || echo "")
   [ -n "${primary_state}" ] || return 1
   if gtid_state_is_covered_by "${local_state}" "${primary_state}"; then
     return 1
@@ -679,7 +692,7 @@ fail_closed_for_gtid_divergence() {
   mark_replication_divergence_pending
   lock_local_root_writes "gtid-divergence" || true # tier=fail-path-defensive
   persist_gtid_divergence_evidence "fail_closed_for_gtid_divergence" "${local_state}" "${primary_state}" "${slave_status}"
-  echo "GTID divergence detected for existing datadir rejoin: local binlog state ${local_state}, primary binlog state ${primary_state}. Keeping replication pending for rebuild/resync."
+  echo "GTID divergence detected for existing datadir rejoin: local combined state ${local_state}, primary combined state ${primary_state}. Keeping replication pending for rebuild/resync."
   return 0
 }
 prestop_watchdog_log() {
@@ -764,7 +777,7 @@ grant_internal_admin_runtime_privileges() {
   local user host privilege sql
   user="$(sql_quote "${MARIADB_INTERNAL_ROOT_USER}")"
   for host in localhost 127.0.0.1; do
-    for privilege in "REPLICATION SLAVE ADMIN" "REPLICATION MASTER ADMIN" "BINLOG ADMIN" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
+    for privilege in "REPLICATION SLAVE ADMIN" "REPLICATION MASTER ADMIN" "BINLOG ADMIN" "BINLOG REPLAY" "BINLOG MONITOR" "SLAVE MONITOR" "CONNECTION ADMIN" "READ_ONLY ADMIN"; do
       sql="
         SET SESSION sql_log_bin=0;
         GRANT ${privilege} ON *.* TO '${user}'@'${host}';
@@ -1860,12 +1873,22 @@ expose_sql_listener_for_primary_role() {
   fi
   mark_replication_pending
   prestop_watchdog_log "sql-listener-primary-expose-begin label=${label}"
+  # Rebinding requires a short mariadbd restart. Pause the local HA loop first
+  # so its consecutive-health-failure path cannot release the freshly acquired
+  # lease while the database is intentionally down. The restart is bounded
+  # well below the DCS TTL; resume immediately after local SQL is reachable.
+  if ! timeout 30 /tools/syncerctl pause >/dev/null 2>&1; then
+    prestop_watchdog_log "sql-listener-primary-expose-failed label=${label} reason=syncer-pause-failed"
+    return 1
+  fi
   stop_mariadbd_process "sql-listener-primary-${label}"
   start_mariadbd_process "0.0.0.0" "sql-listener-primary-${label}"
   if ! wait_for_mariadb_local; then
+    timeout 3 /tools/syncerctl resume >/dev/null 2>&1 || true
     wait ${MARIADB_PID}
     exit $?
   fi
+  timeout 3 /tools/syncerctl resume >/dev/null 2>&1 || true
   "${LOCAL[@]}" -e "STOP SLAVE; RESET SLAVE ALL;" 2>/dev/null || true
   reset_semisync_master_ack_receiver_if_enabled "primary-fresh-listener-${label}"
   if ! ensure_semisync_primary_role "primary-fresh-listener-${label}"; then
@@ -1888,6 +1911,18 @@ query_local_syncer_role() {
 query_primary_service_server_id() {
   timeout 3 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
     -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || true
+}
+ensure_local_syncer_health_check_schema() {
+  # A newly joining replica can begin from a GTID position after the primary's
+  # one-time schema DDL. Create only the canonical empty schema locally before
+  # its SQL thread starts; never delete or seed the replicated heartbeat row.
+  # The primary remains the owner of binlogged DDL and heartbeat DML.
+  "${INTERNAL_LOCAL[@]}" -e "
+    SET SESSION sql_log_bin=0;
+    CREATE DATABASE IF NOT EXISTS kubeblocks;
+    CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
+    SET SESSION sql_log_bin=1;
+  " 2>/dev/null
 }
 local_primary_role_published() {
   [ ! -f "${DATA_DIR}/master.info" ] && \
@@ -2008,6 +2043,10 @@ configure_replication_from_primary_service_once() {
       prestop_watchdog_log "runtime-secondary-follow-configure-io-failed label=${label}"
       return 1
     fi
+    if ! ensure_local_syncer_health_check_schema; then
+      prestop_watchdog_log "runtime-secondary-follow-configure-schema-failed label=${label}"
+      return 1
+    fi
     # alpha.99 (Helen 2026-05-25): removed
     # prepare_fresh_replica_for_sql_thread_start call. That
     # function used to DELETE FROM kubeblocks.kb_health_check
@@ -2121,10 +2160,68 @@ reconcile_sql_listener_for_syncer_secondary_once() {
   mark_replication_pending
   prestop_watchdog_log "runtime-secondary-listener-reconcile-pending role=${role}"
 }
+reconcile_sql_listener_for_syncer_secondary_serialized_once() {
+  # Runtime secondary repair can take long enough to overlap a local syncer
+  # promotion.  Serialize it with the local HA loop, then read the role again
+  # inside that exclusion window.  This preserves automatic retarget/rejoin
+  # for a surviving secondary without allowing a stale secondary decision to
+  # set read_only after Promote has completed.
+  local rc=0 role slave_status primary_sid read_only now repair_grace
+  # The common case must not pause HA every second.  Only enter the serialized
+  # repair path when this pod is still a secondary and replication is
+  # unhealthy; the inner reconciler repeats the role and health checks after
+  # Pause has drained any in-flight HA cycle.
+  role="$(query_local_syncer_role || true)"
+  if [ "${role}" != "secondary" ]; then
+    SYNCER_SECONDARY_REPAIR_NOT_BEFORE=0
+    return 0
+  fi
+  slave_status="$(query_slave_status_verbose || true)"
+  read_only="$("${LOCAL[@]}" -e "SELECT @@global.read_only;" 2>/dev/null | tr -d '\r\n' || true)"
+  if slave_status_is_healthy "${slave_status}" && [ "${read_only}" = "1" ]; then
+    SYNCER_SECONDARY_REPAIR_NOT_BEFORE=0
+    return 0
+  fi
+  if ! slave_status_is_healthy "${slave_status}"; then
+    now="$(date +%s)"
+    # Keep repair outside the syncer's 30s leader-lease expiry/election
+    # window.  At 30s this loop could pause HA and stop the SQL thread in the
+    # exact cycle where a surviving secondary was being evaluated for
+    # promotion, leaving every candidate ineligible until the old primary
+    # returned.  A full extra lease interval lets failover settle first.
+    repair_grace="${MARIADB_SYNCER_SECONDARY_REPAIR_GRACE_SECONDS:-60}"
+    if [ "${SYNCER_SECONDARY_REPAIR_NOT_BEFORE:-0}" -eq 0 ]; then
+      SYNCER_SECONDARY_REPAIR_NOT_BEFORE=$((now + repair_grace))
+      prestop_watchdog_log "runtime-secondary-listener-reconcile-defer reason=unhealthy-grace deadline=${SYNCER_SECONDARY_REPAIR_NOT_BEFORE}"
+      return 0
+    fi
+    if [ "${now}" -lt "${SYNCER_SECONDARY_REPAIR_NOT_BEFORE}" ]; then
+      return 0
+    fi
+  fi
+  # An unhealthy replica is expected while no leader exists.  Do not pause
+  # the election loop until the Primary Service resolves to a peer that this
+  # replica can actually follow.
+  primary_sid="$(query_primary_service_server_id || true)"
+  [ -n "${primary_sid}" ] && [ "${primary_sid}" != "${SERVICE_ID}" ] || return 0
+  if ! timeout 30 /tools/syncerctl pause >/dev/null 2>&1; then
+    prestop_watchdog_log "runtime-secondary-listener-reconcile-defer reason=syncer-pause-failed"
+    return 1
+  fi
+  reconcile_sql_listener_for_syncer_secondary_once || rc=$?
+  timeout 3 /tools/syncerctl resume >/dev/null 2>&1 || {
+    prestop_watchdog_log "runtime-secondary-listener-reconcile-error reason=syncer-resume-failed"
+    return 1
+  }
+  return "${rc}"
+}
 wait_for_mariadbd_with_role_reconcile() {
   local rc=0
   while kill -0 "${MARIADB_PID}" 2>/dev/null; do
-    reconcile_sql_listener_for_syncer_secondary_once || true
+    # Secondary repair is required to retarget a surviving replica after
+    # failover.  Its wrapper pauses the local syncer and rechecks the role so
+    # this work cannot race a concurrent local promotion.
+    reconcile_sql_listener_for_syncer_secondary_serialized_once || true
     reconcile_sql_listener_for_syncer_primary_once || true
     sleep 1
   done
@@ -2409,6 +2506,27 @@ elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
       sleep 3
       continue
     fi
+    # The primary Service label can lag behind a completed DCS election. In
+    # that window it still routes to the demoted peer, whose GTID set may not
+    # cover the newly promoted local lineage. Check DCS/local DB truth once
+    # more before treating the Service peer as authoritative; otherwise the
+    # elected primary latches a false divergence marker and can never publish
+    # the role that would move the Service to itself.
+    _dcs_primary_ready=false
+    _dcs_primary_wait=0
+    while [ "${_dcs_primary_wait}" -lt 10 ]; do
+      reconcile_sql_listener_for_syncer_primary_once || true
+      if local_primary_role_published; then
+        _dcs_primary_ready=true
+        break
+      fi
+      _dcs_primary_wait=$((_dcs_primary_wait + 1))
+      sleep 1
+    done
+    if [ "${_dcs_primary_ready}" = "true" ]; then
+      echo "Starting as primary after syncer promotion overrode stale primary Service"
+      break
+    fi
     # Step 2: configure replication
     if fail_closed_for_gtid_divergence; then
       wait ${MARIADB_PID}
@@ -2438,6 +2556,12 @@ elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
       # .kb_health_check on local secondary which directly
       # triggered the 1032 cascade documented in cluster
       # mdb-repro-1032 evidence (2026-05-25 08:03Z).
+      if ! ensure_local_syncer_health_check_schema; then
+        mark_replication_pending
+        echo "Failed to initialize local syncer health-check schema; keeping roleProbe pending."
+        sleep 5
+        continue
+      fi
       if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
         # tier=error-recovery: SQL thread start has already failed.
         # mark_replication_pending + best-effort defensive locks +

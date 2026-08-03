@@ -20,6 +20,7 @@ Describe "replication-switchover.sh"
     export SWITCHOVER_WAIT_SECONDS="2"
     export SWITCHOVER_STABILIZATION_SECONDS="1"
     export SWITCHOVER_POLL_SECONDS="1"
+    export SWITCHOVER_ACTION_LOCK_DIR="${TEST_DIR}/switchover-action.lock"
     touch "${MARIADB_CLIENT_BIN}"
     chmod +x "${MARIADB_CLIENT_BIN}"
     # Provide a timeout stub on macOS where GNU timeout is absent.
@@ -42,6 +43,7 @@ TIMEOUT_STUB
     unset CLUSTER_NAME COMPONENT_NAME CLUSTER_NAMESPACE
     unset KB_SWITCHOVER_ROLE KB_SWITCHOVER_CURRENT_NAME KB_SWITCHOVER_CANDIDATE_NAME
     unset SWITCHOVER_WAIT_SECONDS SWITCHOVER_STABILIZATION_SECONDS SWITCHOVER_POLL_SECONDS
+    unset SWITCHOVER_ACTION_LOCK_DIR
     unset PRIMARY_SERVICE_ROUTE_WAIT_SECONDS MARIADB_INTERNAL_ROOT_USER
     unset MARIADB_CONNECT_TIMEOUT_SECONDS
   }
@@ -217,6 +219,27 @@ EOF
         The path "${SYNCERCTL_ARGS}" should not be exist
       End
     End
+
+    Context "when KubeBlocks retries while the first switchover invocation is still running"
+      It "serializes the duplicate and returns idempotent success after the owner converges"
+        mkdir "${SWITCHOVER_ACTION_LOCK_DIR}"
+        (sleep 1; rmdir "${SWITCHOVER_ACTION_LOCK_DIR}") &
+        run_switchover() {
+          record_call "BUG_duplicate_run_switchover"
+          return 1
+        }
+        switchover_final_state_already_reached() {
+          record_call "final_state_checked"
+          return 0
+        }
+        When call main
+        The status should be success
+        The output should include "Switchover duplicate invocation waiting for active action"
+        The output should include "Switchover duplicate invocation completed idempotently"
+        The contents of file "${TEST_DIR}/calls" should include "final_state_checked"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_duplicate_run_switchover"
+      End
+    End
   End
 
   Describe "run_switchover()"
@@ -267,6 +290,9 @@ Slave_IO_Running: Yes
 Slave_SQL_Running: Yes
 Last_IO_Errno: 0
 Last_SQL_Errno: 0
+Seconds_Behind_Master: 0
+Read_Master_Log_Pos: 100
+Exec_Master_Log_Pos: 100
 Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
 EOF
         }
@@ -322,6 +348,9 @@ Slave_IO_Running: Yes
 Slave_SQL_Running: Yes
 Last_IO_Errno: 0
 Last_SQL_Errno: 0
+Seconds_Behind_Master: 0
+Read_Master_Log_Pos: 100
+Exec_Master_Log_Pos: 100
 Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
 EOF
         }
@@ -393,6 +422,9 @@ Slave_IO_Running: Yes
 Slave_SQL_Running: Yes
 Last_IO_Errno: 0
 Last_SQL_Errno: 0
+Seconds_Behind_Master: 0
+Read_Master_Log_Pos: 100
+Exec_Master_Log_Pos: 100
 Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
 EOF
         }
@@ -402,11 +434,9 @@ EOF
         The output should include "candidate root primary-readiness observed without mutating probe"
       End
 
-      It "alpha.59 contract: never invokes wait_switchover_done / wait_post_switchover_stabilization / wait_primary_service_routes_candidate / current_follows_candidate"
-        # Per addon-test-runner-write-after-bounded-role-gate guide: the
-        # switchover action MUST NOT block on post-DCS convergence helpers
-        # because kbagent enforces a 60s ceiling. Override each helper to record
-        # a BUG_ marker; the assertion at the end verifies none fired.
+      It "waits for the old primary to rejoin before reporting success"
+        # The action remains bounded by the global kbagent-safe deadline, but
+        # must not return success while the old primary is still detached.
         make_syncerctl
         prepare_current_primary_for_switchover() { return 0; }
         fence_local_remote_root_for_secondary() { return 0; }
@@ -424,7 +454,7 @@ EOF
         wait_post_switchover_stabilization() { record_call "BUG_wait_post_switchover_stabilization_called"; return 0; }
         wait_primary_service_routes_candidate() { record_call "BUG_wait_primary_service_routes_candidate_called"; return 0; }
         wait_current_secondary_remote_root_fenced() { record_call "BUG_wait_current_secondary_remote_root_fenced_called"; return 0; }
-        current_follows_candidate() { record_call "BUG_current_follows_candidate_called"; return 0; }
+        wait_current_follows_candidate() { record_call "wait_current_follows_candidate_called"; return 0; }
         primary_service_routes_candidate() { record_call "BUG_primary_service_routes_candidate_called"; return 0; }
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
@@ -433,7 +463,7 @@ EOF
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_post_switchover_stabilization_called"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_primary_service_routes_candidate_called"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_wait_current_secondary_remote_root_fenced_called"
-        The contents of file "${TEST_DIR}/calls" should not include "BUG_current_follows_candidate_called"
+        The contents of file "${TEST_DIR}/calls" should include "wait_current_follows_candidate_called"
         The contents of file "${TEST_DIR}/calls" should not include "BUG_primary_service_routes_candidate_called"
       End
 
@@ -553,6 +583,9 @@ Slave_IO_Running: Yes
 Slave_SQL_Running: Yes
 Last_IO_Errno: 0
 Last_SQL_Errno: 0
+Seconds_Behind_Master: 0
+Read_Master_Log_Pos: 100
+Exec_Master_Log_Pos: 100
 Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
 EOF
         }
@@ -569,9 +602,37 @@ EOF
         When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
         The status should be success
         The output should include "Switchover syncerctl output: switchover failed: operation precheck failed: mdb-mariadb-0 is not the primary"
-        The output should include "Switchover idempotent success: desired final state already reached"
+        The output should include "Switchover retry observed committed DCS handoff; waiting for old-primary rejoin"
         The stderr should include "Switchover failed: syncerctl did not report success"
         The contents of file "${TEST_DIR}/calls" should not include "rollback"
+      End
+
+
+      It "fails closed when a retry observes committed DCS handoff but old-primary rejoin is incomplete"
+        make_failing_syncerctl
+        : > "${TEST_DIR}/calls"
+        prepare_current_primary_for_switchover() { return 0; }
+        candidate_is_primary() { return 0; }
+        local_read_only_is() { [ "$1" = "1" ]; }
+        syncer_role_is() {
+          [ "$1:$2" = "127.0.0.1:secondary" ]
+        }
+        wait_current_follows_candidate() {
+          record_call "rejoin_waited"
+          log_switchover_error "Switchover failed: reason=old_primary_not_rejoined_in_budget candidate=mdb-mariadb-1; fail-closed"
+          return 1
+        }
+        rollback_current_primary_switchover_guard() {
+          record_call "BUG_rollback"
+          return 0
+        }
+        When call run_switchover "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+        The status should be failure
+        The output should include "Switchover retry observed committed DCS handoff; waiting for old-primary rejoin"
+        The stderr should include "reason=old_primary_not_rejoined_in_budget"
+        The stderr should include "Switchover failed: syncerctl exited with rc=1"
+        The contents of file "${TEST_DIR}/calls" should include "rejoin_waited"
+        The contents of file "${TEST_DIR}/calls" should not include "BUG_rollback"
       End
     End
 
@@ -656,6 +717,38 @@ EOF_MOCK
   End
 
   Describe "current_follows_candidate()"
+    It "rejects healthy replication threads while the old primary still has lag"
+      slave_status=$(cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+Seconds_Behind_Master: 1
+Read_Master_Log_Pos: 100
+Exec_Master_Log_Pos: 100
+Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
+EOF
+)
+      When call slave_status_is_ready_for_candidate "${slave_status}" "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+      The status should be failure
+    End
+
+    It "rejects zero reported lag until the relay position is fully applied"
+      slave_status=$(cat <<'EOF'
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+Last_IO_Errno: 0
+Last_SQL_Errno: 0
+Seconds_Behind_Master: 0
+Read_Master_Log_Pos: 101
+Exec_Master_Log_Pos: 100
+Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
+EOF
+)
+      When call slave_status_is_ready_for_candidate "${slave_status}" "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
+      The status should be failure
+    End
+
     It "repairs kubeblocks health check SQL-thread errors before deciding old-primary follow failed"
       export MARIADB_ROOT_USER="root"
       export MARIADB_ROOT_PASSWORD="pw"
@@ -684,6 +777,9 @@ Slave_IO_Running: Yes
 Slave_SQL_Running: Yes
 Last_IO_Errno: 0
 Last_SQL_Errno: 0
+Seconds_Behind_Master: 0
+Read_Master_Log_Pos: 100
+Exec_Master_Log_Pos: 100
 Master_Host: mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local
 EOF
         fi
@@ -755,6 +851,42 @@ EOF
       The output should include "prepared local kubeblocks health check table"
       The contents of file "${TEST_DIR}/calls" should include "internal="
       The contents of file "${TEST_DIR}/calls" should not include "root="
+    End
+  End
+
+  Describe "wait_current_follows_candidate()"
+    It "polls until the old primary is a caught-up healthy secondary"
+      export SWITCHOVER_POLL_SECONDS=0
+      echo 1000 > "${TEST_DIR}/clock_now"
+      now_epoch() { cat "${TEST_DIR}/clock_now"; }
+      current_follows_candidate() {
+        local count
+        count=$(cat "${TEST_DIR}/follow-count" 2>/dev/null || echo 0)
+        count=$((count + 1))
+        printf '%s' "${count}" > "${TEST_DIR}/follow-count"
+        [ "${count}" -ge 2 ]
+      }
+      When call wait_current_follows_candidate "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" 5
+      The status should be success
+      The output should include "old primary rejoin converged"
+      The contents of file "${TEST_DIR}/follow-count" should eq "2"
+    End
+
+    It "fails closed when the bounded rejoin window expires"
+      export SWITCHOVER_POLL_SECONDS=0
+      echo 1000 > "${TEST_DIR}/clock_now"
+      now_epoch() {
+        local now
+        now=$(cat "${TEST_DIR}/clock_now")
+        echo $((now + 1)) > "${TEST_DIR}/clock_now"
+        printf '%s' "${now}"
+      }
+      current_follows_candidate() { return 1; }
+      When call wait_current_follows_candidate "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local" 2
+      The status should be failure
+      The output should include "old primary rejoin pending"
+      The stderr should include "reason=old_primary_not_rejoined_in_budget"
+      The stderr should include "fail-closed"
     End
   End
 

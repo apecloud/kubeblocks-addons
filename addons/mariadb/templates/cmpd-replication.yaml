@@ -307,6 +307,13 @@ spec:
             value: "$(MARIADB_ROOT_PASSWORD)"
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mariadb
+          # Syncer's HA cycle is capped at KB_TTL * 2/3. MariaDB promotion can
+          # spend 15s in its empty-GTID stability wait, so the upstream 15s
+          # default (10s cycle budget) deterministically expires before the
+          # candidate can run StopNResetSlave. Keep this above 22.5s and below
+          # the 120s termination-grace contract; the chart default is 30s.
+          - name: KB_TTL
+            value: {{ .Values.replication.syncerTTLSeconds | quote }}
           - name: CLUSTER_DOMAIN
             value: {{ .Values.clusterDomain | quote }}
           - name: MARIADB_ROOT_HOST

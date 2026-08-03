@@ -50,7 +50,7 @@ $1"
 
 query_primary_sample_once() {
   local host="$1"
-  host_sql "${host}" -e "SELECT @@server_id, @@hostname, @@global.read_only, @@global.gtid_binlog_state;" 2>/dev/null
+  host_sql "${host}" -e "SELECT @@server_id, @@hostname, @@global.read_only, CONCAT_WS(',', NULLIF(@@global.gtid_binlog_state, ''), NULLIF(@@global.gtid_slave_pos, ''));" 2>/dev/null
 }
 
 sample_primary_for_divergence() {
@@ -259,7 +259,7 @@ gtid_state_is_covered_by() {
   local local_state="$1" primary_state="$2"
   [ -z "${local_state}" ] && return 0
   awk -v local_state="${local_state}" -v primary_state="${primary_state}" '
-    function load_state(state, arr,    count, i, token, parts, key) {
+    function load_state(state, arr,    count, i, token, parts, key, seq) {
       count = split(state, tokens, ",")
       for (i = 1; i <= count; i++) {
         token = tokens[i]
@@ -270,8 +270,11 @@ gtid_state_is_covered_by() {
         if (split(token, parts, "-") != 3) {
           return 0
         }
-        key = parts[1] "-" parts[2]
-        arr[key] = parts[3] + 0
+        key = parts[1]
+        seq = parts[3] + 0
+        if (!(key in arr) || arr[key] < seq) {
+          arr[key] = seq
+        }
       }
       return 1
     }
@@ -289,7 +292,7 @@ gtid_state_is_covered_by() {
         if (split(token, parts, "-") != 3) {
           exit 1
         }
-        key = parts[1] "-" parts[2]
+        key = parts[1]
         seq = parts[3] + 0
         if (!(key in primary) || primary[key] < seq) {
           exit 1
@@ -304,7 +307,10 @@ fail_closed_for_gtid_divergence() {
   local primary_state local_state slave_status
   has_existing_datadir || return 1
   is_gtid_strict_mode_enabled || return 1
-  local_state=$(local_sql -e "SELECT @@global.gtid_binlog_state;" 2>/dev/null)
+  # Compare the executed GTID union, not only locally originated binlog GTIDs.
+  # After a legitimate promotion each member can own a different domain in
+  # gtid_binlog_state while carrying the other domains in gtid_slave_pos.
+  local_state=$(local_sql -e "SELECT CONCAT_WS(',', NULLIF(@@global.gtid_binlog_state, ''), NULLIF(@@global.gtid_slave_pos, ''));" 2>/dev/null)
   [ -n "${local_state}" ] || return 1
   slave_status=$(local_sql -e "SHOW SLAVE STATUS;" 2>/dev/null || true)
   if ! sample_primary_for_divergence; then
@@ -319,7 +325,7 @@ fail_closed_for_gtid_divergence() {
   local_sql -e "STOP SLAVE; SET GLOBAL read_only = 1;" 2>/dev/null || true
   mark_replication_divergence_pending
   persist_gtid_divergence_evidence "fail_closed_for_gtid_divergence" "${local_state}" "${primary_state}" "${slave_status}"
-  echo "GTID divergence detected for existing datadir rejoin: local binlog state ${local_state}, primary binlog state ${primary_state}. Keeping replication pending for rebuild/resync."
+  echo "GTID divergence detected for existing datadir rejoin: local combined state ${local_state}, primary combined state ${primary_state}. Keeping replication pending for rebuild/resync."
   return 0
 }
 
