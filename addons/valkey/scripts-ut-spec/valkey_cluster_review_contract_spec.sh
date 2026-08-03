@@ -59,6 +59,46 @@ Describe "Valkey cluster review contracts"
       helm template review ../../../addons-cluster/valkey \
         --set mode=cluster --set podAntiAffinityEnabled=true
   }
+  cluster_runtime_pull_policy_contract() {
+    rendered=$(helm template review .. --set image.pullPolicy=Always) || return 1
+    printf '%s\n' "${rendered}" | awk '
+      /^---$/ { in_component_definition=0; in_cluster_definition=0; in_cluster_container=0 }
+      /^kind: ComponentDefinition$/ { in_component_definition=1; next }
+      in_component_definition && /^  name: valkey-cluster-/ { in_cluster_definition=1; next }
+      in_cluster_definition && /^      - name: valkey-cluster$/ { in_cluster_container=1; next }
+      in_cluster_container && /^        imagePullPolicy: ["'\'' ]*Always["'\'' ]*$/ { found=1 }
+      END { exit !found }
+    '
+  }
+  sentinel_runtime_pull_policy_contract() {
+    rendered=$(helm template review .. --set image.pullPolicy=Always) || return 1
+    printf '%s\n' "${rendered}" | awk '
+      /^---$/ { in_component_definition=0; in_sentinel_definition=0; in_sentinel_container=0 }
+      /^kind: ComponentDefinition$/ { in_component_definition=1; next }
+      in_component_definition && /^  name: valkey-sentinel-/ { in_sentinel_definition=1; next }
+      in_sentinel_definition && /^      - name: valkey-sentinel$/ { in_sentinel_container=1; next }
+      in_sentinel_container && /^        imagePullPolicy: ["'\'' ]*Always["'\'' ]*$/ { found=1 }
+      END { exit !found }
+    '
+  }
+  standard_runtime_pull_policy_contract() {
+    rendered=$(helm template review .. \
+      --set image.pullPolicy=Always \
+      --set metrics.image.pullPolicy=Always) || return 1
+    printf '%s\n' "${rendered}" | awk '
+      /^---$/ { in_component_definition=0; in_standard_definition=0; in_runtime_container=0 }
+      /^kind: ComponentDefinition$/ { in_component_definition=1; next }
+      in_component_definition && /^  name: valkey-[0-9]+$/ { in_standard_definition=1; next }
+      in_standard_definition && /^      - name: (valkey|metrics)$/ { in_runtime_container=1; next }
+      in_runtime_container && /^        imagePullPolicy:/ {
+        count++
+        if ($2 ~ /^["'\'' ]*Always["'\'' ]*$/) good++
+        else bad=1
+        in_runtime_container=0
+      }
+      END { exit !(count == 4 && good == 4 && !bad) }
+    '
+  }
 
   It "uses an explicit combined shard-to-FQDN map instead of individual suffix variables"
     When call combined_roster_contract
@@ -97,5 +137,20 @@ Describe "Valkey cluster review contracts"
     The stdout should include "podAntiAffinity:"
     The stdout should include 'app.kubernetes.io/component: "valkey-cluster-shard"'
     The stdout should not include "apps.kubeblocks.io/sharding-name"
+  End
+
+  It "renders the mapped Always pull policy for the valkey-cluster runtime"
+    When call cluster_runtime_pull_policy_contract
+    The status should be success
+  End
+
+  It "renders the mapped Always pull policy for the valkey-sentinel runtime"
+    When call sentinel_runtime_pull_policy_contract
+    The status should be success
+  End
+
+  It "renders the mapped Always pull policy for every standard Valkey runtime container"
+    When call standard_runtime_pull_policy_contract
+    The status should be success
   End
 End
