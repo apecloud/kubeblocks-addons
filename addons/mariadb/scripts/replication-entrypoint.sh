@@ -671,7 +671,12 @@ mark_replication_pending() {
   # demoted peer to re-acquire leader and write orphan events.
   # Bind-state is only reset by the bootstrap start_mariadbd_process
   # at line 1901 (a fresh container restart will rebuild it).
-  rm -f ${DATA_DIR}/.remote-root-fence-role
+  # The remote-root marker is durable fence state, not a readiness marker:
+  # `secondary` means the secondary root fence is active, while absence is the
+  # committed-primary state.  Generic pending transitions must not erase an
+  # already-proven secondary fence.  The role-specific owner removes it only
+  # after a primary transition has repaired grants successfully, and writes it
+  # only after the secondary fence is actually in place.
   touch ${DATA_DIR}/.replication-pending
 }
 mark_replication_ready() {
