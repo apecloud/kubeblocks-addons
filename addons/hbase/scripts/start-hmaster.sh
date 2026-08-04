@@ -28,15 +28,11 @@ while true; do
         if [[ "${host}" == "${port}" ]]; then
             port="${ZOOKEEPER_CLIENT_PORT:-2181}"
         fi
-        if exec 3<>"/dev/tcp/${host}/${port}" 2>/dev/null; then
-            if printf 'ruok\n' >&3 2>/dev/null && IFS= read -r -t 2 zk_reply <&3 && [[ "${zk_reply}" == "imok" ]]; then
-                exec 3<&-
-                exec 3>&-
-                echo "ZooKeeper is ready via ${host}:${port}"
-                break 2
-            fi
+        if exec 3<>/dev/tcp/${host}/${port} 2>/dev/null; then
             exec 3<&-
             exec 3>&-
+            echo "ZooKeeper is reachable via ${host}:${port}"
+            break 2
         fi
     done
     if (( SECONDS >= deadline )); then

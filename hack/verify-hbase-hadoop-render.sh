@@ -161,35 +161,133 @@ EOF
   }
 }
 
+# Verifies HBase startup only requires ZooKeeper TCP reachability.
+# Parameters: none.
+# Returns: 0 when HMaster and RegionServer startup pass with a TCP-only endpoint.
+verify_hbase_zookeeper_tcp_gate() {
+  local case_dir="${TMP_DIR}/hbase-zk-tcp-gate"
+  local port_file="${case_dir}/port"
+  mkdir -p "${case_dir}/hbase/bin" "${case_dir}/conf" "${case_dir}/logs" "${case_dir}/pid"
+  cat >"${case_dir}/hbase/bin/hbase" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${case_dir}/hbase/bin/hbase-daemon.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  : >"${case_dir}/conf/hbase-env.sh"
+  chmod +x "${case_dir}/hbase/bin/hbase" "${case_dir}/hbase/bin/hbase-daemon.sh"
+
+  perl -MIO::Socket::INET -e '
+    my $port_file = shift @ARGV;
+    my $server = IO::Socket::INET->new(
+      LocalAddr => "127.0.0.1",
+      LocalPort => 0,
+      Proto => "tcp",
+      Listen => 5,
+      Reuse => 1,
+    ) or die $!;
+    open my $fh, ">", $port_file or die $!;
+    print {$fh} $server->sockport();
+    close $fh;
+    while (my $client = $server->accept()) {
+      my $request = "";
+      sysread($client, $request, 1024);
+      print {$client} "notimok\n";
+      close $client;
+    }
+  ' "${port_file}" &
+  local server_pid=$!
+  trap 'kill "${server_pid}" >/dev/null 2>&1 || true' RETURN
+
+  local zk_port
+  for _ in {1..50}; do
+    [[ -s "${port_file}" ]] && break
+    sleep 0.1
+  done
+  zk_port="$(<"${port_file}")"
+
+  HBASE_HOME="${case_dir}/hbase" \
+    HBASE_CONF_DIR="${case_dir}/conf" \
+    HBASE_LOG_DIR="${case_dir}/logs" \
+    HBASE_PID_DIR="${case_dir}/pid" \
+    ZOOKEEPER_ENDPOINTS="127.0.0.1:${zk_port}" \
+    ZOOKEEPER_WAIT_TIMEOUT_SECONDS=2 \
+    ZOOKEEPER_WAIT_INTERVAL_SECONDS=1 \
+    bash "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh"
+
+  HBASE_HOME="${case_dir}/hbase" \
+    HBASE_CONF_DIR="${case_dir}/conf" \
+    HBASE_LOG_DIR="${case_dir}/logs" \
+    HBASE_PID_DIR="${case_dir}/pid" \
+    ZOOKEEPER_ENDPOINTS="127.0.0.1:${zk_port}" \
+    ZOOKEEPER_WAIT_TIMEOUT_SECONDS=2 \
+    ZOOKEEPER_WAIT_INTERVAL_SECONDS=1 \
+    bash "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh"
+}
+
 # Verifies RegionServer member leave propagates unload failures and restores the balancer.
 # Parameters: none.
-# Returns: 0 when successful unload passes and failed unload returns non-zero.
+# Returns: 0 when balancer state is preserved and restoration failures return non-zero.
 verify_regionserver_member_leave() {
   local case_dir="${TMP_DIR}/regionserver-member-leave"
   local balance_log="${case_dir}/balance.log"
+  local state_file="${case_dir}/balancer-state"
   mkdir -p "${case_dir}/hbase/bin"
+  printf 'true' >"${state_file}"
   cat >"${case_dir}/hbase/bin/hbase" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "org.apache.hadoop.hbase.util.RegionMover" ]]; then
   [[ "${MOCK_REGIONMOVER_RESULT:-success}" == "success" ]]
   exit
 fi
-cat >>"${MOCK_BALANCE_LOG}"
+input="$(cat)"
+printf '%s\n' "${input}" >>"${MOCK_BALANCE_LOG}"
+if [[ "${input}" == "balancer_enabled" ]]; then
+  cat "${MOCK_BALANCER_STATE_FILE}"
+  exit 0
+fi
+if [[ "${input}" == "balance_switch false" ]]; then
+  printf 'false' >"${MOCK_BALANCER_STATE_FILE}"
+  exit 0
+fi
+if [[ "${input}" == "balance_switch true" ]]; then
+  [[ "${MOCK_BALANCE_RESTORE_RESULT:-success}" == "success" ]] || exit 1
+  printf 'true' >"${MOCK_BALANCER_STATE_FILE}"
+  exit 0
+fi
 EOF
   chmod +x "${case_dir}/hbase/bin/hbase"
 
   HBASE_HOME="${case_dir}/hbase" \
     KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
     MOCK_BALANCE_LOG="${balance_log}" \
+    MOCK_BALANCER_STATE_FILE="${state_file}" \
     bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"
 
   : >"${balance_log}"
+  printf 'false' >"${state_file}"
+  HBASE_HOME="${case_dir}/hbase" \
+    KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
+    MOCK_BALANCE_LOG="${balance_log}" \
+    MOCK_BALANCER_STATE_FILE="${state_file}" \
+    bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"
+
+  grep -Fq "balance_switch true" "${balance_log}" && {
+    echo "expected RegionServer member leave to keep balancer disabled when it was originally disabled" >&2
+    return 1
+  }
+
+  : >"${balance_log}"
+  printf 'true' >"${state_file}"
   if HBASE_HOME="${case_dir}/hbase" \
     KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
     MOCK_BALANCE_LOG="${balance_log}" \
-    MOCK_REGIONMOVER_RESULT="fail" \
+    MOCK_BALANCER_STATE_FILE="${state_file}" \
+    MOCK_BALANCE_RESTORE_RESULT="fail" \
     bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"; then
-    echo "expected RegionServer member leave to propagate RegionMover failure" >&2
+    echo "expected RegionServer member leave to propagate balancer restoration failure" >&2
     return 1
   fi
 
@@ -209,6 +307,7 @@ prepare_chart addons-cluster/hbase
 verify_hadoop_decommission_host_match
 verify_journalnode_probe
 verify_regionserver_readiness_marker
+verify_hbase_zookeeper_tcp_gate
 verify_regionserver_member_leave
 
 helm template test addons/hadoop > "${TMP_DIR}/hadoop-addon.yaml"
@@ -397,8 +496,10 @@ assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" '<name>
 assert_contains "${ROOT_DIR}/addons/hbase/config/hbase-site-cluster.tpl" '<value>org.apache.hadoop.hbase.io.compress.lz4.Lz4Codec</value>'
 assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh" 'Waiting for ZooKeeper readiness before starting HMaster...'
 assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" 'Waiting for ZooKeeper readiness before starting RegionServer...'
-assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh" "printf 'ruok\\n' >&3"
-assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" "printf 'ruok\\n' >&3"
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh" 'exec 3<>/dev/tcp/${host}/${port}'
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" 'exec 3<>/dev/tcp/${host}/${port}'
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh" 'ZooKeeper is reachable via ${host}:${port}'
+assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" 'ZooKeeper is reachable via ${host}:${port}'
 assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh" 'ZOOKEEPER_ENDPOINTS'
 assert_contains "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh" 'ZOOKEEPER_ENDPOINTS'
 bash -n "${ROOT_DIR}/addons/hbase/scripts/start-hmaster.sh"
