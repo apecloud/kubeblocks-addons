@@ -35,7 +35,7 @@ spec:
       optional: true
   lifecycleActions:
     memberLeave:
-      timeoutSeconds: 300
+      timeoutSeconds: -1
       exec:
         container: hbase-hregionserver
         command:

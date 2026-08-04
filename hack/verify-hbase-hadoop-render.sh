@@ -239,6 +239,7 @@ verify_regionserver_member_leave() {
 #!/usr/bin/env bash
 if [[ "${1:-}" == "org.apache.hadoop.hbase.util.RegionMover" ]]; then
   printf 'RegionMover:%s\n' "${MOCK_REGIONMOVER_RESULT:-success}" >>"${MOCK_COMMAND_LOG}"
+  printf 'RegionMoverArgs:%s\n' "${*:2}" >>"${MOCK_COMMAND_LOG}"
   [[ "${MOCK_REGIONMOVER_RESULT:-success}" == "success" ]]
   exit
 fi
@@ -278,6 +279,10 @@ EOF
   }
   grep -Fq "RegionMover:success" "${command_log}" || {
     echo "expected RegionServer member leave to run RegionMover unload" >&2
+    return 1
+  }
+  grep -Fq "RegionMoverArgs:-m 6 -t 300 -r rs.example -o unload" "${command_log}" || {
+    echo "expected RegionServer member leave to run RegionMover with an explicit internal timeout" >&2
     return 1
   }
   grep -Fq "admin.getRegions(server).size" "${command_log}" || {
@@ -491,6 +496,7 @@ assert_contains "${ROOT_DIR}/addons/hadoop/scripts/refresh-decommission-state.sh
 assert_contains "${ROOT_DIR}/addons/hadoop/scripts/refresh-decommission-state.sh" 'touch "${HDFS_DECOMMISSION_REFRESH_PENDING_FILE}"'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode.yaml" 'memberLeave:'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode-standalone.yaml" 'memberLeave:'
+assert_contains "${ROOT_DIR}/addons/hbase/templates/cmpd-hregionserver.yaml" 'timeoutSeconds: -1'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode.yaml" 'externalManaged: true'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-datanode-standalone.yaml" 'externalManaged: true'
 assert_contains "${ROOT_DIR}/addons/hadoop/templates/cmpd-hdfs-namenode.yaml" 'externalManaged: true'

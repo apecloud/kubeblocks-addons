@@ -5,6 +5,7 @@ set -euo pipefail
 
 REGIONSERVER_HOST="${KB_LEAVE_MEMBER_POD_FQDN:-${KB_LEAVE_MEMBER_POD_NAME:-}}"
 REGIONSERVER_PORT="${HBASE_REGIONSERVER_PORT:-16020}"
+REGIONMOVER_TIMEOUT_SECONDS="${REGIONMOVER_TIMEOUT_SECONDS:-300}"
 if [[ -z "${REGIONSERVER_HOST}" ]]; then
   echo "KB_LEAVE_MEMBER_POD_FQDN or KB_LEAVE_MEMBER_POD_NAME is required" >&2
   exit 1
@@ -12,6 +13,7 @@ fi
 
 REGIONSERVER_SERVER_NAME=""
 SERVER_DECOMMISSIONED=false
+REGIONMOVER_PID=""
 
 # Runs a JRuby HBase admin script through the bundled HBase shell.
 # Parameters:
@@ -152,6 +154,12 @@ cleanup_on_exit() {
 }
 
 trap 'cleanup_on_exit $?' EXIT
+trap '[[ -n "${REGIONMOVER_PID}" ]] && kill "${REGIONMOVER_PID}" 2>/dev/null || true; exit 143' TERM INT HUP
+
+if [[ ! "${REGIONMOVER_TIMEOUT_SECONDS}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "REGIONMOVER_TIMEOUT_SECONDS must be a positive integer" >&2
+  exit 1
+fi
 
 REGIONSERVER_SERVER_NAME="$(get_regionserver_server_name)" || {
   echo "Failed to resolve HBase ServerName for ${REGIONSERVER_HOST}:${REGIONSERVER_PORT}" >&2
@@ -164,7 +172,14 @@ decommission_regionserver "${REGIONSERVER_SERVER_NAME}"
 SERVER_DECOMMISSIONED=true
 
 echo "Unloading regions from ${REGIONSERVER_HOST}..."
-"${HBASE_HOME}/bin/hbase" org.apache.hadoop.hbase.util.RegionMover -m 6 -r "${REGIONSERVER_HOST}" -o unload
+"${HBASE_HOME}/bin/hbase" org.apache.hadoop.hbase.util.RegionMover \
+  -m 6 \
+  -t "${REGIONMOVER_TIMEOUT_SECONDS}" \
+  -r "${REGIONSERVER_HOST}" \
+  -o unload &
+REGIONMOVER_PID=$!
+wait "${REGIONMOVER_PID}"
+REGIONMOVER_PID=""
 
 region_count="$(get_regionserver_region_count "${REGIONSERVER_SERVER_NAME}")" || {
   echo "Failed to read region count for ${REGIONSERVER_SERVER_NAME}" >&2
