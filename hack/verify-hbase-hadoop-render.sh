@@ -227,15 +227,13 @@ EOF
     bash "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh"
 }
 
-# Verifies RegionServer member leave propagates unload failures and restores the balancer.
+# Verifies RegionServer member leave only runs RegionMover unload and propagates failures.
 # Parameters: none.
-# Returns: 0 when balancer state is preserved and restoration failures return non-zero.
+# Returns: 0 when unload succeeds without touching the balancer and unload failures return non-zero.
 verify_regionserver_member_leave() {
   local case_dir="${TMP_DIR}/regionserver-member-leave"
   local balance_log="${case_dir}/balance.log"
-  local state_file="${case_dir}/balancer-state"
   mkdir -p "${case_dir}/hbase/bin"
-  printf 'true' >"${state_file}"
   cat >"${case_dir}/hbase/bin/hbase" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "org.apache.hadoop.hbase.util.RegionMover" ]]; then
@@ -244,55 +242,32 @@ if [[ "${1:-}" == "org.apache.hadoop.hbase.util.RegionMover" ]]; then
 fi
 input="$(cat)"
 printf '%s\n' "${input}" >>"${MOCK_BALANCE_LOG}"
-if [[ "${input}" == "balancer_enabled" ]]; then
-  cat "${MOCK_BALANCER_STATE_FILE}"
-  exit 0
-fi
-if [[ "${input}" == "balance_switch false" ]]; then
-  printf 'false' >"${MOCK_BALANCER_STATE_FILE}"
-  exit 0
-fi
-if [[ "${input}" == "balance_switch true" ]]; then
-  [[ "${MOCK_BALANCE_RESTORE_RESULT:-success}" == "success" ]] || exit 1
-  printf 'true' >"${MOCK_BALANCER_STATE_FILE}"
-  exit 0
-fi
+exit 0
 EOF
   chmod +x "${case_dir}/hbase/bin/hbase"
 
   HBASE_HOME="${case_dir}/hbase" \
     KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
     MOCK_BALANCE_LOG="${balance_log}" \
-    MOCK_BALANCER_STATE_FILE="${state_file}" \
     bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"
 
-  : >"${balance_log}"
-  printf 'false' >"${state_file}"
-  HBASE_HOME="${case_dir}/hbase" \
-    KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
-    MOCK_BALANCE_LOG="${balance_log}" \
-    MOCK_BALANCER_STATE_FILE="${state_file}" \
-    bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"
-
-  grep -Fq "balance_switch true" "${balance_log}" && {
-    echo "expected RegionServer member leave to keep balancer disabled when it was originally disabled" >&2
+  [[ ! -s "${balance_log}" ]] || {
+    echo "expected RegionServer member leave to avoid balancer shell commands" >&2
     return 1
   }
 
   : >"${balance_log}"
-  printf 'true' >"${state_file}"
   if HBASE_HOME="${case_dir}/hbase" \
     KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
     MOCK_BALANCE_LOG="${balance_log}" \
-    MOCK_BALANCER_STATE_FILE="${state_file}" \
-    MOCK_BALANCE_RESTORE_RESULT="fail" \
+    MOCK_REGIONMOVER_RESULT="fail" \
     bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"; then
-    echo "expected RegionServer member leave to propagate balancer restoration failure" >&2
+    echo "expected RegionServer member leave to propagate RegionMover failure" >&2
     return 1
   fi
 
-  grep -Fq "balance_switch true" "${balance_log}" || {
-    echo "expected RegionServer member leave to restore the balancer" >&2
+  [[ ! -s "${balance_log}" ]] || {
+    echo "expected RegionServer member leave to avoid balancer shell commands after unload failure" >&2
     return 1
   }
 }
