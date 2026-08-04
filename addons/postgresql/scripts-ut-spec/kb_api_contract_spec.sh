@@ -40,6 +40,28 @@ Describe "PostgreSQL KubeBlocks API contract"
     '
   }
 
+  component_definitions_with_exec_role_probe() {
+    render_chart | ruby -ryaml -e '
+      definitions = YAML.load_stream(ARGF.read).compact.select do |document|
+        document["kind"] == "ComponentDefinition"
+      end
+      count = definitions.count do |definition|
+        role_probe = definition.dig("spec", "lifecycleActions", "roleProbe") || {}
+        command = role_probe.dig("exec", "command") || []
+        role_probe["http"].nil? &&
+          role_probe.dig("exec", "container") == "postgresql" &&
+          command == [
+            "curl",
+            "--fail",
+            "--silent",
+            "--show-error",
+            "http://127.0.0.1:5001/v1.0/getrole"
+          ]
+      end
+      puts count
+    '
+  }
+
   It "declares the KB 1.2 floor required by the rendered API fields"
     When call kubeblocks_floor
     The status should eq 0
@@ -49,11 +71,11 @@ Describe "PostgreSQL KubeBlocks API contract"
   It "advances the chart identity when immutable ComponentDefinitions change"
     When call chart_version
     The status should eq 0
-    The output should eq "1.2.0-alpha.1"
+    The output should eq "1.2.0-alpha.2"
   End
 
   It "publishes every ComponentDefinition under the advanced immutable identity"
-    When call render_count '^  name: postgresql-\(12\|14\|15\|16\|17\|18\)-1.2.0-alpha.1$'
+    When call render_count '^  name: postgresql-\(12\|14\|15\|16\|17\|18\)-1.2.0-alpha.2$'
     The status should eq 0
     The output should eq "6"
   End
@@ -66,6 +88,12 @@ Describe "PostgreSQL KubeBlocks API contract"
 
   It "grants every ComponentDefinition the pod-list permission used by live arbitration"
     When call component_definitions_with_pod_list_rbac
+    The status should eq 0
+    The output should eq "6"
+  End
+
+  It "uses an exec role probe supported by KubeBlocks main"
+    When call component_definitions_with_exec_role_probe
     The status should eq 0
     The output should eq "6"
   End

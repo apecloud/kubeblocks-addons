@@ -229,9 +229,16 @@ spec:
     roleProbe:
       periodSeconds: 1
       timeoutSeconds: 1
-      http:
-        port: "5001"
-        path: "/v1.0/getrole"
+      # KubeBlocks schedules role probes through the exec action path. dbctl
+      # returns the plain role token; curl --fail preserves non-2xx as failure.
+      exec:
+        container: postgresql
+        command:
+          - curl
+          - --fail
+          - --silent
+          - --show-error
+          - http://127.0.0.1:5001/v1.0/getrole
     switchover:
       # script worst case ~45s (leader query 5s + switchover API 20s +
       # bounded verification ~20s); kbagent clamps every action call at 60s
