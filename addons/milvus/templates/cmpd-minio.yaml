@@ -10,6 +10,7 @@ spec:
   provider: ApeCloud
   description: "High Performance, Kubernetes Native Object Storage"
   serviceKind: milvus-minio
+  serviceVersion: 8.0.17
   systemAccounts:
     - name: admin
       initAccount: true
