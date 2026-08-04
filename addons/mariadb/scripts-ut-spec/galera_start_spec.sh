@@ -554,14 +554,12 @@ EOF
       The contents of file "${KILL_COUNT_FILE}" should not equal ""
     End
 
-    # Behavioral test of the watcher start-up marker reset: seed all three
-    # stale markers a previous container generation could leave on the PV, call
-    # the extracted helper main() runs at watcher start, and assert every marker
-    # is gone. This exercises the shipped code path (not a source grep), so a
-    # future drift in which markers get cleared — including dropping the
-    # .galera-shutting-down removal that would otherwise disable self-heal for
-    # the new container's whole lifetime — fails the test.
-    It "clears stale role/synced/shutting-down markers at watcher start"
+    # The watcher may clear stale role/liveness state, but it must preserve the
+    # prior preStop marker until bootstrap election and every pre-launch gate
+    # have completed. Otherwise a transient startup failure consumes the only
+    # retryable proof of the orderly shutdown and recreates the full-stop
+    # deadlock on the next container attempt.
+    It "clears stale role/synced markers without consuming shutdown evidence"
       touch "${DATA_DIR}/.galera-synced"
       touch "${DATA_DIR}/.galera-role"
       touch "${DATA_DIR}/.galera-shutting-down"
@@ -570,16 +568,16 @@ EOF
       The status should be success
       The path "${DATA_DIR}/.galera-synced" should not be exist
       The path "${DATA_DIR}/.galera-role" should not be exist
-      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+      The path "${DATA_DIR}/.galera-shutting-down" should be exist
     End
 
-    It "captures and consumes the prior graceful-shutdown marker before bootstrap election"
+    It "captures without consuming the prior graceful-shutdown marker"
       touch "${DATA_DIR}/.galera-shutting-down"
 
       When call _capture_prior_graceful_shutdown_evidence
       The status should be success
       The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "1"
-      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+      The path "${DATA_DIR}/.galera-shutting-down" should be exist
     End
 
     It "records no prior graceful shutdown when the marker is absent"
@@ -588,14 +586,82 @@ EOF
       The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
     End
 
-    It "captures the prior marker before the watcher clears it and before bootstrap election"
+    It "preserves the marker across a successful election so a pre-launch retry can elect again"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 9 1
+      touch "${DATA_DIR}/.galera-shutting-down"
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+      capture_elect_fail_and_retry() {
+        _capture_prior_graceful_shutdown_evidence && should_bootstrap || return 1
+        [ -e "${DATA_DIR}/.galera-shutting-down" ] || return 1
+        GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
+        _capture_prior_graceful_shutdown_evidence && should_bootstrap
+      }
+
+      When call capture_elect_fail_and_retry
+      The status should be success
+      The output should include "safe_to_bootstrap=1 and prior graceful-shutdown marker present"
+      The path "${DATA_DIR}/.galera-shutting-down" should be exist
+    End
+
+    It "consumes the captured marker only at the final pre-launch gate"
+      touch "${DATA_DIR}/.galera-shutting-down"
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+
+      When call _consume_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
+      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+    End
+
+    It "fails closed when captured shutdown evidence disappears before launch"
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+
+      When call _consume_prior_graceful_shutdown_evidence
+      The status should be failure
+      The stderr should include "disappeared before launch"
+    End
+
+    It "fails closed when the captured marker cannot be removed"
+      touch "${DATA_DIR}/.galera-shutting-down"
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+      rm() { return 1; }
+
+      When call _consume_prior_graceful_shutdown_evidence
+      The status should be failure
+      The stderr should include "could not consume"
+      The path "${DATA_DIR}/.galera-shutting-down" should be exist
+    End
+
+    It "leaves the filesystem untouched when no prior marker was captured"
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
+
+      When call _consume_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
+    End
+
+    It "captures before election and consumes only after election immediately before each exec"
       When run sh -c '
         f="$(printf "%s/addons/mariadb/scripts/galera-start.sh" "'"${SHELLSPEC_CWD:?}"'")"
         capture=$(grep -n "^  _capture_prior_graceful_shutdown_evidence$" "$f" | tail -1 | cut -d: -f1)
-        clear=$(grep -n "^    _clear_stale_markers_on_start$" "$f" | tail -1 | cut -d: -f1)
         election=$(grep -n "^  if should_bootstrap; then$" "$f" | tail -1 | cut -d: -f1)
-        test -n "$capture" && test -n "$clear" && test -n "$election" \
-          && test "$capture" -lt "$clear" && test "$clear" -lt "$election"
+        consume_first=$(grep -n "^[[:space:]]\{4,\}_consume_prior_graceful_shutdown_evidence$" "$f" | head -1 | cut -d: -f1)
+        consume_last=$(grep -n "^[[:space:]]\{4,\}_consume_prior_graceful_shutdown_evidence$" "$f" | tail -1 | cut -d: -f1)
+        exec_first=$(grep -n "^[[:space:]]*exec docker-entrypoint.sh mariadbd" "$f" | head -1 | cut -d: -f1)
+        exec_last=$(grep -n "^[[:space:]]*exec docker-entrypoint.sh mariadbd" "$f" | tail -1 | cut -d: -f1)
+        test -n "$capture" && test -n "$election" \
+          && test -n "$consume_first" && test -n "$consume_last" \
+          && test -n "$exec_first" && test -n "$exec_last" \
+          && test "$capture" -lt "$election" \
+          && test "$election" -lt "$consume_first" \
+          && test "$consume_first" -lt "$exec_first" \
+          && test "$consume_last" -lt "$exec_last"
       '
       The status should be success
     End
