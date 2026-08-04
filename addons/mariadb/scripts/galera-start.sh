@@ -169,48 +169,78 @@ _mariadbd_pids() {
   pidof mariadbd 2>/dev/null || pgrep -x mariadbd 2>/dev/null || true
 }
 
-# Capture the previous container generation's preStop marker without consuming
-# it. The marker alone is not bootstrap authority: preStop creates it before
+# Capture the previous container generation's preStop marker by atomically
+# promoting it to a retry-pending marker. The marker alone is not bootstrap
+# authority: preStop creates it before
 # attempting SQL shutdown, so a failed/aborted shutdown can leave it behind.
 # Combined with Galera's exact safe_to_bootstrap=1 election, however, it proves
 # that this PVC completed the addon's graceful-shutdown path.  That lets the
 # elected last node bootstrap an orderly full-cluster restart even while every
 # stopped peer is (correctly) classified as unreachable/uncertain.  A crashed
 # or partitioned running node has safe_to_bootstrap=0 and therefore cannot use
-# this marker to bypass the fail-closed peer check. Keep the file itself until
-# every election/wait gate succeeds so a container retry can use the same exact
-# evidence again.
+# this marker to bypass the fail-closed peer check. The distinct pending name
+# separates prior-generation election evidence from the current generation's
+# .galera-shutting-down self-heal guard. Keep the pending file until the watcher
+# positively observes this process Synced in a Primary component; an entrypoint
+# or MariaDB failure before then must leave the same evidence for the retry.
 _capture_prior_graceful_shutdown_evidence() {
   GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
-  local marker="${DATA_DIR}/.galera-shutting-down"
-  if [ -e "${marker}" ] || [ -L "${marker}" ]; then
+  local shutdown_marker="${DATA_DIR}/.galera-shutting-down"
+  local pending_marker="${DATA_DIR}/.galera-bootstrap-pending"
+
+  if [ -e "${pending_marker}" ] || [ -L "${pending_marker}" ]; then
+    # A previous launch attempt reached exec but never established Primary.
+    # Keep that authority. If its own preStop also left the ordinary shutdown
+    # guard, collapse the duplicate so the new generation starts with a clean
+    # current-generation guard while the retry authority remains durable.
+    if [ -e "${shutdown_marker}" ] || [ -L "${shutdown_marker}" ]; then
+      if ! rm -f "${shutdown_marker}"; then
+        echo "Galera startup failed: could not collapse duplicate graceful-shutdown marker ${shutdown_marker}" >&2
+        return 1
+      fi
+      if [ -e "${shutdown_marker}" ] || [ -L "${shutdown_marker}" ]; then
+        echo "Galera startup failed: duplicate graceful-shutdown marker still exists after collapse: ${shutdown_marker}" >&2
+        return 1
+      fi
+    fi
+    GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+  elif [ -e "${shutdown_marker}" ] || [ -L "${shutdown_marker}" ]; then
+    if ! mv "${shutdown_marker}" "${pending_marker}"; then
+      echo "Galera startup failed: could not promote graceful-shutdown marker to retry-pending authority: ${shutdown_marker}" >&2
+      return 1
+    fi
+    if [ ! -e "${pending_marker}" ] && [ ! -L "${pending_marker}" ]; then
+      echo "Galera startup failed: retry-pending bootstrap authority missing after promotion: ${pending_marker}" >&2
+      return 1
+    fi
     GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
   fi
   export GALERA_PRIOR_GRACEFUL_SHUTDOWN
 }
 
-# Consume captured graceful-shutdown evidence only at the final pre-launch
-# gate. If the captured file disappeared or cannot be removed, fail closed:
-# launching with an unverified generation boundary could either reuse stale
-# bootstrap authority or lose retry convergence.
-_consume_prior_graceful_shutdown_evidence() {
+# Complete captured graceful-shutdown evidence only after the watcher has
+# positively observed this mariadbd Synced in a Primary component. Until that
+# post-launch business-state gate closes, every failure path preserves the
+# retry-pending marker. A cleanup failure is reported and retried on the next
+# watcher tick instead of claiming the generation is complete.
+_complete_prior_graceful_shutdown_evidence() {
   if [ "${GALERA_PRIOR_GRACEFUL_SHUTDOWN:-0}" != "1" ]; then
     GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
     export GALERA_PRIOR_GRACEFUL_SHUTDOWN
     return 0
   fi
 
-  local marker="${DATA_DIR}/.galera-shutting-down"
+  local marker="${DATA_DIR}/.galera-bootstrap-pending"
   if [ ! -e "${marker}" ] && [ ! -L "${marker}" ]; then
-    echo "Galera startup failed: captured graceful-shutdown marker disappeared before launch: ${marker}" >&2
+    echo "Galera startup failed: retry-pending bootstrap authority disappeared before Primary convergence: ${marker}" >&2
     return 1
   fi
   if ! rm -f "${marker}"; then
-    echo "Galera startup failed: could not consume prior graceful-shutdown marker ${marker}" >&2
+    echo "Galera startup failed: could not complete retry-pending bootstrap authority ${marker}" >&2
     return 1
   fi
   if [ -e "${marker}" ] || [ -L "${marker}" ]; then
-    echo "Galera startup failed: prior graceful-shutdown marker still exists after consume: ${marker}" >&2
+    echo "Galera startup failed: retry-pending bootstrap authority still exists after completion: ${marker}" >&2
     return 1
   fi
   GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
@@ -218,9 +248,10 @@ _consume_prior_graceful_shutdown_evidence() {
 }
 
 # Watcher start-up initialization: clear stale role/liveness markers left on the
-# PV by a previous container generation. The shutdown marker is deliberately
-# excluded: bootstrap election owns it and the final pre-launch gate consumes
-# it. A stale .galera-role/.galera-synced would let the probe publish a role
+# PV by a previous container generation. Both shutdown/election markers are
+# deliberately excluded: capture owns promotion to retry-pending authority and
+# the Primary watcher owns completion. A stale .galera-role/.galera-synced
+# would let the probe publish a role
 # before the watcher has re-observed Galera state. Extracted as a helper (not
 # inline in the watcher subshell) so the reset is directly callable and
 # unit-testable, and so any future start-up call site stays covered.
@@ -426,8 +457,8 @@ main() {
   # stable Primary cluster.
   (
     set +e
-    # Clear stale role/liveness markers on start. Bootstrap election retains
-    # ownership of .galera-shutting-down until the final pre-launch consume.
+    # Clear stale role/liveness markers on start. Bootstrap election evidence
+    # remains retry-pending until this watcher observes Primary convergence.
     _clear_stale_markers_on_start
     SOCK=/run/mysqld/mysqld.sock
     SYNCED_ONCE=0
@@ -454,6 +485,8 @@ main() {
           | awk '{print $2}')
       fi
       if [ "${STATE}" = "4" ] && [ "${CLUSTER_STATUS}" = "Primary" ]; then
+        _complete_prior_graceful_shutdown_evidence \
+          || echo "Galera startup: retry-pending bootstrap authority completion deferred; watcher will retry."
         printf "primary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
           && mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
@@ -515,7 +548,6 @@ main() {
 
   if [ "${bootstrap_mode}" = "1" ]; then
     echo "Starting Galera cluster bootstrap (--wsrep-new-cluster)..."
-    _consume_prior_graceful_shutdown_evidence
     exec docker-entrypoint.sh mariadbd "${wsrep_args[@]}" --wsrep-new-cluster
   else
     if [ -n "${GALERA_BOOTSTRAP_DEFER_REASON:-}" ]; then
@@ -527,7 +559,6 @@ main() {
       _wait_for_primary_peer
     fi
     echo "Joining Galera cluster at ${cluster_address}..."
-    _consume_prior_graceful_shutdown_evidence
     exec docker-entrypoint.sh mariadbd "${wsrep_args[@]}"
   fi
 }

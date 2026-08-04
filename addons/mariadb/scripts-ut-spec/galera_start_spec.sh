@@ -555,28 +555,61 @@ EOF
     End
 
     # The watcher may clear stale role/liveness state, but it must preserve the
-    # prior preStop marker until bootstrap election and every pre-launch gate
-    # have completed. Otherwise a transient startup failure consumes the only
-    # retryable proof of the orderly shutdown and recreates the full-stop
-    # deadlock on the next container attempt.
+    # retry-pending bootstrap authority until this process has positively
+    # observed itself Synced in a Primary component. Otherwise an entrypoint or
+    # MariaDB failure after exec consumes the only retryable proof of the
+    # orderly shutdown and recreates the full-stop deadlock.
     It "clears stale role/synced markers without consuming shutdown evidence"
       touch "${DATA_DIR}/.galera-synced"
       touch "${DATA_DIR}/.galera-role"
-      touch "${DATA_DIR}/.galera-shutting-down"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
 
       When call _clear_stale_markers_on_start
       The status should be success
       The path "${DATA_DIR}/.galera-synced" should not be exist
       The path "${DATA_DIR}/.galera-role" should not be exist
-      The path "${DATA_DIR}/.galera-shutting-down" should be exist
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
     End
 
-    It "captures without consuming the prior graceful-shutdown marker"
+    It "atomically promotes the prior shutdown marker into retry-pending bootstrap authority"
       touch "${DATA_DIR}/.galera-shutting-down"
 
       When call _capture_prior_graceful_shutdown_evidence
       The status should be success
       The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "1"
+      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+    End
+
+    It "recaptures retry-pending bootstrap authority after an earlier launch failure"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
+
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "1"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+    End
+
+    It "collapses a retried preStop marker while preserving retry-pending authority"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
+      touch "${DATA_DIR}/.galera-shutting-down"
+
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "1"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+    End
+
+    It "fails closed when a retried preStop marker cannot be collapsed"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
+      touch "${DATA_DIR}/.galera-shutting-down"
+      rm() { return 1; }
+
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be failure
+      The stderr should include "could not collapse duplicate graceful-shutdown marker"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
       The path "${DATA_DIR}/.galera-shutting-down" should be exist
     End
 
@@ -586,7 +619,7 @@ EOF
       The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
     End
 
-    It "preserves the marker across a successful election so a pre-launch retry can elect again"
+    It "preserves retry-pending authority across a failed launch and re-elects on the next container attempt"
       POD_NAME="mdb-galera-mariadb-0"
       write_grastate 9 1
       touch "${DATA_DIR}/.galera-shutting-down"
@@ -598,7 +631,7 @@ EOF
       }
       capture_elect_fail_and_retry() {
         _capture_prior_graceful_shutdown_evidence && should_bootstrap || return 1
-        [ -e "${DATA_DIR}/.galera-shutting-down" ] || return 1
+        [ -e "${DATA_DIR}/.galera-bootstrap-pending" ] || return 1
         GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
         _capture_prior_graceful_shutdown_evidence && should_bootstrap
       }
@@ -606,62 +639,64 @@ EOF
       When call capture_elect_fail_and_retry
       The status should be success
       The output should include "safe_to_bootstrap=1 and prior graceful-shutdown marker present"
-      The path "${DATA_DIR}/.galera-shutting-down" should be exist
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
     End
 
-    It "consumes the captured marker only at the final pre-launch gate"
-      touch "${DATA_DIR}/.galera-shutting-down"
+    It "completes retry-pending authority after positive Primary convergence"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
       GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
 
-      When call _consume_prior_graceful_shutdown_evidence
+      When call _complete_prior_graceful_shutdown_evidence
       The status should be success
       The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
-      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should not be exist
     End
 
-    It "fails closed when captured shutdown evidence disappears before launch"
+    It "fails closed when retry-pending authority disappears before convergence"
       GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
 
-      When call _consume_prior_graceful_shutdown_evidence
+      When call _complete_prior_graceful_shutdown_evidence
       The status should be failure
-      The stderr should include "disappeared before launch"
+      The stderr should include "disappeared before Primary convergence"
     End
 
-    It "fails closed when the captured marker cannot be removed"
-      touch "${DATA_DIR}/.galera-shutting-down"
+    It "retries later when converged authority cannot yet be removed"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
       GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
       rm() { return 1; }
 
-      When call _consume_prior_graceful_shutdown_evidence
+      When call _complete_prior_graceful_shutdown_evidence
       The status should be failure
-      The stderr should include "could not consume"
-      The path "${DATA_DIR}/.galera-shutting-down" should be exist
+      The stderr should include "could not complete"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
     End
 
     It "leaves the filesystem untouched when no prior marker was captured"
       GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
 
-      When call _consume_prior_graceful_shutdown_evidence
+      When call _complete_prior_graceful_shutdown_evidence
       The status should be success
       The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
     End
 
-    It "captures before election and consumes only after election immediately before each exec"
+    It "keeps retry authority through both exec call sites and completes it only in the Primary watcher branch"
       When run sh -c '
         f="$(printf "%s/addons/mariadb/scripts/galera-start.sh" "'"${SHELLSPEC_CWD:?}"'")"
         capture=$(grep -n "^  _capture_prior_graceful_shutdown_evidence$" "$f" | tail -1 | cut -d: -f1)
         election=$(grep -n "^  if should_bootstrap; then$" "$f" | tail -1 | cut -d: -f1)
-        consume_first=$(grep -n "^[[:space:]]\{4,\}_consume_prior_graceful_shutdown_evidence$" "$f" | head -1 | cut -d: -f1)
-        consume_last=$(grep -n "^[[:space:]]\{4,\}_consume_prior_graceful_shutdown_evidence$" "$f" | tail -1 | cut -d: -f1)
+        primary=$(grep -n "if \[ \"\${STATE}\" = \"4\" \] && \[ \"\${CLUSTER_STATUS}\" = \"Primary\" \]; then" "$f" | head -1 | cut -d: -f1)
+        complete=$(grep -n "^        _complete_prior_graceful_shutdown_evidence" "$f" | head -1 | cut -d: -f1)
         exec_first=$(grep -n "^[[:space:]]*exec docker-entrypoint.sh mariadbd" "$f" | head -1 | cut -d: -f1)
         exec_last=$(grep -n "^[[:space:]]*exec docker-entrypoint.sh mariadbd" "$f" | tail -1 | cut -d: -f1)
         test -n "$capture" && test -n "$election" \
-          && test -n "$consume_first" && test -n "$consume_last" \
+          && test -n "$primary" && test -n "$complete" \
           && test -n "$exec_first" && test -n "$exec_last" \
-          && test "$capture" -lt "$election" \
-          && test "$election" -lt "$consume_first" \
-          && test "$consume_first" -lt "$exec_first" \
-          && test "$consume_last" -lt "$exec_last"
+          && test "$capture" -lt "$primary" \
+          && test "$primary" -lt "$complete" \
+          && test "$complete" -lt "$election" \
+          && test "$election" -lt "$exec_first" \
+          && test "$exec_first" -lt "$exec_last" \
+          && ! sed -n "/local bootstrap_mode=0/,\$p" "$f" | grep -q "_complete_prior_graceful_shutdown_evidence"
       '
       The status should be success
     End
