@@ -719,8 +719,8 @@ Last_SQL_Errno: 0"
       It "alpha.61: restricts remote root grants on secondary WITHOUT admin bypass privileges"
         # alpha.61 (Jack 01:40 review): user-facing root on secondary must
         # NOT carry SUPER, READ_ONLY ADMIN, BINLOG ADMIN, or CONNECTION ADMIN.
-        # The legitimate bypass need (kb_health_check 1062 repair) uses
-        # kb_internal_root in roleProbe's secondary_kb_health_check_repair_attempt.
+        # Heartbeat state is primary-owned and roleProbe never repairs it on a
+        # secondary, so user-facing root needs no read-only bypass.
         # REPLICATION MASTER ADMIN stays so the secondary can run CHANGE MASTER /
         # START SLAVE for follow-time maintenance. BINLOG MONITOR / SLAVE
         # MONITOR are read-only monitoring privileges and stay.
@@ -790,160 +790,14 @@ Last_SQL_Errno: 0"
     End
   End
 
-  # alpha.59: switchover action no longer waits for old-primary follow
-  # convergence (kbagent enforces a 60s action ceiling). The kb_health_check
-  # 1062/1146 repair path moved here so the secondary roleProbe self-heals
-  # the duplicate-row case asynchronously. See addon-test-runner-write-after-bounded
-  # role-gate guide and bootstrap-runner-preload-after-bounded-role-gate-case.
-  Describe "secondary_kb_health_check_repair_attempt()"
-    Context "when slave status shows 1062 + kubeblocks.kb_health_check"
-      setup_repair_kb_health_check_signature() {
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
-Slave_SQL_Running: No
-Last_IO_Errno: 0
-Last_SQL_Errno: 1062
-Last_SQL_Error: Could not execute Write_rows event on table kubeblocks.kb_health_check"
-        export MOCK_MARIADB_READ_ONLY="1"
-        export MOCK_MARIADB_CAPTURE_FILE="${TEST_DIR}/sql_calls"
-        : > "${MOCK_MARIADB_CAPTURE_FILE}"
-        make_mariadb_cli
-      }
-      Before "setup_repair_kb_health_check_signature"
-
-      It "fires repair: STOP SLAVE SQL_THREAD, DELETE kb_health_check, START SLAVE SQL_THREAD"
-        When call secondary_kb_health_check_repair_attempt
-        The status should be success
-        The stderr should include "secondary_kb_health_check_repair_attempt: detected 1062/1146 on kubeblocks.kb_health_check, attempting repair"
-        The stderr should include "secondary_kb_health_check_repair_attempt: rc=0"
-        The contents of file "${TEST_DIR}/sql_calls" should include "STOP SLAVE SQL_THREAD;"
-        The contents of file "${TEST_DIR}/sql_calls" should include "DELETE FROM kubeblocks.kb_health_check;"
-        The contents of file "${TEST_DIR}/sql_calls" should include "START SLAVE SQL_THREAD;"
-      End
-
-      It "uses kb_internal_root for the maintenance writes (not user-facing root)"
-        When call secondary_kb_health_check_repair_attempt
-        The status should be success
-        The stderr should include "secondary_kb_health_check_repair_attempt: rc=0"
-        The contents of file "${TEST_DIR}/sql_calls" should include "-ukb_internal_root"
-        The contents of file "${TEST_DIR}/sql_calls" should not include "-uroot"
-      End
-
-      It "alpha.59 invariant: NEVER opens @@global.read_only during repair (no double-writable window)"
-        # Per Jack 19:45 review blocker 2: a transient SET GLOBAL read_only=OFF
-        # during repair would create a tiny but real write window that
-        # contradicts double_writable=0. kb_internal_root has READ_ONLY ADMIN
-        # so the maintenance DELETE works while read_only stays ON.
-        When call secondary_kb_health_check_repair_attempt
-        The status should be success
-        The stderr should include "secondary_kb_health_check_repair_attempt: rc=0"
-        The contents of file "${TEST_DIR}/sql_calls" should not include "SET GLOBAL read_only=OFF"
-        The contents of file "${TEST_DIR}/sql_calls" should not include "SET GLOBAL read_only=ON"
-        The contents of file "${TEST_DIR}/sql_calls" should not include "set global read_only=off"
-      End
-    End
-
-    Context "when slave status shows 1062 but the table is NOT kubeblocks.kb_health_check"
-      setup_repair_other_table() {
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
-Slave_SQL_Running: No
-Last_IO_Errno: 0
-Last_SQL_Errno: 1062
-Last_SQL_Error: Could not execute Write_rows event on table myapp.users"
-        export MOCK_MARIADB_CAPTURE_FILE="${TEST_DIR}/sql_calls"
-        : > "${MOCK_MARIADB_CAPTURE_FILE}"
-        make_mariadb_cli
-      }
-      Before "setup_repair_other_table"
-
-      It "does NOT fire repair (precise signature, no other 1062 swallowed)"
-        When call secondary_kb_health_check_repair_attempt
-        The status should be success
-        The stderr should not include "attempting repair"
-        The contents of file "${TEST_DIR}/sql_calls" should not include "DELETE FROM kubeblocks.kb_health_check;"
-        The contents of file "${TEST_DIR}/sql_calls" should not include "STOP SLAVE SQL_THREAD;"
-      End
-    End
-
-    Context "when slave status shows a non-1062/1146 error"
-      setup_repair_other_errno() {
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT="Slave_IO_Running: Yes
-Slave_SQL_Running: No
-Last_IO_Errno: 0
-Last_SQL_Errno: 1064
-Last_SQL_Error: You have an error in your SQL syntax"
-        export MOCK_MARIADB_CAPTURE_FILE="${TEST_DIR}/sql_calls"
-        : > "${MOCK_MARIADB_CAPTURE_FILE}"
-        make_mariadb_cli
-      }
-      Before "setup_repair_other_errno"
-
-      It "does NOT fire repair (only 1062/1146 are repairable)"
-        When call secondary_kb_health_check_repair_attempt
-        The status should be success
-        The stderr should not include "attempting repair"
-        The contents of file "${TEST_DIR}/sql_calls" should not include "DELETE FROM kubeblocks.kb_health_check;"
-      End
-    End
-
-    Context "when slave status is empty"
-      setup_repair_empty_status() {
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_RC=0
-        export MOCK_MARIADB_SHOW_SLAVE_STATUS_STDOUT=""
-        export MOCK_MARIADB_CAPTURE_FILE="${TEST_DIR}/sql_calls"
-        : > "${MOCK_MARIADB_CAPTURE_FILE}"
-        make_mariadb_cli
-      }
-      Before "setup_repair_empty_status"
-
-      It "does NOT fire repair when slave status output is empty"
-        When call secondary_kb_health_check_repair_attempt
-        The status should be success
-        The stderr should not include "attempting repair"
-      End
-    End
-  End
-
-  Describe "slave_status_has_kb_health_check_repairable_error()"
-    It "matches Last_SQL_Errno: 1062 + kubeblocks.kb_health_check"
-      When call slave_status_has_kb_health_check_repairable_error "Slave_SQL_Running: No
-Last_SQL_Errno: 1062
-Last_SQL_Error: ... on table kubeblocks.kb_health_check at master log"
-      The status should be success
-    End
-
-    It "matches Last_Errno: 1062 + kubeblocks.kb_health_check (legacy field name)"
-      When call slave_status_has_kb_health_check_repairable_error "Slave_SQL_Running: No
-Last_Errno: 1062
-Last_Error: ... on table kubeblocks.kb_health_check at master log"
-      The status should be success
-    End
-
-    It "matches Last_SQL_Errno: 1146 + kubeblocks.kb_health_check (missing table)"
-      When call slave_status_has_kb_health_check_repairable_error "Slave_SQL_Running: No
-Last_SQL_Errno: 1146
-Last_SQL_Error: Table 'kubeblocks.kb_health_check' doesn't exist"
-      The status should be success
-    End
-
-    It "does NOT match 1062 on a different table"
-      When call slave_status_has_kb_health_check_repairable_error "Slave_SQL_Running: No
-Last_SQL_Errno: 1062
-Last_SQL_Error: ... on table myapp.users"
+  Describe "secondary heartbeat ownership"
+    It "does not contain a secondary-side heartbeat repair function"
+      When run grep -E "^(secondary_kb_health_check_repair_attempt|slave_status_has_kb_health_check_repairable_error)\(\)" ../scripts/replication-roleprobe.sh
       The status should be failure
     End
 
-    It "does NOT match other errno even on kubeblocks.kb_health_check"
-      When call slave_status_has_kb_health_check_repairable_error "Slave_SQL_Running: No
-Last_SQL_Errno: 1064
-Last_SQL_Error: ... on table kubeblocks.kb_health_check"
-      The status should be failure
-    End
-
-    It "does NOT match empty input"
-      When call slave_status_has_kb_health_check_repairable_error ""
+    It "does not mutate the heartbeat table from roleProbe"
+      When run grep -E "(CREATE TABLE|DELETE FROM).*kubeblocks\.kb_health_check" ../scripts/replication-roleprobe.sh
       The status should be failure
     End
   End

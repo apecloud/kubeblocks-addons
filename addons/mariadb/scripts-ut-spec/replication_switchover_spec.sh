@@ -749,7 +749,7 @@ EOF
       The status should be failure
     End
 
-    It "repairs kubeblocks health check SQL-thread errors before deciding old-primary follow failed"
+    It "does not conceal a kubeblocks health check SQL-thread error"
       export MARIADB_ROOT_USER="root"
       export MARIADB_ROOT_PASSWORD="pw"
       query_value() {
@@ -801,14 +801,11 @@ EOF
         return 0
       }
       When call current_follows_candidate "mdb-mariadb-1" "mdb-mariadb-1.mdb-mariadb-headless.demo.svc.cluster.local"
-      The status should be success
-      The output should include "detected repairable kubeblocks health check replication error"
-      The contents of file "${TEST_DIR}/calls" should include "best_effort=STOP SLAVE SQL_THREAD;"
-      The contents of file "${TEST_DIR}/calls" should include "CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"
-      The contents of file "${TEST_DIR}/calls" should not include "set_read_only=OFF"
-      The contents of file "${TEST_DIR}/calls" should not include "set_read_only=ON"
-      The contents of file "${TEST_DIR}/calls" should include "best_effort=START SLAVE SQL_THREAD;"
-      The contents of file "${TEST_DIR}/slave-status-count" should eq "2"
+      The status should be failure
+      The contents of file "${TEST_DIR}/calls" should not include "STOP SLAVE SQL_THREAD"
+      The contents of file "${TEST_DIR}/calls" should not include "CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"
+      The contents of file "${TEST_DIR}/calls" should not include "DELETE FROM kubeblocks.kb_health_check"
+      The contents of file "${TEST_DIR}/slave-status-count" should eq "1"
     End
 
     It "does not accept old-primary follow while syncer still sees it as primary"
@@ -834,23 +831,9 @@ EOF
       The status should be failure
     End
 
-    It "uses internal local maintenance SQL before falling back to user-facing root"
-      export MARIADB_ROOT_USER="root"
-      export MARIADB_ROOT_PASSWORD="pw"
-      export MARIADB_INTERNAL_ROOT_USER="kb_internal_root"
-      run_local_internal_sql() {
-        record_call "internal=$1"
-        return 0
-      }
-      run_sql() {
-        record_call "root=$2"
-        return 0
-      }
-      When call clear_local_kb_health_check_table "internal-maintenance"
-      The status should be success
-      The output should include "prepared local kubeblocks health check table"
-      The contents of file "${TEST_DIR}/calls" should include "internal="
-      The contents of file "${TEST_DIR}/calls" should not include "root="
+    It "does not define a secondary-side heartbeat table mutation helper"
+      When run grep -E "^(clear_local_kb_health_check_table|repair_kb_health_check_replication_error)\(\)" ../scripts/replication-switchover.sh
+      The status should be failure
     End
   End
 
@@ -3336,10 +3319,10 @@ EOF
         #   reconcile_secondary + configure_from_primary; the body of
         #   set_replica_read_only itself is the function definition not a
         #   self-call, so 4 caller patterns)
-        # + 1 (prestop_lock_failed_both literal in preStop script) + 14 (tier-annotated swallow lines;
+        # + 1 (prestop_lock_failed_both literal in preStop script) + 13 (tier-annotated swallow lines;
         #   reduced from 16 after CMPD consolidation PR #2933)
         The status should be success
-        The output should equal "1 1 4 1 14 "
+        The output should equal "1 1 4 1 13 "
       End
     End
   End
@@ -3610,9 +3593,9 @@ EOF
         '
         The status should be success
         # Expected: 1 grant body explicit + 1 secondary fence + 4 explicit set_replica_read_only caller +
-        # 1 prestop_lock_failed_both (in prestop script) + 14 tier-annotated swallow (reduced from 16 after CMPD
+        # 1 prestop_lock_failed_both (in prestop script) + 13 tier-annotated swallow (reduced from 16 after CMPD
         # consolidation PR #2933) + 2 inline-quoted MONITOR loops
-        The output should equal "1 1 4 1 14 2 "
+        The output should equal "1 1 4 1 13 2 "
       End
     End
   End

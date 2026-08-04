@@ -206,10 +206,9 @@ apply_remote_root_fence() {
     # alpha.61 (Jack 01:40 review): user-facing root on secondary must NOT
     # carry SUPER / READ_ONLY ADMIN / BINLOG ADMIN / CONNECTION ADMIN, since
     # those bypass `@@global.read_only` and would re-introduce the alpha.59
-    # false-PASS race when this pod is later promoted again. The legitimate
-    # need for read_only-bypass on secondary (kb_health_check 1062 repair) is
-    # served by `kb_internal_root` in `secondary_kb_health_check_repair_attempt`,
-    # which keeps READ_ONLY ADMIN. SUPER is removed from this grant; the
+    # false-PASS race when this pod is later promoted again. Heartbeat state is
+    # primary-owned and replicated; roleProbe never repairs it locally on a
+    # secondary. SUPER is removed from this grant; the
     # best-effort `READ_ONLY ADMIN` and `CONNECTION ADMIN` for user-facing
     # root below are also removed (CONNECTION ADMIN is dropped by minimum-priv
     # principle without dependence on read_only-bypass behavior).
@@ -272,77 +271,6 @@ query_slave_status() {
     -P3306 -h127.0.0.1 --connect-timeout=5 -e "SHOW SLAVE STATUS\\G" 2>/dev/null || \
     "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
       -P3306 -h127.0.0.1 --connect-timeout=5 -e "SHOW SLAVE STATUS\\G" 2>/dev/null || true
-}
-
-# Detect a slave SQL thread error caused by the addon's heartbeat table writing
-# a duplicate-key (1062) or missing-table (1146) row that the new primary later
-# replicates. We narrow strictly to that specific signature so the repair never
-# fires on unrelated SQL errors. See addon-test-runner-write-after-bounded-role-gate
-# guide and bootstrap-runner-preload-after-bounded-role-gate-case for context.
-slave_status_has_kb_health_check_repairable_error() {
-  local slave_status="$1"
-  [ -n "${slave_status}" ] || return 1
-  case ${slave_status} in
-    *"Last_SQL_Errno: 1062"*) ;;
-    *"Last_Errno: 1062"*) ;;
-    *"Last_SQL_Errno: 1146"*) ;;
-    *"Last_Errno: 1146"*) ;;
-    *) return 1 ;;
-  esac
-  case ${slave_status} in
-    *"kubeblocks.kb_health_check"*) return 0 ;;
-  esac
-  return 1
-}
-
-# Best-effort repair invoked from the secondary roleProbe path when slave
-# replication is broken specifically by the kb_health_check 1062/1146 signature.
-# Always returns 0 so the probe can re-evaluate replication health afterwards;
-# every attempt is logged with rc so closeout can observe whether repair fired.
-#
-# Critical post-Jack-19:45-review invariant: this function MUST NOT open
-# `@@global.read_only` even briefly. The whole point of the secondary fence
-# is to prove `double_writable=0` across the post-OpsRequest convergence
-# window; flipping read_only OFF/ON for repair would create a small but real
-# write window that contradicts the invariant we are testing for. We rely
-# on `kb_internal_root` holding `READ_ONLY ADMIN` (granted by the addon's
-# remote-root-fence path) so the maintenance DELETE works while
-# `read_only=1` stays in place. If `kb_internal_root` cannot write for any
-# reason, log rc and return; the next roleProbe tick re-evaluates.
-#
-# Idempotent: if the table is already empty the DELETE is a no-op (0 rows
-# affected); if STOP/START SLAVE has already converged the next probe tick
-# will observe IO/SQL=Yes and skip this branch entirely.
-secondary_kb_health_check_repair_attempt() {
-  local slave_status mariadb_cli rc
-  slave_status=$(query_slave_status)
-  slave_status_has_kb_health_check_repairable_error "${slave_status}" || return 0
-  echo "secondary_kb_health_check_repair_attempt: detected 1062/1146 on kubeblocks.kb_health_check, attempting repair" >&2
-  mariadb_cli=$(resolve_mariadb_cli) || {
-    echo "secondary_kb_health_check_repair_attempt: rc=1 reason=no_mariadb_cli" >&2
-    return 0
-  }
-  # Stop SQL thread so the repair DELETE is not racing the failing apply loop.
-  # Uses kb_internal_root only; never user-facing root.
-  "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "STOP SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
-  # Narrow maintenance DELETE: only the kb_health_check rows. kb_internal_root
-  # holds READ_ONLY ADMIN, so this writes through while @@global.read_only=1
-  # stays untouched. sql_log_bin=0 keeps the DELETE from propagating (the new
-  # primary already has the canonical state).
-  "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "
-      SET SESSION sql_log_bin=0;
-      CREATE DATABASE IF NOT EXISTS kubeblocks;
-      CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
-      DELETE FROM kubeblocks.kb_health_check;
-      SET SESSION sql_log_bin=1;
-    " >/dev/null 2>&1
-  rc=$?
-  "${mariadb_cli}" "-u${MARIADB_INTERNAL_ROOT_USER}" "${MARIADB_ROOT_PASSWORD:+-p${MARIADB_ROOT_PASSWORD}}" \
-    -P3306 -h127.0.0.1 --connect-timeout=5 -N -s -e "START SLAVE SQL_THREAD;" >/dev/null 2>&1 || true
-  echo "secondary_kb_health_check_repair_attempt: rc=${rc}" >&2
-  return 0
 }
 
 not_ready() {
@@ -675,7 +603,6 @@ check_role() {
       # primary's replicated kb_health_check writes hit a duplicate-key on
       # this pod's stale row, repair narrowly and re-evaluate. Other SQL
       # errors are NOT swallowed: the next clause still fails not_ready.
-      secondary_kb_health_check_repair_attempt
       secondary_replication_ready || { not_ready; return $?; }
     fi
     apply_remote_root_fence "secondary" || { not_ready; return $?; }

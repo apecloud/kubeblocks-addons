@@ -107,7 +107,7 @@ Describe "replication-member-join.sh"
       ACTIVE_PRIMARY_HOST="mdb-mariadb.demo.svc.cluster.local"
       host_sql() {
         case "$*" in
-          *"SELECT @@server_id, @@hostname, @@global.read_only, @@global.gtid_binlog_state;"*) ;;
+          *"SELECT @@server_id, @@hostname, @@global.read_only, CONCAT_WS"*) ;;
           *) return 1 ;;
         esac
         printf '2\tmdb-mariadb-1\t0\t0-1-8550,0-2-8689\n'
@@ -127,7 +127,7 @@ Describe "replication-member-join.sh"
       echo 0 > "${TEST_DIR}/sample-count"
       host_sql() {
         case "$*" in
-          *"SELECT @@server_id, @@hostname, @@global.read_only, @@global.gtid_binlog_state;"*) ;;
+          *"SELECT @@server_id, @@hostname, @@global.read_only, CONCAT_WS"*) ;;
           *) return 1 ;;
         esac
         sample_count=$(cat "${TEST_DIR}/sample-count")
@@ -154,6 +154,7 @@ Describe "replication-member-join.sh"
         primary_sql() {
           case "$*" in
             *"gtid_binlog_pos"*) echo "0-1-100" ;;
+            *"SHOW BINARY LOGS"*) echo "mariadb-bin.000001 4096" ;;
           esac
         }
         local_sql() {
@@ -178,11 +179,12 @@ EOF
         The output should include "Replication started"
       End
 
-      It "prepares an empty local KubeBlocks health check table after starting IO and before starting SQL"
+      It "replays primary-owned DDL and never creates the health table locally"
         : > "${TEST_DIR}/call-log"
         primary_sql() {
           case "$*" in
             *"gtid_binlog_pos"*) echo "0-1-100" ;;
+            *"SHOW BINARY LOGS"*) echo "mariadb-bin.000007 4096" ;;
           esac
         }
         local_sql() {
@@ -206,110 +208,24 @@ EOF
         When call setup_replication
         The contents of file "${TEST_DIR}/call-log" should eq "change-master
 start-io
-cleanup
 start-sql"
-        The file "${TEST_DIR}/log/fresh-replica-health-check-cleanup.log" should be file
-        The output should include "Prepared local kubeblocks health check table"
+        The contents of file "${TEST_DIR}/call-log" should not include "cleanup"
+        The output should include "Replication started"
       End
 
-      It "repairs a local health check duplicate and restarts the SQL thread once"
-        : > "${TEST_DIR}/call-log"
-        query_count=0
-        primary_sql() {
-          case "$*" in
-            *"gtid_binlog_pos"*) echo "0-1-100" ;;
-          esac
-        }
-        local_sql() {
-          case "$*" in
-            *"START SLAVE IO_THREAD"*) echo "start-io" >> "${TEST_DIR}/call-log" ;;
-            *"CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"*) echo "cleanup" >> "${TEST_DIR}/call-log" ;;
-            *"STOP SLAVE SQL_THREAD"*) echo "stop-sql" >> "${TEST_DIR}/call-log" ;;
-            *"START SLAVE SQL_THREAD"*) echo "start-sql" >> "${TEST_DIR}/call-log" ;;
-            *"gtid_slave_pos;"*) echo "" ;;
-            *"SHOW SLAVE STATUS"*) echo "some-slave-status-row" ;;
-            *) : ;;
-          esac
-        }
-        query_slave_status_verbose() {
-          query_count=$(cat "${TEST_DIR}/query-count" 2>/dev/null || echo 0)
-          query_count=$((query_count + 1))
-          printf "%s" "${query_count}" > "${TEST_DIR}/query-count"
-          if [ "${query_count}" -eq 1 ]; then
-            cat <<'EOF'
-Slave_IO_Running: Yes
-Slave_SQL_Running: No
-Last_IO_Errno: 0
-Last_SQL_Errno: 1062
-Last_SQL_Error: Error 'Duplicate entry' on table 'kubeblocks.kb_health_check'
-EOF
-          else
-            cat <<'EOF'
-Slave_IO_Running: Yes
-Slave_SQL_Running: Yes
-Last_IO_Errno: 0
-Last_SQL_Errno: 0
-EOF
-          fi
-        }
-        When call setup_replication
-        The contents of file "${TEST_DIR}/call-log" should include "stop-sql"
-        The contents of file "${TEST_DIR}/call-log" should include "cleanup"
-        The contents of file "${TEST_DIR}/call-log" should include "start-sql"
-        The output should include "after repairing kubeblocks health check replication error"
-      End
-
-      It "repairs a missing local health check table and restarts the SQL thread once"
-        : > "${TEST_DIR}/call-log"
-        query_count=0
-        primary_sql() {
-          case "$*" in
-            *"gtid_binlog_pos"*) echo "0-1-100" ;;
-          esac
-        }
-        local_sql() {
-          case "$*" in
-            *"START SLAVE IO_THREAD"*) echo "start-io" >> "${TEST_DIR}/call-log" ;;
-            *"CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check"*) echo "cleanup" >> "${TEST_DIR}/call-log" ;;
-            *"STOP SLAVE SQL_THREAD"*) echo "stop-sql" >> "${TEST_DIR}/call-log" ;;
-            *"START SLAVE SQL_THREAD"*) echo "start-sql" >> "${TEST_DIR}/call-log" ;;
-            *"gtid_slave_pos;"*) echo "" ;;
-            *"SHOW SLAVE STATUS"*) echo "some-slave-status-row" ;;
-            *) : ;;
-          esac
-        }
-        query_slave_status_verbose() {
-          query_count=$(cat "${TEST_DIR}/query-count" 2>/dev/null || echo 0)
-          query_count=$((query_count + 1))
-          printf "%s" "${query_count}" > "${TEST_DIR}/query-count"
-          if [ "${query_count}" -eq 1 ]; then
-            cat <<'EOF'
-Slave_IO_Running: Yes
-Slave_SQL_Running: No
-Last_IO_Errno: 0
-Last_SQL_Errno: 1146
-Last_SQL_Error: Error executing row event: 'Table 'kubeblocks.kb_health_check' doesn't exist'
-EOF
-          else
-            cat <<'EOF'
-Slave_IO_Running: Yes
-Slave_SQL_Running: Yes
-Last_IO_Errno: 0
-Last_SQL_Errno: 0
-EOF
-          fi
-        }
-        When call setup_replication
-        The contents of file "${TEST_DIR}/call-log" should include "stop-sql"
-        The contents of file "${TEST_DIR}/call-log" should include "cleanup"
-        The contents of file "${TEST_DIR}/call-log" should include "start-sql"
-        The output should include "after repairing kubeblocks health check replication error"
+      It "configures a fresh replica from the oldest retained binlog"
+        When run grep -E "MASTER_LOG_FILE=.*oldest_master_log|MASTER_LOG_POS=4|MASTER_USE_GTID=no" ../scripts/replication-member-join.sh
+        The status should be success
+        The output should include "MASTER_LOG_FILE='\${oldest_master_log}'"
+        The output should include "MASTER_LOG_POS=4"
+        The output should include "MASTER_USE_GTID=no"
       End
 
       It "removes the .replication-pending flag"
         primary_sql() {
           case "$*" in
             *"gtid_binlog_pos"*) echo "0-1-100" ;;
+            *"SHOW BINARY LOGS"*) echo "mariadb-bin.000001 4096" ;;
           esac
         }
         local_sql() {
@@ -336,6 +252,7 @@ EOF
         primary_sql() {
           case "$*" in
             *"gtid_binlog_pos"*) echo "0-1-100" ;;
+            *"SHOW BINARY LOGS"*) echo "mariadb-bin.000001 4096" ;;
           esac
         }
         local_sql() {
@@ -547,7 +464,7 @@ EOF
         }
         host_sql() {
           case "$*" in
-            *"SELECT @@server_id, @@hostname, @@global.read_only, @@global.gtid_binlog_state;"*)
+            *"SELECT @@server_id, @@hostname, @@global.read_only, CONCAT_WS"*)
               sample_count=$(cat "${TEST_DIR}/sample-count")
               sample_count=$((sample_count + 1))
               echo "${sample_count}" > "${TEST_DIR}/sample-count"
@@ -599,6 +516,7 @@ EOF
         primary_sql() {
           case "$*" in
             *"gtid_binlog_pos"*) echo "0-1-100" ;;
+            *"SHOW BINARY LOGS"*) echo "mariadb-bin.000001 4096" ;;
           esac
         }
         local_sql() {
@@ -792,6 +710,7 @@ EOF
         primary_sql() {
           case "$*" in
             *"gtid_binlog_pos"*) echo "0-1-100" ;;
+            *"SHOW BINARY LOGS"*) echo "mariadb-bin.000001 4096" ;;
           esac
         }
         local_sql() {

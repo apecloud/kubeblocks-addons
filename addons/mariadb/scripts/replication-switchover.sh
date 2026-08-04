@@ -1713,43 +1713,6 @@ slave_status_is_ready_for_candidate() {
   [ "${read_master_pos}" = "${exec_master_pos}" ]
 }
 
-slave_status_has_kb_health_check_repairable_error() {
-  local slave_status="$1"
-  [ -n "${slave_status}" ] || return 1
-  printf "%s" "${slave_status}" | grep -qE "Last_SQL_Errno: 1062|Last_Errno: 1062|Last_SQL_Errno: 1146|Last_Errno: 1146" || return 1
-  printf "%s" "${slave_status}" | grep -q "kubeblocks.kb_health_check" || return 1
-}
-
-clear_local_kb_health_check_table() {
-  local decision="$1"
-  if run_local_maintenance_sql "
-    SET SESSION sql_log_bin=0;
-    CREATE DATABASE IF NOT EXISTS kubeblocks;
-    CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
-    DELETE FROM kubeblocks.kb_health_check;
-    SET SESSION sql_log_bin=1;
-  "; then
-    log_switchover_info "Switchover old-primary follow repair: prepared local kubeblocks health check table (${decision})"
-    return 0
-  fi
-  log_switchover_error "Switchover old-primary follow repair: failed to prepare local kubeblocks health check table (${decision})"
-  return 1
-}
-
-repair_kb_health_check_replication_error() {
-  local slave_status="$1"
-  if ! slave_status_has_kb_health_check_repairable_error "${slave_status}"; then
-    return 1
-  fi
-  log_switchover_info "Switchover old-primary follow repair: detected repairable kubeblocks health check replication error"
-  run_local_sql_best_effort "STOP SLAVE SQL_THREAD;"
-  if ! clear_local_kb_health_check_table "prepared-local-kb-health-check-after-switchover-replication-error"; then
-    return 1
-  fi
-  run_local_sql_best_effort "START SLAVE SQL_THREAD;"
-  return 0
-}
-
 current_follows_candidate() {
   local candidate_name="$1"
   local candidate_fqdn="$2"
@@ -1768,10 +1731,6 @@ current_follows_candidate() {
   slave_status=$(query_slave_status "127.0.0.1")
   if slave_status_is_ready_for_candidate "${slave_status}" "${candidate_name}" "${candidate_fqdn}"; then
     return 0
-  fi
-  if repair_kb_health_check_replication_error "${slave_status}"; then
-    slave_status=$(query_slave_status "127.0.0.1")
-    slave_status_is_ready_for_candidate "${slave_status}" "${candidate_name}" "${candidate_fqdn}" && return 0
   fi
   return 1
 }

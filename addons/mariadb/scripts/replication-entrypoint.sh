@@ -1,6 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC2034
 DATA_DIR="${MARIADB_DATADIR:-/var/lib/mysql}"
+SYNCER_HA_READY_FILE="${KB_MARIADB_HA_STARTUP_GATE_FILE:-${DATA_DIR}/.syncer-ha-ready}"
 
 mkdir -p ${DATA_DIR}/{log,binlog,tmp}
 chown -R mysql:mysql ${DATA_DIR}
@@ -202,6 +203,10 @@ ROOT_LOCAL=(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${
 INTERNAL_LOCAL=(mariadb "-u${MARIADB_INTERNAL_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -S "${SOCK}" -N -s)
 LOCAL=("${ROOT_LOCAL[@]}")
 LIFECYCLE_MARKER="/tmp/.mariadb-startup-lifecycle"
+# The hypervisor may restart mariadbd in the same Pod/container. Re-arm the
+# syncer handshake for every database process, not only the first container
+# startup, so HA cannot reuse a marker published by the previous process.
+rm -f "${SYNCER_HA_READY_FILE}"
 if [ ! -f "${LIFECYCLE_MARKER}" ]; then
   touch "${LIFECYCLE_MARKER}" 2>/dev/null || true
   if [ -f "${DATA_DIR}/.prestop-fence-started" ] || \
@@ -429,41 +434,15 @@ primary_internal_root_write_ready() {
   return 1
 }
 primary_write_gates_ready() {
-  # alpha.110 P0a URGENT Direction E (Jack 15:26 + Helen TL 15:34 sealed +
-  # Edward 15:51 + Rocco 15:53 + Lily 15:54 4-cosign LGTM):
-  # Skip primary_local_root_write_ready syncerctl-writecheck step on
-  # reconcile-repair-begin path. Root cause: chart-side
-  # reconcile_sql_listener_for_syncer_primary_once fires
-  # `runtime-primary-listener-reconcile-repair-begin` every ~3s while
-  # syncer-role=primary but chart markers OUT-OF-SYNC; each iteration's
-  # writecheck INSERTs into kb_health_check generating 1 binlog event
-  # per fire → cumulative orphan events on local domain → post-
-  # reconfigure switchover GTID divergence → alpha.60 fail-closed →
-  # HA permanent refuse follow → cluster stuck Updating. Round 1c-G
-  # 2nd mdb-async-10271 saw 18 events accumulate in 2.5min loop fire
-  # window.
-  #
-  # alpha.110 P0a URGENT Direction E preserves alpha.99 Helen
-  # 2026-05-25 design intent (syncer's WriteCheck deliberately writes
-  # to binlog for replication health verification): happy-path
-  # writecheck still runs on normal primary promotion paths (line
-  # 1942/2134/2218/2383 callers use labels without "-no-writecheck"
-  # suffix). Only the reconcile-repair-begin path passes label with
-  # "-no-writecheck" suffix (per Rocco 15:53 stricter suffix-anchored
-  # pattern), triggering this case to skip the writecheck step while
-  # preserving primary_internal_root_write_ready (kb_addon_write_probe
-  # addon-owned + explicit SET sql_log_bin=0 per line 596-602 — NOT
-  # orphan event source) + marker emit + role probe + read_only +
-  # role transition logic in set_primary_read_write happy path.
+  # syncer's HA loop owns WriteCheck and the replicated heartbeat.  Calling
+  # syncerctl writecheck here creates a second state machine: promotion/rejoin
+  # paths can legitimately have syncer paused or still publishing the role,
+  # and treating that transient refusal as a database write failure fences the
+  # freshly promoted primary.  The addon gate only verifies its local internal
+  # account with a non-binlogged scratch-table probe; syncer independently
+  # verifies client writes and replication before retaining the lease.
   local label="${1:-primary-write-gates-ready}"
-  case "${label}" in
-    *-no-writecheck)
-      prestop_watchdog_log "primary-write-gates-ready label=${label} reason=skip-writecheck-repair-path"
-      primary_internal_root_write_ready "${label}" || return 1
-      return 0
-      ;;
-  esac
-  primary_local_root_write_ready "${label}" || return 1
+  prestop_watchdog_log "primary-write-gates-ready label=${label} owner=addon-local-probe"
   primary_internal_root_write_ready "${label}" || return 1
 }
 fail_primary_read_write_gate() {
@@ -543,6 +522,7 @@ mark_replication_pending() {
 mark_replication_ready() {
   touch ${DATA_DIR}/.replication-ready
   touch ${DATA_DIR}/.sql-listener-ready
+  touch "${SYNCER_HA_READY_FILE}"
   rm -f ${DATA_DIR}/.replication-pending ${DATA_DIR}/.replication-divergence-pending
 }
 mark_replication_divergence_pending() {
@@ -1912,18 +1892,6 @@ query_primary_service_server_id() {
   timeout 3 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
     -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@server_id;" 2>/dev/null || true
 }
-ensure_local_syncer_health_check_schema() {
-  # A newly joining replica can begin from a GTID position after the primary's
-  # one-time schema DDL. Create only the canonical empty schema locally before
-  # its SQL thread starts; never delete or seed the replicated heartbeat row.
-  # The primary remains the owner of binlogged DDL and heartbeat DML.
-  "${INTERNAL_LOCAL[@]}" -e "
-    SET SESSION sql_log_bin=0;
-    CREATE DATABASE IF NOT EXISTS kubeblocks;
-    CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
-    SET SESSION sql_log_bin=1;
-  " 2>/dev/null
-}
 local_primary_role_published() {
   [ ! -f "${DATA_DIR}/master.info" ] && \
   [ -f "${DATA_DIR}/.primary-read-write-ready" ] && \
@@ -2004,7 +1972,7 @@ configure_replication_from_primary_service_once() {
   # is not safe; we MUST return 1 so caller does not interpret
   # this iteration as a successful follow attempt.
   local label="${1:-runtime-secondary-follow}"
-  local primary_sid master_gtid local_gtid slave_status replica_rejoin_rc
+  local primary_sid master_gtid local_gtid oldest_master_log slave_status replica_rejoin_rc
   mark_replication_pending
   set_replica_read_only "${label}-enter"
   replica_rejoin_rc=$?
@@ -2030,21 +1998,25 @@ configure_replication_from_primary_service_once() {
   local_gtid=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
   prestop_watchdog_log "runtime-secondary-follow-configure-begin label=${label} primary_sid=${primary_sid} service_id=${SERVICE_ID} local_gtid=${local_gtid:-<empty>} primary_gtid=${master_gtid:-<empty>}"
   if [ -z "${local_gtid}" ]; then
+    oldest_master_log=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+      -P3306 -h"${PRIMARY_HOST}" -N -s -e "SHOW BINARY LOGS;" 2>/dev/null | awk 'NR == 1 { print $1 }')
+    if [ -z "${oldest_master_log}" ]; then
+      prestop_watchdog_log "runtime-secondary-follow-configure-defer label=${label} reason=primary-has-no-retained-binlog"
+      return 1
+    fi
     if ! "${LOCAL[@]}" -e "
       STOP SLAVE;
       CHANGE MASTER TO
         MASTER_HOST='${PRIMARY_HOST}',
         MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
         MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
-        MASTER_USE_GTID=slave_pos,
+        MASTER_LOG_FILE='${oldest_master_log}',
+        MASTER_LOG_POS=4,
+        MASTER_USE_GTID=no,
         MASTER_CONNECT_RETRY=10;
       START SLAVE IO_THREAD;
     " 2>/dev/null; then
       prestop_watchdog_log "runtime-secondary-follow-configure-io-failed label=${label}"
-      return 1
-    fi
-    if ! ensure_local_syncer_health_check_schema; then
-      prestop_watchdog_log "runtime-secondary-follow-configure-schema-failed label=${label}"
       return 1
     fi
     # alpha.99 (Helen 2026-05-25): removed
@@ -2218,10 +2190,13 @@ reconcile_sql_listener_for_syncer_secondary_serialized_once() {
 wait_for_mariadbd_with_role_reconcile() {
   local rc=0
   while kill -0 "${MARIADB_PID}" 2>/dev/null; do
-    # Secondary repair is required to retarget a surviving replica after
-    # failover.  Its wrapper pauses the local syncer and rechecks the role so
-    # this work cannot race a concurrent local promotion.
-    reconcile_sql_listener_for_syncer_secondary_serialized_once || true
+    # Do not run secondary repair as a permanent one-second reconciler.  The
+    # startup/rejoin paths already configure replicas, and a surviving replica
+    # follows the Primary Service without changing MASTER.  A sampled
+    # syncerctl role can lag a just-completed Promote; fencing on that stale
+    # value makes the new primary read-only and forces lease churn.  Runtime
+    # role ownership belongs to syncer, while this loop only converges the SQL
+    # listener after syncer has published a primary.
     reconcile_sql_listener_for_syncer_primary_once || true
     sleep 1
   done
@@ -2284,6 +2259,10 @@ lock_local_root_writes "startup-before-role-decision-pre-remote" || true # tier=
 lock_remote_root_writes "startup-before-role-decision" || true # tier=startup-defensive
 set_fail_closed_read_only "startup-before-role-decision" || true # tier=startup-defensive
 lock_local_root_writes "startup-before-role-decision" || true # tier=startup-defensive
+# Keep the syncer startup gate closed on an unconfigured replica. The replica
+# bootstrap below must replay the primary-owned schema DDL before syncer's
+# secondary Follow path is allowed to replace its file/position connection
+# with MASTER_USE_GTID=slave_pos.
 
 # Determine role by querying the primary service VIP.
 # timeout 10 prevents an indefinite hang if the primary is temporarily unresponsive
@@ -2295,9 +2274,24 @@ PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASS
 # Use tabular SHOW SLAVE STATUS (not \G) because -N suppresses field names in \G format.
 SLAVE_STATUS=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
 
+# Existing replicas have already received the primary-owned schema in an
+# earlier replication session. Let syncer reconcile their persisted source
+# connection immediately; the bootstrap race only applies to a fresh replica
+# with neither slave metadata nor the replicated heartbeat table.
+if [ -n "${SLAVE_STATUS}" ]; then
+  _existing_health_table=$("${LOCAL[@]}" -e "
+    SELECT COUNT(*) FROM information_schema.tables
+    WHERE table_schema='kubeblocks' AND table_name='kb_health_check';
+  " 2>/dev/null || echo 0)
+  if [ "${_existing_health_table}" = "1" ]; then
+    touch "${SYNCER_HA_READY_FILE}"
+  fi
+fi
+
 if [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
   # Primary service routes to us — we are the current primary.
   # Clear any stale slave config and mark initialization as complete.
+  touch "${SYNCER_HA_READY_FILE}"
   if ! expose_sql_listener_for_primary_role "primary-service-route"; then
     wait ${MARIADB_PID}
     exit 1
@@ -2411,6 +2405,7 @@ elif [ -n "${SLAVE_STATUS}" ]; then
         done
       fi
       if [ "${blocked_self_election_resolved}" != "true" ]; then
+        touch "${SYNCER_HA_READY_FILE}"
         if ! expose_sql_listener_for_primary_role "stale-slave-no-primary"; then
           wait ${MARIADB_PID}
           exit 1
@@ -2471,17 +2466,11 @@ elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
   # the loop and the cluster waits for kbagent restart / operator intervention.
   # That is the intended trade-off of "primary election belongs to syncer/DCS".
   #
-  # Set fail-closed read_only BEFORE entering the wait loop. mariadbd starts
-  # read-only from the command line, and this explicit set plus the local
-  # root write fence keeps the pod unwritable while role is unresolved.
-  # Cycle 6 (alpha.18) caught the previous default-writable behavior as a SQL
-  # invariant failure: pod-0 default-primary read_only=0 plus pod-1 waiting in
-  # the loop with default read_only=0 = two writable instances.
-  # tier=startup-defensive: pre-role-decision waiting loop entry;
-  # subsequent publish_replica_after_rejoin_ready (Tier B required)
-  # is the actual ready/role publish point.
-  set_fail_closed_read_only "wait-primary-loop-entry" || true # tier=startup-defensive
-  lock_local_root_writes "wait-primary-loop-entry" || true # tier=startup-defensive
+  # mariadbd was started read-only and the local account fence was installed
+  # before the syncer startup gate opened.  Do not repeat those destructive
+  # operations here: syncer may have promoted this member between opening the
+  # gate and entering this branch, in which case a second fence would revoke
+  # the freshly published primary and trigger lease churn.
   _no_primary_iters=0
   while true; do
     # Step 1: find primary (timeout 10 prevents hang if primary unresponsive)
@@ -2536,13 +2525,22 @@ elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
       -P3306 -h"${PRIMARY_HOST}" -N -s -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null)
     LOCAL_GTID=$("${LOCAL[@]}" -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null || echo "")
     if [ -z "${LOCAL_GTID}" ]; then
+      OLDEST_MASTER_LOG=$(mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" \
+        -P3306 -h"${PRIMARY_HOST}" -N -s -e "SHOW BINARY LOGS;" 2>/dev/null | awk 'NR == 1 { print $1 }')
+      if [ -z "${OLDEST_MASTER_LOG}" ]; then
+        echo "Primary returned no retained binary log; retrying in 5s"
+        sleep 5
+        continue
+      fi
       if ! "${LOCAL[@]}" -e "
         STOP SLAVE;
         CHANGE MASTER TO
           MASTER_HOST='${PRIMARY_HOST}',
           MASTER_USER='${MARIADB_REPL_USER:-kb_replicator}',
           MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
-          MASTER_USE_GTID=slave_pos,
+          MASTER_LOG_FILE='${OLDEST_MASTER_LOG}',
+          MASTER_LOG_POS=4,
+          MASTER_USE_GTID=no,
           MASTER_CONNECT_RETRY=10;
         START SLAVE IO_THREAD;
       " 2>/dev/null; then
@@ -2556,12 +2554,6 @@ elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
       # .kb_health_check on local secondary which directly
       # triggered the 1032 cascade documented in cluster
       # mdb-repro-1032 evidence (2026-05-25 08:03Z).
-      if ! ensure_local_syncer_health_check_schema; then
-        mark_replication_pending
-        echo "Failed to initialize local syncer health-check schema; keeping roleProbe pending."
-        sleep 5
-        continue
-      fi
       if ! "${LOCAL[@]}" -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
         # tier=error-recovery: SQL thread start has already failed.
         # mark_replication_pending + best-effort defensive locks +
@@ -2613,6 +2605,7 @@ else
   # reconcile loop observe the syncer/DCS decision: if another pod is
   # elected primary, this pod can configure replication and publish
   # secondary only after replica health is real.
+  touch "${SYNCER_HA_READY_FILE}"
   if expose_sql_listener_for_primary_role "default-pod0-primary"; then
     mark_replication_ready
     echo "Starting as primary by default (index=0)"

@@ -329,50 +329,10 @@ fail_closed_for_gtid_divergence() {
   return 0
 }
 
-clear_local_kb_health_check_table() {
-  local decision="$1" evidence_file table_count row_count
-  if local_sql -e "
-SET SESSION sql_log_bin=0;
-CREATE DATABASE IF NOT EXISTS kubeblocks;
-CREATE TABLE IF NOT EXISTS kubeblocks.kb_health_check(type INT, check_ts BIGINT, PRIMARY KEY(type));
-DELETE FROM kubeblocks.kb_health_check;
-SET SESSION sql_log_bin=1;
-" 2>/dev/null; then
-    mkdir -p "${DATA_DIR}/log" 2>/dev/null || true
-    evidence_file="${DATA_DIR}/log/fresh-replica-health-check-cleanup.log"
-    table_count=$(local_sql -e "
-SELECT COUNT(*)
-FROM information_schema.TABLES
-WHERE TABLE_SCHEMA = 'kubeblocks'
-  AND TABLE_NAME = 'kb_health_check';
-" 2>/dev/null || echo "unknown")
-    row_count=$(local_sql -e "SELECT COUNT(*) FROM kubeblocks.kb_health_check;" 2>/dev/null || echo "unknown")
-    {
-      printf 'timestamp=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-      printf 'decision=%s\n' "${decision}"
-      printf 'pod_name=%s\n' "${POD_NAME:-unknown}"
-      printf 'active_primary_host=%s\n' "${ACTIVE_PRIMARY_HOST:-unknown}"
-      printf 'health_table_after_cleanup=%s\n' "${table_count}"
-      printf 'health_rows_after_cleanup=%s\n' "${row_count}"
-      printf '\n'
-    } >> "${evidence_file}" 2>/dev/null || true
-    echo "Prepared local kubeblocks health check table (${decision})."
-    return 0
-  fi
-  return 1
-}
-
 prepare_fresh_replica_for_sql_thread_start() {
   local local_gtid="$1"
   [ -z "${local_gtid}" ] || return 0
-
-  if clear_local_kb_health_check_table "cleared-local-kb-health-check-before-fresh-sql-thread"; then
-    return 0
-  fi
-
-  mark_replication_pending
-  echo "WARNING: failed to clear local kubeblocks health check table before fresh SQL thread starts; keeping roleProbe pending."
-  return 1
+  return 0
 }
 
 query_slave_status_verbose() {
@@ -396,28 +356,6 @@ slave_status_has_gtid_out_of_order() {
   [ -n "${slave_status}" ] || return 1
   printf "%s" "${slave_status}" | grep -q "Last_SQL_Errno: 1950" || return 1
   printf "%s" "${slave_status}" | grep -qi "out-of-order" || return 1
-}
-
-slave_status_has_kb_health_check_repairable_error() {
-  local slave_status="$1"
-  [ -n "${slave_status}" ] || return 1
-  printf "%s" "${slave_status}" | grep -qE "Last_SQL_Errno: 1062|Last_Errno: 1062|Last_SQL_Errno: 1146|Last_Errno: 1146" || return 1
-  printf "%s" "${slave_status}" | grep -q "kubeblocks.kb_health_check" || return 1
-}
-
-repair_kb_health_check_replication_error() {
-  local slave_status="$1"
-  if ! slave_status_has_kb_health_check_repairable_error "${slave_status}"; then
-    return 1
-  fi
-  local_sql -e "STOP SLAVE SQL_THREAD;" 2>/dev/null || true
-  if ! clear_local_kb_health_check_table "prepared-local-kb-health-check-after-replication-error"; then
-    mark_replication_pending
-    echo "WARNING: failed to repair kubeblocks health check replication error; keeping roleProbe pending."
-    return 1
-  fi
-  local_sql -e "START SLAVE SQL_THREAD;" 2>/dev/null || true
-  return 0
 }
 
 # Per-action diagnose helper. Action label baked in.
@@ -484,12 +422,15 @@ setup_replication() {
   # For fresh pods (empty gtid_slave_pos), replicate from earliest available binlog
   # so they receive full schema+data. For rejoining pods with existing datadir,
   # keep the local gtid_slave_pos so missing transactions are replayed.
-  local master_gtid local_gtid
+  local master_gtid local_gtid oldest_master_log
   master_gtid=$(primary_sql -e "SELECT @@global.gtid_binlog_pos;" 2>/dev/null)
   local_gtid=$(local_sql -e "SELECT @@global.gtid_slave_pos;" 2>/dev/null)
   echo "Primary GTID: ${master_gtid}, local GTID: ${local_gtid:-<empty>}"
 
-  # Fresh pod: gtid_slave_pos stays empty → MariaDB replicates from earliest available binlog.
+  # Fresh pod: an empty gtid_slave_pos makes MASTER_USE_GTID=slave_pos attach
+  # at the current source tail on MariaDB. Explicitly start at position 4 of
+  # the oldest retained source binlog so primary-owned bootstrap DDL (including
+  # kubeblocks.kb_health_check) is replayed instead of skipped.
   # Rejoining pod: preserve local gtid_slave_pos and catch up from the local replay point.
 
   if fail_closed_for_gtid_divergence; then
@@ -506,13 +447,26 @@ setup_replication() {
   fi
 
   if [ -z "${local_gtid}" ]; then
+    oldest_master_log=$(primary_sql -e "SHOW BINARY LOGS;" 2>/dev/null | awk 'NR == 1 { print $1 }')
+    if [ -z "${oldest_master_log}" ]; then
+      mark_replication_pending
+      replication_member_join_diagnose_not_ready \
+        "fresh-replica-source-binlog-unavailable" \
+        "  branch: fresh-pod (empty gtid_slave_pos)
+  master_host: ${PRIMARY_HOST}
+  reason: primary returned no retained binary log" \
+        "yes"
+      return 1
+    fi
     if ! local_sql -e "
 STOP SLAVE;
 CHANGE MASTER TO
   MASTER_HOST='${PRIMARY_HOST}',
   MASTER_USER='${MARIADB_REPL_USER:-${MARIADB_ROOT_USER}}',
   MASTER_PASSWORD='${MARIADB_ROOT_PASSWORD}',
-  MASTER_USE_GTID=slave_pos,
+  MASTER_LOG_FILE='${oldest_master_log}',
+  MASTER_LOG_POS=4,
+  MASTER_USE_GTID=no,
   MASTER_CONNECT_RETRY=10;
 START SLAVE IO_THREAD;
 "; then
@@ -521,18 +475,12 @@ START SLAVE IO_THREAD;
       replication_member_join_diagnose_not_ready \
         "change-master-or-start-io-failed" \
         "  branch: fresh-pod (empty gtid_slave_pos)
-  master_host: ${PRIMARY_HOST}" \
+  master_host: ${PRIMARY_HOST}
+  oldest_master_log: ${oldest_master_log}" \
         "no"
       return 1
     fi
-    if ! prepare_fresh_replica_for_sql_thread_start "${local_gtid}"; then
-      replication_member_join_diagnose_not_ready \
-        "fresh-replica-prepare-failed" \
-        "  branch: fresh-pod
-  reason: failed to clear local kb_health_check table" \
-        "no"
-      return 1
-    fi
+    prepare_fresh_replica_for_sql_thread_start "${local_gtid}"
     if ! local_sql -e "START SLAVE SQL_THREAD;" 2>/dev/null; then
       mark_replication_pending
       echo "START SLAVE SQL_THREAD failed. Keeping roleProbe pending."
@@ -585,14 +533,6 @@ START SLAVE;
     mark_replication_ready
     echo "Replication started via ${ACTIVE_PRIMARY_HOST}."
     return 0
-  fi
-  if repair_kb_health_check_replication_error "${slave_status_verbose}"; then
-    slave_status_verbose=$(query_slave_status_verbose)
-    if slave_status_is_ready_for_rejoin "${slave_status_verbose}"; then
-      mark_replication_ready
-      echo "Replication started via ${ACTIVE_PRIMARY_HOST} after repairing kubeblocks health check replication error."
-      return 0
-    fi
   fi
   if slave_status_has_gtid_out_of_order "${slave_status_verbose}"; then
     if fail_closed_for_gtid_divergence; then
