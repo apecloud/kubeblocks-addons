@@ -227,47 +227,97 @@ EOF
     bash "${ROOT_DIR}/addons/hbase/scripts/start-hregionserver.sh"
 }
 
-# Verifies RegionServer member leave only runs RegionMover unload and propagates failures.
+# Verifies RegionServer member leave decommissions the server, unloads regions, validates emptiness,
+# and recommissions on failure.
 # Parameters: none.
-# Returns: 0 when unload succeeds without touching the balancer and unload failures return non-zero.
+# Returns: 0 when the planned leave sequence is correct and failures restore assignment eligibility.
 verify_regionserver_member_leave() {
   local case_dir="${TMP_DIR}/regionserver-member-leave"
-  local balance_log="${case_dir}/balance.log"
+  local command_log="${case_dir}/command.log"
   mkdir -p "${case_dir}/hbase/bin"
   cat >"${case_dir}/hbase/bin/hbase" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "org.apache.hadoop.hbase.util.RegionMover" ]]; then
+  printf 'RegionMover:%s\n' "${MOCK_REGIONMOVER_RESULT:-success}" >>"${MOCK_COMMAND_LOG}"
   [[ "${MOCK_REGIONMOVER_RESULT:-success}" == "success" ]]
   exit
 fi
-input="$(cat)"
-printf '%s\n' "${input}" >>"${MOCK_BALANCE_LOG}"
-exit 0
+if [[ "${1:-}" == "shell" && "${2:-}" == "-n" ]]; then
+  input="$(cat)"
+  printf '%s\n---\n' "${input}" >>"${MOCK_COMMAND_LOG}"
+  if grep -Fq "getLiveServerMetrics" <<<"${input}"; then
+    printf 'KB_SERVER_NAME=%s\n' "${MOCK_LIVE_SERVER_NAME:-rs.example,16020,12345}"
+    exit 0
+  fi
+  if grep -Fq "decommissionRegionServers" <<<"${input}"; then
+    [[ "${MOCK_DECOMMISSION_RESULT:-success}" == "success" ]] || exit 1
+    exit 0
+  fi
+  if grep -Fq "admin.getRegions(server).size" <<<"${input}"; then
+    printf 'KB_REGION_COUNT=%s\n' "${MOCK_REGION_COUNT:-0}"
+    exit 0
+  fi
+  if grep -Fq "recommissionRegionServer" <<<"${input}"; then
+    [[ "${MOCK_RECOMMISSION_RESULT:-success}" == "success" ]] || exit 1
+    exit 0
+  fi
+fi
+exit 1
 EOF
   chmod +x "${case_dir}/hbase/bin/hbase"
 
   HBASE_HOME="${case_dir}/hbase" \
     KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
-    MOCK_BALANCE_LOG="${balance_log}" \
+    HBASE_REGIONSERVER_PORT="16020" \
+    MOCK_COMMAND_LOG="${command_log}" \
     bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"
 
-  [[ ! -s "${balance_log}" ]] || {
-    echo "expected RegionServer member leave to avoid balancer shell commands" >&2
+  grep -Fq "decommissionRegionServers" "${command_log}" || {
+    echo "expected RegionServer member leave to decommission the leaving server" >&2
+    return 1
+  }
+  grep -Fq "RegionMover:success" "${command_log}" || {
+    echo "expected RegionServer member leave to run RegionMover unload" >&2
+    return 1
+  }
+  grep -Fq "admin.getRegions(server).size" "${command_log}" || {
+    echo "expected RegionServer member leave to verify the leaving server is empty" >&2
+    return 1
+  }
+  grep -Fq "recommissionRegionServer" "${command_log}" && {
+    echo "expected successful RegionServer member leave to skip recommission" >&2
     return 1
   }
 
-  : >"${balance_log}"
+  : >"${command_log}"
   if HBASE_HOME="${case_dir}/hbase" \
     KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
-    MOCK_BALANCE_LOG="${balance_log}" \
+    HBASE_REGIONSERVER_PORT="16020" \
+    MOCK_COMMAND_LOG="${command_log}" \
+    MOCK_REGION_COUNT="1" \
+    bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"; then
+    echo "expected RegionServer member leave to fail when the source server remains non-empty" >&2
+    return 1
+  fi
+
+  grep -Fq "recommissionRegionServer" "${command_log}" || {
+    echo "expected RegionServer member leave to recommission the server after non-empty validation failure" >&2
+    return 1
+  }
+
+  : >"${command_log}"
+  if HBASE_HOME="${case_dir}/hbase" \
+    KB_LEAVE_MEMBER_POD_FQDN="rs.example" \
+    HBASE_REGIONSERVER_PORT="16020" \
+    MOCK_COMMAND_LOG="${command_log}" \
     MOCK_REGIONMOVER_RESULT="fail" \
     bash "${ROOT_DIR}/addons/hbase/scripts/hregionserver-member-leave.sh"; then
     echo "expected RegionServer member leave to propagate RegionMover failure" >&2
     return 1
   fi
 
-  [[ ! -s "${balance_log}" ]] || {
-    echo "expected RegionServer member leave to avoid balancer shell commands after unload failure" >&2
+  grep -Fq "recommissionRegionServer" "${command_log}" || {
+    echo "expected RegionServer member leave to recommission the server after RegionMover failure" >&2
     return 1
   }
 }
