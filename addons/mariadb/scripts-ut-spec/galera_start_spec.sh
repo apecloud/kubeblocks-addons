@@ -16,6 +16,7 @@ Describe "galera-start.sh"
     rm -rf "${TEST_DIR}"
     unset DATA_DIR POD_NAME MARIADB_ROOT_USER MARIADB_ROOT_PASSWORD PEER_FQDNS
     unset GALERA_PRIMARY_PEER_WAIT_SECONDS GALERA_BOOTSTRAP_DEFER_REASON GALERA_PEER_OBSERVATION
+    unset GALERA_PRIOR_GRACEFUL_SHUTDOWN
   }
   AfterEach "cleanup"
 
@@ -359,6 +360,39 @@ EOF
       The variable GALERA_BOOTSTRAP_DEFER_REASON should include "peer reachability uncertain"
     End
 
+    It "bootstraps the Galera-elected safe node after this PVC completed the prior graceful shutdown"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 9 1
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be success
+      The output should include "safe_to_bootstrap=1 and prior graceful-shutdown marker present"
+      The variable GALERA_BOOTSTRAP_DEFER_REASON should be undefined
+    End
+
+    It "does not let a prior graceful-shutdown marker override safe_to_bootstrap=0"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 9 0
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should not include "will bootstrap"
+    End
+
     It "allows non-pod-0 bootstrap when Galera marks it safe after clean shutdown"
       POD_NAME="mdb-galera-mariadb-1"
       write_grastate 9 1
@@ -537,6 +571,33 @@ EOF
       The path "${DATA_DIR}/.galera-synced" should not be exist
       The path "${DATA_DIR}/.galera-role" should not be exist
       The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+    End
+
+    It "captures and consumes the prior graceful-shutdown marker before bootstrap election"
+      touch "${DATA_DIR}/.galera-shutting-down"
+
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "1"
+      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+    End
+
+    It "records no prior graceful shutdown when the marker is absent"
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
+    End
+
+    It "captures the prior marker before the watcher clears it and before bootstrap election"
+      When run sh -c '
+        f="$(printf "%s/addons/mariadb/scripts/galera-start.sh" "'"${SHELLSPEC_CWD:?}"'")"
+        capture=$(grep -n "^  _capture_prior_graceful_shutdown_evidence$" "$f" | tail -1 | cut -d: -f1)
+        clear=$(grep -n "^    _clear_stale_markers_on_start$" "$f" | tail -1 | cut -d: -f1)
+        election=$(grep -n "^  if should_bootstrap; then$" "$f" | tail -1 | cut -d: -f1)
+        test -n "$capture" && test -n "$clear" && test -n "$election" \
+          && test "$capture" -lt "$clear" && test "$clear" -lt "$election"
+      '
+      The status should be success
     End
   End
 

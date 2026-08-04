@@ -169,9 +169,31 @@ _mariadbd_pids() {
   pidof mariadbd 2>/dev/null || pgrep -x mariadbd 2>/dev/null || true
 }
 
+# Capture the previous container generation's preStop marker before consuming
+# it.  The marker alone is not bootstrap authority: preStop creates it before
+# attempting SQL shutdown, so a failed/aborted shutdown can leave it behind.
+# Combined with Galera's exact safe_to_bootstrap=1 election, however, it proves
+# that this PVC completed the addon's graceful-shutdown path.  That lets the
+# elected last node bootstrap an orderly full-cluster restart even while every
+# stopped peer is (correctly) classified as unreachable/uncertain.  A crashed
+# or partitioned running node has safe_to_bootstrap=0 and therefore cannot use
+# this marker to bypass the fail-closed peer check.
+_capture_prior_graceful_shutdown_evidence() {
+  GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
+  local marker="${DATA_DIR}/.galera-shutting-down"
+  if [ -e "${marker}" ] || [ -L "${marker}" ]; then
+    GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+    if ! rm -f "${marker}"; then
+      echo "Galera startup failed: could not consume prior graceful-shutdown marker ${marker}" >&2
+      return 1
+    fi
+  fi
+  export GALERA_PRIOR_GRACEFUL_SHUTDOWN
+}
+
 # Watcher start-up initialization: clear stale role/liveness markers left on the
-# PV by a previous container generation, including any .galera-shutting-down the
-# prior graceful shutdown dropped. This is a live container again, so a stale
+# PV by a previous container generation, plus a shutdown marker if an older
+# caller did not capture it. This is a live container again, so a stale
 # .galera-shutting-down would otherwise disable self-heal for the whole life of
 # the new process, and a stale .galera-role/.galera-synced would let the probe
 # publish a role before the watcher has re-observed Galera state. Extracted as a
@@ -236,13 +258,23 @@ should_bootstrap() {
     if _any_peer_alive; then
       if [ "${GALERA_PEER_OBSERVATION:-primary}" = "uncertain" ] \
         && grep -qE "^safe_to_bootstrap:[[:space:]]+1[[:space:]]*$" "${DATA_DIR}/grastate.dat"; then
-        GALERA_BOOTSTRAP_DEFER_REASON="peer reachability uncertain; refuse automatic bootstrap"
-        export GALERA_BOOTSTRAP_DEFER_REASON
-        echo "Peer state is uncertain. Refusing automatic Galera bootstrap until every remote peer is explicitly non-Primary."
+        if [ "${GALERA_PRIOR_GRACEFUL_SHUTDOWN:-0}" = "1" ]; then
+          # Galera elected this exact PVC as the last clean node, and the addon
+          # preStop marker binds that election to the immediately preceding
+          # graceful-shutdown lifecycle.  This is stronger evidence than the
+          # ambiguous TCP failure and is the only uncertainty override.
+          unset GALERA_BOOTSTRAP_DEFER_REASON
+          echo "grastate.dat: safe_to_bootstrap=1 and prior graceful-shutdown marker present; ${POD_NAME} will bootstrap despite unreachable stopped peers."
+        else
+          GALERA_BOOTSTRAP_DEFER_REASON="peer reachability uncertain; refuse automatic bootstrap"
+          export GALERA_BOOTSTRAP_DEFER_REASON
+          echo "Peer state is uncertain. Refusing automatic Galera bootstrap until every remote peer is explicitly non-Primary."
+          return 1
+        fi
+      else
+        echo "Peers alive. ${POD_NAME} will join existing cluster."
         return 1
       fi
-      echo "Peers alive. ${POD_NAME} will join existing cluster."
-      return 1
     fi
 
     # No peers alive: this is a full cluster restart. seqno=-1 has TWO
@@ -319,6 +351,7 @@ remove_stale_galera_sst_auth() {
 
 main() {
   setup_data_dir
+  _capture_prior_graceful_shutdown_evidence
 
   local cluster_address
   cluster_address=$(build_cluster_address)
