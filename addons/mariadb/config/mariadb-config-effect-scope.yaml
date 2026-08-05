@@ -151,11 +151,6 @@ dynamicParameters:
   - key_cache_block_size
   - key_cache_division_limit
   - lock_wait_timeout
-  # log_error_verbosity intentionally omitted: it is a MySQL-only system
-  # variable and does not exist in MariaDB. mariadb:11.4 reports
-  # `unknown variable 'log_error_verbosity'` and mariadbd exits rc=7, so
-  # persisting it via reconfigure would CrashLoop the engine on next restart.
-  # Use log_warnings (below) for MariaDB verbosity control.
   - log_output
   - log_queries_not_using_indexes
   - log_slow_admin_statements
@@ -270,3 +265,9 @@ dynamicParameters:
   - updatable_views_with_limit
   - wait_timeout
   - interactive_timeout
+
+# MySQL-only parameters that must be rejected before desired config is
+# persisted. Mere omission from dynamic/static lists defaults to the restart
+# path, which can write an invalid option and CrashLoop MariaDB on restart.
+immutableParameters:
+  - log_error_verbosity

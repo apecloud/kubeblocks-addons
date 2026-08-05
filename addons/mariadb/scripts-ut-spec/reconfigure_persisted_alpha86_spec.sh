@@ -31,6 +31,13 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
   CMPD_GALERA="${ADDON_ROOT}/templates/cmpd-galera.yaml"
   SEMISYNC_CFG="${ADDON_ROOT}/config/mariadb-semisync.tpl"
   EFFECT_SCOPE="${ADDON_ROOT}/config/mariadb-config-effect-scope.yaml"
+  CHART="${ADDON_ROOT}/Chart.yaml"
+
+  It "advances the chart version so the immutable reconfigure change gets new ComponentDefinition names"
+    When run sh -c "awk '\$1 == \"version:\" { print \$2; exit }' '${CHART}'"
+    The status should be success
+    The output should equal "1.2.0-alpha.29"
+  End
 
   extract_persisted_helper_body() {
     awk '
@@ -708,10 +715,40 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
       ' "${EFFECT_SCOPE}"
     }
 
-    It "does not list log_error_verbosity anywhere (MySQL-only, would CrashLoop mariadbd)"
-      When call grep -c '^[[:space:]]*-[[:space:]]*log_error_verbosity[[:space:]]*$' "${EFFECT_SCOPE}"
-      The status should be failure
-      The output should equal "0"
+    It "classifies log_error_verbosity as immutable so KB rejects it before config write/restart"
+      When call param_section "log_error_verbosity"
+      The output should equal "immutableParameters"
+    End
+
+    rendered_pd_immutable_owner() {
+      helm template mariadb "${ADDON_ROOT}" --show-only templates/paramsdef.yaml | awk -v want="$1" '
+        /^---[[:space:]]*$/ { kind=""; name=""; in_immutable=0; next }
+        /^kind:[[:space:]]+ParametersDefinition[[:space:]]*$/ { kind="ParametersDefinition"; next }
+        kind == "ParametersDefinition" && /^  name:[[:space:]]+/ && name == "" { name=$2; next }
+        kind == "ParametersDefinition" && /^  immutableParameters:[[:space:]]*$/ { in_immutable=1; next }
+        in_immutable && /^    -[[:space:]]+log_error_verbosity[[:space:]]*$/ {
+          if (name == want) { print "IMMUTABLE"; exit }
+        }
+        in_immutable && !/^    -[[:space:]]+/ { in_immutable=0 }
+      '
+    }
+
+    It "renders the standalone PD immutable deny before any reconfigure action"
+      When call rendered_pd_immutable_owner "mariadb-standalone-pd"
+      The status should be success
+      The output should equal "IMMUTABLE"
+    End
+
+    It "renders the replication PD immutable deny before any reconfigure action"
+      When call rendered_pd_immutable_owner "mariadb-replication-pd"
+      The status should be success
+      The output should equal "IMMUTABLE"
+    End
+
+    It "renders the Galera PD immutable deny before any reconfigure action"
+      When call rendered_pd_immutable_owner "mariadb-galera-pd"
+      The status should be success
+      The output should equal "IMMUTABLE"
     End
 
     It "classifies secure_timestamp as static, not dynamic (it is a read-only MariaDB variable)"
