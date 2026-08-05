@@ -18,6 +18,9 @@ spec:
     maxReplicas: 16384
   lifecycleActions:
     memberLeave:
+      # kbagent clamps actions at 60s. The script performs one bounded
+      # observation per phase below this truthful 50s boundary.
+      timeoutSeconds: 50
       exec:
         command:
           - /bin/bash

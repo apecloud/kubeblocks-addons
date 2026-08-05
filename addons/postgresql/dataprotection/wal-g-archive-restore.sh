@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -o pipefail
 backup_base_path="$(dirname $DP_BACKUP_BASE_PATH)/wal-g/"
 
 function config_wal_g_for_fetch_wal_log() {
@@ -26,6 +27,16 @@ function config_wal_g_for_fetch_wal_log() {
        rm ${walg_env}/DATASAFED_ENCRYPTION_PASS_PHRASE
     fi
 }
+
+# Retry guard: the final step of a successful run is `mv DATA_DIR DATA_DIR.old`.
+# On a Job re-run after that point DATA_DIR no longer exists, so the very next
+# command (touch into DATA_DIR) fails under set -e — and keeps failing on every
+# retry, wedging the restore permanently. The fully-staged state is exactly
+# ".old populated + DATA_DIR absent": all work below is already done.
+if [[ -d ${DATA_DIR}.old ]] && [[ ! -d ${DATA_DIR} ]]; then
+  echo "restore already staged in ${DATA_DIR}.old; nothing to do"
+  exit 0
+fi
 
 # 1. config restore script
 touch ${DATA_DIR}/recovery.signal;
@@ -76,16 +87,42 @@ if [[ "${IS_REPLICA}" == "true" ]]; then
     exit 1
 fi
 
-# Primary restore: Restore from successful backup (.old directory exists)
-if [[ -d "${DATA_DIR}.old" ]]; then
-    echo "Restoring data from ${DATA_DIR}.old..."
-    mkdir -p "${DATA_DIR}"
-    mv -f ${DATA_DIR}.old/* ${DATA_DIR}/
-    rm -rf ${RESTORE_SCRIPT_DIR}/kb_restore.signal
-    echo "Data restore completed successfully"
-fi
+HANDOFF_MARKER=".kb_walg_handoff"
 
-sync
+function finalize_handoff() {
+    local source_dir="${DATA_DIR}.old"
+    local marker_path="${DATA_DIR}/${HANDOFF_MARKER}"
+
+    if [[ -d "${source_dir}" ]]; then
+        if [[ -f "${marker_path}" ]]; then
+            if [[ "$(cat "${marker_path}")" != "normal" ]] \
+                || [[ -n "$(find "${source_dir}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+                echo "ERROR: WAL-G archive restore handoff state is inconsistent" >&2
+                exit 1
+            fi
+            rmdir "${source_dir}"
+        else
+            if [[ -d "${DATA_DIR}" ]] \
+                && [[ -n "$(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+                echo "ERROR: PostgreSQL data directory is not empty before WAL-G archive handoff" >&2
+                exit 1
+            fi
+            printf 'normal\n' > "${source_dir}/${HANDOFF_MARKER}"
+            rm -rf "${DATA_DIR}"
+            mv "${source_dir}" "${DATA_DIR}"
+        fi
+    elif [[ ! -f "${marker_path}" ]] || [[ "$(cat "${marker_path}")" != "normal" ]]; then
+        echo "ERROR: WAL-G archive restore handoff source is missing" >&2
+        exit 1
+    fi
+
+    sync
+    rm -f "${RESTORE_SCRIPT_DIR}/kb_restore.signal"
+}
+
+echo "Restoring data from ${DATA_DIR}.old..."
+finalize_handoff
+echo "Data restore completed successfully"
 EOF
 
 # Replace variables in the generated script

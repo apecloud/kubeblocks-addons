@@ -15,7 +15,7 @@ function fetch-wal-log(){
     exit_fetch_wal=0 && mkdir -p $wal_destination_dir
     for dir_name in $(datasafed list /) ; do
       if [[ $exit_fetch_wal -eq 1 ]]; then
-         exit 0
+         break
       fi
 
       # check if the latest_wal_log after the start_wal_log
@@ -47,7 +47,7 @@ function fetch-wal-log(){
             continue
          fi
          timestamp=`date -d "$latest_commit_time" +%s`
-         if [[ $latest_commit_time != "" && $timestamp > $restore_time ]]; then
+         if [[ $latest_commit_time != "" && $timestamp -gt $restore_time ]]; then
             DP_log "exit when reaching the target time log."
             exit_fetch_wal=1
             break

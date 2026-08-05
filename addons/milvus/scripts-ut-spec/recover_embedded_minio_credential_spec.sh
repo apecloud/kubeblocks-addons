@@ -60,6 +60,9 @@ case "${1:-} ${2:-}" in
   "delete pod")
     touch "${FAKE_STATE_DIR}/deleted"
     printf '%s\n' 'pod "demo-minio-0" deleted'
+    if [[ -n "${FAKE_DELETE_RC:-}" ]]; then
+      exit "${FAKE_DELETE_RC}"
+    fi
     ;;
   "get opsrequest")
     output="${*: -1}"
@@ -136,6 +139,10 @@ EOF
 
   run_aborted_after_replacement() {
     FAKE_FINAL_OPS_PHASE=Aborted run_recovery
+  }
+
+  run_delete_nonzero_after_success_output() {
+    FAKE_DELETE_RC=1 run_recovery
   }
 
   It "replaces only the stale failed MinIO Pod after the desired alpha.1 contract is visible"
@@ -220,6 +227,16 @@ EOF
     The output should include "replacement-pod=demo-minio-0,uid-new,Ready"
     The stderr should include "OpsRequest reached Aborted"
     The stderr should not include "recovery did not converge"
+    The contents of file "${calls_file}" should include "delete pod demo-minio-0 --wait=false"
+  End
+
+  It "reports the phase and rc when a bare delete command exits nonzero without stderr"
+    When call run_delete_nonzero_after_success_output
+    The status should be failure
+    The output should include 'pod "demo-minio-0" deleted'
+    The output should not include "replacement-pod="
+    The stderr should include "unexpected-command-failure phase=replace-stale-pod rc=1"
+    The stderr should include "command="
     The contents of file "${calls_file}" should include "delete pod demo-minio-0 --wait=false"
   End
 End

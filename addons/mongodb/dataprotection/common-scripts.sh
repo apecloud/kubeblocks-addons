@@ -92,6 +92,9 @@ function set_backup_config_env() {
   local endpoint=""
   local bucket=""
   local force_path_style=""
+  local host=""
+  local regex=""
+  local region_label='[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?'
 
   IFS=$'\n'
   for line in $(cat ${toolConfig}); do
@@ -117,19 +120,50 @@ function set_backup_config_env() {
     endpoint="https://${endpoint}"
   fi
 
-  if [[ "$provider" == "Alibaba" ]]; then
-    regex='https?:\/\/oss-(.*?)\.aliyuncs\.com'
+  if [[ "$provider" == "Alibaba" || "$provider" == "TencentCOS" ]]; then
+    regex='^https?://([^/:?#]+)$'
     if [[ "$endpoint" =~ $regex ]]; then
-      region="${BASH_REMATCH[1]}"
-      DP_log "Extract region from $endpoint-> $region"
-    else
-      DP_log "Failed to extract region from endpoint: $endpoint"
-    fi
-  elif [[ "$provider" == "TencentCOS" ]]; then
-    regex='https?:\/\/cos\.(.*?)\.myqcloud\.com'
-    if [[ "$endpoint" =~ $regex ]]; then
-      region="${BASH_REMATCH[1]}"
-      DP_log "Extract region from $endpoint-> $region"
+      host="${BASH_REMATCH[1]}"
+      if [[ "$provider" == "Alibaba" ]]; then
+        if [[ "$host" == *finance* ||
+          "$host" == "oss-cn-hzjbp-a-internal.aliyuncs.com" ||
+          "$host" == "oss-cn-hzjbp-b-internal.aliyuncs.com" ||
+          "$host" == "oss-accelerate.aliyuncs.com" ||
+          "$host" == "oss-accelerate-overseas.aliyuncs.com" ]]; then
+          DP_log "Keep configured region for endpoint: $endpoint"
+        else
+          regex="^oss-(${region_label})-internal\\.aliyuncs\\.com$"
+          if [[ "$host" =~ $regex ]]; then
+            region="${BASH_REMATCH[1]}"
+            DP_log "Extract region from $endpoint-> $region"
+          else
+            regex="^oss-(${region_label})\\.aliyuncs\\.com$"
+            if [[ "$host" =~ $regex ]]; then
+              region="${BASH_REMATCH[1]}"
+              DP_log "Extract region from $endpoint-> $region"
+            else
+              regex="^(${region_label})\\.oss\\.aliyuncs\\.com$"
+              if [[ "$host" =~ $regex ]]; then
+                region="${BASH_REMATCH[1]}"
+                DP_log "Extract region from $endpoint-> $region"
+              else
+                DP_log "Failed to extract region from endpoint: $endpoint"
+              fi
+            fi
+          fi
+        fi
+      elif [[ "$host" == "cos.accelerate.myqcloud.com" ||
+        "$host" == "cos-internal.accelerate.tencentcos.cn" ]]; then
+        DP_log "Keep configured region for endpoint: $endpoint"
+      else
+        regex="^cos\\.(${region_label})\\.myqcloud\\.com$"
+        if [[ "$host" =~ $regex ]]; then
+          region="${BASH_REMATCH[1]}"
+          DP_log "Extract region from $endpoint-> $region"
+        else
+          DP_log "Failed to extract region from endpoint: $endpoint"
+        fi
+      fi
     else
       DP_log "Failed to extract region from endpoint: $endpoint"
     fi

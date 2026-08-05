@@ -62,5 +62,7 @@ spec:
         {{- include "apecloud-mysql.spec.runtime.vtablet" . |  nindent 8 }}
       - name: mysql-exporter
         {{- include "apecloud-mysql.spec.runtime.exporter" . | nindent 8 }}
+    {{- if .Values.logCollector.enabled }}
     volumes:
-      {{- include "apecloud-mysql.spec.runtime.volumes" . | nindent 4 }}
+      {{- include "apecloud-mysql.spec.runtime.volumes" . | nindent 6 }}
+    {{- end }}

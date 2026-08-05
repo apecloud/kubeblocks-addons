@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -Eeuo pipefail
 
 TARGET_MINIO_DEF="milvus-minio-1.2.0-alpha.1"
 TARGET_MILVUS_DEF="milvus-standalone-1.2.0-alpha.1"
@@ -10,6 +10,20 @@ KUBECTL="${KUBECTL:-kubectl}"
 POLL_INTERVAL_SECONDS="${POLL_INTERVAL_SECONDS:-3}"
 DESIRED_TIMEOUT_SECONDS="${DESIRED_TIMEOUT_SECONDS:-900}"
 READY_TIMEOUT_SECONDS="${READY_TIMEOUT_SECONDS:-600}"
+phase="bootstrap"
+
+unexpected_error() {
+  local rc=$?
+  local line="${BASH_LINENO[0]:-${LINENO}}"
+  local command="${BASH_COMMAND:-unknown}"
+
+  trap - ERR
+  printf 'ERROR: unexpected-command-failure phase=%s rc=%s line=%s command=%q\n' \
+    "${phase}" "${rc}" "${line}" "${command}" >&2
+  exit "${rc}"
+}
+
+trap unexpected_error ERR
 
 usage() {
   cat >&2 <<'EOF'
@@ -211,9 +225,12 @@ wait_for_operation_and_cluster() {
   fail "recovery did not converge within ${READY_TIMEOUT_SECONDS}s; first=${first}; last=${last}"
 }
 
+phase="validate-migration-contract"
 validate_migration_contract
+phase="wait-desired-contract"
 wait_for_desired_contract
 
+phase="inspect-minio-pod"
 pod=$(one_minio_pod)
 old_uid=$(pod_uid "${pod}")
 definition=$(pod_definition "${pod}")
@@ -222,6 +239,7 @@ if [[ "${definition}" == "${TARGET_MINIO_DEF}" ]]; then
   printf 'replacement=not-needed,pod=%s,uid=%s\n' "${pod}" "${old_uid}"
   require_new_uid=false
 else
+  phase="replace-stale-pod"
   [[ "${definition}" == "${AFFECTED_MINIO_DEF}" ]] ||
     fail "refusing to replace Pod with unsupported definition: ${definition:-missing}"
   owner=$(pod_controller_owner "${pod}")
@@ -232,5 +250,7 @@ else
   require_new_uid=true
 fi
 
+phase="wait-replacement"
 wait_for_replacement "${old_uid}" "${require_new_uid}"
+phase="wait-operation-and-cluster"
 wait_for_operation_and_cluster
