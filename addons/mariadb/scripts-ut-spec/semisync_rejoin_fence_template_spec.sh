@@ -25,6 +25,10 @@ Describe "cmpd-replication.yaml rejoin fence template"
     ' "$(template_file)"
   }
 
+  function_not_contains() {
+    ! function_contains "$1" "$2"
+  }
+
   wait_loop_queries_primary_before_reconcile() {
     primary_query_line="$(grep -n 'PRIMARY_SID=$(timeout 10 mariadb' "$(template_file)" | tail -1 | cut -d: -f1)"
     reconcile_line="$(grep -n 'reconcile_sql_listener_for_syncer_primary_once || true' "$(template_file)" | tail -1 | cut -d: -f1)"
@@ -239,8 +243,8 @@ Describe "cmpd-replication.yaml rejoin fence template"
     The status should be success
   End
 
-  It "probes local root table writes before publishing a primary as writable"
-    When call function_contains "primary_write_gates_ready" "primary_local_root_write_ready"
+  It "leaves replicated WriteCheck ownership to syncer"
+    When call function_not_contains "primary_write_gates_ready" "primary_local_root_write_ready"
     The status should be success
   End
 
@@ -317,10 +321,15 @@ Describe "cmpd-replication.yaml rejoin fence template"
     The output should include "lock_local_root_for_prestop"
   End
 
-  It "keeps unresolved wait-loop roles locally fenced"
-    When call template_contains "lock_local_root_writes \"wait-primary-loop-entry\""
+  It "does not re-fence after opening the syncer startup gate"
+    When call template_contains "wait-primary-loop-entry"
+    The status should be failure
+  End
+
+  It "keeps unresolved roles fenced before opening the startup gate"
+    When call template_contains "lock_local_root_writes \"startup-before-role-decision\""
     The status should be success
-    The output should include "wait-primary-loop-entry"
+    The output should include "startup-before-role-decision"
   End
 
   It "queries the Primary Service before accepting syncer primary in the wait loop"
@@ -476,8 +485,8 @@ Describe "cmpd-replication.yaml rejoin fence template"
     The output should include "runtime-secondary-follow-configure-blocked"
   End
 
-  It "retargets surviving secondaries in the runtime wait loop"
-    When call function_contains "wait_for_mariadbd_with_role_reconcile" "reconcile_sql_listener_for_syncer_secondary_serialized_once"
+  It "does not let runtime secondary repair race syncer promotion"
+    When call function_not_contains "wait_for_mariadbd_with_role_reconcile" "reconcile_sql_listener_for_syncer_secondary_serialized_once"
     The status should be success
   End
 
@@ -487,7 +496,7 @@ Describe "cmpd-replication.yaml rejoin fence template"
   End
 
   It "does not pause syncer for a healthy runtime secondary"
-    When call function_contains "reconcile_sql_listener_for_syncer_secondary_serialized_once" "slave_status_is_healthy \"\${slave_status}\" && return 0"
+    When call function_contains "reconcile_sql_listener_for_syncer_secondary_serialized_once" "slave_status_is_healthy \"\${slave_status}\" && [ \"\${read_only}\" = \"1\" ]"
     The status should be success
   End
 

@@ -158,7 +158,8 @@ spec:
               {{ .Values.dataMountPath }}/.prestop-fence-failed
             rm -f {{ .Values.dataMountPath }}/.sql-listener-ready \
               {{ .Values.dataMountPath }}/.remote-root-fence-role \
-              {{ .Values.dataMountPath }}/.primary-read-write-ready
+              {{ .Values.dataMountPath }}/.primary-read-write-ready \
+              {{ .Values.dataMountPath }}/.syncer-ha-ready
             # alpha.80 v1 (Helen): removed `.switchover-fence-active` from this
             # init rm list. alpha.79 v1 minimalist deleted the marker writer
             # in switchover.sh so the marker file never appears anywhere; the
@@ -324,6 +325,11 @@ spec:
             value: "true"
           - name: MARIADB_DATADIR
             value: {{ .Values.dataMountPath | quote }}
+          - name: KB_MARIADB_HA_STARTUP_GATE_FILE
+            # Process-local handshake: /tmp is empty on Pod creation and the
+            # entrypoint explicitly re-arms it before every in-container
+            # mariadbd restart. Avoid a PVC-persisted marker racing syncer.
+            value: "/tmp/.syncer-ha-ready"
           - name: POD_NAME
             valueFrom:
               fieldRef:
