@@ -13,3 +13,8 @@ data:
     {{- .Files.Get "scripts/galera-roleprobe.sh" | nindent 4 }}
   galera-member-join.sh: |-
     {{- .Files.Get "scripts/galera-member-join.sh" | nindent 4 }}
+  # Compatibility key for existing alpha.26 ComponentDefinitions. New
+  # alpha.27 definitions no longer declare memberLeave, but old consumers may
+  # still invoke this stable path until they are explicitly migrated.
+  galera-member-leave.sh: |-
+    {{- .Files.Get "scripts/galera-member-leave.sh" | nindent 4 }}
