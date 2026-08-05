@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "falkordb.labels" . | nindent 4 }}
   annotations:
-    {{- include "falkordb.apiVersion" . | nindent 4 }}
+    {{- include "falkordb.annotations" . | nindent 4 }}
 spec:
   template:
     compDef: {{ include "falkordbCluster.cmpdRegexpPattern" . }}
