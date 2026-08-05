@@ -33,10 +33,19 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
   EFFECT_SCOPE="${ADDON_ROOT}/config/mariadb-config-effect-scope.yaml"
   CHART="${ADDON_ROOT}/Chart.yaml"
 
+  chart_alpha_at_least_29() {
+    chart_version=$(awk '$1 == "version:" { print $2; exit }' "${CHART}") || return 1
+    case "${chart_version}" in
+      1.2.0-alpha.*) ;;
+      *) return 1 ;;
+    esac
+    chart_alpha=${chart_version##*.}
+    [ "${chart_alpha}" -ge 29 ] 2>/dev/null
+  }
+
   It "advances the chart version so the immutable reconfigure change gets new ComponentDefinition names"
-    When run sh -c "awk '\$1 == \"version:\" { print \$2; exit }' '${CHART}'"
+    When call chart_alpha_at_least_29
     The status should be success
-    The output should equal "1.2.0-alpha.29"
   End
 
   extract_persisted_helper_body() {

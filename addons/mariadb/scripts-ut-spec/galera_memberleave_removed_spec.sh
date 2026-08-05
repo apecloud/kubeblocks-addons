@@ -17,10 +17,19 @@ Describe "galera memberLeave removal (H10)"
   SCRIPTS_DIR="${SHELLSPEC_CWD:?}/addons/mariadb/scripts"
   CHART="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
 
+  chart_alpha_at_least_27() {
+    chart_version=$(awk '$1 == "version:" { print $2; exit }' "${CHART}") || return 1
+    case "${chart_version}" in
+      1.2.0-alpha.*) ;;
+      *) return 1 ;;
+    esac
+    chart_alpha=${chart_version##*.}
+    [ "${chart_alpha}" -ge 27 ] 2>/dev/null
+  }
+
   It "advances the chart version so the immutable lifecycle-action change gets a new ComponentDefinition name"
-    When run sh -c "awk '\$1 == \"version:\" { print \$2; exit }' '${CHART}'"
+    When call chart_alpha_at_least_27
     The status should be success
-    The output should equal "1.2.0-alpha.27"
   End
 
   It "cmpd-galera declares no memberLeave lifecycle action"
