@@ -2591,9 +2591,16 @@ elif [ -n "${PRIMARY_SID}" ] || [ "${POD_INDEX}" -gt 0 ]; then
         wait ${MARIADB_PID}
         exit 1
       fi
-      echo "Replication stored but not healthy yet; retrying in 5s"
-      sleep 5
-      continue
+      # A stored but unhealthy replica (notably MariaDB 1236 for an orphan in
+      # the dedicated heartbeat GTID domain) needs syncer's authoritative
+      # leader comparison and heartbeat-only cursor alignment.  Keeping the
+      # startup loop here blocks syncer PostStart on SYNCER_HA_READY_FILE and
+      # repeatedly issues STOP/CHANGE MASTER/START without changing slave_pos.
+      # Open only the HA startup gate; keep replication/role publication
+      # pending until syncer Follow has repaired and validated the replica.
+      touch "${SYNCER_HA_READY_FILE}"
+      echo "Replication stored but not healthy; deferring guarded repair to syncer"
+      break
     fi
     echo "CHANGE MASTER TO did not store config; retrying in 5s"
     sleep 5
