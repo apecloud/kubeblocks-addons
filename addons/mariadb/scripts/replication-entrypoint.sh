@@ -2274,18 +2274,18 @@ PRIMARY_SID=$(timeout 10 mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASS
 # Use tabular SHOW SLAVE STATUS (not \G) because -N suppresses field names in \G format.
 SLAVE_STATUS=$("${LOCAL[@]}" -e "SHOW SLAVE STATUS;" 2>/dev/null)
 
-# Existing replicas have already received the primary-owned schema in an
-# earlier replication session. Let syncer reconcile their persisted source
-# connection immediately; the bootstrap race only applies to a fresh replica
-# with neither slave metadata nor the replicated heartbeat table.
-if [ -n "${SLAVE_STATUS}" ]; then
-  _existing_health_table=$("${LOCAL[@]}" -e "
-    SELECT COUNT(*) FROM information_schema.tables
-    WHERE table_schema='kubeblocks' AND table_name='kb_health_check';
-  " 2>/dev/null || echo 0)
-  if [ "${_existing_health_table}" = "1" ]; then
-    touch "${SYNCER_HA_READY_FILE}"
-  fi
+# Any existing datadir that already received the primary-owned heartbeat DDL
+# can enter HA while remaining fail-closed.  Do not require slave metadata:
+# RESET SLAVE ALL during a completed switchover intentionally removes it from
+# the candidate, and a subsequent Restart must still let syncer reacquire the
+# lease and promote that candidate.  A genuinely fresh replica has no table,
+# so it remains gated until bootstrap replication replays the primary DDL.
+_existing_health_table=$("${LOCAL[@]}" -e "
+  SELECT COUNT(*) FROM information_schema.tables
+  WHERE table_schema='kubeblocks' AND table_name='kb_health_check';
+" 2>/dev/null || echo 0)
+if [ "${_existing_health_table}" = "1" ]; then
+  touch "${SYNCER_HA_READY_FILE}"
 fi
 
 if [ "${PRIMARY_SID}" = "${SERVICE_ID}" ]; then
