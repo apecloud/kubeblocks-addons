@@ -27,6 +27,13 @@ Describe "Redis Cluster6 Manage Script Tests"
   AfterAll 'cleanup'
 
   Describe "scale_out_redis_cluster_shard() secondary membership detection"
+    # mock init_other_components_and_pods_info as it is not the focus of these tests
+    init_other_components_and_pods_info() {
+      other_components=()
+      other_undeleted_component_nodes=()
+      other_undeleted_component_pod_names=()
+      other_undeleted_component_pod_ips=()
+    }
     Context "when secondary is already in the cluster (Redis 6 IP-based detection)"
       init_current_comp_default_nodes_for_scale_out() {
         declare -gA scale_out_shard_default_primary_node
@@ -64,6 +71,9 @@ Describe "Redis Cluster6 Manage Script Tests"
         export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
         export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1"
         export KB_CLUSTER_COMPONENT_LIST="shard-98x"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.0.0.1,10.0.0.2"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.0.0.1,10.0.0.2"
         export SERVICE_PORT="6379"
       }
       Before "setup"
@@ -75,6 +85,9 @@ Describe "Redis Cluster6 Manage Script Tests"
         unset KB_CLUSTER_POD_NAME_LIST
         unset KB_CLUSTER_POD_FQDN_LIST
         unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -119,6 +132,9 @@ Describe "Redis Cluster6 Manage Script Tests"
         export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
         export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1"
         export KB_CLUSTER_COMPONENT_LIST="shard-98x"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.0.0.1,10.0.0.2"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.0.0.1,10.0.0.2"
         export SERVICE_PORT="6379"
       }
       Before "setup"
@@ -130,6 +146,9 @@ Describe "Redis Cluster6 Manage Script Tests"
         unset KB_CLUSTER_POD_NAME_LIST
         unset KB_CLUSTER_POD_FQDN_LIST
         unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
@@ -175,6 +194,9 @@ Describe "Redis Cluster6 Manage Script Tests"
         export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
         export KB_CLUSTER_POD_FQDN_LIST="redis-shard-98x-0,redis-shard-98x-1"
         export KB_CLUSTER_COMPONENT_LIST="shard-98x"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.0.0.1,10.0.0.2"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.0.0.1,10.0.0.2"
         export SERVICE_PORT="6379"
       }
       Before "setup"
@@ -186,6 +208,9 @@ Describe "Redis Cluster6 Manage Script Tests"
         unset KB_CLUSTER_POD_NAME_LIST
         unset KB_CLUSTER_POD_FQDN_LIST
         unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
         unset SERVICE_PORT
       }
       After "un_setup"
