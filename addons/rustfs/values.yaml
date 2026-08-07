@@ -8,6 +8,10 @@ image:
   registry: docker.io
   repository: rustfs/rustfs
   pullPolicy: IfNotPresent
+  mc:
+    repository: minio/mc
+    tag: latest
+    digest: sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
 
 ## @param versions RustFS versions configuration
 versions:
