@@ -36,7 +36,7 @@ spec:
     - name: REDIS_SERVICE_NAMES
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis.cmpdRegexpPattern" . }}
+          compDef: {{ include "redisSyncer.cmpdRegexpPattern" . }}
           name: redis
           optional: false
           host: Required
@@ -46,7 +46,7 @@ spec:
     - name: REDIS_SERVICE_PORTS
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis.cmpdRegexpPattern" . }}
+          compDef: {{ include "redisSyncer.cmpdRegexpPattern" . }}
           name: redis
           optional: false
           port:
@@ -54,11 +54,31 @@ spec:
             option: Required
           multipleClusterObjectOption:
             strategy: combined
+    - name: REDIS_SENTINEL_SERVICE_HOSTS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redisSyncer.cmpdRegexpPattern" . }}
+          name: redis-syncer-sentinel
+          optional: true
+          host: Required
+          multipleClusterObjectOption:
+            strategy: combined
+    - name: REDIS_SENTINEL_SERVICE_PORTS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redisSyncer.cmpdRegexpPattern" . }}
+          name: redis-syncer-sentinel
+          optional: true
+          port:
+            name: redis-sentinel
+            option: Required
+          multipleClusterObjectOption:
+            strategy: combined
     ## the default username of all redis components, it will generate a set of variables with the component name suffix like "REDIS_DEFAULT_USER_REDIS0", "REDIS_DEFAULT_USER_REDIS1"
     - name: REDIS_DEFAULT_USER
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "redis.cmpdRegexpPattern" . }}
+          compDef: {{ include "redisSyncer.cmpdRegexpPattern" . }}
           name: default
           username: Required
           multipleClusterObjectOption:
@@ -67,7 +87,7 @@ spec:
     - name: REDIS_DEFAULT_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "redis.cmpdRegexpPattern" . }}
+          compDef: {{ include "redisSyncer.cmpdRegexpPattern" . }}
           name: default
           password: Required
           multipleClusterObjectOption:
@@ -119,4 +139,3 @@ spec:
         name: proxy-conf
       - mountPath: /scripts
         name: scripts
-
