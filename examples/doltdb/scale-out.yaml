@@ -1,0 +1,12 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: doltdb-replication-scale-out
+  namespace: demo
+spec:
+  clusterName: doltdb-replication
+  type: HorizontalScaling
+  horizontalScaling:
+    - componentName: doltdb
+      scaleOut:
+        replicaChanges: 1

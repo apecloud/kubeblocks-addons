@@ -1,0 +1,121 @@
+{{- $topology := default "standalone" .Values.topology -}}
+{{- if not (has $topology (list "standalone" "replication")) -}}
+{{- fail (printf "unsupported topology %q: expected standalone or replication" $topology) -}}
+{{- end -}}
+{{- $replicas := 1 -}}
+{{- $componentDef := printf "doltdb-%s" .Chart.Version -}}
+{{- $mysqlSourceCluster := .Values.mysqlSource.serviceRef.clusterServiceSelector.cluster -}}
+{{- $mysqlSourceDescriptor := .Values.mysqlSource.serviceRef.serviceDescriptor -}}
+{{- $mysqlSourceEnabled := or .Values.mysqlSource.enabled $mysqlSourceCluster $mysqlSourceDescriptor -}}
+{{- $mysqlSourceNamespace := .Values.mysqlSource.serviceRef.namespace | default .Release.Namespace -}}
+{{- if eq $topology "replication" -}}
+{{- $standbyReplicas := int .Values.replication.standbyReplicas -}}
+{{- if or (lt $standbyReplicas 1) (gt $standbyReplicas 5) -}}
+{{- fail (printf "replication.standbyReplicas must be between 1 and 5, got %d" $standbyReplicas) -}}
+{{- end -}}
+{{- $replicas = add 1 $standbyReplicas -}}
+{{- $componentDef = printf "doltdb-replication-%s" .Chart.Version -}}
+{{- end -}}
+{{- if $mysqlSourceEnabled -}}
+{{- if ne $topology "standalone" -}}
+{{- fail "mysqlSource is supported only with topology=standalone" -}}
+{{- end -}}
+{{- if or (eq (int .Values.mysqlSource.replicaServerId) 0) (lt (int .Values.mysqlSource.replicaServerId) 0) -}}
+{{- fail "mysqlSource.replicaServerId must be a positive integer when mysqlSource is enabled" -}}
+{{- end -}}
+{{- if and $mysqlSourceCluster $mysqlSourceDescriptor -}}
+{{- fail "mysqlSource.serviceRef.clusterServiceSelector.cluster and mysqlSource.serviceRef.serviceDescriptor are mutually exclusive" -}}
+{{- end -}}
+{{- if not (or $mysqlSourceCluster $mysqlSourceDescriptor) -}}
+{{- fail "mysqlSource requires either mysqlSource.serviceRef.clusterServiceSelector.cluster or mysqlSource.serviceRef.serviceDescriptor" -}}
+{{- end -}}
+{{- if ne $mysqlSourceNamespace .Release.Namespace -}}
+{{- fail (printf "mysqlSource.serviceRef.namespace must match release namespace %q; cross-namespace mysql-source ServiceRef credentials are not supported" .Release.Namespace) -}}
+{{- end -}}
+{{- end -}}
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- if .Values.restore.enabled }}
+  restore:
+    source:
+      apiGroup: {{ .Values.restore.source.apiGroup | quote }}
+      kind: {{ .Values.restore.source.kind | quote }}
+      name: {{ .Values.restore.source.name | quote }}
+      namespace: {{ .Values.restore.source.namespace | default .Release.Namespace | quote }}
+    {{- with .Values.restore.parameters }}
+    parameters:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  clusterDef: doltdb
+  topology: {{ $topology }}
+  componentSpecs:
+    - name: doltdb
+      componentDef: {{ $componentDef }}
+      serviceVersion: {{ .Values.version | quote }}
+      replicas: {{ $replicas }}
+      {{- if $mysqlSourceEnabled }}
+      serviceRefs:
+        - name: mysql-source
+          namespace: {{ $mysqlSourceNamespace | quote }}
+          {{- if $mysqlSourceCluster }}
+          clusterServiceSelector:
+            cluster: {{ $mysqlSourceCluster | quote }}
+            service:
+              component: {{ .Values.mysqlSource.serviceRef.clusterServiceSelector.service.component | quote }}
+              service: {{ .Values.mysqlSource.serviceRef.clusterServiceSelector.service.service | quote }}
+              port: {{ .Values.mysqlSource.serviceRef.clusterServiceSelector.service.port | quote }}
+            credential:
+              component: {{ .Values.mysqlSource.serviceRef.clusterServiceSelector.credential.component | quote }}
+              name: {{ .Values.mysqlSource.serviceRef.clusterServiceSelector.credential.name | quote }}
+          {{- else }}
+          serviceDescriptor: {{ $mysqlSourceDescriptor | quote }}
+          {{- end }}
+      {{- end }}
+      {{- if or .Values.database $mysqlSourceEnabled }}
+      env:
+        {{- if .Values.database }}
+        - name: DOLT_DATABASE
+          value: {{ .Values.database | quote }}
+        {{- end }}
+        {{- if $mysqlSourceEnabled }}
+        - name: DOLT_MYSQL_REPLICA_REQUIRED
+          value: "true"
+        - name: DOLT_MYSQL_REPLICA_SERVER_ID
+          value: {{ .Values.mysqlSource.replicaServerId | quote }}
+        {{- if .Values.mysqlSource.replicationFilter }}
+        - name: DOLT_MYSQL_REPLICATION_FILTER
+          value: {{ .Values.mysqlSource.replicationFilter | quote }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+      tls: {{ .Values.tlsEnable }}
+      {{- if .Values.tlsEnable }}
+      issuer:
+        name: KubeBlocks
+      {{- end }}
+      configs:
+        - name: doltdb-server-config
+          restart: true
+          variables:
+            {{- if .Values.config.enabled }}
+            DOLT_LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+            DOLT_LOG_FORMAT: {{ .Values.config.logFormat | quote }}
+            DOLT_READ_ONLY: {{ .Values.config.readOnly | quote }}
+            DOLT_AUTOCOMMIT: {{ .Values.config.autocommit | quote }}
+            DOLT_TRANSACTION_COMMIT: {{ .Values.config.transactionCommit | quote }}
+            DOLT_AUTO_GC_ENABLED: {{ .Values.config.autoGcEnabled | quote }}
+            DOLT_MAX_CONNECTIONS: {{ .Values.config.maxConnections | quote }}
+            DOLT_BACK_LOG: {{ .Values.config.backLog | quote }}
+            DOLT_MAX_CONNECTIONS_TIMEOUT_MILLIS: {{ .Values.config.maxConnectionsTimeoutMillis | quote }}
+            DOLT_READ_TIMEOUT_MILLIS: {{ .Values.config.readTimeoutMillis | quote }}
+            DOLT_WRITE_TIMEOUT_MILLIS: {{ .Values.config.writeTimeoutMillis | quote }}
+            {{- end }}
+{{ include "kblib.componentResources" . | indent 6 }}
+{{ include "kblib.componentStorages" . | indent 6 }}
