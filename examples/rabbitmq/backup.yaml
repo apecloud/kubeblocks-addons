@@ -1,0 +1,9 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: rabbitmq-backup-physical
+  namespace: demo
+spec:
+  backupMethod: physical
+  backupPolicyName: rabbitmq-cluster-rabbitmq-backup-policy
+  deletionPolicy: Delete
