@@ -1,0 +1,12 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: hdfs-common-standalone-config-constraints
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+spec:
+  fileName: core-site.xml
+  parametersSchema:
+    topLevelKey: HDFSCommonParameter
+    cue: |-
+      {{- .Files.Get "config/hdfs-common-config-constraint.cue" | nindent 6 }}
