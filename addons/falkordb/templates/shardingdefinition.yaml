@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "falkordb.labels" . | nindent 4 }}
   annotations:
-    {{- include "falkordb.apiVersion" . | nindent 4 }}
+    {{- include "falkordb.annotations" . | nindent 4 }}
 spec:
   template:
     compDef: {{ include "falkordbCluster.cmpdRegexpPattern" . }}
@@ -19,7 +19,8 @@ spec:
       shared: true
   lifecycleActions:
     shardRemove:
-      timeoutSeconds: 600
+      nonBlocking: true
+      timeoutSeconds: 3600
       exec:
         container: falkordb-cluster
         command:
