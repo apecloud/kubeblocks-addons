@@ -17,7 +17,7 @@ function handle_exit() {
 trap handle_exit EXIT
 
 lock_per_table_ddl=""
-if [ "${IMAGE_TAG}" == "2.4" ]; then
+if [ "${IMAGE_TAG:?xtrabackup tool version is required}" == "2.4" ]; then
   lock_per_table_ddl="--lock-ddl-per-table"
 fi
 

@@ -302,7 +302,7 @@ env:
     value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
-imagePullPolicy: IfNotPresent
+imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
 ports:
   - name: http-metrics
     containerPort: {{ .Values.metrics.service.port }}
@@ -312,10 +312,57 @@ volumeMounts:
 {{- end -}}
 
 
+{{- define "mysql.syncer.image" -}}
+{{- $registry := .Values.image.registry | default "docker.io" -}}
+{{- $repository := required "image.syncer.repository is required" .Values.image.syncer.repository -}}
+{{- $tag := required "image.syncer.tag is required" .Values.image.syncer.tag -}}
+{{- $digests := .Values.image.syncer.digests | default dict -}}
+{{- $digest := index $digests $tag | default "" -}}
+{{- if $digest -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $digest) -}}
+{{- fail (printf "image.syncer.digests[%s] must be sha256:<64 lowercase hex>" $tag) -}}
+{{- end -}}
+{{- printf "%s/%s:%s@%s" $registry $repository $tag $digest -}}
+{{- else if eq $tag "0.7.7" -}}
+{{- required "image.syncer.digests[0.7.7] is required" $digest -}}
+{{- else -}}
+{{- printf "%s/%s:%s" $registry $repository $tag -}}
+{{- end -}}
+{{- end -}}
+
+
 {{- define "mysql.spec.runtime.images" -}}
 init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+init-syncer: {{ include "mysql.syncer.image" . }}
 mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+{{- end -}}
+
+{{- define "mysql.xtrabackup.repository" -}}
+{{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}
+{{- end -}}
+
+{{- define "mysql.xtrabackup.image" -}}
+{{- $digest := required (printf "image.xtraBackup.%s is required" .digestName) .digest -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $digest) -}}
+{{- fail (printf "image.xtraBackup.%s must be sha256:<64 lowercase hex>" .digestName) -}}
+{{- end -}}
+{{- printf "%s:%s@%s" (include "mysql.xtrabackup.repository" .root) .tag $digest -}}
+{{- end -}}
+
+{{- define "mysql.xtrabackup.image57" -}}
+{{- include "mysql.xtrabackup.image" (dict "root" . "tag" "2.4" "digestName" "digest57" "digest" .Values.image.xtraBackup.digest57) -}}
+{{- end -}}
+
+{{- define "mysql.xtrabackup.image80" -}}
+{{- include "mysql.xtrabackup.image" (dict "root" . "tag" "8.0" "digestName" "digest80" "digest" .Values.image.xtraBackup.digest80) -}}
+{{- end -}}
+
+{{- define "mysql.xtrabackup.image84" -}}
+{{- include "mysql.xtrabackup.image" (dict "root" . "tag" "8.4" "digestName" "digest84" "digest" .Values.image.xtraBackup.digest84) -}}
+{{- end -}}
+
+{{- define "mysql.xtrabackup.minimalRepository" -}}
+{{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.minimalRepository }}
 {{- end -}}
 
 {{/*

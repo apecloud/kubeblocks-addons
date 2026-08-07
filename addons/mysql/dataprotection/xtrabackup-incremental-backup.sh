@@ -75,7 +75,7 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 # compatible with version 2.4
 lock_per_table_ddl=""
-if [ "${IMAGE_TAG}" == "2.4" ]; then
+if [ "${IMAGE_TAG:?xtrabackup tool version is required}" == "2.4" ]; then
   lock_per_table_ddl="--lock-ddl-per-table"
 fi
 
