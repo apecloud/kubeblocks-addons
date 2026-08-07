@@ -7,3 +7,5 @@ metadata:
 data:
   startup.sh: |-
     {{- .Files.Get "scripts/startup.sh" | nindent 4 }}
+  account-provision.sh: |-
+    {{- .Files.Get "scripts/account-provision.sh" | nindent 4 }}
