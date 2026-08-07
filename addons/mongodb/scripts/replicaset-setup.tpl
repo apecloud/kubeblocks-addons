@@ -8,10 +8,6 @@ mkdir -p $MONGODB_ROOT/logs
 mkdir -p $MONGODB_ROOT/tmp
 export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 
-# Allow the test framework to pass in a mock path to override the default /scripts.
-SCRIPTS_BASE_PATH=${SCRIPTS_BASE_PATH:-/scripts}
-. "$SCRIPTS_BASE_PATH/mongodb-common.sh"
-
 # Restore from datafile
 BACKUPFILE=$MONGODB_ROOT/db/mongodb.backup
 PORT_FOR_RESTORE=27027
@@ -33,21 +29,5 @@ then
   rm $BACKUPFILE
 fi
 
-# Restore from pbm
-PBM_BACKUPFILE=$MONGODB_ROOT/tmp/mongodb_pbm.backup
 process="mongod --bind_ip_all --port $PORT --replSet $RPL_SET_NAME --config /etc/mongodb/mongodb.conf"
-if [ ! -f $PBM_BACKUPFILE ]
-then
-  exec $process
-  exit 0
-fi
-
-echo "INFO: Startup backup agent for restore."
-pbm-agent-entrypoint >> $MONGODB_ROOT/tmp/pbm_agent_restore.log 2>&1 &
-
-echo "INFO: Start mongodb for restore."
-$process &
-
-process_restore_signal "$process" "start"
-
-process_restore_signal "$process" "end"
+exec $process
