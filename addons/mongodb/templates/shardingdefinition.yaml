@@ -19,11 +19,12 @@ spec:
       exec:
         container: mongodb
         command:
-          - /bin/bash
-          - -c
-          - /scripts/mongodb-shard-manage.sh --pre-terminate >> /tmp/pre-terminate.log 2>&1
+          - /scripts/mongodb-shard-manage.sh
+          - remove-shard
         targetPodSelector: Role
         matchingKey: primary
-      retryPolicy:
-        maxRetries: 10
+        # Draining chunks and database primaries can take much longer than the
+        # default action timeout. The script polls Syncer's async task and owns
+        # the explicit one-hour operation bound.
+        timeoutSeconds: -1
 
