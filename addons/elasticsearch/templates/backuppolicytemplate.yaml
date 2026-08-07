@@ -8,7 +8,7 @@ spec:
   serviceKind: Elasticsearch
   compDefs:
     - {{ include "elasticsearchData.cmpdRegexPattern" . }}
-    - ^elasticsearch-\d+
+    - {{ include "elasticsearchGeneric.cmpdRegexPattern" . }}
   backupMethods:
     - name: full-backup
       target:

@@ -1,0 +1,6 @@
+{{- if and (hasPrefix "9." .Values.version) (ne .Values.version "9.3.2") }}
+{{- fail "only Elasticsearch 9.3.2 is supported in the 9.x create-only slice" }}
+{{- end }}
+{{- if and (hasPrefix "9." .Values.version) (not (has .Values.mode (list "single-node" "multi-node"))) }}
+{{- fail "only single-node and multi-node modes are supported for Elasticsearch 9.x" }}
+{{- end }}
