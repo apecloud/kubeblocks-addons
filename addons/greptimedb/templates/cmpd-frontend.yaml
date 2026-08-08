@@ -10,6 +10,7 @@ spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
   services:
     - name: client
       spec:

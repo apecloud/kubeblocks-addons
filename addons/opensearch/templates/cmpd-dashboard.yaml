@@ -10,6 +10,7 @@ spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Values.defaultServiceVersion.opensearch }}
   runtime:
     containers:
       - name: dashboard

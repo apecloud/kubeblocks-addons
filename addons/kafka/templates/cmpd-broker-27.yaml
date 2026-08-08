@@ -10,6 +10,7 @@ spec:
   provider: kubeblocks
   description: Kafka 2.x broker component definition
   serviceKind: kafka
+  serviceVersion: {{ .Values.defaultKafka2ServiceVersion.broker }}
   podManagementPolicy: Parallel
   services:
     - name: advertised-listener
