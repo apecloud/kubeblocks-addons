@@ -7,7 +7,7 @@ Describe "PostgreSQL KubeBlocks API contract"
   }
 
   render_chart() {
-    helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system
+    helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system --dependency-update
   }
 
   kubeblocks_floor() {
