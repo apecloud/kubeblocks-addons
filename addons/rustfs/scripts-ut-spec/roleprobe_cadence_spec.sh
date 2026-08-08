@@ -13,7 +13,6 @@ Describe "RustFS roleProbe render contract"
   }
 
   render_cmpd() {
-    prepare_chart || return $?
     helm template test "${tmp_dir}/addons/rustfs" \
       --dependency-update \
       --show-only templates/cmpd.yaml
@@ -87,7 +86,6 @@ Describe "RustFS roleProbe render contract"
     wget_mode="$1"
     curl_mode="$2"
     budget="${3:-0}"
-    prepare_chart || return $?
     probe_script=$(extract_probe_script) || return $?
     prepare_probe_stubs || return $?
 
@@ -109,9 +107,13 @@ Describe "RustFS roleProbe render contract"
   }
 
   cleanup_chart() {
-    [ -n "${tmp_dir:-}" ] && rm -rf "${tmp_dir}" 2>/dev/null || true
+    chart_dir="${tmp_dir:-}"
     tmp_dir=""
+    [ -z "$chart_dir" ] && return 0
+    rm -rf "$chart_dir" 2>/dev/null || return $?
+    [ ! -e "$chart_dir" ]
   }
+  BeforeEach 'prepare_chart'
   AfterEach 'cleanup_chart'
 
   It "renders a one-second period and three-second timeout"
