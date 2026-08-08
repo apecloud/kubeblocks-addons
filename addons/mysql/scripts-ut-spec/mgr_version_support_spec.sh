@@ -29,16 +29,10 @@ Describe "MySQL MGR version support contract"
     '
   }
 
-  extract_mgr_80_default_release() {
+  extract_default_service_version() {
     render_template "$1" | ruby -ryaml -e '
       document = YAML.safe_load(STDIN.read, aliases: true)
-      rules = document.fetch("spec").fetch("compatibilityRules")
-      rule = rules.find do |r|
-        r.fetch("compDefs").any? { |name| name.include?("mysql-mgr-8.0-") }
-      end
-      raise "no MGR 8.0 compatibility rule found" unless rule
-      # The first release in the rule is the default version for that compDef.
-      puts rule.fetch("releases").first
+      puts document.fetch("spec").fetch("serviceVersion")
     '
   }
 
@@ -52,7 +46,7 @@ Describe "MySQL MGR version support contract"
   }
 
   assert_mgr_default_is_supported() {
-    version=$(extract_mgr_80_default_release cpmv-mgr.yaml) || return
+    version=$(extract_default_service_version cmpd-mysql80-mgr.yaml) || return
     printf 'mgr_default=%s\n' "$version"
     [ "$version" = "8.0.45" ]
   }

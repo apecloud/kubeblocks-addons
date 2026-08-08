@@ -10,6 +10,7 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: clickhouse-keeper
+  serviceVersion: {{ .Chart.AppVersion }}
   minReadySeconds: 10
   runtime:
     securityContext:

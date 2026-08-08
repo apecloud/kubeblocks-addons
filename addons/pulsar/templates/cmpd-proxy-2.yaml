@@ -10,6 +10,7 @@ spec:
   provider: kubeblocks
   description: Pulsar proxy component definition
   serviceKind: pulsar
+  serviceVersion: {{ .Values.defaultServiceVersion.proxy.major2 }}
   serviceRefDeclarations:
     - name: pulsarZookeeper
       serviceRefDeclarationSpecs:

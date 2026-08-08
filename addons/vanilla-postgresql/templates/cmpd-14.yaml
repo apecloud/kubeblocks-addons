@@ -8,6 +8,7 @@ metadata:
     {{- include "vanilla-postgresql.annotations" . | nindent 4 }}
 spec:
   {{- include "vanilla-postgresql.spec.common" . | nindent 2 }}
+  serviceVersion: {{ .Values.defaultServiceVersion.major14 }}
   configs:
     - name: vanilla-postgresql-configuration
       template: {{ include "vanilla-postgresql14.configurationTemplate" . }}

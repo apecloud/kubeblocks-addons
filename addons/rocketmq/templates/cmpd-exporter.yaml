@@ -10,6 +10,7 @@ spec:
   provider: community
   serviceKind: {{ .Chart.Name }}-exporter
   description: RocketMQ Exporter
+  serviceVersion: 0.0.2
   minReadySeconds: 10
   updateStrategy: BestEffortParallel
   scripts:
