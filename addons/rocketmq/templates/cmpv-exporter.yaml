@@ -17,4 +17,5 @@ spec:
     - releases:
         - rocketmq-exporter-0.0.3
       compDefs:
+        - rocketmq-exporter-1.0.3
         - {{ include "rocketmq.compDefRocketMQExporter" . }}

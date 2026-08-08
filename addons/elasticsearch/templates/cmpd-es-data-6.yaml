@@ -8,7 +8,6 @@ metadata:
     apps.kubeblocks.io/skip-immutable-check: "true"
     {{- include "elasticsearch.annotations" . | nindent 4 }}
 spec:
-  serviceVersion: 6.8.23
   replicasLimit:
     minReplicas: 2
     maxReplicas: 16384
