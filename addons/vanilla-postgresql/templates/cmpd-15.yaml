@@ -8,6 +8,7 @@ metadata:
     {{- include "vanilla-postgresql.annotations" . | nindent 4 }}
 spec:
   {{- include "vanilla-postgresql.spec.common" . | nindent 2 }}
+  serviceVersion: {{ .Values.defaultServiceVersion.major15 }}
   configs:
     - name: vanilla-postgresql-configuration
       template: {{ include "vanilla-postgresql15.configurationTemplate" . }}
@@ -39,6 +40,7 @@ metadata:
     {{- include "vanilla-postgresql.annotations" . | nindent 4 }}
 spec:
   {{- include "vanilla-postgresql.spec.common" (merge (dict "accountName" "supabase_admin") .)| nindent 2 }}
+  serviceVersion: {{ .Values.defaultServiceVersion.supabaseMajor15 }}
   configs:
     - name: supabase-postgresql-configuration
       template: {{ include "supabase15.configurationTemplate" . }}

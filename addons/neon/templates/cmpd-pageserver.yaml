@@ -10,6 +10,7 @@ spec:
   description: A neon pageserver component definition for Kubernetes
   provider: KubeBlocks
   serviceKind: neon-pageserver
+  serviceVersion: {{ .Values.defaultComponentServiceVersion }}
   services:
     - name: neon-pageserver
       serviceName: neon-pageserver

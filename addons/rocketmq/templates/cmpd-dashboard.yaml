@@ -10,6 +10,7 @@ spec:
   provider: community
   serviceKind: {{ .Chart.Name }}-dashboard
   description: RocketMQ Dashboard
+  serviceVersion: 2.0.0
   minReadySeconds: 10
   updateStrategy: BestEffortParallel
   scripts:

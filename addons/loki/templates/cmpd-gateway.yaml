@@ -10,6 +10,7 @@ spec:
   provider: kubeblocks
   description: A Loki component definition for Kubernetes
   serviceKind: loki-gateway
+  serviceVersion: 1.0.0
   services:
     - name: loki-gateway
       spec:

@@ -10,6 +10,7 @@ spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: nebula
+  serviceVersion: {{ .Chart.AppVersion }}
   podManagementPolicy: Parallel
   configs:
     - name: nebula-metad-config
