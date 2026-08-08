@@ -11,7 +11,7 @@ Describe "PostgreSQL version matrix contract"
   }
 
   render_chart() {
-    helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system
+    helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system --dependency-update
   }
 
   chart_version() {
