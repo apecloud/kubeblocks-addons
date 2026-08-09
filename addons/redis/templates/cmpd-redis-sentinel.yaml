@@ -16,7 +16,6 @@ spec:
   provider: kubeblocks
   description: A Redis Sentinel v{{ .major }}.0 component definition for Kubernetes
   serviceKind: redis-sentinel
-  serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: Parallel
   podUpgradePolicy: ReCreate
   services:
