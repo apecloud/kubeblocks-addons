@@ -9,13 +9,61 @@ Describe "RustFS roleProbe render contract"
     tmp_dir=$(mktemp -d -t rustfs-roleprobe-render-XXXXXX) || return $?
     mkdir -p "${tmp_dir}/addons" || return $?
     cp -R "$(repo_root)/addons/rustfs" "${tmp_dir}/addons/rustfs" || return $?
+    cp -R "$(repo_root)/addons/rustfs" "${tmp_dir}/addons/rustfs-base" || return $?
     cp -R "$(repo_root)/addons/kblib" "${tmp_dir}/addons/kblib" || return $?
+
+    ruby -e '
+      chart = ARGV.fetch(0)
+      cmpd = ARGV.fetch(1)
+      chart_text = File.read(chart).sub(/^version: .*$/, "version: 0.1.0")
+      cmpd_text = File.read(cmpd)
+        .sub(/^      periodSeconds: 1\n/, "")
+        .sub(/^      timeoutSeconds: 3\n/, "")
+      File.write(chart, chart_text)
+      File.write(cmpd, cmpd_text)
+    ' "${tmp_dir}/addons/rustfs-base/Chart.yaml" \
+      "${tmp_dir}/addons/rustfs-base/templates/cmpd.yaml" || return $?
   }
 
   render_cmpd() {
     helm template test "${tmp_dir}/addons/rustfs" \
       --dependency-update \
       --show-only templates/cmpd.yaml
+  }
+
+  render_base_cmpd() {
+    helm template test "${tmp_dir}/addons/rustfs-base" \
+      --dependency-update \
+      --show-only templates/cmpd.yaml
+  }
+
+  validate_immutable_upgrade_identity() {
+    base_file="${tmp_dir}/base-cmpd.yaml"
+    head_file="${tmp_dir}/head-cmpd.yaml"
+    render_base_cmpd >"$base_file" || return $?
+    render_cmpd >"$head_file" || return $?
+
+    ruby -ryaml -rdigest -e '
+      documents = ARGV.map do |path|
+        YAML.load_stream(File.read(path)).compact.find do |item|
+          item.is_a?(Hash) && item["kind"] == "ComponentDefinition"
+        end
+      end
+      base, head = documents
+      abort "ComponentDefinition is missing" unless base && head
+      base_probe = base.dig("spec", "lifecycleActions", "roleProbe")
+      head_probe = head.dig("spec", "lifecycleActions", "roleProbe")
+      base_command = base_probe.dig("exec", "command")
+      head_command = head_probe.dig("exec", "command")
+      abort "roleProbe command changed" unless base_command == head_command
+      puts [
+        base.dig("metadata", "name"),
+        head.dig("metadata", "name"),
+        "#{base_probe["periodSeconds"].inspect}/#{base_probe["timeoutSeconds"].inspect}",
+        "#{head_probe["periodSeconds"]}/#{head_probe["timeoutSeconds"]}",
+        Digest::SHA256.hexdigest(YAML.dump(head_command))
+      ].join("|")
+    ' "$base_file" "$head_file"
   }
 
   validate_roleprobe_cadence() {
@@ -120,6 +168,12 @@ Describe "RustFS roleProbe render contract"
     When call validate_roleprobe_cadence
     The status should be success
     The output should include "RustFS roleProbe cadence is 1s/3s"
+  End
+
+  It "publishes immutable roleProbe changes under a new chart-versioned identity"
+    When call validate_immutable_upgrade_identity
+    The status should be success
+    The output should eq "rustfs-0.1.0|rustfs-0.1.1|nil/nil|1/3|01fa10f938f541513fa73a58552b65e6a3ded71efc3b2cd6f40815781907e10e"
   End
 
   It "keeps the pre-change exec command structure byte-for-byte canonical"
