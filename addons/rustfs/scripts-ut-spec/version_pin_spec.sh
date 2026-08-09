@@ -36,7 +36,11 @@ Describe "RustFS beta.10 version pin"
   }
 
   cleanup_chart() {
-    rm -rf "${tmp_dir:?}"
+    chart_dir=${tmp_dir:-}
+    tmp_dir=
+    [ -n "${chart_dir}" ] || return 0
+    "${cleanup_rm:-rm}" -rf "${chart_dir}" || return $?
+    [ ! -e "${chart_dir}" ]
   }
 
   render_component_version() {
@@ -93,6 +97,27 @@ Describe "RustFS beta.10 version pin"
     validate_rendered_release
   }
 
+  validate_cleanup_rejects_false_success() {
+    chart_dir=${tmp_dir:?}
+    fake_rm="${chart_dir}/fake-rm"
+    printf '%s\n' '#!/bin/sh' 'exit 0' >"${fake_rm}" || return $?
+    chmod +x "${fake_rm}" || return $?
+
+    cleanup_rm=${fake_rm}
+    cleanup_chart
+    cleanup_status=$?
+    cleanup_rm=
+    tmp_dir=${chart_dir}
+
+    [ "${cleanup_status}" -ne 0 ] || return 1
+    [ -d "${chart_dir}" ] || return 1
+
+    command rm -rf "${chart_dir}" || return $?
+    [ ! -e "${chart_dir}" ] || return 1
+    tmp_dir=
+    printf '%s\n' "cleanup false-success rejected; trusted teardown removed one root"
+  }
+
   BeforeEach 'prepare_chart'
   AfterEach 'cleanup_chart'
 
@@ -118,5 +143,11 @@ Describe "RustFS beta.10 version pin"
     When call validate_with_beta9_role_probe_image
     The status should be failure
     The stderr should include "unexpected rendered release"
+  End
+
+  It "rejects cleanup success while the chart tree still exists"
+    When call validate_cleanup_rejects_false_success
+    The status should be success
+    The output should eq "cleanup false-success rejected; trusted teardown removed one root"
   End
 End
