@@ -1,5 +1,6 @@
 # Copyright ApeCloud Co., Ltd. All Rights Reserved.
 # SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+# shellcheck shell=bash
 
 if [ -z "$memberServerName" ]; then
     echo "Error: memberServerName is not provided" >&2

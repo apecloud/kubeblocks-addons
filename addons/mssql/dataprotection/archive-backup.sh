@@ -1,5 +1,6 @@
 # Copyright ApeCloud Co., Ltd. All Rights Reserved.
 # SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+# shellcheck shell=bash
 
 set -e
 # ${database}.basefull.info: Records all full backup paths, timestamps, and the first subsequent log backup path for the database

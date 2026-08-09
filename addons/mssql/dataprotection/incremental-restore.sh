@@ -1,5 +1,6 @@
 # Copyright ApeCloud Co., Ltd. All Rights Reserved.
 # SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+# shellcheck shell=bash
 
 set -e
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"

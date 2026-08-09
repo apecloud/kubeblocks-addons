@@ -1,5 +1,6 @@
 # Copyright ApeCloud Co., Ltd. All Rights Reserved.
 # SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+# shellcheck shell=bash
 
 # Auto-detect sqlcmd path: mssql-tools18 (2022) vs mssql-tools (2019)
 if [ -f /opt/mssql-tools18/bin/sqlcmd ]; then
