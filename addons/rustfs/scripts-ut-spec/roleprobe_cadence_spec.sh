@@ -173,7 +173,7 @@ Describe "RustFS roleProbe render contract"
   It "publishes immutable roleProbe changes under a new chart-versioned identity"
     When call validate_immutable_upgrade_identity
     The status should be success
-    The output should eq "rustfs-0.1.0|rustfs-0.1.1|nil/nil|1/3|01fa10f938f541513fa73a58552b65e6a3ded71efc3b2cd6f40815781907e10e"
+    The output should eq "rustfs-0.1.0|rustfs-0.1.2|nil/nil|1/3|01fa10f938f541513fa73a58552b65e6a3ded71efc3b2cd6f40815781907e10e"
   End
 
   It "keeps the pre-change exec command structure byte-for-byte canonical"
