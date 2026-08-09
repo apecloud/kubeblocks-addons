@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+        "monitorReplicas": {
+            "title": "MonitorReplicas",
+            "description": "The number of monitor replicas.",
+            "type": [
+              "integer"
+          ],
+            "default": 1,
+            "minimum": 1,
+            "maximum": 3
+        },
+        "replicas": {
+            "title": "Replicas",
+            "description": "The number of replicas.",
+            "type": [
+              "integer"
+          ],
+            "minimum": 1,
+            "maximum": 9
+        },
+        "storage": {
+            "title": "Storage(Gi)",
+            "description": "Storage size, the unit is Gi.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "default": 20,
+            "minimum": 1,
+            "maximum": 10000
+        }
+    }
+}

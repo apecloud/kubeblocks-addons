@@ -1,3 +1,6 @@
+# Copyright ApeCloud Co., Ltd. All Rights Reserved.
+# SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+
 # Common values for charts
 # If set to true, configure the annotation "helm.sh/resource-policy: keep"
 keepResource: true

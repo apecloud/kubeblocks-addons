@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright ApeCloud Co., Ltd. All Rights Reserved.
+# SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
 
 convert_tpl_to_bash() {
   local input_file="$1"

@@ -1,0 +1,4 @@
+--default-path .
+--execdir @project
+--fail-no-examples
+--shell bash
