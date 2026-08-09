@@ -27,11 +27,74 @@ Describe "RustFS beta.10 version pin"
     ' "$(repo_root)"
   }
 
+  prepare_chart() {
+    tmp_dir=$(mktemp -d -t rustfs-version-pin-XXXXXX) || return $?
+    mkdir -p "${tmp_dir}/addons" || return $?
+    cp -R "$(repo_root)/addons/rustfs" "${tmp_dir}/addons/rustfs" || return $?
+    cp -R "$(repo_root)/addons/kblib" "${tmp_dir}/addons/kblib" || return $?
+    helm dependency build "${tmp_dir}/addons/rustfs" >/dev/null || return $?
+  }
+
+  cleanup_chart() {
+    rm -rf "${tmp_dir:?}"
+  }
+
   render_component_version() {
-    helm template test "$(repo_root)/addons/rustfs" \
-      --dependency-update \
+    helm template test "${tmp_dir}/addons/rustfs" \
       --show-only templates/cmpv.yaml
   }
+
+  validate_rendered_release() {
+    render_component_version | ruby -ryaml -e '
+      document = YAML.load_stream($stdin.read).find { |item| item.is_a?(Hash) && item["kind"] == "ComponentVersion" }
+      abort "ComponentVersion is missing" unless document
+      releases = document.dig("spec", "releases")
+      abort "expected exactly one ComponentVersion release" unless releases.is_a?(Array) && releases.length == 1
+      release = releases.fetch(0)
+      expected_image = "docker.io/rustfs/rustfs:1.0.0-beta.10"
+      images = release.fetch("images")
+      actual = [
+        release.fetch("serviceVersion"),
+        images["rustfs"],
+        images["roleProbe"]
+      ]
+      expected = ["1.0.0-beta.10", expected_image, expected_image]
+      abort "unexpected rendered release: #{actual.join("|")}" unless actual == expected
+      puts actual.join("|")
+    '
+  }
+
+  delete_role_probe_image() {
+    ruby -e '
+      path = ARGV.fetch(0)
+      source = File.read(path)
+      abort "roleProbe image line is missing" unless source.sub!(/^\s+roleProbe:.*\n/, "")
+      File.write(path, source)
+    ' "${tmp_dir}/addons/rustfs/templates/cmpv.yaml"
+  }
+
+  replace_role_probe_with_beta9() {
+    ruby -e '
+      path = ARGV.fetch(0)
+      source = File.read(path)
+      replacement = "        roleProbe: docker.io/rustfs/rustfs:1.0.0-beta.9\n"
+      abort "roleProbe image line is missing" unless source.sub!(/^\s+roleProbe:.*\n/, replacement)
+      File.write(path, source)
+    ' "${tmp_dir}/addons/rustfs/templates/cmpv.yaml"
+  }
+
+  validate_without_role_probe_image() {
+    delete_role_probe_image || return $?
+    validate_rendered_release
+  }
+
+  validate_with_beta9_role_probe_image() {
+    replace_role_probe_with_beta9 || return $?
+    validate_rendered_release
+  }
+
+  BeforeEach 'prepare_chart'
+  AfterEach 'cleanup_chart'
 
   It "pins beta.10 consistently in both charts and the default release"
     When call read_source_versions
@@ -39,11 +102,21 @@ Describe "RustFS beta.10 version pin"
     The output should eq "0.1.2|0.1.1|1.0.0-beta.10|1.0.0-beta.10|1.0.0-beta.10|1.0.0-beta.10|1.0.0-beta.10|true"
   End
 
-  It "renders the beta.10 service version and runtime image"
-    When call render_component_version
+  It "renders the beta.10 service version and runtime and roleProbe images"
+    When call validate_rendered_release
     The status should be success
-    The output should include "serviceVersion: 1.0.0-beta.10"
-    The output should include "rustfs: docker.io/rustfs/rustfs:1.0.0-beta.10"
-    The output should not include "1.0.0-beta.8"
+    The output should eq "1.0.0-beta.10|docker.io/rustfs/rustfs:1.0.0-beta.10|docker.io/rustfs/rustfs:1.0.0-beta.10"
+  End
+
+  It "rejects a release without the roleProbe image mapping"
+    When call validate_without_role_probe_image
+    The status should be failure
+    The stderr should include "unexpected rendered release"
+  End
+
+  It "rejects a roleProbe image pinned to another release"
+    When call validate_with_beta9_role_probe_image
+    The status should be failure
+    The stderr should include "unexpected rendered release"
   End
 End
