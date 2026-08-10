@@ -276,7 +276,7 @@
 	extra_float_digits?: int & >=-15 & <=3
 
 	// Forces use of parallel query facilities.
-	force_parallel_mode?: string & "off" | "on" | "regress"
+	force_parallel_mode?: string & "off" | "on" | "regress" | "true" | "false" | "1" | "0"
 
 	// Sets the FROM-list size beyond which subqueries are not collapsed.
 	from_collapse_limit?: int & >=1 & <=2147483647

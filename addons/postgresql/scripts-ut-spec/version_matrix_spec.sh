@@ -42,7 +42,7 @@ Describe "PostgreSQL version matrix contract"
 	autovacuum_multixact_freeze_max_age?: int & >=10000 & <=2000000000
 	autovacuum_vacuum_cost_delay?: float & >=-1 & <=100 @timeDurationResource()
 	checkpoint_timeout?: int & >=30 & <=86400 @timeDurationResource(1s)
-	force_parallel_mode?: string & "off" | "on" | "regress"
+	force_parallel_mode?: string & "off" | "on" | "regress" | "true" | "false" | "1" | "0"
 	geqo_pool_size?: int & >=0 & <=2147483647
 	log_file_mode?: int & >=0 & <=511
 	log_min_messages?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "info" | "notice" | "warning" | "error" | "log" | "fatal" | "panic"
