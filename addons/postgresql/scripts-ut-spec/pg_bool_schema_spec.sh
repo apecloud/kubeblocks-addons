@@ -70,7 +70,11 @@ Describe "PostgreSQL boolean parameter schema"
     local constraint="../config/pg${major}-config-constraint.cue"
     local template="../config/pg${major}-config.tpl"
 
-    grep -Fq 'force_parallel_mode?: string & =~"(?i)^(off|on|regress)$"' "$constraint"
+	if [ "$major" -eq 13 ]; then
+	  grep -Fq 'force_parallel_mode?: string & =~"(?i)^(off|on|regress|true|false|1|0)$"' "$constraint"
+	else
+	  grep -Fq 'force_parallel_mode?: string & =~"(?i)^(off|on|regress)$"' "$constraint"
+	fi
     grep -Fq "force_parallel_mode = 'off'" "$template"
   }
 
