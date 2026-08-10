@@ -257,7 +257,7 @@
     //
     // Warning: This setting only takes effect if system_memory_high_watermark_ratio ≠ 1.
     //             For mixed deployments, adjust according to expected memory allocation.
-    "--memory_tracker_limit_ratio": number & >0 & <=1 | 2 | 3 | *0.8
+    "--memory_tracker_limit_ratio": number & >0 & <=1 | 2 | 2.0 | 3 | 3.0 | *0.8
 
     // Reserved memory size in MB for system usage (not tracked by memory tracker).
     "--memory_tracker_untracked_reserved_memory_mb": int & >=0 & <=102400 | *50
@@ -322,7 +322,21 @@
     // whether send raft snapshot by files via http
     "--snapshot_send_files": bool | *true
 
-    "--containerized": bool | *false
+    // Whether the process runs inside a container (docker/k8s).
+    // When true, the memory tracker reads the cgroup limit instead of host /proc/meminfo.
+    "--containerized": bool | *true
+
+    // cgroup v2 controllers file path.
+    "--cgroup_v2_controllers": string | *"/sys/fs/cgroup/cgroup.controllers"
+
+    // cgroup v2 memory stat file path.
+    "--cgroup_v2_memory_stat_path": string | *"/sys/fs/cgroup/memory.stat"
+
+    // cgroup v2 memory max (limit) file path.
+    "--cgroup_v2_memory_max_path": string | *"/sys/fs/cgroup/memory.max"
+
+    // cgroup v2 memory current (usage) file path.
+    "--cgroup_v2_memory_current_path": string | *"/sys/fs/cgroup/memory.current"
 
 }
 
