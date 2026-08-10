@@ -1,0 +1,13 @@
+version: "1.7.0"
+replicas: 1
+
+cpu: 1
+memory: 2
+
+requests:
+
+storage: 20
+storageClassName: ""
+
+extra:
+  terminationPolicy: Delete

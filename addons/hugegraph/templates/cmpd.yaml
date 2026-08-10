@@ -1,0 +1,120 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "hugegraph.cmpdName" . }}
+  labels:
+    {{- include "hugegraph.labels" . | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "hugegraph.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Apache HugeGraph 1.7.0 standalone server with RocksDB.
+  serviceKind: hugegraph
+  serviceVersion: {{ .Values.serviceVersion }}
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 1
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: http
+            port: 8080
+            targetPort: http
+          - name: gremlin
+            port: 8182
+            targetPort: gremlin
+  scripts:
+    - name: hugegraph-scripts
+      template: {{ include "hugegraph.scriptsTemplateName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  volumes:
+    - name: data
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 4
+        numSymbols: 0
+        letterCase: MixedCases
+  vars:
+    - name: ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "hugegraph.cmpdName" . }}
+          name: admin
+          optional: false
+          username: Required
+    - name: ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "hugegraph.cmpdName" . }}
+          name: admin
+          optional: false
+          password: Required
+  logConfigs:
+    - name: running
+      filePathPattern: {{ .Values.logConfigs.running }}
+  runtime:
+    containers:
+      - name: hugegraph
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+        command:
+          - /bin/bash
+          - /scripts/start.sh
+        env:
+          - name: PASSWORD
+            value: $(ADMIN_PASSWORD)
+          - name: HUGEGRAPH_DATA_ROOT
+            value: {{ .Values.dataMountPath }}
+        ports:
+          - name: http
+            containerPort: 8080
+          - name: gremlin
+            containerPort: 8182
+        startupProbe:
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - >-
+                curl --fail --silent --show-error --user "${ADMIN_USER}:${ADMIN_PASSWORD}"
+                http://127.0.0.1:8080/graphspaces/DEFAULT/graphs >/dev/null
+          failureThreshold: 60
+          periodSeconds: 5
+          timeoutSeconds: 3
+        readinessProbe:
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - >-
+                curl --fail --silent --show-error --user "${ADMIN_USER}:${ADMIN_PASSWORD}"
+                http://127.0.0.1:8080/graphspaces/DEFAULT/graphs >/dev/null
+          failureThreshold: 3
+          periodSeconds: 10
+          timeoutSeconds: 3
+        livenessProbe:
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - >-
+                curl --fail --silent --show-error --user "${ADMIN_USER}:${ADMIN_PASSWORD}"
+                http://127.0.0.1:8080/graphspaces/DEFAULT/graphs >/dev/null
+          failureThreshold: 6
+          periodSeconds: 15
+          timeoutSeconds: 3
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+          - name: scripts
+            mountPath: /scripts

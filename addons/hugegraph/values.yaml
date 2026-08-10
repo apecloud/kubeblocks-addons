@@ -1,0 +1,14 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: docker.io
+  repository: hugegraph/hugegraph
+  tag: "1.7.0"
+  pullPolicy: IfNotPresent
+
+serviceVersion: "1.7.0"
+dataMountPath: /hugegraph-data
+
+logConfigs:
+  running: /hugegraph-server/logs/hugegraph-server.log
