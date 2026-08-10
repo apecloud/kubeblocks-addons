@@ -65,9 +65,10 @@ PVC 固定挂载到 `/hugegraph-data`：
 6. 每次启动都执行上游 `enable-auth.sh`，重建替换容器内的临时认证配置；持久化
    初始化标记只用于跳过 store 初始化，不能代替该配置。
 
-容器通过 Kubernetes `preStop` 调用 `stop-hugegraph.sh`，并保留 30 秒终止窗口。
-KubeBlocks 1.0 的 Stop 不执行 `preTerminate`，因此正常 Stop/Restart 的 RocksDB 收尾
-必须放在 Pod lifecycle hook。
+容器通过 Kubernetes `preStop` 调用 `shutdown.sh`，由它执行上游
+`stop-hugegraph.sh`，并把开始/完成记录写到 PVC 上的 `.kb-prestop.log`；Pod 保留 30
+秒终止窗口。KubeBlocks 1.0 的 Stop 不执行 `preTerminate`，因此正常 Stop/Restart 的
+RocksDB 收尾必须放在 Pod lifecycle hook。
 
 动态多图推荐使用 `clone_graph_name=hugegraph` 创建。HugeGraph 的 RocksDB provider
 会为 clone graph 自动生成独立的 `rocksdb_<graph>` 和 `wal_<graph>` 路径。直接

@@ -41,7 +41,8 @@ initialization marker on this volume. It does not mount a PVC over
 On every Pod start, the addon rebuilds HugeGraph's authentication settings in
 the replacement container before invoking the upstream entrypoint. A `preStop`
 hook runs HugeGraph's shutdown script within a 30-second termination window so
-Stop, Restart, and pod replacement close RocksDB cleanly.
+Stop, Restart, and pod replacement close RocksDB cleanly. The hook records its
+start and completion in `/hugegraph-data/.kb-prestop.log` for diagnosis.
 
 For additional graphs, use the HugeGraph clone API so the RocksDB provider
 creates unique persistent paths:

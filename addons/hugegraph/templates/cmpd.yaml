@@ -75,7 +75,8 @@ spec:
           preStop:
             exec:
               command:
-                - /hugegraph-server/bin/stop-hugegraph.sh
+                - /bin/bash
+                - /scripts/shutdown.sh
         env:
           - name: PASSWORD
             value: $(ADMIN_PASSWORD)

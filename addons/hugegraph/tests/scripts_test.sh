@@ -89,6 +89,43 @@ MOCK
 
 chmod +x "${MOCK_BIN}/datasafed" "${MOCK_BIN}/curl"
 
+SHUTDOWN_SERVER_HOME="${WORK_ROOT}/shutdown-server"
+SHUTDOWN_DATA_ROOT="${WORK_ROOT}/shutdown-data"
+mkdir -p "${SHUTDOWN_SERVER_HOME}/bin" "$SHUTDOWN_DATA_ROOT"
+cat >"${SHUTDOWN_SERVER_HOME}/bin/stop-hugegraph.sh" <<'MOCK'
+#!/usr/bin/env bash
+set -euo pipefail
+pid=$(cat "$(dirname "$0")/pid")
+kill -TERM "$pid"
+wait "$pid" 2>/dev/null || true
+rm -f "$(dirname "$0")/pid"
+MOCK
+chmod +x "${SHUTDOWN_SERVER_HOME}/bin/stop-hugegraph.sh"
+
+sleep 300 &
+shutdown_pid=$!
+printf '%s\n' "$shutdown_pid" >"${SHUTDOWN_SERVER_HOME}/bin/pid"
+env \
+  HUGEGRAPH_SERVER_HOME="$SHUTDOWN_SERVER_HOME" \
+  HUGEGRAPH_DATA_ROOT="$SHUTDOWN_DATA_ROOT" \
+  "$PRODUCT_BASH" "${ADDON_DIR}/scripts/shutdown.sh"
+wait "$shutdown_pid" 2>/dev/null || true
+if kill -0 "$shutdown_pid" 2>/dev/null; then
+  kill "$shutdown_pid" 2>/dev/null || true
+  fail "shutdown script left the HugeGraph process running"
+fi
+grep -Fq 'graceful shutdown started' "${SHUTDOWN_DATA_ROOT}/.kb-prestop.log" \
+  || fail "shutdown audit log missed the start record"
+grep -Fq 'graceful shutdown completed' "${SHUTDOWN_DATA_ROOT}/.kb-prestop.log" \
+  || fail "shutdown audit log missed the completion record"
+
+env \
+  HUGEGRAPH_SERVER_HOME="$SHUTDOWN_SERVER_HOME" \
+  HUGEGRAPH_DATA_ROOT="$SHUTDOWN_DATA_ROOT" \
+  "$PRODUCT_BASH" "${ADDON_DIR}/scripts/shutdown.sh"
+grep -Fq 'already stopped' "${SHUTDOWN_DATA_ROOT}/.kb-prestop.log" \
+  || fail "shutdown retry did not record the already-stopped state"
+
 write_graph_config() {
   local root=$1
   local graph=$2

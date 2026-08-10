@@ -7,3 +7,5 @@ metadata:
 data:
   start.sh: |-
     {{- .Files.Get "scripts/start.sh" | nindent 4 }}
+  shutdown.sh: |-
+    {{- .Files.Get "scripts/shutdown.sh" | nindent 4 }}
