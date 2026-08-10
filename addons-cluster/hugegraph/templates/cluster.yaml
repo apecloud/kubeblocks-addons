@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  clusterDef: hugegraph
+  topology: standalone
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  componentSpecs:
+    - name: server
+      serviceVersion: {{ .Values.version | quote }}
+      replicas: 1
+      {{- include "kblib.componentResources" . | nindent 6 }}
+      {{- include "kblib.componentStorages" . | nindent 6 }}

@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "version": {
+      "title": "Version",
+      "description": "HugeGraph service version.",
+      "type": "string",
+      "default": "1.7.0",
+      "enum": ["1.7.0"]
+    },
+    "replicas": {
+      "title": "Replicas",
+      "description": "Standalone HugeGraph requires exactly one replica.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 1
+    },
+    "cpu": {
+      "title": "CPU",
+      "description": "CPU cores.",
+      "type": ["number", "string"],
+      "default": 1,
+      "minimum": 0.5,
+      "maximum": 64
+    },
+    "memory": {
+      "title": "Memory(Gi)",
+      "description": "Memory in Gi.",
+      "type": ["number", "string"],
+      "default": 2,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "storage": {
+      "title": "Storage(Gi)",
+      "description": "Data volume size in Gi.",
+      "type": ["number", "string"],
+      "default": 20,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "storageClassName": {
+      "title": "Storage Class Name",
+      "description": "StorageClass for the data PVC.",
+      "type": "string"
+    }
+  }
+}
