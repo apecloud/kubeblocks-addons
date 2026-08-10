@@ -1,0 +1,60 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: mssql-backup-policy-template
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  serviceKind: mssql
+  compDefs:
+    - mssql.*
+  target:
+    role: "primary"
+    account: sa
+  backupMethods:
+    - name: full
+      actionSetName: mssql-full-backup
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /var/opt/mssql
+    - name: incremental
+      actionSetName: mssql-incremental-backup
+      compatibleMethod: full
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /var/opt/mssql
+    - name: transaction-log
+      actionSetName: mssql-pitr-backup
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /var/opt/mssql
+    - name: bcp
+      snapshotVolumes: false
+      actionSetName: mssql-bcp-br
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /var/opt/mssql
+  schedules:
+    - backupMethod: full
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 8d
+    - backupMethod: incremental
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: transaction-log
+      enabled: false
+      cronExpression: "*/1 * * * *"
+      retentionPeriod: 7d

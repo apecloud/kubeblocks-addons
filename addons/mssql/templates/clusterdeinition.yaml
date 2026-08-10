@@ -1,0 +1,20 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: mssql
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mssql.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: cluster
+      default: true
+      components:
+        - name: mssql
+          compDef: {{ include "mssql.cmpdRegexpPattern" . }}

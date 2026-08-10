@@ -1,0 +1,31 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+{{- range $version := .Values.versions }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mssql.configMapName" (dict "major" $version.major "root" $) }}
+  labels:
+    {{- include "mssql.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "mssql.annotations" $ | nindent 4 }}
+data:
+  mssql.conf: |-
+    {{- $.Files.Get (printf "config/mssql%s-conf.tpl" $version.major) | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mssql.sysConfigurationsConfigMapName" (dict "major" $version.major "root" $) }}
+  labels:
+    {{- include "mssql.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "mssql.annotations" $ | nindent 4 }}
+data:
+  sys-configurations.toml: |-
+    {{- $.Files.Get (printf "config/mssql%s-sys-config.tpl" $version.major) | nindent 4 }}
+{{- end }}

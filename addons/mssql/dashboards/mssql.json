@@ -1,0 +1,1045 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Works with and awaragi/prometheus-mssql-exporter",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "gnetId": 13919,
+  "graphTooltip": 0,
+  "id": 105,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "columns": [],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fontSize": "80%",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 45,
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": true
+      },
+      "styles": [
+        {
+          "$$hashKey": "object:1557",
+          "alias": "Server local time",
+          "align": "",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "link": false,
+          "mappingType": 1,
+          "pattern": "Value #LT",
+          "preserveFormat": false,
+          "sanitize": false,
+          "thresholds": [],
+          "type": "date",
+          "unit": "Date & time",
+          "valueMaps": []
+        },
+        {
+          "$$hashKey": "object:1570",
+          "alias": "Total RAM",
+          "align": "auto",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "link": false,
+          "linkTooltip": "",
+          "linkUrl": "",
+          "mappingType": 1,
+          "pattern": "Value #TM",
+          "preserveFormat": false,
+          "thresholds": [],
+          "type": "number",
+          "unit": "kbytes"
+        },
+        {
+          "$$hashKey": "object:1609",
+          "alias": "Total page faults",
+          "align": "",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "link": false,
+          "linkTargetBlank": false,
+          "linkTooltip": "${__cell_4}",
+          "linkUrl": "/d/Kdh0OoSGz/?var-job=${__cell_5}&var-hostname=All&var-instance=${__cell_4}",
+          "mappingType": 1,
+          "pattern": "Value #TPF",
+          "thresholds": [],
+          "type": "number",
+          "unit": "string"
+        },
+        {
+          "$$hashKey": "object:1622",
+          "alias": "Total RAM",
+          "align": "auto",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "link": false,
+          "mappingType": 1,
+          "pattern": "Value #TM",
+          "thresholds": [],
+          "type": "number",
+          "unit": "kbytes"
+        },
+        {
+          "$$hashKey": "object:1635",
+          "alias": "Total pagefile size",
+          "align": "auto",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "mappingType": 1,
+          "pattern": "Value #PF",
+          "thresholds": [],
+          "type": "number",
+          "unit": "kbytes"
+        },
+        {
+          "$$hashKey": "object:2635",
+          "alias": "Pagefile available size",
+          "align": "auto",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "mappingType": 1,
+          "pattern": "Value #APF",
+          "thresholds": [
+            "259200",
+            "432000"
+          ],
+          "type": "number",
+          "unit": "kbytes"
+        },
+        {
+          "$$hashKey": "object:1809",
+          "alias": "RAM available",
+          "align": "auto",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "mappingType": 1,
+          "pattern": "Value #RA",
+          "thresholds": [
+            "10485760",
+            "31457280"
+          ],
+          "type": "number",
+          "unit": "kbytes"
+        },
+        {
+          "$$hashKey": "object:1821",
+          "alias": "Batch reqs / sec",
+          "align": "auto",
+          "colors": [
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "mappingType": 1,
+          "pattern": "Value #BR",
+          "thresholds": [
+            "60",
+            "80"
+          ],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "$$hashKey": "object:2286",
+          "alias": "Page life expectancy (sec)",
+          "align": "auto",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "link": false,
+          "mappingType": 1,
+          "pattern": "Value #PLE",
+          "thresholds": [
+            "300",
+            "600"
+          ],
+          "type": "number",
+          "unit": "dtdurations"
+        },
+        {
+          "$$hashKey": "object:2297",
+          "alias": "Deadlocks",
+          "align": "auto",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "mappingType": 1,
+          "pattern": "Value #DL",
+          "thresholds": [
+            "1",
+            "10"
+          ],
+          "type": "number",
+          "unit": "string"
+        },
+        {
+          "$$hashKey": "object:3599",
+          "alias": "User errors / sec",
+          "align": "auto",
+          "colors": [
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "mappingType": 1,
+          "pattern": "Value #UE",
+          "thresholds": [
+            "50",
+            "70"
+          ],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "$$hashKey": "object:3610",
+          "alias": "Kill conn errors / sec",
+          "align": "auto",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "mappingType": 1,
+          "pattern": "Value #KC",
+          "thresholds": [
+            "1",
+            "10"
+          ],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "$$hashKey": "object:19002",
+          "alias": "Total databases",
+          "align": "auto",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "mappingType": 1,
+          "pattern": "Value #DBC",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "$$hashKey": "object:1311",
+          "alias": "",
+          "align": "right",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "hidden",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mssql_instance_local_time{pod=~\"$instance\"}*1000",
+          "format": "table",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "LT"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mssql_total_physical_memory_kb{pod=~\"$instance\"}-0",
+          "format": "table",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "TM"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mssql_available_physical_memory_kb{pod=~\"$instance\"}-0",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "RA"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mssql_total_page_file_kb{pod=~\"$instance\"}-0",
+          "format": "table",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "PF"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mssql_available_page_file_kb{pod=~\"$instance\"}-0",
+          "format": "table",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "APF"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mssql_page_fault_count{pod=~\"$instance\"}-0",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "Total page faults",
+          "refId": "TPF"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mssql_batch_requests{pod=~\"$instance\"}-0",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "BR"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mssql_page_life_expectancy{pod=~\"$instance\"}-0",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "PLE"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "mssql_deadlocks{job=~\"$Job\"}-0",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "DL"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "mssql_user_errors{job=~\"$Job\"}-0",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "UE"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "mssql_kill_connection_errors{job=~\"$Job\"}-0",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "KC"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(mssql_database_state{job=~\"$Job\"})",
+          "format": "table",
+          "hide": true,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "DBC"
+        }
+      ],
+      "title": "$Job：Server resource overview",
+      "transform": "table",
+      "type": "table-old"
+    },
+    {
+      "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 4,
+      "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Summary",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 0,
+        "y": 8
+      },
+      "id": 6,
+      "options": {
+        "displayMode": "lcd",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "text": {},
+        "valueMode": "color"
+      },
+      "pluginVersion": "10.1.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "mssql_connections{}",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "{{database}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Current database connections",
+      "type": "bargauge"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fill": 1,
+      "fillGradient": 4,
+      "gridPos": {
+        "h": 7,
+        "w": 9,
+        "x": 7,
+        "y": 8
+      },
+      "hiddenSeries": false,
+      "id": 8,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": true,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "10.1.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "mssql_log_growths",
+          "interval": "",
+          "legendFormat": "{{database}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "DB Log growth since last restart",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "mode": "time",
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:584",
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:585",
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fill": 1,
+      "fillGradient": 4,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "hiddenSeries": false,
+      "id": 58,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": true,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "10.1.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "mssql_io_stall_total{job=~\"$Job\"}",
+          "interval": "",
+          "legendFormat": "{{database}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Total wait time of I/O stall",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "mode": "time",
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:17304",
+          "format": "ms",
+          "logBase": 1,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:17305",
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false
+      }
+    },
+    {
+      "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 10,
+      "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Database I/O wait of stall detailed",
+      "type": "row"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fill": 1,
+      "fillGradient": 4,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "hiddenSeries": false,
+      "id": 12,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": true,
+        "hideEmpty": false,
+        "hideZero": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "maxPerRow": 3,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "10.1.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": "database",
+      "repeatDirection": "h",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "mssql_io_stall{database=~\"^$database\"}",
+          "instant": false,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "{{type}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Database ${database} wait by I/O stall ",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "mode": "time",
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:503",
+          "format": "ms",
+          "logBase": 1,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:504",
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false
+      }
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "2b02ebdd-19cf-45ff-aaf3-d10a2fae7f53",
+          "value": "2b02ebdd-19cf-45ff-aaf3-d10a2fae7f53"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "data source",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "queryValue": "2b02",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "kubeblocks-cloud-ns"
+          ],
+          "value": [
+            "kubeblocks-cloud-ns"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(mssql_up,namespace)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "namespace",
+        "multi": true,
+        "name": "namespace",
+        "options": [],
+        "query": {
+          "query": "label_values(mssql_up,namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "tea19-866b5f6988"
+          ],
+          "value": [
+            "tea19-866b5f6988"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(mssql_up{namespace=\"$namespace\"},app_kubernetes_io_instance)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "cluster",
+        "multi": true,
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "query": "label_values(mssql_up{namespace=\"$namespace\"},app_kubernetes_io_instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(mssql_up{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"},pod)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": {
+          "query": "label_values(mssql_up{namespace=\"$namespace\", app_kubernetes_io_instance=\"$cluster\"},pod)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(mssql_connections,database)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": false,
+        "name": "database",
+        "options": [],
+        "query": {
+          "query": "label_values(mssql_connections,database)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Microsoft SQL Server",
+  "uid": "mssql",
+  "version": 6,
+  "weekStart": ""
+}

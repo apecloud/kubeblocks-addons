@@ -1,0 +1,65 @@
+# Copyright ApeCloud Co., Ltd. All Rights Reserved.
+# SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+
+# Default values for mssql.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  # registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/mssql
+  pullPolicy: IfNotPresent
+  tag: 2022-CU19
+  exporterRepository: apecloud/prometheus-mssql-exporter
+  exporterTag: "1.3.2"
+  syncer:
+    repository: apecloud/syncer
+    tag: 0.7.7
+  kubectl:
+    repository: apecloud/kubectl
+    tag: "1.29"
+nameOverride: ""
+fullnameOverride: ""
+
+roleProbe:
+  failureThreshold: 3
+  periodSeconds: 5
+  timeoutSeconds: 4
+
+versions:
+  - major: "2022"
+    componentDef: mssql-2022
+    serviceVersion: "2022.19.0"
+    minors:
+      # @param version: the service version, in KubeBlocks, it MUST BE a semantic version, like 2022.19.0, 2022.14.0, etc.
+      - version: "2022.19.0"
+        name: "2022-CU19"
+        tag: "2022-CU19"
+        isDefault: true
+      - version: "2022.14.0"
+        name: "2022-CU14"
+        tag: "2022-CU14"
+        isDefault: false
+  - major: "2025"
+    componentDef: mssql-2025
+    serviceVersion: "2025.4.0"
+    minors:
+      # @param version: the service version, in KubeBlocks, it MUST BE a semantic version, like 2025.4.0, etc.
+      - version: "2025.4.0"
+        name: "2025-CU4"
+        tag: "2025-CU4"
+        isDefault: true
+  - major: "2019"
+    componentDef: mssql-2019
+    serviceVersion: "2019.30.0"
+    minors:
+      # @param version: the service version, in KubeBlocks, it MUST BE a semantic version, like 2019.30.0, 2019.29.0, etc.
+      - version: "2019.30.0"
+        name: "2019-CU30"
+        tag: "2019-CU30"
+        isDefault: true
+      - version: "2019.29.0"
+        name: "2019-CU29"
+        tag: "2019-CU29"
+        isDefault: false

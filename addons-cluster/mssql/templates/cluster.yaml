@@ -1,0 +1,104 @@
+{{- include "mssql.validate.sqlServer2019Hostname" . -}}
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+  {{- if or .Values.hostNetworkEnabled (and .Values.restoreFrom (empty .Values.restore)) }}
+  annotations:
+    {{- if .Values.hostNetworkEnabled }}
+    kubeblocks.io/host-network: "mssql"
+    {{- end }}
+    {{- if and .Values.restoreFrom (empty .Values.restore) }}
+    kubeblocks.io/restore-from-backup: {{ .Values.restoreFrom | squote }}
+    {{- end }}
+  {{- end }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDef: mssql
+  topology: cluster
+  {{- with .Values.restore }}
+  restore:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  componentSpecs:
+    - name: mssql
+      serviceVersion: {{ .Values.version }}
+      {{- if .Values.remoteSetting.isStandby }}
+      replicas: 1
+      {{- else }}
+      replicas: {{ $.Values.replicas }}
+      {{- end }}
+      {{- include "kblib.componentResources" $ | indent 6 }}
+      {{- include "mssql.tls" . | indent 6 }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            {{- if .Values.storageClassName }}
+            storageClassName: {{ .Values.storageClassName | quote }}
+            {{- end }}
+            resources:
+              requests:
+                storage: {{ print $.Values.storage "Gi" }}
+      volumes:
+        - name: certificates
+          secret:
+            secretName: {{ include "mssql.certificate_secret_name" . }}
+            optional: true
+      env:
+      - name: "MSSQL_PID"
+        value: "{{ include "mssql.productID" . }}"
+      {{- /* The official image default collation is SQL_Latin1_General_CP1_CI_AS.
+           Injecting MSSQL_COLLATION with the default value still triggers the
+           image's first-boot system-DB setup path for no benefit and widens the
+           readiness window, so only render it for explicit non-default values. */}}
+      {{- if and .Values.collation (ne .Values.collation "SQL_Latin1_General_CP1_CI_AS") }}
+      - name: "MSSQL_COLLATION"
+        value: "{{ .Values.collation }}"
+      {{- end }}
+      - name: "MSSQL_PRIVATE_ENCRYPTION_PASSWORD"
+        valueFrom:
+          secretKeyRef:
+            name: {{ include "mssql.certificate_secret_name" . }}
+            key: private_key_password
+      - name: "HOST_NETWORK"
+        value: "{{ .Values.hostNetworkEnabled }}"
+      - name: "DEFAULT_DB_NAME"
+        value: {{ include "mssql.validate.defaultDBName" . }}
+      - name: "IS_REMOTE_STANDBY"
+        value: "{{ .Values.remoteSetting.isStandby }}"
+      - name: "REMOTE_SESSION_TIMEOUT_SECONDS"
+        value: "{{ .Values.remoteSetting.sessionTimeoutSeconds }}"
+      {{- if and .Values.remoteSetting.isStandby }}
+      - name: "PRIMARY_HOST"
+        value: "{{ .Values.remoteSetting.primaryHost }}"
+      - name: "PRIMARY_PORT"
+        value: "{{ .Values.remoteSetting.primaryPort }}"
+      - name: "PRIMARY_AG_NAME"
+        value: "{{ .Values.remoteSetting.primaryAgName }}"
+      {{- if .Values.remoteSetting.primaryAccountSecret.name }}
+      - name: "PRIMARY_USER"
+        valueFrom:
+          secretKeyRef:
+            name: {{ .Values.remoteSetting.primaryAccountSecret.name }}
+            key: {{ .Values.remoteSetting.primaryAccountSecret.userKey }}
+      - name: "PRIMARY_PASSWORD"
+        valueFrom:
+          secretKeyRef:
+            name: {{ .Values.remoteSetting.primaryAccountSecret.name }}
+            key: {{ .Values.remoteSetting.primaryAccountSecret.passwordKey }}
+      {{- end }}
+      {{- end }}
+      {{- if and .Values.systemAccountSecret (not (empty .Values.systemAccountSecret)) }}
+      systemAccounts:
+        {{- range $accountName, $secretRef := .Values.systemAccountSecret }}
+        - name: {{ $accountName }}
+          secretRef:
+            name: {{ $secretRef.name }}
+            namespace: {{ $secretRef.namespace }}
+        {{- end }}
+      {{- end }}
