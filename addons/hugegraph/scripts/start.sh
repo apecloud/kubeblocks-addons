@@ -125,6 +125,9 @@ if [[ -e "$docker_marker" && ! -L "$docker_marker" ]]; then
 fi
 ln -sfn "${DATA_ROOT}/docker" "$docker_marker"
 
-log "starting HugeGraph with ${#graph_configs[@]} persistent graph configuration(s)"
 cd "$SERVER_HOME"
+# The 1.7.0 entrypoint skips enable-auth.sh when the persistent init marker
+# exists, but its authentication config lives in the replacement container.
+./bin/enable-auth.sh
+log "starting HugeGraph with ${#graph_configs[@]} persistent graph configuration(s)"
 exec /usr/bin/dumb-init -- ./docker-entrypoint.sh

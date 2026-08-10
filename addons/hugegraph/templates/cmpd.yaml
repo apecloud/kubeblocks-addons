@@ -61,6 +61,7 @@ spec:
     - name: running
       filePathPattern: {{ .Values.logConfigs.running }}
   runtime:
+    terminationGracePeriodSeconds: 30
     containers:
       - name: hugegraph
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -70,6 +71,11 @@ spec:
         command:
           - /bin/bash
           - /scripts/start.sh
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /hugegraph-server/bin/stop-hugegraph.sh
         env:
           - name: PASSWORD
             value: $(ADMIN_PASSWORD)
