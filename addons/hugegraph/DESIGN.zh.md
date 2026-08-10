@@ -62,6 +62,12 @@ PVC 固定挂载到 `/hugegraph-data`：
 3. 校验每个 graph 都使用 RocksDB，且 data/WAL 路径是 PVC 根目录的直接子目录。
 4. 为每个 graph 启用 `HugeFactoryAuthProxy`。
 5. 把上游 `docker/` 初始化标记目录链接到 PVC。
+6. 每次启动都执行上游 `enable-auth.sh`，重建替换容器内的临时认证配置；持久化
+   初始化标记只用于跳过 store 初始化，不能代替该配置。
+
+容器通过 Kubernetes `preStop` 调用 `stop-hugegraph.sh`，并保留 30 秒终止窗口。
+KubeBlocks 1.0 的 Stop 不执行 `preTerminate`，因此正常 Stop/Restart 的 RocksDB 收尾
+必须放在 Pod lifecycle hook。
 
 动态多图推荐使用 `clone_graph_name=hugegraph` 创建。HugeGraph 的 RocksDB provider
 会为 clone graph 自动生成独立的 `rocksdb_<graph>` 和 `wal_<graph>` 路径。直接

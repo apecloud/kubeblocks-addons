@@ -38,6 +38,11 @@ configuration files, RocksDB directories, WAL directories, and the upstream
 initialization marker on this volume. It does not mount a PVC over
 `/hugegraph-server`.
 
+On every Pod start, the addon rebuilds HugeGraph's authentication settings in
+the replacement container before invoking the upstream entrypoint. A `preStop`
+hook runs HugeGraph's shutdown script within a 30-second termination window so
+Stop, Restart, and pod replacement close RocksDB cleanly.
+
 For additional graphs, use the HugeGraph clone API so the RocksDB provider
 creates unique persistent paths:
 
