@@ -41,6 +41,7 @@ required_files=(
   "${ADDON_DIR}/templates/actionset.yaml"
   "${ADDON_DIR}/templates/script-template.yaml"
   "${ADDON_DIR}/scripts/start.sh"
+  "${ADDON_DIR}/scripts/shutdown.sh"
   "${ADDON_DIR}/scripts/backup.sh"
   "${ADDON_DIR}/scripts/restore.sh"
   "${ADDON_DIR}/tests/scripts_test.sh"
@@ -57,6 +58,7 @@ done
 
 bash -n \
   "${ADDON_DIR}/scripts/start.sh" \
+  "${ADDON_DIR}/scripts/shutdown.sh" \
   "${ADDON_DIR}/scripts/backup.sh" \
   "${ADDON_DIR}/scripts/restore.sh"
 
@@ -73,9 +75,12 @@ assert_contains "${ADDON_DIR}/templates/backuppolicytemplate.yaml" 'account: adm
 assert_contains "${ADDON_DIR}/templates/actionset.yaml" 'prepareData:'
 assert_contains "${ADDON_DIR}/templates/actionset.yaml" 'runOnTargetPodNode: true'
 assert_contains "${ADDON_DIR}/scripts/start.sh" './bin/enable-auth\.sh'
+assert_contains "${ADDON_DIR}/scripts/shutdown.sh" 'graceful shutdown started'
+assert_contains "${ADDON_DIR}/scripts/shutdown.sh" 'graceful shutdown completed'
+assert_contains "${ADDON_DIR}/scripts/shutdown.sh" '\.kb-prestop\.log'
 assert_contains "${ADDON_DIR}/templates/cmpd.yaml" 'terminationGracePeriodSeconds: 30'
 assert_contains "${ADDON_DIR}/templates/cmpd.yaml" 'preStop:'
-assert_contains "${ADDON_DIR}/templates/cmpd.yaml" '/hugegraph-server/bin/stop-hugegraph\.sh'
+assert_contains "${ADDON_DIR}/templates/cmpd.yaml" '/scripts/shutdown\.sh'
 
 assert_not_contains_tree 'volume[-_ ]snapshot'
 assert_not_contains_tree 'snapshotVolumes:[[:space:]]*true'
@@ -103,7 +108,7 @@ assert_contains "${definition_render}" 'containerPort: 8080'
 assert_contains "${definition_render}" 'containerPort: 8182'
 assert_contains "${definition_render}" 'terminationGracePeriodSeconds: 30'
 assert_contains "${definition_render}" 'preStop:'
-assert_contains "${definition_render}" '/hugegraph-server/bin/stop-hugegraph\.sh'
+assert_contains "${definition_render}" '/scripts/shutdown\.sh'
 assert_contains "${cluster_render}" 'clusterDef: hugegraph'
 assert_contains "${cluster_render}" 'topology: standalone'
 assert_contains "${cluster_render}" 'replicas: 1'
