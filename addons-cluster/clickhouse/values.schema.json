@@ -12,12 +12,13 @@
     },
     "mode": {
       "title": "Cluster Topology Mode",
-      "description": "Define the ClickHouse cluster topology mode.",
+      "description": "Define the ClickHouse cluster topology mode. 'withZookeeper' coordinates ClickHouse via external ZooKeeper clusters referenced through serviceRef.",
       "type": "string",
       "default": "cluster",
       "enum": [
         "standalone",
-        "cluster"
+        "cluster",
+        "withZookeeper"
       ]
     },
     "shards": {
@@ -139,6 +140,96 @@
           "description": "List of tolerations for scheduling ClickHouse Keeper pods.",
           "type": "array",
           "items": {}
+        }
+      }
+    },
+    "zookeeper": {
+      "title": "External ZooKeeper Configuration",
+      "description": "External ZooKeeper clusters referenced via serviceRef. Only rendered in the 'withZookeeper' mode. The primary ZooKeeper replaces ClickHouse Keeper as the default <zookeeper>; up to 7 auxiliary clusters are rendered into <auxiliary_zookeepers>.",
+      "type": "object",
+      "properties": {
+        "primary": {
+          "title": "Primary ZooKeeper",
+          "description": "The primary ZooKeeper cluster reference. When set, it replaces ClickHouse Keeper.",
+          "type": "object",
+          "properties": {
+            "namespace": {
+              "title": "ZooKeeper Cluster Namespace",
+              "description": "Namespace of the referenced ZooKeeper cluster.",
+              "type": "string",
+              "default": ""
+            },
+            "cluster": {
+              "title": "ZooKeeper Cluster Name",
+              "description": "Name of the referenced ZooKeeper cluster.",
+              "type": "string",
+              "default": ""
+            },
+            "component": {
+              "title": "ZooKeeper Component Name",
+              "description": "Component name of the referenced ZooKeeper cluster.",
+              "type": "string",
+              "default": "zookeeper"
+            },
+            "service": {
+              "title": "ZooKeeper Service Name",
+              "description": "Service name of the referenced ZooKeeper component.",
+              "type": "string",
+              "default": "default"
+            },
+            "port": {
+              "title": "ZooKeeper Client Port",
+              "description": "Client port name of the referenced ZooKeeper service.",
+              "type": "string",
+              "default": "client"
+            }
+          }
+        },
+        "auxiliary": {
+          "title": "Auxiliary ZooKeeper Clusters",
+          "description": "List of auxiliary ZooKeeper clusters, up to 7. They are rendered into <auxiliary_zookeepers> and referenced by replicated tables/databases, e.g. ReplicatedMergeTree('zookeeper2:/path', 'replica').",
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "title": "Auxiliary ZooKeeper Cluster",
+            "type": "object",
+            "properties": {
+              "name": {
+                "title": "Auxiliary ZooKeeper Name",
+                "description": "Name of the auxiliary ZooKeeper reference.",
+                "type": "string"
+              },
+              "namespace": {
+                "title": "Auxiliary ZooKeeper Namespace",
+                "description": "Namespace of the referenced auxiliary ZooKeeper cluster.",
+                "type": "string",
+                "default": ""
+              },
+              "cluster": {
+                "title": "Auxiliary ZooKeeper Cluster Name",
+                "description": "Name of the referenced auxiliary ZooKeeper cluster.",
+                "type": "string"
+              },
+              "component": {
+                "title": "Auxiliary ZooKeeper Component Name",
+                "description": "Component name of the referenced auxiliary ZooKeeper cluster.",
+                "type": "string",
+                "default": "zookeeper"
+              },
+              "service": {
+                "title": "Auxiliary ZooKeeper Service Name",
+                "description": "Service name of the referenced auxiliary ZooKeeper component.",
+                "type": "string",
+                "default": "default"
+              },
+              "port": {
+                "title": "Auxiliary ZooKeeper Client Port",
+                "description": "Client port name of the referenced auxiliary ZooKeeper service.",
+                "type": "string",
+                "default": "client"
+              }
+            }
+          }
         }
       }
     },

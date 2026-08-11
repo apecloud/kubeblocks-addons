@@ -23,3 +23,9 @@ spec:
         provision:
           - ch-keeper
           - clickhouse
+    # withZookeeper: ClickHouse servers coordinate via an external ZooKeeper
+    # cluster referenced through serviceRef, no embedded ClickHouse Keeper.
+    - name: withZookeeper
+      shardings:
+        - name: clickhouse
+          shardingDef: clickhouse

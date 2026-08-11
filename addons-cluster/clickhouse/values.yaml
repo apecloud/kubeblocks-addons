@@ -6,9 +6,12 @@ fullnameOverride: ""
 ## Clickhouse cluster version
 version: 25.9.7
 
-## ClickHouse cluster topology mode defined in ClusterDefinition.Spec.topologies, support standalone and cluster
+## ClickHouse cluster topology mode defined in ClusterDefinition.Spec.topologies, support standalone, cluster and withZookeeper
 ## - `standalone`: single clickhouse instance
 ## - `cluster`: clickhouse with ClickHouse Keeper as coordinator
+## - `withZookeeper`: clickhouse coordinated by external ZooKeeper clusters
+##   referenced via serviceRef (see the `zookeeper` section below), no embedded
+##   ClickHouse Keeper. The zookeeper serviceRefs are rendered only in this mode.
 mode: cluster
 
 ## Sharding configuration
@@ -18,8 +21,8 @@ shards: 2
 replicas: 2
 
 ## ClickHouse per shard component configurations
-cpu: 1
-memory: 2
+cpu: 0.5
+memory: 1
 
 ## CPU and memory requests for the ClickHouse shard
 requests:
@@ -43,6 +46,44 @@ keeper:
   memory: 2
   storage: 10
   tolerations: []
+
+## External ZooKeeper clusters referenced via serviceRef.
+## When a primary ZooKeeper is referenced, it replaces ClickHouse Keeper as the
+## default <zookeeper> for replicated tables, and all pod FQDNs of the
+## referenced cluster are rendered as <node> entries.
+## Auxiliary ZooKeeper clusters (up to 7) are rendered into
+## <auxiliary_zookeepers>, referenced by replicated tables/databases, e.g.
+## ReplicatedMergeTree('zookeeper2:/path', 'replica').
+##
+## To use, set mode: cluster and reference existing ZooKeeper clusters:
+##   zookeeper:
+##     primary:
+##       namespace: demo
+##       cluster: zk-cluster
+##       component: zookeeper
+##       service: default
+##       port: client
+##     auxiliary:
+##       - name: zk-aux-1
+##         namespace: demo
+##         cluster: zk-cluster-aux-1
+##         component: zookeeper
+##         service: default
+##         port: client
+##       - name: zk-aux-2
+##         namespace: demo
+##         cluster: zk-cluster-aux-2
+##         component: zookeeper
+##         service: default
+##         port: client
+zookeeper:
+  primary:
+    namespace: ""
+    cluster: ""
+    component: zookeeper
+    port: client
+  ## up to 7 auxiliary zookeeper clusters
+  auxiliary: []
 
 clickhouse:
   initClusterName: "default"
