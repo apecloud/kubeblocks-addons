@@ -12,10 +12,13 @@ spec:
       value: {{ .Values.dataMountPath }}/kb-selective-backup
   parametersSchema:
     openAPIV3Schema:
+      type: object
+      required:
+        - database
       properties:
         database:
           type: string
-          description: "The database to backup. If not specified, all databases will be backed up."
+          description: "The database to backup. This parameter is required."
         schemas:
           type: string
           description: "The schemas to backup. If not specified, all schemas will be backed up. comma separated list of schemas can be provided."
