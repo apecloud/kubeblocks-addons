@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-GO_BIN=${GO_BIN:-/opt/homebrew/opt/go@1.22/bin/go}
+GO_BIN=${GO_BIN:-go}
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -25,8 +25,8 @@ verify_manifest() {
   manifest_for "$vendor_dir" | diff -q - "$manifest" >/dev/null
 }
 
-[[ -x "$GO_BIN" ]] || fail "Go 1.22 binary missing"
-[[ "$($GO_BIN version)" == go\ version\ go1.22.12\ * ]] || fail "Go version is not 1.22.12"
+command -v "$GO_BIN" >/dev/null 2>&1 || fail "Go 1.26.5 binary missing"
+[[ "$($GO_BIN version)" == go\ version\ go1.26.5\ * ]] || fail "Go version is not 1.26.5"
 [[ -d "$ROOT/vendor" ]] || fail "vendor directory missing"
 verify_manifest "$ROOT/vendor" "$ROOT/vendor.manifest.sha256" || fail "vendor manifest mismatch"
 
@@ -38,7 +38,7 @@ assert_docker_count() {
   [[ "$got" == "$want" ]] || fail "Dockerfile count for $pattern: want $want, got $got"
 }
 
-assert_docker_count 1 'FROM golang:1.22.12-alpine3.21 AS builder'
+assert_docker_count 1 'FROM golang:1.26.5-alpine3.23 AS builder'
 assert_docker_count 1 'FROM gcr.io/distroless/static-debian12:nonroot'
 assert_docker_count 1 'COPY vendor ./vendor'
 assert_docker_count 2 'RUN --network=none'
@@ -114,6 +114,10 @@ rg -n 'go mod download' "$TMP/proxy-Dockerfile" >/dev/null || fail "proxy mutant
 
 if command -v trivy >/dev/null 2>&1; then
   trivy fs --scanners secret --exit-code 1 --no-progress "$ROOT/vendor" >/dev/null
+  mkdir "$TMP/runtime-rootfs"
+  cp "$TMP/hugegraph-exporter" "$TMP/runtime-rootfs/hugegraph-exporter"
+  trivy rootfs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --no-progress \
+    "$TMP/runtime-rootfs" >/dev/null
 fi
 
 printf 'PASS: hermetic vendor contract\n'
