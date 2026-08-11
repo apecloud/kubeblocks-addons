@@ -179,31 +179,28 @@ clickhouse ComponentDefinition.
 */}}
 {{- define "clickhouse-cluster.serviceRefs" -}}
 {{- if eq $.Values.mode "withZookeeper" }}
-{{- $serviceRefs := list }}
-{{- if and .Values.zookeeper .Values.zookeeper.primary .Values.zookeeper.primary.cluster }}
-{{- $serviceRefs = append $serviceRefs (dict "name" "clickhouseZookeeper" "ref" .Values.zookeeper.primary) }}
-{{- end }}
+{{- $zookeeper := required "zookeeper is required when mode is withZookeeper" .Values.zookeeper }}
+{{- $primary := required "zookeeper.primary is required when mode is withZookeeper" $zookeeper.primary }}
+{{- $_ := required "zookeeper.primary.cluster is required when mode is withZookeeper" $primary.cluster }}
+{{- $serviceRefs := list (dict "name" "clickhouseZookeeper" "ref" $primary) }}
 {{- if and .Values.zookeeper .Values.zookeeper.auxiliary }}
 {{- range $idx, $aux := .Values.zookeeper.auxiliary }}
 {{- if lt $idx 7 }}
+{{- $_ := required (printf "zookeeper.auxiliary[%d].cluster is required" $idx) $aux.cluster }}
 {{- $serviceRefs = append $serviceRefs (dict "name" (printf "clickhouseAuxZookeeper%d" (add $idx 1)) "ref" $aux) }}
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if gt (len $serviceRefs) 0 }}
 serviceRefs:
 {{- range $serviceRefs }}
   - name: {{ .name }}
-    namespace: {{ .ref.namespace | quote }}
+    namespace: {{ .ref.namespace | default $.Release.Namespace | quote }}
     clusterServiceSelector:
-      cluster: {{ .ref.cluster }}
+      cluster: {{ .ref.cluster | quote }}
       service:
-        component: {{ .ref.component | default "zookeeper" }}
-        service: default
-        port: client
-      podFQDNs:
-        component: {{ .ref.component | default "zookeeper" }}
-{{- end }}
+        component: {{ .ref.component | default "zookeeper" | quote }}
+        service: {{ .ref.service | default "default" | quote }}
+        port: {{ .ref.port | default "client" | quote }}
 {{- end }}
 {{- end }}
 {{- end }}

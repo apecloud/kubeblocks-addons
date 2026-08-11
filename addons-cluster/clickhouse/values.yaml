@@ -21,8 +21,8 @@ shards: 2
 replicas: 2
 
 ## ClickHouse per shard component configurations
-cpu: 0.5
-memory: 1
+cpu: 1
+memory: 2
 
 ## CPU and memory requests for the ClickHouse shard
 requests:
@@ -49,13 +49,13 @@ keeper:
 
 ## External ZooKeeper clusters referenced via serviceRef.
 ## When a primary ZooKeeper is referenced, it replaces ClickHouse Keeper as the
-## default <zookeeper> for replicated tables, and all pod FQDNs of the
-## referenced cluster are rendered as <node> entries.
+## default <zookeeper> for replicated tables. The selected service endpoint is
+## rendered as the ClickHouse ZooKeeper node.
 ## Auxiliary ZooKeeper clusters (up to 7) are rendered into
 ## <auxiliary_zookeepers>, referenced by replicated tables/databases, e.g.
 ## ReplicatedMergeTree('zookeeper2:/path', 'replica').
 ##
-## To use, set mode: cluster and reference existing ZooKeeper clusters:
+## To use, set mode: withZookeeper and reference existing ZooKeeper clusters:
 ##   zookeeper:
 ##     primary:
 ##       namespace: demo
@@ -64,23 +64,23 @@ keeper:
 ##       service: default
 ##       port: client
 ##     auxiliary:
-##       - name: zk-aux-1
-##         namespace: demo
+##       - namespace: demo
 ##         cluster: zk-cluster-aux-1
 ##         component: zookeeper
 ##         service: default
 ##         port: client
-##       - name: zk-aux-2
-##         namespace: demo
+##       - namespace: demo
 ##         cluster: zk-cluster-aux-2
 ##         component: zookeeper
 ##         service: default
 ##         port: client
 zookeeper:
   primary:
+    ## Defaults to the ClickHouse Cluster namespace when empty.
     namespace: ""
     cluster: ""
     component: zookeeper
+    service: default
     port: client
   ## up to 7 auxiliary zookeeper clusters
   auxiliary: []
