@@ -9,7 +9,6 @@ metadata:
 spec:
   provider: kubeblocks.io
   serviceKind: mongodb
-  serviceVersion: "8.0.17"
   services:
     - name: everypod
       serviceName: mongos

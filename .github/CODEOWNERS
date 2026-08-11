@@ -52,6 +52,9 @@ addons-cluster/mogdb/ @yabinji @leon-ape @apecloud/kb-reviewers @apecloud/kb-add
 addons/mongodb/ @xuriwuyun @wanglong @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/mongodb/ @xuriwuyun @wanglong @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/mssql/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/mssql/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/mysql/ @xuriwuyun @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/mysql/ @xuriwuyun @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 

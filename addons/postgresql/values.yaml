@@ -90,6 +90,12 @@ versions:
         tag: "12.15.0-pgvector-v0.6.1"
       - version: "12.22.0"
         tag: "12.22"
+  - major: "13"
+    componentDef: "postgresql-13"
+    serviceVersion: "13.23.0"
+    minors:
+      - version: "13.23.0"
+        tag: "13.23"
   - major: "14"
     componentDef: "postgresql-14"
     serviceVersion: "14.23.0"

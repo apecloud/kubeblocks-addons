@@ -13,7 +13,6 @@ spec:
     are simpler to operate for small use cases like a development environment. Combined mode is not recommended in critical
     deployment environments.
   serviceKind: kafka-exporter
-  serviceVersion: {{ .Values.defaultServiceVersion.exporter }}
   updateStrategy: BestEffortParallel
   vars:
     ## when server mode is kafka-broker

@@ -1,0 +1,36 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mssql.scriptsTemplate" . }}
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mssql.annotations" . | nindent 4 }}
+data:
+  common.sh: |
+    {{- .Files.Get "scripts/common.sh" | nindent 4 }}
+  entrypoint.sh: |
+    {{- .Files.Get "scripts/entrypoint.sh" | nindent 4 }}
+  create_sp_help_revlogin.sql: |
+    {{- .Files.Get "scripts/create_sp_help_revlogin.sql" | nindent 4 }}
+  create_sp_ape_sync_db_to_ag.sql: |
+    {{- .Files.Get "scripts/create_sp_ape_sync_db_to_ag.sql" | nindent 4 }}
+  create_sp_ape_sync_login.sh: |
+    {{- .Files.Get "scripts/create_sp_ape_sync_login.sh" | nindent 4 }}
+  member_leave.sh: |
+    {{- .Files.Get "scripts/member_leave.sh" | nindent 4 }}
+  switchover.sh: |
+    {{- .Files.Get "scripts/switchover.sh" | nindent 4 }}
+  role_probe.sh: |
+    {{- .Files.Get "scripts/role_probe.sh" | nindent 4 }}
+  readiness_probe.sh: |
+    {{- .Files.Get "scripts/readiness_probe.sh" | nindent 4 }}
+  member_join.sh: |
+    {{- .Files.Get "scripts/member_join.sh" | nindent 4 }}
+  reconfigure-sys-configurations.sh: |
+    {{- .Files.Get "scripts/reconfigure-sys-configurations.sh" | nindent 4 }}

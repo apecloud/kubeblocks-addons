@@ -50,7 +50,8 @@ spec:
       passwordGenerationPolicy:
         length: 16
         numDigits: 8
-        numSymbols: 3
+        numSymbols: 1
+        symbolCharacters: "@#%&!"
         letterCase: MixedCases
   lifecycleActions:
     postProvision:

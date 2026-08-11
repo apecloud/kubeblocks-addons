@@ -1,0 +1,392 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+{{- range $version := .Values.versions }}
+{{- $compDefName := include "mssql.componentDefByMajor" (dict "major" .major "root" $) }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ $compDefName }}
+  annotations:
+    {{- include "mssql.annotations" $ | nindent 4 }}
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    # 使用SEEDING_MODE = AUTOMATIC模式不需要备份做hscale
+    # apps.kubeblocks.io/horizontal-scale-backup-policy-template: "mssql-backup-policy-template"
+  labels:
+    {{- include "mssql.labels" $ | nindent 4 }}
+spec:
+  provider: ApeCloud
+  description: The MSSQL component definition for KubeBlocks
+  serviceKind: {{ $.Chart.Name }}
+  podManagementPolicy: Parallel
+  minReadySeconds: 10
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  services:
+    - name: rw
+      roleSelector: primary
+      serviceName: mssql-rw
+      spec:
+        ports:
+          - name: tcp-mssql
+            port: 1433
+            targetPort: tcp-mssql
+    - name: ro
+      roleSelector: secondary
+      serviceName: mssql-ro
+      spec:
+        ports:
+          - name: tcp-mssql
+            port: 1433
+            targetPort: tcp-mssql
+  scripts:
+    - name: mssql-scripts
+      template: {{ include "mssql.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    terminationGracePeriodSeconds: 30
+    initContainers:
+      - command:
+          - cp
+          - -r
+          - /bin/syncer
+          - /bin/syncerctl
+          - /tools/
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
+        name: init-syncer
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+    containers:
+      - name: mssql
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+          - mountPath: /dev/shm
+            name: dshm
+          - mountPath: /var/opt/mssql
+            name: data
+          - mountPath: /log
+            name: log
+          - name: scripts
+            mountPath: /scripts
+          - name: certificates
+            mountPath: /certificates
+          - name: config-hscale
+            mountPath: /etc/hscale
+          - name: mssql-config
+            mountPath: /config
+          - name: sys-configurations
+            mountPath: /etc/sys-configurations
+          - mountPath: /tools
+            name: tools
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
+        command:
+          - /tools/syncer
+          - --
+          - bash
+          - -c
+          - |
+            /scripts/entrypoint.sh
+        ports:
+          - name: tcp-mssql
+            containerPort: 1433
+          - name: tcp-hadr
+            containerPort: 5022
+          - name: syncer
+            containerPort: 3601
+        readinessProbe:
+          exec:
+            command:
+              - bash
+              - -ec
+              - |
+                /scripts/readiness_probe.sh >/dev/null
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        env:
+          - name: GODEBUG
+            value: "x509negativeserial=1"
+          - name: ACCEPT_EULA
+            value: "Y"
+          - name: MSSQL_ENABLE_HADR
+            value: "1"
+          - name: MSSQL_AGENT_ENABLED
+            value: "1"
+          - name: DEFAULT_DB_NAME
+            value: "db1"
+          - name: HOST_NETWORK
+            value: "false"
+          - name: "AUDIT_LOG_DIRECTORY"
+            value: "/var/opt/mssql/audit"
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mssql
+          - name: KB_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: KB_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: KB_POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
+          - name: KB_TLS_CERT_PATH
+            value: "/etc/pki/tls"
+      - name: exporter
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
+        ports:
+          - name: tcp-exporter
+            containerPort: 4000
+        env:
+          - name: SERVER
+            value: "127.0.0.1"
+          - name: PORT
+            value: $(MSSQL_SERVER_PORT)
+          - name: USERNAME
+            value: $(MSSQL_SA_USER)
+          - name: PASSWORD
+            value: $(MSSQL_SA_PASSWORD)
+          - name: DEBUG
+            value: app
+          - name: SERVICE_PORT
+            value: $(MSSQL_EXPORTER_PORT)
+    volumes:
+      - emptyDir:
+          medium: Memory
+        name: dshm
+      - name: log
+        emptyDir: {}
+  configs:
+    - name: mssql-config
+      template: {{ include "mssql.configMapName" (dict "major" $version.major "root" $) }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: mssql-config
+      defaultMode: 0555
+      externalManaged: true
+    - name: mssql-sys-configurations
+      template: {{ include "mssql.sysConfigurationsConfigMapName" (dict "major" $version.major "root" $) }}
+      namespace: {{ $.Release.Namespace }}
+      volumeName: sys-configurations
+      externalManaged: true
+      reconfigure:
+        timeoutSeconds: 60
+        exec:
+          targetPodSelector: All
+          container: mssql
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/reconfigure-sys-configurations.sh "$1" "$2"
+            # "--" is the $0 placeholder; kbagent appends the changed parameter
+            # as $1 (key) and $2 (value). See addon-reconfigure-exec-parameter-
+            # passing-guide. The script uses them to deterministically confirm
+            # the projected config has converged before applying.
+            - --
+  hostNetwork:
+    containerPorts:
+      - container: mssql
+        ports:
+          - tcp-mssql
+          - tcp-hadr
+      - container: exporter
+        ports:
+          - tcp-exporter
+  tls:
+    caFile: "ca.crt"
+    certFile: "tls.crt"
+    keyFile: "tls.key"
+    mountPath: "/etc/pki/tls"
+    volumeName: "tls"
+  vars:
+    - name: DEFAULT_AG_NAME
+      value: "ag1"
+    - name: KB_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: KB_CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: KB_COMP_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: KB_TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          optional: true
+          enabled: Optional
+    - name: KB_CLUSTER_COMP_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: KB_COMP_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    - name: MSSQL_SA_USER
+      valueFrom:
+        credentialVarRef:
+          name: sa
+          optional: false
+          username: Required
+    - name: MSSQL_SA_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: sa
+          optional: false
+          password: Required
+    - name: MSSQL_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          name: kbadmin
+          optional: false
+          username: Required
+    - name: MSSQL_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: kbadmin
+          optional: false
+          password: Required
+    - name: MMSQL_MASTER_KEY_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: master
+          optional: false
+          password: Required
+    - name: MSSQL_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          compDef: mssql
+          optional: false
+          podFQDNs: Required
+    - name: MSSQL_HADR_ENDPOINT_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          container:
+            name: mssql
+            port:
+              name: tcp-hadr
+              option: Optional
+          optional: true
+      expression: {{ `{{if index . "MSSQL_HADR_ENDPOINT_PORT"}}{{.MSSQL_HADR_ENDPOINT_PORT}}{{else}}5022{{end}}` | toYaml }}
+    - name: MSSQL_SERVER_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          container:
+            name: mssql
+            port:
+              name: tcp-mssql
+              option: Optional
+          optional: true
+      expression: {{ `{{if index . "MSSQL_SERVER_PORT"}}{{.MSSQL_SERVER_PORT}}{{else}}1433{{end}}` | toYaml }}
+    - name: MSSQL_EXPORTER_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          container:
+            name: exporter
+            port:
+              name: tcp-exporter
+              option: Optional
+          optional: true
+      expression: {{ `{{if index . "MSSQL_EXPORTER_PORT"}}{{.MSSQL_EXPORTER_PORT}}{{else}}4000{{end}}` | toYaml }}
+    - name: SYNCER_SERVICE_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          container:
+            name: mssql
+            port:
+              name: syncer
+              option: Optional
+          optional: true
+      expression: {{ `{{if index . "SYNCER_SERVICE_PORT"}}{{.SYNCER_SERVICE_PORT}}{{else}}3601{{end}}` | toYaml }}
+  volumes:
+    - name: data
+      needSnapshot: true
+  systemAccounts:
+    - name: sa
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 3
+        numSymbols: 0
+        letterCase: MixedCases
+    - name: kbadmin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 3
+        numSymbols: 0
+        letterCase: MixedCases
+    - name: master
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 3
+        numSymbols: 3
+        letterCase: MixedCases
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      isExclusive: true
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ $.Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ $.Values.roleProbe.timeoutSeconds }}
+      failureThreshold: {{ $.Values.roleProbe.failureThreshold }}
+      exec:
+        container: mssql
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/role_probe.sh
+    memberLeave:
+      exec:
+        container: mssql
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/member_leave.sh > /tmp/member-leave.log 2>&1
+    memberJoin:
+      exec:
+        container: mssql
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/member_join.sh > /tmp/member-join.log 2>&1
+    switchover:
+      retryPolicy:
+        maxRetries: 5
+        retryInterval: 10
+      exec:
+        container: mssql
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/switchover.sh
+{{- end }}
