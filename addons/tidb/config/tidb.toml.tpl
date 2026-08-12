@@ -11,9 +11,9 @@
 {{- $max_batch_size := 128 }}
 {{- $batch_wait_size := 8 }}
 {{- if gt $tidb_memory 0 }}
-{{-   /* txn-total-size-limit = 1/32 of memory, capped at 1GB (Kafka binlog hard limit) */ -}}
+{{- /* txn-total-size-limit = 1/32 of memory, capped at 1GB (Kafka binlog hard limit) */ -}}
 {{-   $txn_total_size_limit = min ( div $tidb_memory 32 ) 1073741824 }}
-{{-   /* txn-entry-size-limit = ~1/40 of txn-total-size, capped at 128MB */ -}}
+{{- /* txn-entry-size-limit = ~1/40 of txn-total-size, capped at 128MB */ -}}
 {{-   $txn_entry_size_limit = min ( div $txn_total_size_limit 40 ) 134217728 }}
 {{- end }}
 {{- if gt $tidb_cpu 0 }}
