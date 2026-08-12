@@ -12,6 +12,19 @@ render_with_zookeeper_without_primary() {
   render_clickhouse_cluster --set mode=withZookeeper 2>&1
 }
 
+# Helm renders the schema violation either as a JSON pointer
+# ('/zookeeper/primary/cluster') or a dotted path
+# ('zookeeper.primary.cluster') depending on the Helm version.
+# shellspec passes the output via stdin to `should satisfy` predicates.
+output_mentions_zookeeper_primary_cluster() {
+  local output
+  output=$(cat)
+  case "$output" in
+    *zookeeper.primary.cluster* | *zookeeper/primary/cluster*) return 0 ;;
+  esac
+  return 1
+}
+
 custom_zookeeper_binding_is_rendered() {
   local rendered
   rendered=$(render_clickhouse_cluster \
@@ -60,7 +73,7 @@ Describe "ClickHouse external ZooKeeper ServiceRef contract"
   It "rejects withZookeeper mode without a primary cluster"
     When call render_with_zookeeper_without_primary
     The status should be failure
-    The output should include "zookeeper.primary.cluster"
+    The output should satisfy output_mentions_zookeeper_primary_cluster
   End
 
   It "renders the configured ZooKeeper cluster binding with pod FQDN selectors"
