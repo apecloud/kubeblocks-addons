@@ -213,19 +213,19 @@ spec:
         componentVarRef:
           optional: false
           replicas: Required
-    # Primary ZooKeeper service endpoint from the referenced cluster.
-    - name: CLICKHOUSE_ZOOKEEPER_SERVICE
+    # Primary ZooKeeper pod FQDN list (FQDN1,FQDN2,...) from the referenced cluster.
+    - name: CLICKHOUSE_ZOOKEEPER_POD_FQDNS
       valueFrom:
         serviceRefVarRef:
           name: clickhouseZookeeper
-          endpoint: Required
+          podFQDNs: Required
           optional: true
     {{- range $i := until 7 }}
-    - name: {{ printf "CLICKHOUSE_AUX_ZOOKEEPER_%d_SERVICE" (add $i 1) }}
+    - name: {{ printf "CLICKHOUSE_AUX_ZOOKEEPER_%d_POD_FQDNS" (add $i 1) }}
       valueFrom:
         serviceRefVarRef:
           name: {{ printf "clickhouseAuxZookeeper%d" (add $i 1) }}
-          endpoint: Required
+          podFQDNs: Required
           optional: true
     {{- end }}
   volumes:

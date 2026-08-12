@@ -40,15 +40,15 @@ sed -i 's/^export CLICKHOUSE_DAEMON_GROUP="clickhouse"/CLICKHOUSE_DAEMON_GROUP="
 # create races; other pods just start once the root already exists.
 
 pod_ordinal="${CURRENT_POD_NAME##*-}"
-if [[ "$pod_ordinal" == "0" && -n "${CLICKHOUSE_ZOOKEEPER_SERVICE:-}" && -n "${KB_CLUSTER_NAME:-}" ]]; then
+if [[ "$pod_ordinal" == "0" && -n "${CLICKHOUSE_ZOOKEEPER_POD_FQDNS:-}" && -n "${KB_CLUSTER_NAME:-}" ]]; then
 	source /scripts/common.sh
 	zk_root="/clickhouse_${KB_CLUSTER_NAME}"
 	echo "$(date) INFO: ensuring ZooKeeper root ${zk_root} exists"
-	if [[ -n "${CLICKHOUSE_ZOOKEEPER_SERVICE:-}" ]]; then
-		zk_create_root "$CLICKHOUSE_ZOOKEEPER_SERVICE" "$zk_root"
+	if [[ -n "${CLICKHOUSE_ZOOKEEPER_POD_FQDNS:-}" ]]; then
+		zk_create_root "$CLICKHOUSE_ZOOKEEPER_POD_FQDNS" "$zk_root"
 	fi
 	for i in 1 2 3 4 5 6 7; do
-		aux_var="CLICKHOUSE_AUX_ZOOKEEPER_${i}_SERVICE"
+		aux_var="CLICKHOUSE_AUX_ZOOKEEPER_${i}_POD_FQDNS"
 		if [[ -n "${!aux_var:-}" ]]; then
 			zk_create_root "${!aux_var}" "$zk_root"
 		fi

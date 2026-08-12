@@ -20,26 +20,18 @@ custom_zookeeper_binding_is_rendered() {
     --set-string zookeeper.primary.namespace=zookeeper-ns \
     --set-string zookeeper.primary.cluster=zookeeper-main \
     --set-string zookeeper.primary.component=coordination \
-    --set-string zookeeper.primary.service=zookeeper-client \
-    --set-string zookeeper.primary.port=custom-client \
     --set-string 'zookeeper.auxiliary[0].namespace=zookeeper-aux-ns' \
     --set-string 'zookeeper.auxiliary[0].cluster=zookeeper-aux' \
-    --set-string 'zookeeper.auxiliary[0].component=aux-coordination' \
-    --set-string 'zookeeper.auxiliary[0].service=aux-client' \
-    --set-string 'zookeeper.auxiliary[0].port=aux-custom-client') || return
+    --set-string 'zookeeper.auxiliary[0].component=aux-coordination') || return
 
   local expected
   for expected in \
     'namespace: "zookeeper-ns"' \
     'cluster: "zookeeper-main"' \
-    'component: "coordination"' \
-    'service: "zookeeper-client"' \
-    'port: "custom-client"' \
+    'component: coordination' \
     'namespace: "zookeeper-aux-ns"' \
     'cluster: "zookeeper-aux"' \
-    'component: "aux-coordination"' \
-    'service: "aux-client"' \
-    'port: "aux-custom-client"'; do
+    'component: aux-coordination'; do
     grep -Fq -- "$expected" <<<"$rendered" || return 1
   done
 }
@@ -58,21 +50,20 @@ zookeeper_service_endpoints_are_consumed() {
   component=$(helm template clickhouse .. --show-only templates/cmpd-ch.yaml) || return
   config=$(helm template clickhouse .. --show-only templates/config-template.yaml) || return
 
-  grep -Fq -- '- name: CLICKHOUSE_ZOOKEEPER_SERVICE' <<<"$component" || return 1
-  grep -Fq -- '- name: CLICKHOUSE_AUX_ZOOKEEPER_1_SERVICE' <<<"$component" || return 1
-  grep -Fq -- 'splitList "," .CLICKHOUSE_ZOOKEEPER_SERVICE' <<<"$config" || return 1
-  grep -Fq -- 'printf "CLICKHOUSE_AUX_ZOOKEEPER_%d_SERVICE"' <<<"$config" || return 1
-  ! grep -Fq -- 'ZOOKEEPER_POD_FQDNS' <<<"$component"
+  grep -Fq -- '- name: CLICKHOUSE_ZOOKEEPER_POD_FQDNS' <<<"$component" || return 1
+  grep -Fq -- '- name: CLICKHOUSE_AUX_ZOOKEEPER_1_POD_FQDNS' <<<"$component" || return 1
+  grep -Fq -- 'splitList "," .CLICKHOUSE_ZOOKEEPER_POD_FQDNS' <<<"$config" || return 1
+  grep -Fq -- 'printf "CLICKHOUSE_AUX_ZOOKEEPER_%d_POD_FQDNS"' <<<"$config" || return 1
 }
 
 Describe "ClickHouse external ZooKeeper ServiceRef contract"
   It "rejects withZookeeper mode without a primary cluster"
     When call render_with_zookeeper_without_primary
     The status should be failure
-    The output should include "/zookeeper/primary/cluster"
+    The output should include "zookeeper.primary.cluster"
   End
 
-  It "renders the configured ZooKeeper service and port selectors"
+  It "renders the configured ZooKeeper cluster binding with pod FQDN selectors"
     When call custom_zookeeper_binding_is_rendered
     The status should be success
   End
@@ -82,7 +73,7 @@ Describe "ClickHouse external ZooKeeper ServiceRef contract"
     The status should be success
   End
 
-  It "uses the selected ZooKeeper service endpoints in ClickHouse configuration"
+  It "uses the ZooKeeper pod FQDNs in ClickHouse configuration"
     When call zookeeper_service_endpoints_are_consumed
     The status should be success
   End

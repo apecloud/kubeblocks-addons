@@ -197,10 +197,8 @@ serviceRefs:
     namespace: {{ .ref.namespace | default $.Release.Namespace | quote }}
     clusterServiceSelector:
       cluster: {{ .ref.cluster | quote }}
-      service:
-        component: {{ .ref.component | default "zookeeper" | quote }}
-        service: {{ .ref.service | default "default" | quote }}
-        port: {{ .ref.port | default "client" | quote }}
+      podFQDNs:
+        component: {{ .ref.component | default "zookeeper" }}
 {{- end }}
 {{- end }}
 {{- end }}

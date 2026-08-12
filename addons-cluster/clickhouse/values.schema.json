@@ -4,11 +4,23 @@
   "title": "ClickHouse Cluster Configuration",
   "description": "Configuration schema for the ClickHouse Helm chart.",
   "properties": {
+    "nameOverride": {
+      "title": "Name Override",
+      "description": "Override the name of the chart.",
+      "type": "string",
+      "default": ""
+    },
+    "fullnameOverride": {
+      "title": "Full Name Override",
+      "description": "Override the full name of the chart.",
+      "type": "string",
+      "default": ""
+    },
     "version": {
       "title": "ClickHouse Cluster Version",
       "description": "Engine Version of the ClickHouse cluster.",
       "type": "string",
-      "default": "24.8.3"
+      "default": "25.9.7"
     },
     "mode": {
       "title": "Cluster Topology Mode",
@@ -25,14 +37,8 @@
       "title": "Shard Count",
       "description": "Number of shards in the ClickHouse cluster.",
       "type": "integer",
-      "default": 1,
+      "default": 2,
       "minimum": 1
-    },
-    "sharding": {
-      "title": "Sharding Configuration",
-      "description": "Enable or disable sharding within the ClickHouse cluster.",
-      "type": "boolean",
-      "default": true
     },
     "replicas": {
       "title": "Replica Count",
@@ -63,6 +69,26 @@
       "minimum": 0.5,
       "maximum": 1000
     },
+    "requests": {
+      "title": "CPU and Memory Requests",
+      "description": "Optional CPU and memory requests for the ClickHouse shard, overriding the default requests derived from cpu/memory.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "cpu": {
+          "title": "Request CPU",
+          "description": "CPU requests for the ClickHouse shard.",
+          "type": "string"
+        },
+        "memory": {
+          "title": "Request Memory",
+          "description": "Memory requests for the ClickHouse shard.",
+          "type": "string"
+        }
+      }
+    },
     "storageClassName": {
       "title": "Storage Class Name",
       "description": "Kubernetes storage class name to use for persistent volumes.",
@@ -79,6 +105,18 @@
       "default": 20,
       "minimum": 1,
       "maximum": 10000
+    },
+    "disableExporter": {
+      "title": "Disable Exporter",
+      "description": "Whether to disable the metrics exporter for ClickHouse components.",
+      "type": "boolean",
+      "default": false
+    },
+    "tolerations": {
+      "title": "ClickHouse Tolerations",
+      "description": "List of tolerations for scheduling ClickHouse pods.",
+      "type": "array",
+      "items": {}
     },
     "keeper": {
       "title": "ClickHouse Keeper Configuration",
@@ -155,32 +193,21 @@
           "properties": {
             "namespace": {
               "title": "ZooKeeper Cluster Namespace",
-              "description": "Namespace of the referenced ZooKeeper cluster.",
+              "description": "Namespace of the referenced ZooKeeper cluster. Defaults to the ClickHouse cluster namespace when empty.",
               "type": "string",
               "default": ""
             },
             "cluster": {
               "title": "ZooKeeper Cluster Name",
               "description": "Name of the referenced ZooKeeper cluster.",
-              "type": "string"
+              "type": "string",
+              "default": ""
             },
             "component": {
               "title": "ZooKeeper Component Name",
               "description": "Component name of the referenced ZooKeeper cluster.",
               "type": "string",
               "default": "zookeeper"
-            },
-            "service": {
-              "title": "ZooKeeper Service Name",
-              "description": "Service name of the referenced ZooKeeper component.",
-              "type": "string",
-              "default": "default"
-            },
-            "port": {
-              "title": "ZooKeeper Client Port",
-              "description": "Client port name of the referenced ZooKeeper service.",
-              "type": "string",
-              "default": "client"
             }
           }
         },
@@ -195,37 +222,37 @@
             "properties": {
               "namespace": {
                 "title": "Auxiliary ZooKeeper Namespace",
-                "description": "Namespace of the referenced auxiliary ZooKeeper cluster.",
+                "description": "Namespace of the referenced auxiliary ZooKeeper cluster. Defaults to the ClickHouse cluster namespace when empty.",
                 "type": "string",
                 "default": ""
               },
               "cluster": {
                 "title": "Auxiliary ZooKeeper Cluster Name",
                 "description": "Name of the referenced auxiliary ZooKeeper cluster.",
-                "type": "string",
-                "minLength": 1
+                "type": "string"
               },
               "component": {
                 "title": "Auxiliary ZooKeeper Component Name",
                 "description": "Component name of the referenced auxiliary ZooKeeper cluster.",
                 "type": "string",
                 "default": "zookeeper"
-              },
-              "service": {
-                "title": "Auxiliary ZooKeeper Service Name",
-                "description": "Service name of the referenced auxiliary ZooKeeper component.",
-                "type": "string",
-                "default": "default"
-              },
-              "port": {
-                "title": "Auxiliary ZooKeeper Client Port",
-                "description": "Client port name of the referenced auxiliary ZooKeeper service.",
-                "type": "string",
-                "default": "client"
               }
             },
             "required": ["cluster"]
           }
+        }
+      }
+    },
+    "clickhouse": {
+      "title": "ClickHouse Configuration",
+      "description": "Additional ClickHouse settings.",
+      "type": "object",
+      "properties": {
+        "initClusterName": {
+          "title": "Init Cluster Name",
+          "description": "Name of the cluster used for ON CLUSTER statements and remote_servers configuration.",
+          "type": "string",
+          "default": "default"
         }
       }
     },
@@ -266,6 +293,20 @@
           "description": "Name of the secret containing the TLS certificate when using UserProvided issuer.",
           "type": "string",
           "default": "clickhouse-cluster-tls"
+        }
+      }
+    },
+    "extra": {
+      "title": "Extra Configuration",
+      "description": "Additional cluster-level configuration.",
+      "type": "object",
+      "properties": {
+        "terminationPolicy": {
+          "title": "Termination Policy",
+          "description": "Define Cluster termination policy. Options: DoNotTerminate, Delete, WipeOut.",
+          "type": "string",
+          "default": "Delete",
+          "enum": ["DoNotTerminate", "Delete", "WipeOut"]
         }
       }
     }

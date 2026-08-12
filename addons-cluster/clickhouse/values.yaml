@@ -80,8 +80,6 @@ zookeeper:
     namespace: ""
     cluster: ""
     component: zookeeper
-    service: default
-    port: client
   ## up to 7 auxiliary zookeeper clusters
   auxiliary: []
 
