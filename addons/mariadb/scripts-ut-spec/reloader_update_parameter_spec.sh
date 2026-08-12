@@ -17,6 +17,7 @@ Describe "reloader/update-parameter.sh"
     PATH="${bindir}:${PATH}"
     MARIADB_ROOT_USER="root"
     MARIADB_ROOT_PASSWORD="secret"
+    unset MARIADB_INTERNAL_ROOT_USER
     export PATH MARIADB_ROOT_USER MARIADB_ROOT_PASSWORD
   }
 
@@ -37,6 +38,40 @@ exit "$rc"
 EOF
     chmod +x "${bindir}/mariadb"
   }
+
+  write_recording_mariadb_stub() {
+    cat > "${bindir}/mariadb" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$@" > "${MARIADB_TEST_ARGS_FILE}"
+EOF
+    chmod +x "${bindir}/mariadb"
+  }
+
+  Describe "administrative account"
+    It "uses kb_internal_root by default instead of user-facing root"
+      MARIADB_TEST_ARGS_FILE="${tmpdir}/args"
+      export MARIADB_TEST_ARGS_FILE
+      write_recording_mariadb_stub
+
+      When run bash "$(script_path)" "slave_parallel_threads" "4"
+      The status should eq 0
+      The contents of file "${MARIADB_TEST_ARGS_FILE}" should include "--user=kb_internal_root"
+      The contents of file "${MARIADB_TEST_ARGS_FILE}" should not include "--user=root"
+      The contents of file "${MARIADB_TEST_ARGS_FILE}" should include 'SET GLOBAL `slave_parallel_threads` = 4;'
+    End
+
+    It "honors an explicitly configured internal administrative account"
+      MARIADB_INTERNAL_ROOT_USER="custom_internal_root"
+      MARIADB_TEST_ARGS_FILE="${tmpdir}/args"
+      export MARIADB_INTERNAL_ROOT_USER MARIADB_TEST_ARGS_FILE
+      write_recording_mariadb_stub
+
+      When run bash "$(script_path)" "slave_parallel_threads" "4"
+      The status should eq 0
+      The contents of file "${MARIADB_TEST_ARGS_FILE}" should include "--user=custom_internal_root"
+      The contents of file "${MARIADB_TEST_ARGS_FILE}" should not include "--user=root"
+    End
+  End
 
   Describe "classified user-input SQL errors"
     It "skips ERROR 1232 without returning failure"

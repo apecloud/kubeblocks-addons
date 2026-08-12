@@ -2,7 +2,8 @@
 
 mariadb_exec() {
     local query="$1"
-    mariadb --user="${MARIADB_ROOT_USER}" --password="${MARIADB_ROOT_PASSWORD}" --host=127.0.0.1 -P 3306 -NBe "${query}"
+    local internal_root_user="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
+    mariadb --user="${internal_root_user}" --password="${MARIADB_ROOT_PASSWORD}" --host=127.0.0.1 -P 3306 -NBe "${query}"
 }
 
 param_name="${1:?missing param name}"
