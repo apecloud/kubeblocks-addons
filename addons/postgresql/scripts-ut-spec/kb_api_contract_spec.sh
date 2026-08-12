@@ -40,6 +40,28 @@ Describe "PostgreSQL KubeBlocks API contract"
     '
   }
 
+  component_definitions_with_exec_role_probe() {
+    render_chart | ruby -ryaml -e '
+      definitions = YAML.load_stream(ARGF.read).compact.select do |document|
+        document["kind"] == "ComponentDefinition"
+      end
+      count = definitions.count do |definition|
+        role_probe = definition.dig("spec", "lifecycleActions", "roleProbe") || {}
+        command = role_probe.dig("exec", "command") || []
+        role_probe["http"].nil? &&
+          role_probe.dig("exec", "container") == "postgresql" &&
+          command == [
+            "curl",
+            "--fail",
+            "--silent",
+            "--show-error",
+            "http://127.0.0.1:5001/v1.0/getrole"
+          ]
+      end
+      puts count
+    '
+  }
+
   pg13_config_contract() {
     config="$(chart_dir)/config/pg13-config.tpl"
     schema="$(chart_dir)/config/pg13-config-constraint.cue"
@@ -150,13 +172,31 @@ EOF
   It "advances the chart identity when immutable ComponentDefinitions change"
     When call chart_version
     The status should eq 0
-    The output should eq "1.2.0-alpha.2"
+    The output should eq "1.2.0-alpha.3"
   End
 
   It "publishes every ComponentDefinition under the advanced immutable identity"
-    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.2$'
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.3$'
     The status should eq 0
     The output should eq "7"
+  End
+
+  It "does not update the published alpha.2 ComponentDefinitions in place"
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.2$'
+    The status should eq 0
+    The output should eq "0"
+  End
+
+  It "keeps the previous alpha.2 identities compatible through the major prefix"
+    When call render_count '^[[:space:]]*- postgresql-\(12\|13\|14\|15\|16\|17\|18\)-$'
+    The status should eq 0
+    The output should eq "7"
+  End
+
+  It "does not bypass ComponentDefinition immutability"
+    When call render_count 'apps.kubeblocks.io/skip-immutable-check:'
+    The status should eq 0
+    The output should eq "0"
   End
 
   It "does not project a create-time pod-name list into the runtime"
@@ -167,6 +207,12 @@ EOF
 
   It "grants every ComponentDefinition the pod-list permission used by live arbitration"
     When call component_definitions_with_pod_list_rbac
+    The status should eq 0
+    The output should eq "7"
+  End
+
+  It "uses an exec role probe supported by KubeBlocks main"
+    When call component_definitions_with_exec_role_probe
     The status should eq 0
     The output should eq "7"
   End
