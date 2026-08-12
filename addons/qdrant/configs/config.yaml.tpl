@@ -103,7 +103,11 @@ storage:
   # Default parameters for collections
   collection:
     # Number of replicas of each shard that network tries to maintain
+    {{ if gt (int .COMP_REPLICA_COUNT) 1 }}
     replication_factor: 2
+    {{ else }}
+    replication_factor: 1
+    {{ end }}
 
     # How many replicas should apply the operation for us to consider it successful
     #write_consistency_factor: 1

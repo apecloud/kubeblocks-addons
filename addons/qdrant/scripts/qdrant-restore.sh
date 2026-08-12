@@ -11,13 +11,7 @@ if [ -r "$QDRANT_COMMON_FILE" ]; then
   . "$QDRANT_COMMON_FILE"
 fi
 
-if [ "${TLS_ENABLED:-}" = "true" ]; then
-  QDRANT_SCHEME=https
-  CURL_TLS="-k"
-else
-  QDRANT_SCHEME=http
-  CURL_TLS=""
-fi
+qdrant_set_tls_variables
 
 for snapshot in $(datasafed list /) ; do
   collection_name=${snapshot%.*}
@@ -28,7 +22,7 @@ for snapshot in $(datasafed list /) ; do
   echo "INFO: start to restore collection ${collection_name}..."
 
   while true; do
-    if datasafed pull "${snapshot}" - | qdrant_curl -sS -f -X POST "${QDRANT_SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
+    if datasafed pull "${snapshot}" - | qdrant_curl --retry 3 -sS -f -X POST "${SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
       -H 'Content-Type:multipart/form-data' \
       -F "snapshot=@-;filename=${snapshot}" > /tmp/qdrant-restore.log 2>&1 \
       && grep -q '"status":"ok"' /tmp/qdrant-restore.log; then
