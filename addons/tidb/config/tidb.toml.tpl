@@ -1,6 +1,29 @@
 # full example can be seen at:
 # https://github.com/pingcap/tidb/blob/release-7.5/pkg/config/config.toml.example
 
+
+{{- /* Dynamic parameter tuning based on container resource limits */ -}}
+{{- $tidb_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
+{{- $tidb_cpu := getContainerCPU ( index $.podSpec.containers 0 ) }}
+{{- $gogc := 100 }}
+{{- $txn_total_size_limit := 104857600 }}
+{{- $txn_entry_size_limit := 6291456 }}
+{{- $grpc_conn_count := 4 }}
+{{- $max_batch_size := 128 }}
+{{- $batch_wait_size := 8 }}
+{{- if gt $tidb_memory 0 }}
+{{-   $gogc = 200 }}
+{{-   $txn_total_size_limit = min ( mul ( div $tidb_memory 32 ) 5 ) 1073741824 }}
+{{-   $txn_entry_size_limit = min ( mul ( div $tidb_memory 1024 ) 12 ) 134217728 }}
+{{- end }}
+{{- if gt $tidb_cpu 0 }}
+{{-   $grpc_conn_count = max 4 ( min ( int ( mul $tidb_cpu 1.0 ) ) 32 ) }}
+{{-   if ge $tidb_cpu 8 }}
+{{-     $max_batch_size = 256 }}
+{{-     $batch_wait_size = 16 }}
+{{-   end }}
+{{- end }}
+
 # TiDB Configuration.
 
 # Registered store name, [tikv, mocktikv, unistore]
@@ -278,11 +301,11 @@ distinct-agg-push-down = false
 # NOTE: If binlog is enabled with Kafka (e.g. arbiter cluster),
 # this value should be less than 1073741824(1G) because this is the maximum size that can be handled by Kafka.
 # If binlog is disabled or binlog is enabled without Kafka, this value should be less than 1099511627776(1T).
-txn-total-size-limit = 104857600
+txn-total-size-limit = {{ $txn_total_size_limit }}
 
 # The limitation of the size in byte for each entry in one transaction.
 # NOTE: Increasing this limit may cause performance problems.
-txn-entry-size-limit = 6291456
+txn-entry-size-limit = {{ $txn_entry_size_limit }}
 
 # max lifetime of transaction ttl manager.
 max-txn-ttl = 3600000
@@ -290,13 +313,22 @@ max-txn-ttl = 3600000
 # The Go GC trigger factor, you can get more information about it at https://golang.org/pkg/runtime.
 # If you encounter OOM when executing large query, you can decrease this value to trigger GC earlier.
 # If you find the CPU used by GC is too high or GC is too frequent and impact your business you can increase this value.
-gogc = 100
+gogc = {{ $gogc }}
 
 # Whether to use the lite mode of init stats.
 lite-init-stats = true
 
 # Whether to wait for init stats to finish before providing service during startup
 force-init-stats = true
+
+
+# Prepared plan cache configuration.
+# Enabling prepared plan cache can significantly reduce latency for repeated
+# parameterized queries (e.g. OLTP workloads like TPCC).
+[prepared-plan-cache]
+enabled = true
+capacity = 1000
+memory-guard-ratio = 0.1
 
 [proxy-protocol]
 # PROXY protocol acceptable client networks.
@@ -363,7 +395,7 @@ pd-server-timeout = 3
 
 [tikv-client]
 # Max gRPC connections that will be established with each tikv-server.
-grpc-connection-count = 4
+grpc-connection-count = {{ $grpc_conn_count }}
 
 # After a duration of this time in seconds if the client doesn't see any activity it pings
 # the server to see if the transport is still alive.
@@ -380,13 +412,13 @@ grpc-compression-type = "none"
 commit-timeout = "41s"
 
 # Max batch size in gRPC.
-max-batch-size = 128
+max-batch-size = {{ $max_batch_size }}
 # Overload threshold of TiKV.
 overload-threshold = 200
 # Max batch wait time in nanosecond to avoid waiting too long. 0 means disable this feature.
 max-batch-wait-time = 0
 # Batch wait size, to avoid waiting too long.
-batch-wait-size = 8
+batch-wait-size = {{ $batch_wait_size }}
 
 # If a Region has not been accessed for more than the given duration (in seconds), it
 # will be reloaded from the PD.
