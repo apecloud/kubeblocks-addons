@@ -110,6 +110,16 @@ qdrant_effective_api_key() {
   qdrant_config_service_api_key
 }
 
+qdrant_set_tls_variables() {
+  if [ "${TLS_ENABLED:-}" = "true" ]; then
+    SCHEME="https"
+    CURL_TLS="-k"
+  else
+    SCHEME="http"
+    CURL_TLS=""
+  fi
+}
+
 # Run curl against the Qdrant API, attaching the api-key header when configured.
 # Temporarily disables xtrace while the command runs so the key is not logged.
 # Args: passed through to curl (URL, -sf, --max-time, etc.)
@@ -126,9 +136,9 @@ qdrant_curl() {
 
   api_key="$(qdrant_effective_api_key)"
   if [ -n "$api_key" ]; then
-    "${QDRANT_CURL_BIN:-curl}" ${CURL_TLS:-} -H "api-key: ${api_key}" "$@"
+    "${QDRANT_CURL_BIN:-curl}" "${CURL_TLS:-}" -H "api-key: ${api_key}" "$@"
   else
-    "${QDRANT_CURL_BIN:-curl}" ${CURL_TLS:-} "$@"
+    "${QDRANT_CURL_BIN:-curl}" "${CURL_TLS:-}" "$@"
   fi
   qdrant_curl_rc=$?
 
