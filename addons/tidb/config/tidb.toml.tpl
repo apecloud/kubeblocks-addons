@@ -5,16 +5,16 @@
 {{- /* Dynamic parameter tuning based on container resource limits */ -}}
 {{- $tidb_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- $tidb_cpu := getContainerCPU ( index $.podSpec.containers 0 ) }}
-{{- $gogc := 100 }}
 {{- $txn_total_size_limit := 104857600 }}
 {{- $txn_entry_size_limit := 6291456 }}
 {{- $grpc_conn_count := 4 }}
 {{- $max_batch_size := 128 }}
 {{- $batch_wait_size := 8 }}
 {{- if gt $tidb_memory 0 }}
-{{-   $gogc = 200 }}
-{{-   $txn_total_size_limit = min ( mul ( div $tidb_memory 32 ) 5 ) 1073741824 }}
-{{-   $txn_entry_size_limit = min ( mul ( div $tidb_memory 1024 ) 12 ) 134217728 }}
+{{-   /* txn-total-size-limit = 1/32 of memory, capped at 1GB (Kafka binlog hard limit) */ -}}
+{{-   $txn_total_size_limit = min ( div $tidb_memory 32 ) 1073741824 }}
+{{-   /* txn-entry-size-limit = ~1/40 of txn-total-size, capped at 128MB */ -}}
+{{-   $txn_entry_size_limit = min ( div $txn_total_size_limit 40 ) 134217728 }}
 {{- end }}
 {{- if gt $tidb_cpu 0 }}
 {{-   $grpc_conn_count = max 4 ( min ( int ( mul $tidb_cpu 1.0 ) ) 32 ) }}
@@ -313,7 +313,7 @@ max-txn-ttl = 3600000
 # The Go GC trigger factor, you can get more information about it at https://golang.org/pkg/runtime.
 # If you encounter OOM when executing large query, you can decrease this value to trigger GC earlier.
 # If you find the CPU used by GC is too high or GC is too frequent and impact your business you can increase this value.
-gogc = {{ $gogc }}
+gogc = 100
 
 # Whether to use the lite mode of init stats.
 lite-init-stats = true
