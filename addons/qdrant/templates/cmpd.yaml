@@ -19,9 +19,6 @@ spec:
     caFile: ca.crt
     certFile: tls.crt
     keyFile: tls.key
-  replicasLimit:
-    minReplicas: 2
-    maxReplicas: 16384
   services:
   - name: qdrant
     serviceName: qdrant

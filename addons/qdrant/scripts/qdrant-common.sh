@@ -136,9 +136,11 @@ qdrant_curl() {
 
   api_key="$(qdrant_effective_api_key)"
   if [ -n "$api_key" ]; then
-    "${QDRANT_CURL_BIN:-curl}" "${CURL_TLS:-}" -H "api-key: ${api_key}" "$@"
+    # shellcheck disable=SC2086
+    "${QDRANT_CURL_BIN:-curl}" ${CURL_TLS:-} -H "api-key: ${api_key}" "$@"
   else
-    "${QDRANT_CURL_BIN:-curl}" "${CURL_TLS:-}" "$@"
+    # shellcheck disable=SC2086
+    "${QDRANT_CURL_BIN:-curl}" ${CURL_TLS:-} "$@"
   fi
   qdrant_curl_rc=$?
 

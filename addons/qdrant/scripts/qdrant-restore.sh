@@ -15,7 +15,8 @@ fi
 qdrant_set_tls_variables
 
 for pod in $(datasafed list /); do
-  for snapshot in $(datasafed list "/$pod/") ; do
+  for file in $(datasafed list "/$pod/") ; do
+    snapshot=$(basename "$file")
     collection_name=${snapshot%.*}
     # skip file kubeblocks-backup.json which is not a snapshot
     if [ "${collection_name}" == "kubeblocks-backup" ]; then
@@ -24,10 +25,12 @@ for pod in $(datasafed list /); do
     echo "INFO: start to restore collection ${collection_name} in ${pod}..."
 
     while true; do
-      if datasafed pull "${snapshot}" - | qdrant_curl --retry 3 -sS -f -X POST "${SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
+      datasafed pull "${file}" - | qdrant_curl --retry 3 -sS -f -X POST "${SCHEME}://${DP_DB_HOST}:6333/collections/${collection_name}/snapshots/upload?priority=snapshot" \
         -H 'Content-Type:multipart/form-data' \
-        -F "snapshot=@-;filename=${snapshot}" > /tmp/qdrant-restore.log 2>&1 \
-        && grep -q '"status":"ok"' /tmp/qdrant-restore.log; then
+        -F "snapshot=@-;filename=${snapshot}" > /tmp/qdrant-restore.log 2>&1
+      cat /tmp/qdrant-restore.log
+      echo ""
+      if grep -q '"status":"ok"' /tmp/qdrant-restore.log; then
         echo "restore collection ${collection_name} in ${pod} successfully"
         break
       else
