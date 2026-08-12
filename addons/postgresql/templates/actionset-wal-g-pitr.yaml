@@ -20,8 +20,6 @@ spec:
       value: $(VOLUME_DATA_DIR)/pgroot/data/pg_wal
     - name: LOG_ARCHIVE_SECONDS
       value: "5"
-    - name: IMAGE_TAG
-      value: 14.8.0-pgvector-v0.6.1
     - name: TARGET_POD_ROLE
       # TODO input by backup policy
       value: primary
@@ -37,7 +35,10 @@ spec:
       - -c
       - |
         #!/bin/bash
-        set -e
+        # No set -e here: wal-g-archive.sh is a long-running archiver that owns
+        # its error contract (upload retry with tracking files, bounded pg
+        # probing, rescue upload before exit). A wrapper set -e kills the
+        # process on the first failure and makes all of that unreachable.
         set -o pipefail
         {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/wal-g-archive.sh" | nindent 8 }}

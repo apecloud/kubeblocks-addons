@@ -1,0 +1,1 @@
+pod_fqdns = {{ .MSSQL_POD_FQDNS }}

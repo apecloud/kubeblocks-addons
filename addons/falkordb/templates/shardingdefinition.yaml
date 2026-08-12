@@ -21,7 +21,6 @@ spec:
     shardRemove:
       timeoutSeconds: 600
       exec:
-        image: {{ include "falkordb4.image" . }}
         container: falkordb-cluster
         command:
           - /bin/bash

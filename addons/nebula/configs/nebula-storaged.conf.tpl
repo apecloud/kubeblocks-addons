@@ -1,5 +1,40 @@
 
 {{- $time_zone := getEnvByName ( getContainerByName $.podSpec.containers "storaged" ) "DEFAULT_TIMEZONE" }}
+{{- $storaged_container := getContainerByName $.podSpec.containers "storaged" }}
+{{- $phy_memory := getContainerMemory $storaged_container }}
+{{- $phy_cpu := getContainerCPU $storaged_container }}
+
+{{- /* Compute resource-adaptive parameters, keep the values within the constraint range:
+  rocksdb_block_cache [1,102400]MB, num_io_threads [1,256], num_worker_threads [1,256],
+  max_concurrent_subtasks [1,1000], memory_tracker_untracked_reserved_memory_mb [0,102400] */}}
+{{- $block_cache_mb := 4 }}
+{{- $num_io_threads := 16 }}
+{{- $num_worker_threads := 32 }}
+{{- $max_concurrent_subtasks := 10 }}
+{{- $untracked_memory_mb := 50 }}
+{{- $write_buffer_size := 67108864 }}
+{{- $max_bytes_level_base := 268435456 }}
+{{- $max_background_jobs := 4 }}
+
+{{- if gt $phy_cpu 0 }}
+{{- /* 1 background job per 2 CPU cores, at least 4 and at most 32 */}}
+{{- $max_background_jobs = max 4 ( min ( div ( int $phy_cpu ) 2 ) 32 ) }}
+{{- $num_io_threads = max 16 ( min ( int $phy_cpu ) 256 ) }}
+{{- $num_worker_threads = max 32 ( min ( int $phy_cpu ) 256 ) }}
+{{- $max_concurrent_subtasks = max 10 ( min ( div ( int $phy_cpu ) 4 ) 100 ) }}
+{{- end }}
+
+{{- if gt $phy_memory 0 }}
+{{- /* block cache = 20% of memory, unit MB (resident memory, NOT covered by memory tracker) */}}
+{{- $block_cache_mb = max 4 ( min ( div ( div ( mul ( int $phy_memory ) 2 ) 10 ) 1048576 ) 102400 ) }}
+{{- /* reserve 20% of memory for block cache + memtable + system, at least 50MB.
+     The memory tracker only limits query memory, so the resident RocksDB memory
+     must be excluded from the trackable memory to avoid OOM. */}}
+{{- $untracked_memory_mb = max 50 ( min ( div ( div ( int $phy_memory ) 5 ) 1048576 ) 102400 ) }}
+{{- /* memtable = 1/128 of memory (bounded 64MB~512MB), level base = memtable * 4 */}}
+{{- $write_buffer_size = max 67108864 ( min ( div ( int $phy_memory ) 128 ) 536870912 ) }}
+{{- $max_bytes_level_base = mulf $write_buffer_size 4 | int }}
+{{- end }}
 
 ########## basics ##########
 # Whether to run as a daemon process
@@ -67,7 +102,7 @@
 --rocksdb_batch_size=4096
 # The default block cache size used in BlockBasedTable.
 # The unit is MB.
---rocksdb_block_cache=4
+--rocksdb_block_cache={{ $block_cache_mb }}
 # Disable page cache to better control memory used by rocksdb.
 # Caution: Make sure to allocate enough block cache if disabling page cache!
 --disable_page_cache=false
@@ -106,9 +141,9 @@
 
 ############## rocksdb Options ##############
 # rocksdb DBOptions in json, each name and value of option is a string, given as "option_name":"option_value" separated by comma
---rocksdb_db_options={}
+--rocksdb_db_options={"max_background_jobs":"{{ $max_background_jobs }}"}
 # rocksdb ColumnFamilyOptions in json, each name and value of option is string, given as "option_name":"option_value" separated by comma
---rocksdb_column_family_options={"write_buffer_size":"67108864","max_write_buffer_number":"4","max_bytes_for_level_base":"268435456"}
+--rocksdb_column_family_options={"write_buffer_size":"{{ $write_buffer_size }}","max_write_buffer_number":"4","max_bytes_for_level_base":"{{ $max_bytes_level_base }}"}
 # rocksdb BlockBasedTableOptions in json, each name and value of option is string, given as "option_name":"option_value" separated by comma
 --rocksdb_block_based_table_options={"block_size":"8192"}
 
@@ -141,11 +176,11 @@
 # Whether remove outdated space data
 --auto_remove_invalid_space=true
 # Network IO threads number
---num_io_threads=16
+--num_io_threads={{ $num_io_threads }}
 # Worker threads number to handle request
---num_worker_threads=32
+--num_worker_threads={{ $num_worker_threads }}
 # Maximum subtasks to run admin jobs concurrently
---max_concurrent_subtasks=10
+--max_concurrent_subtasks={{ $max_concurrent_subtasks }}
 # The rate limit in bytes when leader synchronizes snapshot data
 --snapshot_part_rate_limit=10485760
 # The amount of data sent in each batch when leader synchronizes snapshot data
@@ -179,9 +214,10 @@
 
 ########## memory tracker ##########
 # trackable memory ratio (trackable_memory / (total_memory - untracked_reserved_memory) )
---memory_tracker_limit_ratio=0.8
+# 0.6 leaves headroom for the resident RocksDB memory (block cache + memtable)
+--memory_tracker_limit_ratio=0.9
 # untracked reserved memory in Mib
---memory_tracker_untracked_reserved_memory_mb=50
+--memory_tracker_untracked_reserved_memory_mb={{ $untracked_memory_mb }}
 
 # enable log memory tracker stats periodically
 --memory_tracker_detail_log=false
@@ -193,4 +229,10 @@
 # memory background purge interval in seconds
 --memory_purge_interval_seconds=10
 
---containerized=false
+########## container/cgroup ##########
+# Run inside a container, memory tracker reads the cgroup limit instead of host /proc/meminfo
+--containerized=true
+--cgroup_v2_controllers=/sys/fs/cgroup/cgroup.controllers
+--cgroup_v2_memory_stat_path=/sys/fs/cgroup/memory.stat
+--cgroup_v2_memory_max_path=/sys/fs/cgroup/memory.max
+--cgroup_v2_memory_current_path=/sys/fs/cgroup/memory.current

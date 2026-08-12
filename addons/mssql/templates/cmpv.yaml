@@ -1,0 +1,36 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: mssql
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mssql.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+{{- range $version := .Values.versions }}
+  - compDefs:
+      - {{ .componentDef }}
+    releases:
+{{- range .minors }}
+      - {{ .name }}
+{{- end }}
+{{- end }}
+  releases:
+{{- range $version := .Values.versions }}
+{{- range $version.minors }}
+  - name: {{ .name }}
+    changes: ""
+    serviceVersion: {{ .version }}
+    images:
+      mssql: {{ include "mssql.imageByVersion" (dict "major" $version.major "minor" .version "root" $) }}
+      init-syncer: {{ $.Values.image.registry | default "docker.io" }}/{{ $.Values.image.syncer.repository }}:{{ $.Values.image.syncer.tag }}
+      exporter: {{ $.Values.image.registry | default "docker.io" }}/{{ $.Values.image.exporterRepository }}:{{ $.Values.image.exporterTag }}
+      roleProbe: {{ include "mssql.imageByVersion" (dict "major" $version.major "minor" .version "root" $) }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,26 @@
+# Copyright ApeCloud Co., Ltd. All Rights Reserved.
+# SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+
+dynamicParameters:
+  - "ad hoc distributed queries"
+  - "database mail xps"
+  - "blocked process threshold (s)"
+  - "clr enabled"
+  - "clr strict security"
+  - "cost threshold for parallelism"
+  - "default full-text language"
+  - "default language"
+  - "filestream access level"
+  - "max degree of parallelism"
+  - "remote query timeout (s)"
+  - "remote login timeout (s)"
+  - "query wait (s)"
+  - "optimize for ad hoc workloads"
+  - "nested triggers"
+  - "max worker threads"
+  - "max text repl size (b)"
+  - "remote proc trans"
+  - "query governor cost limit"
+  - "recovery interval (min)"
+  - "min memory per query (kb)"
+  - "in-doubt xact resolution"

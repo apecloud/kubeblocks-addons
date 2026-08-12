@@ -11,7 +11,6 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
   podManagementPolicy: Parallel
   minReadySeconds: 10
   runtime:
@@ -214,6 +213,21 @@ spec:
         componentVarRef:
           optional: false
           replicas: Required
+    # Primary ZooKeeper pod FQDN list (FQDN1,FQDN2,...) from the referenced cluster.
+    - name: CLICKHOUSE_ZOOKEEPER_POD_FQDNS
+      valueFrom:
+        serviceRefVarRef:
+          name: clickhouseZookeeper
+          podFQDNs: Required
+          optional: true
+    {{- range $i := until 7 }}
+    - name: {{ printf "CLICKHOUSE_AUX_ZOOKEEPER_%d_POD_FQDNS" (add $i 1) }}
+      valueFrom:
+        serviceRefVarRef:
+          name: {{ printf "clickhouseAuxZookeeper%d" (add $i 1) }}
+          podFQDNs: Required
+          optional: true
+    {{- end }}
   volumes:
     - name: data
   services:
@@ -247,6 +261,24 @@ spec:
           - name: tcp-secure
             targetPort: tcp-secure
             port: 9440
+  serviceRefDeclarations:
+    # Primary ZooKeeper cluster. When referenced, it replaces ClickHouse Keeper
+    # as the default <zookeeper> for replicated tables.
+    - name: clickhouseZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
+      optional: true
+    # Auxiliary ZooKeeper clusters, up to 7. They are rendered into
+    # <auxiliary_zookeepers> and can be referenced when creating replicated
+    # tables/databases, e.g. ReplicatedMergeTree('zookeeper2:/path', 'replica').
+    {{- range $i := until 7 }}
+    - name: {{ printf "clickhouseAuxZookeeper%d" (add $i 1) }}
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
+      optional: true
+    {{- end }}
   tls:
     volumeName: tls
     mountPath: /etc/pki/tls

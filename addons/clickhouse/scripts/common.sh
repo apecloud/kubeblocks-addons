@@ -182,3 +182,52 @@ function extract_ordinal_from_pod_name() {
 	[[ -z "$pod_name" ]] && return 1
 	echo "${pod_name##*-}"
 }
+
+# Create the ZooKeeper root path (chroot) before ClickHouse starts.
+# ClickHouse does NOT create the configured <root> automatically: it fails
+# startup with "ZooKeeper root doesn't exist" if the node is missing.
+# Uses clickhouse-keeper-client (bundled in the bitnami image) against the
+# external ZooKeeper client port (2181), idempotently creating the root node.
+#
+# Args:
+#   $1: zookeeper endpoint list (comma separated, host:port), e.g. zk-0.zk-hl:2181,zk-1.zk-hl:2181
+#   $2: root path, e.g. /clickhouse_cluster_a
+function zk_create_root() {
+	local endpoints="$1"
+	local root_path="$2"
+
+	[[ -z "$endpoints" || -z "$root_path" ]] && {
+		echo "ERROR: zk_create_root requires endpoints and root_path" >&2
+		return 1
+	}
+
+	IFS=',' read -ra endpoint_list <<<"$endpoints"
+	for endpoint in "${endpoint_list[@]}"; do
+		local host="$endpoint"
+		local port="2181"
+		if [[ "$endpoint" == *":"* ]]; then
+			host="${endpoint%:*}"
+			port="${endpoint##*:}"
+		fi
+		local output
+		output=$(/opt/bitnami/clickhouse/bin/clickhouse-keeper-client \
+			--connection-timeout=15 \
+			--session-timeout=30 \
+			--operation-timeout=15 \
+			--history-file=/dev/null \
+			-h "$host" \
+			-p "$port" \
+			--query "create '$root_path' \"''\"" 2>&1)
+		if [[ -z "$output" ]];then
+			echo "INFO: ZooKeeper root '$root_path' is ready (via $host:$port)"
+			return 0
+		fi
+		if [[ "$output" == *"NODEEXISTS"* || "$output" == *"Node exists"* ]]; then
+			echo "INFO: ZooKeeper root '$root_path' already exists (via $host:$port)"
+			return 0
+		fi
+		echo "WARN: Failed to create root '$root_path' via $host:$port: $output" >&2
+	done
+	echo "ERROR: Failed to create ZooKeeper root '$root_path' on any endpoint" >&2
+	return 1
+}

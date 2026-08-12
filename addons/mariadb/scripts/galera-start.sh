@@ -26,30 +26,89 @@ build_cluster_address() {
 # start in join mode with 3306 open, and a TCP-only check would make
 # pod-0 also join → all three deadlocked in non-Primary.
 #
-# Instead, query wsrep_cluster_status on each reachable peer. Only
-# "Primary" means the peer belongs to a functioning cluster.
+# Instead, query wsrep_cluster_status on every peer. Only an explicit
+# non-Primary answer from every remote peer proves that no Primary is visible.
+# A DNS/TCP failure is uncertainty, not evidence that the peer is absent: the
+# failed path may be a network partition hiding a still-writable Primary.
 _any_peer_alive() {
   local quiet="${1:-}"
   local fqdns="${PEER_FQDNS:-}"
-  [ -z "$fqdns" ] && return 1
-  local peer
+  GALERA_PEER_OBSERVATION="uncertain"
+  export GALERA_PEER_OBSERVATION
+  if [ -z "$fqdns" ]; then
+    [ -z "${quiet}" ] && echo "Peer FQDN list is empty; peer reachability is uncertain, treating as possibly alive to avoid split-brain bootstrap."
+    return 0
+  fi
+  local peer remote_peer_count=0 non_primary_peer_count=0 uncertain_peer_count=0
   for peer in $(echo "$fqdns" | tr ',' ' '); do
-    echo "$peer" | grep -q "${POD_NAME}" && continue
+    # Boundary self-match: "pod-1" must not match "pod-10". Compare the FQDN
+    # host segment (up to the first dot) exactly against POD_NAME.
+    case "${peer}" in
+      "${POD_NAME}."*|"${POD_NAME}") continue ;;
+    esac
+    remote_peer_count=$((remote_peer_count + 1))
     if timeout 3 bash -c "echo > /dev/tcp/${peer}/3306" 2>/dev/null; then
-      local cluster_status
-      cluster_status=$(timeout 5 mariadb \
-        -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
-        -h "${peer}" -P3306 --ssl=0 -N -s \
-        -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
-        | awk '{print $2}')
+      # Port 3306 is open — something is listening. Query wsrep_cluster_status
+      # to classify. A refused/dead peer never reaches here (TCP connect
+      # fails), so an open port means the peer is up; the only question is
+      # whether it is a functioning Primary we must join, or a co-restarting
+      # non-Primary node we may ignore.
+      #
+      # Sentinel discipline (fail closed against split-brain): an EMPTY result
+      # is NOT the same as a clean "not Primary" answer. Empty means the query
+      # failed (auth error, SST with SQL not yet accepting, load timeout) —
+      # the peer could be a live Primary we simply cannot read. Treating that
+      # as "no peer" would let this node bootstrap a SECOND Primary. So we
+      # retry briefly, and if the status is still unknown while the port stays
+      # open, we conservatively treat the peer as alive (block bootstrap).
+      local cluster_status="" attempt
+      for attempt in 1 2 3; do
+        cluster_status=$(timeout 5 mariadb \
+          -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" \
+          -h "${peer}" -P3306 --ssl=0 -N -s \
+          -e "SHOW STATUS LIKE 'wsrep_cluster_status';" 2>/dev/null \
+          | awk '{print $2}')
+        [ -n "${cluster_status}" ] && break
+        sleep 1
+      done
       if [ "${cluster_status}" = "Primary" ]; then
+        GALERA_PEER_OBSERVATION="primary"
+        export GALERA_PEER_OBSERVATION
         echo "Peer ${peer} is alive with wsrep_cluster_status=Primary."
         return 0
       fi
-      [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status=${cluster_status:-unreachable} (not Primary, skipping)."
+      if [ -z "${cluster_status}" ]; then
+        # Port open but status unreadable after retries → a possibly-live
+        # Primary. Keep scanning because another peer may explicitly report a
+        # Primary component; if none does, the aggregate stays uncertain and
+        # automatic bootstrap remains blocked.
+        [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status unreadable after retries; treating as possibly-alive to avoid split-brain bootstrap."
+        uncertain_peer_count=$((uncertain_peer_count + 1))
+        continue
+      fi
+      # Non-empty, non-Primary (e.g. non-Primary / Disconnected): a definitive
+      # answer that the peer is not in a functioning cluster — safe to skip.
+      non_primary_peer_count=$((non_primary_peer_count + 1))
+      [ -z "${quiet}" ] && echo "Peer ${peer} port 3306 open but wsrep_cluster_status=${cluster_status} (not Primary, skipping)."
+    else
+      [ -z "${quiet}" ] && echo "Peer ${peer} TCP reachability is uncertain; treating as possibly alive to avoid split-brain bootstrap."
+      uncertain_peer_count=$((uncertain_peer_count + 1))
     fi
   done
-  return 1
+  if [ "${remote_peer_count}" -gt 0 ] \
+    && [ "${non_primary_peer_count}" -eq "${remote_peer_count}" ]; then
+    GALERA_PEER_OBSERVATION="non-primary"
+    export GALERA_PEER_OBSERVATION
+    return 1
+  fi
+  if [ "${uncertain_peer_count}" -gt 0 ]; then
+    GALERA_PEER_OBSERVATION="uncertain"
+    export GALERA_PEER_OBSERVATION
+    [ -z "${quiet}" ] && echo "No explicit Primary was observed and at least one remote peer is uncertain; refusing automatic bootstrap."
+    return 0
+  fi
+  [ -z "${quiet}" ] && echo "No remote peer could be classified; peer reachability is uncertain, treating as possibly alive to avoid split-brain bootstrap."
+  return 0
 }
 
 # Wait until at least one peer has a Primary component before starting
@@ -67,16 +126,18 @@ _any_peer_alive() {
 # bootstrapped and is reporting wsrep_cluster_status=Primary. They then
 # join pod-0's cluster cleanly.
 _wait_for_primary_peer() {
-  if _any_peer_alive; then
+  if _any_peer_alive \
+    && [ "${GALERA_PEER_OBSERVATION:-uncertain}" = "primary" ]; then
     return 0
   fi
   echo "No peer has Primary component. Waiting for bootstrap node..."
   local max_wait="${GALERA_PRIMARY_PEER_WAIT_SECONDS:-120}"
   local elapsed=0
-  while [ $elapsed -lt $max_wait ]; do
+  while [ "${elapsed}" -lt "${max_wait}" ]; do
     sleep 3
     elapsed=$((elapsed + 3))
-    if _any_peer_alive quiet; then
+    if _any_peer_alive quiet \
+      && [ "${GALERA_PEER_OBSERVATION:-uncertain}" = "primary" ]; then
       echo "Found peer with Primary component after ${elapsed}s."
       return 0
     fi
@@ -92,7 +153,11 @@ _wsrep_recover_seqno() {
   local recover_output
   recover_output=$(mariadbd --wsrep-recover 2>&1) || true
   local recovered_seqno
-  recovered_seqno=$(echo "$recover_output" | grep 'Recovered position' | sed 's/.*://' | tail -1)
+  # `|| true`: a no-match grep returns 1 and, under set -eo pipefail, would
+  # abort the script if this function is ever called outside an if/&&/||
+  # context. The crash-recovery path is exactly where "Recovered position" may
+  # be absent (empty/corrupt datadir), so keep it robust regardless of caller.
+  recovered_seqno=$(echo "$recover_output" | grep 'Recovered position' | sed 's/.*://' | tail -1 || true)
   echo "wsrep-recover: seqno=${recovered_seqno:-unknown}"
 }
 
@@ -104,8 +169,109 @@ _mariadbd_pids() {
   pidof mariadbd 2>/dev/null || pgrep -x mariadbd 2>/dev/null || true
 }
 
+# Capture the previous container generation's preStop marker by atomically
+# promoting it to a retry-pending marker. The marker alone is not bootstrap
+# authority: preStop creates it before
+# attempting SQL shutdown, so a failed/aborted shutdown can leave it behind.
+# Combined with Galera's exact safe_to_bootstrap=1 election, however, it proves
+# that this PVC completed the addon's graceful-shutdown path.  That lets the
+# elected last node bootstrap an orderly full-cluster restart even while every
+# stopped peer is (correctly) classified as unreachable/uncertain.  A crashed
+# or partitioned running node has safe_to_bootstrap=0 and therefore cannot use
+# this marker to bypass the fail-closed peer check. The distinct pending name
+# separates prior-generation election evidence from the current generation's
+# .galera-shutting-down self-heal guard. Keep the pending file until the watcher
+# positively observes this process Synced in a Primary component; an entrypoint
+# or MariaDB failure before then must leave the same evidence for the retry.
+_capture_prior_graceful_shutdown_evidence() {
+  GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
+  local shutdown_marker="${DATA_DIR}/.galera-shutting-down"
+  local pending_marker="${DATA_DIR}/.galera-bootstrap-pending"
+
+  if [ -e "${pending_marker}" ] || [ -L "${pending_marker}" ]; then
+    # A previous launch attempt reached exec but never established Primary.
+    # Keep that authority. If its own preStop also left the ordinary shutdown
+    # guard, collapse the duplicate so the new generation starts with a clean
+    # current-generation guard while the retry authority remains durable.
+    if [ -e "${shutdown_marker}" ] || [ -L "${shutdown_marker}" ]; then
+      if ! rm -f "${shutdown_marker}"; then
+        echo "Galera startup failed: could not collapse duplicate graceful-shutdown marker ${shutdown_marker}" >&2
+        return 1
+      fi
+      if [ -e "${shutdown_marker}" ] || [ -L "${shutdown_marker}" ]; then
+        echo "Galera startup failed: duplicate graceful-shutdown marker still exists after collapse: ${shutdown_marker}" >&2
+        return 1
+      fi
+    fi
+    GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+  elif [ -e "${shutdown_marker}" ] || [ -L "${shutdown_marker}" ]; then
+    if ! mv "${shutdown_marker}" "${pending_marker}"; then
+      echo "Galera startup failed: could not promote graceful-shutdown marker to retry-pending authority: ${shutdown_marker}" >&2
+      return 1
+    fi
+    if [ ! -e "${pending_marker}" ] && [ ! -L "${pending_marker}" ]; then
+      echo "Galera startup failed: retry-pending bootstrap authority missing after promotion: ${pending_marker}" >&2
+      return 1
+    fi
+    GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+  fi
+  export GALERA_PRIOR_GRACEFUL_SHUTDOWN
+}
+
+# Complete captured graceful-shutdown evidence only after the watcher has
+# positively observed this mariadbd Synced in a Primary component. Until that
+# post-launch business-state gate closes, every failure path preserves the
+# retry-pending marker. A cleanup failure is reported and retried on the next
+# watcher tick instead of claiming the generation is complete.
+_complete_prior_graceful_shutdown_evidence() {
+  if [ "${GALERA_PRIOR_GRACEFUL_SHUTDOWN:-0}" != "1" ]; then
+    GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
+    export GALERA_PRIOR_GRACEFUL_SHUTDOWN
+    return 0
+  fi
+
+  local marker="${DATA_DIR}/.galera-bootstrap-pending"
+  if [ ! -e "${marker}" ] && [ ! -L "${marker}" ]; then
+    echo "Galera startup failed: retry-pending bootstrap authority disappeared before Primary convergence: ${marker}" >&2
+    return 1
+  fi
+  if ! rm -f "${marker}"; then
+    echo "Galera startup failed: could not complete retry-pending bootstrap authority ${marker}" >&2
+    return 1
+  fi
+  if [ -e "${marker}" ] || [ -L "${marker}" ]; then
+    echo "Galera startup failed: retry-pending bootstrap authority still exists after completion: ${marker}" >&2
+    return 1
+  fi
+  GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
+  export GALERA_PRIOR_GRACEFUL_SHUTDOWN
+}
+
+# Watcher start-up initialization: clear stale role/liveness markers left on the
+# PV by a previous container generation. Both shutdown/election markers are
+# deliberately excluded: capture owns promotion to retry-pending authority and
+# the Primary watcher owns completion. A stale .galera-role/.galera-synced
+# would let the probe publish a role
+# before the watcher has re-observed Galera state. Extracted as a helper (not
+# inline in the watcher subshell) so the reset is directly callable and
+# unit-testable, and so any future start-up call site stays covered.
+_clear_stale_markers_on_start() {
+  rm -f "${DATA_DIR}/.galera-synced" \
+        "${DATA_DIR}/.galera-role"
+}
+
 _restart_mariadbd_for_self_heal() {
   local reason="$1"
+  # Graceful-shutdown guard: the preStop hook drops .galera-shutting-down
+  # before it sets wsrep_on=OFF (which makes the node non-Primary) and runs a
+  # clean shutdown that can take tens of seconds toward the 120s grace. Without
+  # this guard the watcher would count that as a stuck non-Primary and SIGKILL
+  # mariadbd mid-shutdown, aborting the safe_to_bootstrap write the preStop
+  # exists to produce. Never self-heal-kill while shutting down.
+  if [ -f "${DATA_DIR}/.galera-shutting-down" ]; then
+    echo "SELF-HEALING skipped (${reason}): graceful shutdown in progress."
+    return 0
+  fi
   local pids
   pids=$(_mariadbd_pids)
   if [ -z "${pids}" ]; then
@@ -145,26 +311,53 @@ should_bootstrap() {
     # If any peer is already running, join instead of bootstrapping.
     # This handles single-pod restart and rolling restart correctly.
     if _any_peer_alive; then
-      echo "Peers alive. ${POD_NAME} will join existing cluster."
-      return 1
+      if [ "${GALERA_PEER_OBSERVATION:-primary}" = "uncertain" ] \
+        && grep -qE "^safe_to_bootstrap:[[:space:]]+1[[:space:]]*$" "${DATA_DIR}/grastate.dat"; then
+        if [ "${GALERA_PRIOR_GRACEFUL_SHUTDOWN:-0}" = "1" ]; then
+          # Galera elected this exact PVC as the last clean node, and the addon
+          # preStop marker binds that election to the immediately preceding
+          # graceful-shutdown lifecycle.  This is stronger evidence than the
+          # ambiguous TCP failure and is the only uncertainty override.
+          unset GALERA_BOOTSTRAP_DEFER_REASON
+          echo "grastate.dat: safe_to_bootstrap=1 and prior graceful-shutdown marker present; ${POD_NAME} will bootstrap despite unreachable stopped peers."
+        else
+          GALERA_BOOTSTRAP_DEFER_REASON="peer reachability uncertain; refuse automatic bootstrap"
+          export GALERA_BOOTSTRAP_DEFER_REASON
+          echo "Peer state is uncertain. Refusing automatic Galera bootstrap until every remote peer is explicitly non-Primary."
+          return 1
+        fi
+      else
+        echo "Peers alive. ${POD_NAME} will join existing cluster."
+        return 1
+      fi
     fi
 
-    # No peers alive: this is a full cluster restart. Fresh Galera PVCs may
-    # already contain grastate.dat with safe_to_bootstrap=1 and seqno=-1. That
-    # state is not a clean shutdown election result, so keep initial bootstrap
-    # single-owner on pod-0; otherwise every pod can bootstrap its own Primary.
+    # No peers alive: this is a full cluster restart. seqno=-1 has TWO
+    # indistinguishable-by-seqno causes that must NOT be handled the same:
+    #   (1) Fresh Galera PVC: grastate.dat has seqno=-1 AND
+    #       safe_to_bootstrap=1 (Galera writes stb=1 on first datadir init).
+    #   (2) Hard crash (OOM-kill / node power loss / SIGKILL): a *running*
+    #       node's grastate.dat also carries seqno=-1, but with
+    #       safe_to_bootstrap=0 — the clean-shutdown election never ran.
+    #       This is exactly the full-cluster crash the header contract (c)
+    #       forbids auto-bootstrapping: pod-0 doing so would start a
+    #       possibly-stale Primary and SST away committed data on 1/2.
+    # So the seqno=-1 fast-path must ALSO require safe_to_bootstrap=1. A
+    # seqno=-1 + stb=0 pod falls through to the fail-closed crash-recovery
+    # branch below and defers instead of guessing it is the latest node.
     local grastate_seqno
     grastate_seqno=$(_grastate_seqno)
-    if [ "${grastate_seqno}" = "-1" ]; then
+    if [ "${grastate_seqno}" = "-1" ] \
+      && grep -qE "^safe_to_bootstrap:[[:space:]]+1[[:space:]]*$" "${DATA_DIR}/grastate.dat"; then
       if [ "$pod_index" = "0" ]; then
-        echo "Fresh grastate.dat seqno=-1, pod-0 will bootstrap."
+        echo "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1, pod-0 will bootstrap."
         return 0
       fi
-      echo "Fresh grastate.dat seqno=-1, ${POD_NAME} will wait for pod-0 bootstrap."
+      echo "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1, ${POD_NAME} will wait for pod-0 bootstrap."
       return 1
     fi
 
-    if grep -q "^safe_to_bootstrap: 1" "${DATA_DIR}/grastate.dat"; then
+    if grep -qE "^safe_to_bootstrap:[[:space:]]+1[[:space:]]*$" "${DATA_DIR}/grastate.dat"; then
       echo "grastate.dat: safe_to_bootstrap=1, ${POD_NAME} will bootstrap."
     else
       if [ "$pod_index" = "0" ]; then
@@ -193,23 +386,41 @@ setup_data_dir() {
   chown -R mysql:mysql "${DATA_DIR}" || true
 }
 
+remove_stale_galera_sst_auth() {
+  local stale_sst_auth="${DATA_DIR}/.galera-sst-auth.cnf"
+
+  # A broken symlink is still a credential-path residue, so test both normal
+  # existence and symlink existence before deciding there is nothing to scrub.
+  if [ ! -e "${stale_sst_auth}" ] && [ ! -L "${stale_sst_auth}" ]; then
+    return 0
+  fi
+  if ! rm -f "${DATA_DIR}/.galera-sst-auth.cnf" 2>/dev/null; then
+    echo "Galera startup failed: failed to delete stale SST credential ${stale_sst_auth}" >&2
+    return 1
+  fi
+  if [ -e "${stale_sst_auth}" ] || [ -L "${stale_sst_auth}" ]; then
+    echo "Galera startup failed: stale SST credential ${stale_sst_auth} still exists after deletion" >&2
+    return 1
+  fi
+}
+
 main() {
   setup_data_dir
+  _capture_prior_graceful_shutdown_evidence
 
   local cluster_address
   cluster_address=$(build_cluster_address)
 
-  # wsrep_sst_auth must not appear on the command line (visible in ps output).
-  # Write it to a file under DATA_DIR (the persistent volume, always writable)
-  # and load it via --defaults-extra-file so MariaDB picks it up at startup.
-  local sst_conf="${DATA_DIR}/.galera-sst-auth.cnf"
-  printf '[mysqld]\nwsrep_sst_auth=%s:%s\n' \
-    "${MARIADB_ROOT_USER}" "${MARIADB_ROOT_PASSWORD}" > "$sst_conf"
-  chown mysql:mysql "$sst_conf"
-  chmod 600 "$sst_conf"
+  # Do NOT persist wsrep_sst_auth. It is only consumed by the mariabackup/
+  # xtrabackup/mysqldump SST methods; this addon uses `wsrep_sst_method = rsync`
+  # (config/mariadb-galera.tpl), which does not authenticate via wsrep_sst_auth,
+  # so the credential was unused. Worse, it was written to DATA_DIR — a
+  # `needSnapshot: true` volume — so the plaintext root password rode into every
+  # volume snapshot / backup. Remove any stale file left by a previous chart
+  # version; do not recreate it.
+  remove_stale_galera_sst_auth || return 1
 
   local wsrep_args=(
-    "--defaults-extra-file=${sst_conf}"
     "--wsrep-cluster-address=${cluster_address}"
     "--wsrep-cluster-name=${CLUSTER_NAME:-mariadb-galera}"
     "--wsrep-node-name=${POD_NAME}"
@@ -246,7 +457,9 @@ main() {
   # stable Primary cluster.
   (
     set +e
-    rm -f "${DATA_DIR}/.galera-synced" "${DATA_DIR}/.galera-role"
+    # Clear stale role/liveness markers on start. Bootstrap election evidence
+    # remains retry-pending until this watcher observes Primary convergence.
+    _clear_stale_markers_on_start
     SOCK=/run/mysqld/mysqld.sock
     SYNCED_ONCE=0
     NON_PRIMARY_COUNT=0
@@ -254,6 +467,10 @@ main() {
     NO_SOCKET_COUNT=0
     NO_SOCKET_THRESHOLD="${GALERA_SOCKETLESS_MARIADBD_THRESHOLD:-30}"  # 30 × 3s = 90s
     while true; do
+      # The graceful-shutdown guard lives inside _restart_mariadbd_for_self_heal
+      # so every self-heal call site is covered (and unit-testable): while
+      # .galera-shutting-down exists the helper no-ops instead of SIGKILLing
+      # mariadbd mid clean-shutdown.
       STATE=""
       CLUSTER_STATUS=""
       if [ -S "${SOCK}" ]; then
@@ -268,12 +485,19 @@ main() {
           | awk '{print $2}')
       fi
       if [ "${STATE}" = "4" ] && [ "${CLUSTER_STATUS}" = "Primary" ]; then
+        _complete_prior_graceful_shutdown_evidence \
+          || echo "Galera startup: retry-pending bootstrap authority completion deferred; watcher will retry."
         printf "primary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
-          ; mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
+          && mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
+        # Re-touch .galera-synced every tick (not once): the roleprobe and
+        # memberJoin freshness gates reject markers older than 30s to detect a
+        # dead writer, so a live-and-synced node MUST keep refreshing the
+        # marker's mtime or memberJoin would wrongly report it stale and never
+        # close. SYNCED_ONCE only gates the one-time "first reached Synced" log.
+        touch "${DATA_DIR}/.galera-synced"
+        chown mysql:mysql "${DATA_DIR}/.galera-synced" 2>/dev/null || true
         if [ "${SYNCED_ONCE}" = "0" ]; then
-          touch "${DATA_DIR}/.galera-synced"
-          chown mysql:mysql "${DATA_DIR}/.galera-synced" 2>/dev/null || true
           SYNCED_ONCE=1
         fi
         NON_PRIMARY_COUNT=0
@@ -282,7 +506,7 @@ main() {
         SYNCED_ONCE=0
         printf "secondary" > "${DATA_DIR}/.galera-role.tmp" \
           && chown mysql:mysql "${DATA_DIR}/.galera-role.tmp" 2>/dev/null \
-          ; mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
+          && mv "${DATA_DIR}/.galera-role.tmp" "${DATA_DIR}/.galera-role"
         if [ -S "${SOCK}" ] && [ -n "${CLUSTER_STATUS}" ] && [ "${CLUSTER_STATUS}" != "Primary" ]; then
           NON_PRIMARY_COUNT=$((NON_PRIMARY_COUNT + 1))
           if [ ${NON_PRIMARY_COUNT} -ge ${NON_PRIMARY_THRESHOLD} ]; then
@@ -317,7 +541,12 @@ main() {
     done
   ) &
 
+  local bootstrap_mode=0
   if should_bootstrap; then
+    bootstrap_mode=1
+  fi
+
+  if [ "${bootstrap_mode}" = "1" ]; then
     echo "Starting Galera cluster bootstrap (--wsrep-new-cluster)..."
     exec docker-entrypoint.sh mariadbd "${wsrep_args[@]}" --wsrep-new-cluster
   else

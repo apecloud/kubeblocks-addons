@@ -13,7 +13,6 @@ spec:
   provider: kubeblocks
   description: A falkordb Sentinel v{{ .major }}.0 component definition for Kubernetes
   serviceKind: falkordb-sent
-  serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: Parallel
   podUpgradePolicy: ReCreate
   tls:

@@ -36,7 +36,7 @@ Describe "alpha.86 reconfigureAction.persisted semisync gates"
   It "advances the chart version so the immutable reconfigure change gets new ComponentDefinition names"
     When run sh -c "awk '\$1 == \"version:\" { print \$2; exit }' '${CHART}'"
     The status should be success
-    The output should equal "1.2.0-alpha.29"
+    The output should equal "1.2.0-alpha.33"
   End
 
   extract_persisted_helper_body() {

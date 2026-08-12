@@ -1,4 +1,12 @@
 releases:
+  - version: "1.2.0-alpha.1"
+    released_at: ""
+    status: "alpha"
+    notes: "Migrate embedded MinIO credentials to a generated root account. Existing affected standalone Clusters use the shipped Upgrade OpsRequest with a bounded Cluster-phase precondition plus the recovery helper, which replaces only the stale alpha.0 MinIO Pod after the alpha.1 desired contract is visible. Retained alpha.0 and current alpha.1 Milvus parameter definitions are bound to their exact ComponentDefinition versions so they cannot both claim user.yaml during migration."
+    git_branch: "main"
+    git_tag: ""
+    commit_sha: ""
+    breaking_changes: "The embedded MinIO system account changes from admin to root."
   - version: "1.0.1"
     released_at: "2025-09-11"
     status: "stable"

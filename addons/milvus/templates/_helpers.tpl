@@ -77,6 +77,42 @@ Define milvus standalone component definition regex pattern
 {{- end -}}
 
 {{/*
+Shared Milvus standalone ParametersDefinition contract.
+*/}}
+{{- define "milvus-standalone.parametersDefinitionSpec" -}}
+templateName: config
+fileName: user.yaml
+fileFormatConfig:
+  format: yaml
+parametersSchema:
+  topLevelKey: MilvusStandaloneParameter
+  cue: |-
+    #MilvusStandaloneParameter: {
+      ...
+      log?: {
+        ...
+        level?: string & ("debug" | "info" | "warn" | "error" | "panic" | "fatal") | *"info"
+      }
+      proxy?: {
+        ...
+        maxNameLength?: int & >=1 & <=32768 | *255
+        maxFieldNum?: int & >=1 & <=2048 | *64
+        maxDimension?: int & >=1 & <=32768 | *32768
+      }
+      common?: {
+        ...
+        gracefulTime?: int & >=0 & <=600000 | *5000
+      }
+    }
+staticParameters:
+  - log.level
+  - proxy.maxNameLength
+  - proxy.maxFieldNum
+  - proxy.maxDimension
+  - common.gracefulTime
+{{- end -}}
+
+{{/*
 Define milvus minio component definition name
 */}}
 {{- define "milvus-minio.cmpdName" -}}

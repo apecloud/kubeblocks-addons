@@ -117,7 +117,7 @@ kubectl apply -f examples/apecloud-mysql/scale-in.yaml
 > [!IMPORTANT]
 > On scaling in, the replica will be forgotten from the cluster's Raft group before it is deleted.
 
-#### [Set Specified Replicas Offline](scale-in-specified-instance.yaml)
+#### [Set Specified Replicas Offline](scale-in-specified-pod.yaml)
 
 There are cases where you want to set a specified replica offline, when it is problematic or you want to do some maintenance work on it. You can use the `onlineInstancesToOffline` field in the `spec.horizontalScaling.scaleIn` section to specify the instance names that need to be taken offline.
 

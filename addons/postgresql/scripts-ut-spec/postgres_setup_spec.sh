@@ -79,6 +79,51 @@ Describe "PostgreSQL Initialization Script Tests"
     End
   End
 
+  Describe "init_standby_credentials_if_needed()"
+    setup() {
+      STANDBY_HOST="remote.example"
+      PGUSER_STANDBY="standby"
+      PGPASSWORD_STANDBY="local-random"
+      unset KB_PGUSER_STANDBY
+      unset KB_PGPASSWORD_STANDBY
+    }
+    Before 'setup'
+
+    un_setup() {
+      unset STANDBY_HOST
+      unset PGUSER_STANDBY
+      unset PGPASSWORD_STANDBY
+      unset KB_PGUSER_STANDBY
+      unset KB_PGPASSWORD_STANDBY
+    }
+    After 'un_setup'
+
+    It "fails closed when a remote host has no remote password"
+      When call init_standby_credentials_if_needed
+      The status should be failure
+      The stderr should include "FATAL: standby host is set but remote replication password is missing"
+      The variable PGPASSWORD_STANDBY should equal "local-random"
+    End
+
+    It "uses the remote serviceRef credentials when they are complete"
+      KB_PGUSER_STANDBY="remote-repl"
+      KB_PGPASSWORD_STANDBY="remote-secret"
+      When call init_standby_credentials_if_needed
+      The status should be success
+      The output should include "standby cluster: using remote replication credentials from serviceRef"
+      The variable PGUSER_STANDBY should equal "remote-repl"
+      The variable PGPASSWORD_STANDBY should equal "remote-secret"
+    End
+
+    It "keeps local credentials when no remote host is configured"
+      unset STANDBY_HOST
+      When call init_standby_credentials_if_needed
+      The status should be success
+      The variable PGUSER_STANDBY should equal "standby"
+      The variable PGPASSWORD_STANDBY should equal "local-random"
+    End
+  End
+
   Describe "regenerate_spilo_configuration_and_start_postgres()"
     setup() {
       tmp_patroni_yaml="./tmp_patroni.yaml"
@@ -115,36 +160,188 @@ Describe "PostgreSQL Initialization Script Tests"
       The variable SPILO_CONFIGURATION should include "bootstrap:"
       The variable SPILO_CONFIGURATION should include "auth-host: md5"
     End
+
+    It "propagates restore replica configuration when the restore signal exists"
+      RESTORE_DATA_DIR="$(mktemp -d -t pg-restore-data-XXXXXX)"
+      touch "${RESTORE_DATA_DIR}/kb_restore.signal"
+      export RESTORE_DATA_DIR
+      python3() {
+        echo "postgresql:
+                create_replica_methods:
+                - restore_data
+                - basebackup
+                restore_data:
+                  command: bash /home/postgres/pgdata/kb_restore/kb_restore.sh --replica" > "$tmp_patroni_yaml"
+      }
+      chown() {
+        :
+      }
+      exec() {
+        :
+      }
+      When call regenerate_spilo_configuration_and_start_postgres
+      The stderr should include "/home/postgres/.kb_set_up.log: No such file or directory"
+      The status should be success
+      The variable SPILO_CONFIGURATION should include "create_replica_methods:"
+      The variable SPILO_CONFIGURATION should include "restore_data"
+      The variable SPILO_CONFIGURATION should include "kb_restore.sh --replica"
+      rm -rf "${RESTORE_DATA_DIR}"
+    End
   End
 
-  Describe "need_restart_for_pending()"
+  Describe "pending restart candidate selection"
     setup() {
       CURRENT_POD_NAME="pg-cluster-postgresql-0"
+      EXPECTED_POD_NAMES="pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-2"
+      CLUSTER_NAMESPACE="default"
+      CLUSTER_NAME="pg-cluster"
+      POSTGRES_COMPONENT_SHORT_NAME="postgresql"
+      KUBE_API_TMPDIR=$(mktemp -d -t pg-kube-api-XXXXXX)
+      KUBERNETES_SERVICE_ACCOUNT_TOKEN_FILE="${KUBE_API_TMPDIR}/token"
+      KUBERNETES_SERVICE_ACCOUNT_CA_FILE="${KUBE_API_TMPDIR}/ca.crt"
+      printf '%s' "test-token" > "${KUBERNETES_SERVICE_ACCOUNT_TOKEN_FILE}"
+      printf '%s' "test-ca" > "${KUBERNETES_SERVICE_ACCOUNT_CA_FILE}"
+      export CLUSTER_NAMESPACE CLUSTER_NAME POSTGRES_COMPONENT_SHORT_NAME
+      export KUBERNETES_SERVICE_ACCOUNT_TOKEN_FILE KUBERNETES_SERVICE_ACCOUNT_CA_FILE
+      unset KUBE_API_FAIL
     }
     Before 'setup'
 
     un_setup() {
       unset CURRENT_POD_NAME
+      unset EXPECTED_POD_NAMES
+      unset CLUSTER_NAMESPACE
+      unset CLUSTER_NAME
+      unset POSTGRES_COMPONENT_SHORT_NAME
+      unset KUBERNETES_SERVICE_ACCOUNT_TOKEN_FILE
+      unset KUBERNETES_SERVICE_ACCOUNT_CA_FILE
+      unset KUBE_API_FAIL
+      rm -rf "${KUBE_API_TMPDIR}"
     }
     After 'un_setup'
 
-    It "restarts when pending and no leader is pending"
-      When call need_restart_for_pending "true" ""
+    Mock curl
+      if [[ "${KUBE_API_FAIL:-0}" == "1" ]]; then
+        exit 22
+      fi
+
+      args=" $* "
+      [[ "${args}" == *" --fail "* ]] || exit 64
+      [[ "${args}" == *" --cacert ${KUBERNETES_SERVICE_ACCOUNT_CA_FILE} "* ]] || exit 65
+      [[ "${args}" == *" --header Authorization: Bearer test-token "* ]] || exit 66
+      [[ "${args}" == *" --data-urlencode labelSelector=app.kubernetes.io/instance=pg-cluster,apps.kubeblocks.io/component-name=postgresql "* ]] || exit 67
+      [[ "${args}" == *" https://kubernetes.default.svc:443/api/v1/namespaces/default/pods "* ]] || exit 68
+      printf '%s' '{"items":[{"metadata":{"name":"pg-cluster-postgresql-2"}},{"metadata":{"name":"pg-cluster-postgresql-0"}},{"metadata":{"name":"pg-cluster-postgresql-1","deletionTimestamp":"2026-07-28T00:00:00Z"}}]}'
+    End
+
+    It "selects a pending leader before replicas"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":true},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
+      The output should equal "pg-cluster-postgresql-0"
       The status should be success
     End
 
-    It "restarts when pending and the pending leader is the current pod"
+    It "selects one pending replica by stable member name order"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
+      The output should equal "pg-cluster-postgresql-1"
+      The status should be success
+    End
+
+    It "selects no candidate while a member is restarting"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"restarting","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate while a member is stopped"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"stopped","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate while a member is starting"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"starting","pending_restart":true},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate when an expected member is absent"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate when the observed membership has an extra member"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":false},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":true},{"name":"pg-cluster-postgresql-3","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "selects no candidate when the expected membership contains duplicates"
+      EXPECTED_POD_NAMES="pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-1"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "$EXPECTED_POD_NAMES"
+      The output should equal ""
+      The status should be success
+    End
+
+    It "uses a fresh scale-out membership instead of the pod creation snapshot"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":false},{"name":"pg-cluster-postgresql-2","role":"replica","state":"streaming","pending_restart":false},{"name":"pg-cluster-postgresql-3","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "pg-cluster-postgresql-0,pg-cluster-postgresql-1,pg-cluster-postgresql-2,pg-cluster-postgresql-3"
+      The output should equal "pg-cluster-postgresql-3"
+      The status should be success
+    End
+
+    It "uses a fresh scale-in membership instead of the pod creation snapshot"
+      cluster_state='{"members":[{"name":"pg-cluster-postgresql-0","role":"leader","state":"running","pending_restart":false},{"name":"pg-cluster-postgresql-1","role":"replica","state":"streaming","pending_restart":true}]}'
+      When call pending_restart_candidate "$cluster_state" "pg-cluster-postgresql-0,pg-cluster-postgresql-1"
+      The output should equal "pg-cluster-postgresql-1"
+      The status should be success
+    End
+
+    It "extracts only live component pods from the Kubernetes API response"
+      pod_list='{"items":[{"metadata":{"name":"pg-cluster-postgresql-2"}},{"metadata":{"name":"pg-cluster-postgresql-0"}},{"metadata":{"name":"pg-cluster-postgresql-1","deletionTimestamp":"2026-07-28T00:00:00Z"}}]}'
+      When call component_pod_names_from_api "$pod_list"
+      The output should equal "pg-cluster-postgresql-0,pg-cluster-postgresql-2"
+      The status should be success
+    End
+
+    It "reads the current component membership from the Kubernetes API"
+      When call current_component_pod_names
+      The output should equal "pg-cluster-postgresql-0,pg-cluster-postgresql-2"
+      The status should be success
+    End
+
+    It "fails closed when the Kubernetes API membership read fails"
+      export KUBE_API_FAIL=1
+      When call current_component_pod_names
+      The output should equal ""
+      The status should be failure
+    End
+
+    It "restarts only when the current pod is the selected candidate"
       When call need_restart_for_pending "true" "pg-cluster-postgresql-0"
       The status should be success
     End
 
-    It "does not restart when pending but another pod is the pending leader"
+    It "does not restart when another pod is the selected candidate"
       When call need_restart_for_pending "true" "pg-cluster-postgresql-1"
       The status should be failure
     End
 
+    It "does not restart without a candidate"
+      When call need_restart_for_pending "true" ""
+      The status should be failure
+    End
+
     It "does not restart when not pending"
-      When call need_restart_for_pending "false" ""
+      When call need_restart_for_pending "false" "pg-cluster-postgresql-0"
       The status should be failure
     End
   End
