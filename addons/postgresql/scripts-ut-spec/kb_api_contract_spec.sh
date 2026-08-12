@@ -172,13 +172,31 @@ EOF
   It "advances the chart identity when immutable ComponentDefinitions change"
     When call chart_version
     The status should eq 0
-    The output should eq "1.2.0-alpha.2"
+    The output should eq "1.2.0-alpha.3"
   End
 
   It "publishes every ComponentDefinition under the advanced immutable identity"
-    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.2$'
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.3$'
     The status should eq 0
     The output should eq "7"
+  End
+
+  It "does not update the published alpha.2 ComponentDefinitions in place"
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.2$'
+    The status should eq 0
+    The output should eq "0"
+  End
+
+  It "keeps the previous alpha.2 identities compatible through the major prefix"
+    When call render_count '^[[:space:]]*- postgresql-\(12\|13\|14\|15\|16\|17\|18\)-$'
+    The status should eq 0
+    The output should eq "7"
+  End
+
+  It "does not bypass ComponentDefinition immutability"
+    When call render_count 'apps.kubeblocks.io/skip-immutable-check:'
+    The status should eq 0
+    The output should eq "0"
   End
 
   It "does not project a create-time pod-name list into the runtime"
