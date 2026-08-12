@@ -1,5 +1,5 @@
 #!/bin/bash
-set -exo pipefail
+set -eo pipefail
 
 # Supports: standalone (single node) and cluster (multi-shard) topologies
 # Strategy: first shard restores schema with ON CLUSTER, others wait for sync

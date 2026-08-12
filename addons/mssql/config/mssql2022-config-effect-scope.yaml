@@ -1,0 +1,98 @@
+# Copyright ApeCloud Co., Ltd. All Rights Reserved.
+# SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+
+staticParameters:
+  # Distributed transaction
+  - distributedtransaction.servertcpport
+  - distributedtransaction.enablextp
+
+  # Language settings
+  - language.lcid
+
+  # Memory settings
+  - memory.memorylimitmb
+  - memory.systemmemorylimitpercent
+  - memory.query_memory_grant_percent
+
+  # SQL Agent settings
+  - sqlagent.errorlogginglevel
+
+  # Telemetry settings
+  - telemetry.customerfeedback
+
+  # Trace flags
+  - traceflag.traceflag0
+  - traceflag.traceflag1
+  - traceflag.traceflag2
+  - traceflag.traceflag3
+
+  # Backup settings
+  - backup.compressiondefault
+  - backup.buffercount
+  - backup.maxtransfersize
+  - backup.blocksize
+
+  # Logging settings
+  - logging.errorlogfile
+  - logging.errorlogretentiondays
+  - logging.errorlogsizeinkb
+
+  # Resource Governor
+  - resourcegovernor.enabled
+  - resourcegovernor.classificationtimeout
+
+  # Auditing
+  - auditing.enabled
+  - auditing.logsize
+  - auditing.filepath
+  - auditing.retention
+
+  # Core dump settings
+  - coredump.captureminiandfull
+  - coredump.coredumptype
+
+  # SQL Agent settings
+  - sqlagent.startupwaitforalldb
+
+  # Contained database
+  - containeddatabase.enabled
+
+  # Cross-database ownership
+  - crossdbownership.enabled
+
+  # Network related
+  - network.forceencryption
+  - network.kerberoskeytabfile
+  - network.enablekerberos
+  - network.hostname
+
+immutableParameters:
+  # EULA
+  - eula.accepteula
+
+  # File locations
+  # Path dependent addon design, cannot be modified by users.
+  - filelocation.defaultdatadir
+  - filelocation.defaultlogdir
+  - filelocation.defaultdumpdir
+  - filelocation.defaultbackupdir
+
+  # Core dump settings
+  - coredump.customdumpdirectory
+
+  # HADR settings
+  - hadr.hadrenabled
+  - hadr.hadrendpointport
+  - hadr.hadrendpointname
+
+  # SQL Agent is required by addon automation jobs and triggers.
+  - sqlagent.enabled
+
+  # Network settings bound to KubeBlocks Service/containerPort and TLS contracts.
+  - network.tcpport
+  - network.tlscert
+  - network.tlskey
+  - network.tlsprotocols
+
+  # Telemetry settings
+  - telemetry.userrequestedlocalauditdirectory

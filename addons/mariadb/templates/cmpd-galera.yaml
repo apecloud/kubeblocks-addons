@@ -99,17 +99,29 @@ spec:
           - |
             set -e
             ALL_DB='*.*'
-            escape_sed_replacement() {
-              printf '%s' "$1" | sed 's/[|\/&]/\\&/g'
+            # Two-stage escaping. sql_escape makes a value safe inside a
+            # single-quoted SQL string literal (backslash first, then quote —
+            # under default sql_mode a trailing backslash would escape the
+            # closing quote; an embedded quote would break out of the literal
+            # and inject SQL). sed_repl_escape then makes the SQL-escaped value
+            # safe as a sed replacement with the '|' delimiter (escape
+            # backslash, ampersand, and the delimiter). The previous version
+            # only did sed-replacement escaping, so a password containing a
+            # quote broke provisioning or injected SQL.
+            sql_escape() {
+              printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
             }
-            account_name="$(escape_sed_replacement "${KB_ACCOUNT_NAME}")"
-            account_password="$(escape_sed_replacement "${KB_ACCOUNT_PASSWORD}")"
-            all_db="$(escape_sed_replacement "${ALL_DB}")"
+            sed_repl_escape() {
+              printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'
+            }
+            account_name="$(sed_repl_escape "$(sql_escape "${KB_ACCOUNT_NAME}")")"
+            account_password="$(sed_repl_escape "$(sql_escape "${KB_ACCOUNT_PASSWORD}")")"
+            all_db="$(sed_repl_escape "${ALL_DB}")"
             statement="$(
               printf '%s' "${KB_ACCOUNT_STATEMENT}" | sed \
-                -e "s"'|\${KB_ACCOUNT_NAME}|'"${account_name}"'|g' \
-                -e "s"'|\${KB_ACCOUNT_PASSWORD}|'"${account_password}"'|g' \
-                -e "s"'|\${ALL_DB}|'"${all_db}"'|g'
+                -e "s|\${KB_ACCOUNT_NAME}|${account_name}|g" \
+                -e "s|\${KB_ACCOUNT_PASSWORD}|${account_password}|g" \
+                -e "s|\${ALL_DB}|${all_db}|g"
             )"
             mariadb -u"${MARIADB_ROOT_USER}" -p"${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -e "${statement}"
     roleProbe:

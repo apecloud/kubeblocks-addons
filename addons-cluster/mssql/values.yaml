@@ -1,0 +1,108 @@
+nameOverride: ""
+fullnameOverride: ""
+
+replicas: 3
+monitorReplicas: 1
+storage: 20
+storageClassName: ""
+
+cpu: 1
+memory: 2
+
+version: 2022.19.0
+
+#
+# https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-configure-environment-variables?view=sql-server-ver16
+# MSSQL_PID	Set the SQL Server edition or product key. Possible values include:
+#  - Evaluation
+#  - Developer
+#  - Express
+#  - Web
+#  - Standard
+#  - Enterprise
+#  - EnterpriseCore
+#  - A product key
+# If specifying a product key, it must be in the form of #####-#####-#####-#####-#####, where '#' is a number or a letter.
+productEdition: "Developer"
+productKey: ""
+
+# Sets the default collation for SQL Server.
+# This overrides the default mapping of language ID (LCID) to collation.
+collation: "SQL_Latin1_General_CP1_CI_AS"
+
+# Whether host network is enabled.
+# When enabled, Availability Group (AG) supports cross-host access, which is required when creating disaster recovery instances across environments
+hostNetworkEnabled: false
+
+remoteSetting:
+  isStandby: false
+  sessionTimeoutSeconds: 30
+  primaryHost: ""
+  primaryPort: ""
+  primaryAgName: "ag1"
+  primaryAccountSecret:
+    name: ""
+    userKey: ""
+    passwordKey: ""
+  ## relative to the secret build with {{ .values.certificates }} in Primary instance
+  primaryCertificateSecret:
+    ## should use a secret in the same namespace of cluster
+    name: ""
+
+## @param account secrets Map of account configurations
+## Each key is the system account name which was defined in the componentdefinition.systemAccounts,
+##   and value contains secret reference information
+## Example:
+##   systemAccountSecret:
+##     nam:
+##       name: mssql-account-sa
+##       namespace: default
+systemAccountSecret: {}
+defaultDBName: ""
+
+## Restore from a KubeBlocks backup using apps.kubeblocks.io/v1 Cluster.spec.restore.
+## Example:
+## restore:
+##   source:
+##     apiGroup: dataprotection.kubeblocks.io
+##     kind: Backup
+##     name: backup-name
+##     namespace: default
+##   # Optional point-in-time restore timestamp. Restore is immutable after
+##   # Cluster creation, so do not drop or change this block during helm upgrade.
+##   # pitr: "2026-06-05T08:00:00Z"
+##   parameters:
+##     dataprotection.kubeblocks.io/volume-restore-policy: Parallel
+restore: {}
+
+## Deprecated restore path for older KB versions. On KB main / 1.2+, prefer
+## restore above. This annotation is rendered only when restore is empty.
+##
+## Set to the JSON annotation value, e.g.:
+##   '{"mssql":{"name":"backup-name","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+restoreFrom: ""
+
+## TLS configuration for the KubeBlocks componentSpec.
+## The addon ComponentDefinition owns TLS mount paths and exposes
+## KB_TLS_ENABLED to the container. This switch wires the cluster chart to that
+## component TLS contract.
+tls:
+  enabled: false
+  ## KubeBlocks or UserProvided. Use KubeBlocks for local/simple smoke tests.
+  ## Use UserProvided only when KBE or the user supplies a service-endpoint-aware
+  ## TLS secret.
+  issuer: KubeBlocks
+  ## Required when issuer is UserProvided. The secret must contain ca.crt,
+  ## tls.crt, and tls.key.
+  secretName: ""
+
+certificates:
+  custom: false
+  # Base64 encoded X.509 certificate file content
+  cert: ""
+  # Base64 encoded pvk format private key file content
+  privateKey: ""
+  # Base64 encoded pfx certificate file content, cert and privateKey can be empty when pfx is specified
+  pfx:
+  # raw decryption password if pvk private key or pfx certificate is encrypted
+  password: ""

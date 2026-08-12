@@ -1,3 +1,6 @@
+# Copyright ApeCloud Co., Ltd. All Rights Reserved.
+# SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+
 #shellcheck shell=bash
 
 source ./utils.sh

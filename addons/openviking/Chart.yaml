@@ -33,6 +33,6 @@ maintainers:
     url: https://github.com/volcengine/OpenViking
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.2.0"
   addon.kubeblocks.io/model: "rag"
   addon.kubeblocks.io/provider: "community"

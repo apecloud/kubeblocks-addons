@@ -1,0 +1,74 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: mssql-dynamic-modify-member
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mssql.annotations" . | nindent 4 }}
+spec:
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        role: primary
+        multiPodSelectionPolicy: Any
+      env:
+        - name: KB_POD_IP
+          valueFrom:
+            envRef:
+              envName: KB_POD_IP
+        - name: MSSQL_SA_USER
+          valueFrom:
+            envRef:
+              envName: MSSQL_SA_USER
+        - name: MSSQL_SA_PASSWORD
+          valueFrom:
+            envRef:
+               envName: MSSQL_SA_PASSWORD
+        - name: MSSQL_SERVER_PORT
+          valueFrom:
+            envRef:
+               envName: MSSQL_SERVER_PORT
+        - name: DEFAULT_AG_NAME
+          valueFrom:
+            envRef:
+               envName: DEFAULT_AG_NAME
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        memberServerName:
+          description: |
+            MSSQL server name for AG.
+          type: string
+        memberEndpoint:
+          description: |
+            New MSSQL server mirroring endpoint.
+            The format is {host}:{port}
+          type: string
+      type: object
+  actions:
+    - name: modify-member
+      failurePolicy: Fail
+      parameters:
+        - memberServerName
+        - memberEndpoint
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: update-config
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/ops_common.sh" | nindent 18 }}
+                  {{- .Files.Get "scripts/ops_modify_member.sh" | nindent 18 }}

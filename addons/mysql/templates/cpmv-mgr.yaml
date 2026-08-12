@@ -17,7 +17,6 @@ spec:
         - {{ include "mysql.componentDefNameMGR80" . }}
       releases:
         - 8.0.45
-        - 8.0.46
     - compDefs:
         - {{ include "mysql.componentDefNameMGR84" . }}
       releases:
@@ -29,13 +28,6 @@ spec:
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.45
         accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.45
-        init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
-        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
-    - name: 8.0.46
-      serviceVersion: 8.0.46
-      images:
-        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.46
-        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.46
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.4.9

@@ -1,0 +1,84 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+{{- range $version := .Values.versions }}
+{{- $cc := $.Files.Get (printf "config/mssql%s-config-effect-scope.yaml" $version.major) | fromYaml }}
+{{- $syscc := $.Files.Get (printf "config/mssql%s-sys-config-effect-scope.yaml" $version.major) | fromYaml }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "mssql.paramsDefName" (dict "major" $version.major "root" $) }}
+  labels:
+    {{- include "mssql.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "mssql.annotations" $ | nindent 4 }}
+spec:
+  componentDef: {{ include "mssql.componentDefByMajor" (dict "major" $version.major "root" $) }}
+  templateName: mssql-config
+  fileName: mssql.conf
+  fileFormatConfig:
+    format: ini
+  mergeReloadAndRestart: true
+  reloadStaticParamsBeforeRestart: false
+
+  parametersSchema:
+    topLevelKey: MSSQLParameters
+    cue: |-
+      {{- $.Files.Get (printf "config/mssql%s-config-constraint.cue" $version.major) | nindent 6 }}
+
+  {{- if hasKey $cc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $cc "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+  {{- if hasKey $cc "dynamicParameters" }}
+  dynamicParameters:
+    {{- $params := get $cc "dynamicParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+  {{- if hasKey $cc "immutableParameters" }}
+  immutableParameters:
+    {{- $params := get $cc "immutableParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "mssql.sysConfigurationsParamsDefName" (dict "major" $version.major "root" $) }}
+  labels:
+    {{- include "mssql.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "mssql.annotations" $ | nindent 4 }}
+spec:
+  componentDef: {{ include "mssql.componentDefByMajor" (dict "major" $version.major "root" $) }}
+  templateName: mssql-sys-configurations
+  fileName: sys-configurations.toml
+  fileFormatConfig:
+    format: toml
+
+  parametersSchema:
+    topLevelKey: SysConfigurationsParameters
+    cue: |-
+      {{- $.Files.Get (printf "config/mssql%s-sys-config-constraint.cue" $version.major) | nindent 6 }}
+
+  {{- if hasKey $syscc "dynamicParameters" }}
+  dynamicParameters:
+    {{- $params := get $syscc "dynamicParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+
+{{- end }}

@@ -1,0 +1,54 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: mssql-incremental-backup
+spec:
+  backupType: Incremental
+  env:
+    - name: clean_backup_after_failure
+      value: "true"
+    - name: ROOT_DIR
+      value: /var/opt/mssql
+    - name: BACKUP_DIR
+      value: $(ROOT_DIR)/backup
+    - name: DEFAULT_DB_NAME
+      value: db1
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/incremental-backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common-restore.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/incremental-restore.sh" | nindent 10 }}
+    postReady:
+    - job:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        runOnTargetPodNode: false
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "dataprotection/restore-audit-config.sh" | nindent 12 }}
