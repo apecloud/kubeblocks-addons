@@ -187,6 +187,7 @@ roleProbe:
   periodSeconds: {{ .Values.roleProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   exec:
+    container: mysql
     env:
       - name: PATH
         value: /kubeblocks/:/kubeblocks-tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
