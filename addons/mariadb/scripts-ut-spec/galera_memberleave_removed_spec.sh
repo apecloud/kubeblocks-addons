@@ -19,7 +19,7 @@ Describe "galera memberLeave removal (H10)"
   It "advances the chart version so the immutable lifecycle-action change gets a new ComponentDefinition name"
     When run sh -c "awk '\$1 == \"version:\" { print \$2; exit }' '${CHART}'"
     The status should be success
-    The output should equal "1.2.0-alpha.27"
+    The output should equal "1.2.0-alpha.32"
   End
 
   It "cmpd-galera declares no memberLeave lifecycle action"

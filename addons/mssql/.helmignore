@@ -1,0 +1,3 @@
+# Patterns to ignore when building Helm packages.
+# The tests/ dir holds script-level unit tests, not runtime chart content.
+tests/

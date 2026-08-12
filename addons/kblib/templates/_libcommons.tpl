@@ -1,3 +1,8 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
 {{/*
 Library of common utility functions implemented in Bash. Currently, the following functions are available:
 - call_func_with_retry: Call a bash function with retry capability.

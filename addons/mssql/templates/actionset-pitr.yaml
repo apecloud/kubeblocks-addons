@@ -1,0 +1,47 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: mssql-pitr-backup
+spec:
+  backupType: Continuous
+  env:
+    - name: clean_backup_after_failure
+      value: "true"
+    - name: ROOT_DIR
+      value: /var/opt/mssql
+    - name: BACKUP_DIR
+      value: $(ROOT_DIR)/backup
+    - name: DEFAULT_DB_NAME
+      value: db1
+    - name: BACKUP_INTERVAL
+      value: "600"
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/archive-backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/archive-restore.sh" | nindent 10 }}

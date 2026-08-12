@@ -236,8 +236,8 @@ EOF
 }
 
 function getToolConfigValue() {
-	local var=$1
-	cat "$toolConfig" | grep "$var" | awk '{print $NF}'
+    local var=$1
+    cat $toolConfig | grep "$var[[:space:]]*=" | awk '{print $NF}'
 }
 
 function configure_clickhouse_backup_custom_storage_if_encrypted() {
@@ -390,32 +390,13 @@ function set_clickhouse_backup_config_env() {
 		exit 1
 	fi
 
-	local provider=""
-	local access_key_id=""
-	local secret_access_key=""
-	local region=""
-	local endpoint=""
-	local bucket=""
-
-	IFS=$'\n'
-	for line in $(cat ${toolConfig}); do
-		line=$(eval echo $line)
-		if [[ $line == "access_key_id"* ]]; then
-			access_key_id=$(getToolConfigValue "$line")
-		elif [[ $line == "secret_access_key"* ]]; then
-			secret_access_key=$(getToolConfigValue "$line")
-		elif [[ $line == "region"* ]]; then
-			region=$(getToolConfigValue "$line")
-		elif [[ $line == "endpoint"* ]]; then
-			endpoint=$(getToolConfigValue "$line")
-		elif [[ $line == "root"* ]]; then
-			bucket=$(getToolConfigValue "$line")
-		elif [[ $line == "chunk_size"* ]]; then
-			chunk_size=$(getToolConfigValue "$line")
-		elif [[ $line == "provider"* ]]; then
-			provider=$(getToolConfigValue "$line")
-		fi
-	done
+	local provider=$(getToolConfigValue "provider")
+	local access_key_id=$(getToolConfigValue "access_key_id")
+	local secret_access_key=$(getToolConfigValue "secret_access_key")
+	local region=$(getToolConfigValue "region")
+	local endpoint=$(getToolConfigValue "endpoint")
+	local bucket=$(getToolConfigValue "root")
+	local chunk_size=$(getToolConfigValue "chunk_size")
 
 	if [[ ! $endpoint =~ ^https?:// ]]; then
 		endpoint="https://${endpoint}"
@@ -442,7 +423,9 @@ function set_clickhouse_backup_config_env() {
 	else
 		echo "Unsupported provider: $provider"
 	fi
-
+  if [ "$region" = "=" ]; then
+    region="us-east-1"
+  fi
 	export S3_ACCESS_KEY="${access_key_id}"
 	export S3_SECRET_KEY="${secret_access_key}"
 	export S3_REGION="${region}"

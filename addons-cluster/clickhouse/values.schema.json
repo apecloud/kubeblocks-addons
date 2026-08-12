@@ -4,34 +4,41 @@
   "title": "ClickHouse Cluster Configuration",
   "description": "Configuration schema for the ClickHouse Helm chart.",
   "properties": {
+    "nameOverride": {
+      "title": "Name Override",
+      "description": "Override the name of the chart.",
+      "type": "string",
+      "default": ""
+    },
+    "fullnameOverride": {
+      "title": "Full Name Override",
+      "description": "Override the full name of the chart.",
+      "type": "string",
+      "default": ""
+    },
     "version": {
       "title": "ClickHouse Cluster Version",
       "description": "Engine Version of the ClickHouse cluster.",
       "type": "string",
-      "default": "24.8.3"
+      "default": "25.9.7"
     },
     "mode": {
       "title": "Cluster Topology Mode",
-      "description": "Define the ClickHouse cluster topology mode.",
+      "description": "Define the ClickHouse cluster topology mode. 'withZookeeper' coordinates ClickHouse via external ZooKeeper clusters referenced through serviceRef.",
       "type": "string",
       "default": "cluster",
       "enum": [
         "standalone",
-        "cluster"
+        "cluster",
+        "withZookeeper"
       ]
     },
     "shards": {
       "title": "Shard Count",
       "description": "Number of shards in the ClickHouse cluster.",
       "type": "integer",
-      "default": 1,
+      "default": 2,
       "minimum": 1
-    },
-    "sharding": {
-      "title": "Sharding Configuration",
-      "description": "Enable or disable sharding within the ClickHouse cluster.",
-      "type": "boolean",
-      "default": true
     },
     "replicas": {
       "title": "Replica Count",
@@ -62,6 +69,26 @@
       "minimum": 0.5,
       "maximum": 1000
     },
+    "requests": {
+      "title": "CPU and Memory Requests",
+      "description": "Optional CPU and memory requests for the ClickHouse shard, overriding the default requests derived from cpu/memory.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "cpu": {
+          "title": "Request CPU",
+          "description": "CPU requests for the ClickHouse shard.",
+          "type": "string"
+        },
+        "memory": {
+          "title": "Request Memory",
+          "description": "Memory requests for the ClickHouse shard.",
+          "type": "string"
+        }
+      }
+    },
     "storageClassName": {
       "title": "Storage Class Name",
       "description": "Kubernetes storage class name to use for persistent volumes.",
@@ -78,6 +105,18 @@
       "default": 20,
       "minimum": 1,
       "maximum": 10000
+    },
+    "disableExporter": {
+      "title": "Disable Exporter",
+      "description": "Whether to disable the metrics exporter for ClickHouse components.",
+      "type": "boolean",
+      "default": false
+    },
+    "tolerations": {
+      "title": "ClickHouse Tolerations",
+      "description": "List of tolerations for scheduling ClickHouse pods.",
+      "type": "array",
+      "items": {}
     },
     "keeper": {
       "title": "ClickHouse Keeper Configuration",
@@ -142,6 +181,81 @@
         }
       }
     },
+    "zookeeper": {
+      "title": "External ZooKeeper Configuration",
+      "description": "External ZooKeeper clusters referenced via serviceRef. Only rendered in the 'withZookeeper' mode. The primary ZooKeeper replaces ClickHouse Keeper as the default <zookeeper>; up to 7 auxiliary clusters are rendered into <auxiliary_zookeepers>.",
+      "type": "object",
+      "properties": {
+        "primary": {
+          "title": "Primary ZooKeeper",
+          "description": "The primary ZooKeeper cluster reference. When set, it replaces ClickHouse Keeper.",
+          "type": "object",
+          "properties": {
+            "namespace": {
+              "title": "ZooKeeper Cluster Namespace",
+              "description": "Namespace of the referenced ZooKeeper cluster. Defaults to the ClickHouse cluster namespace when empty.",
+              "type": "string",
+              "default": ""
+            },
+            "cluster": {
+              "title": "ZooKeeper Cluster Name",
+              "description": "Name of the referenced ZooKeeper cluster.",
+              "type": "string",
+              "default": ""
+            },
+            "component": {
+              "title": "ZooKeeper Component Name",
+              "description": "Component name of the referenced ZooKeeper cluster.",
+              "type": "string",
+              "default": "zookeeper"
+            }
+          }
+        },
+        "auxiliary": {
+          "title": "Auxiliary ZooKeeper Clusters",
+          "description": "List of auxiliary ZooKeeper clusters, up to 7. They are rendered into <auxiliary_zookeepers> and referenced by replicated tables/databases, e.g. ReplicatedMergeTree('zookeeper2:/path', 'replica').",
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "title": "Auxiliary ZooKeeper Cluster",
+            "type": "object",
+            "properties": {
+              "namespace": {
+                "title": "Auxiliary ZooKeeper Namespace",
+                "description": "Namespace of the referenced auxiliary ZooKeeper cluster. Defaults to the ClickHouse cluster namespace when empty.",
+                "type": "string",
+                "default": ""
+              },
+              "cluster": {
+                "title": "Auxiliary ZooKeeper Cluster Name",
+                "description": "Name of the referenced auxiliary ZooKeeper cluster.",
+                "type": "string"
+              },
+              "component": {
+                "title": "Auxiliary ZooKeeper Component Name",
+                "description": "Component name of the referenced auxiliary ZooKeeper cluster.",
+                "type": "string",
+                "default": "zookeeper"
+              }
+            },
+            "required": ["cluster"]
+          }
+        }
+      }
+    },
+    "clickhouse": {
+      "title": "ClickHouse Configuration",
+      "description": "Additional ClickHouse settings.",
+      "type": "object",
+      "properties": {
+        "initClusterName": {
+          "title": "Init Cluster Name",
+          "description": "Name of the cluster used for ON CLUSTER statements and remote_servers configuration.",
+          "type": "string",
+          "default": "default"
+        }
+      }
+    },
     "service": {
       "title": "Service Configuration",
       "description": "Settings for Kubernetes services.",
@@ -181,6 +295,50 @@
           "default": "clickhouse-cluster-tls"
         }
       }
+    },
+    "extra": {
+      "title": "Extra Configuration",
+      "description": "Additional cluster-level configuration.",
+      "type": "object",
+      "properties": {
+        "terminationPolicy": {
+          "title": "Termination Policy",
+          "description": "Define Cluster termination policy. Options: DoNotTerminate, Delete, WipeOut.",
+          "type": "string",
+          "default": "Delete",
+          "enum": ["DoNotTerminate", "Delete", "WipeOut"]
+        }
+      }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "withZookeeper"
+          }
+        },
+        "required": ["mode"]
+      },
+      "then": {
+        "required": ["zookeeper"],
+        "properties": {
+          "zookeeper": {
+            "required": ["primary"],
+            "properties": {
+              "primary": {
+                "required": ["cluster"],
+                "properties": {
+                  "cluster": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }
