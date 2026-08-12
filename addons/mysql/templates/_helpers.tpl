@@ -233,6 +233,7 @@ lifecycleActions:
         - getrole
   switchover:
     exec:
+      container: mysql
       command:
         - /bin/sh
         - -c

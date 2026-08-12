@@ -150,6 +150,7 @@ exporter:
 {{- define "mysql-orc.spec.lifecycle.common" }}
 preTerminate:
   exec:
+    container: mysql
     command:
       - bash
       - -c
@@ -217,6 +218,7 @@ roleProbe:
         fi
 memberLeave:
   exec:
+    container: mysql
     command:
       - /bin/bash
       - -c
@@ -228,6 +230,7 @@ memberLeave:
         fi
 switchover:
   exec:
+    container: mysql
     command:
       - /bin/sh
       - -c
