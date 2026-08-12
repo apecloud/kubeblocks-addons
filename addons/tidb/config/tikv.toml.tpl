@@ -58,7 +58,7 @@
 {{- end }}
 
 {{- if gt $tikv_memory 0 }}
-{{-   /* block-cache = ~45% of total memory */ -}}
+{{- /* block-cache = ~45% of total memory */ -}}
 {{-   $cache_bytes := int ( mul $tikv_memory 0.45 ) }}
 {{-   $block_cache_val = $cache_bytes }}
 {{-   $block_cache_unit = "B" }}
