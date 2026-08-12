@@ -39,7 +39,7 @@
 {{- $rocksdb_max_bg_jobs := 2 }}
 
 {{- if gt $tikv_cpu 0 }}
-{{-   $readpool_max_threads = max 4 ( int ( mul $tikv_cpu 0.8 ) ) }}
+{{-   $readpool_max_threads = max 4 ( div ( mul $tikv_cpu 8 ) 10 ) }}
 {{-   $scheduler_worker_pool = max 4 ( min ( int ( sub $tikv_cpu 2 ) ) 8 ) }}
 {{-   $apply_pool_size = max 2 ( min ( int ( div $tikv_cpu 2 ) ) 8 ) }}
 {{-   $store_pool_size = max 2 ( min ( int ( div $tikv_cpu 3 ) ) 4 ) }}
@@ -59,7 +59,7 @@
 
 {{- if gt $tikv_memory 0 }}
 {{- /* block-cache = ~45% of total memory */ -}}
-{{-   $cache_bytes := int ( mul $tikv_memory 0.45 ) }}
+{{-   $cache_bytes := div ( mul $tikv_memory 9 ) 20 }}
 {{-   $block_cache_val = $cache_bytes }}
 {{-   $block_cache_unit = "B" }}
 {{-   if ge $cache_bytes 1048576 }}
@@ -475,7 +475,7 @@ pd-store-heartbeat-tick-interval = "10s"
 ## When Region size change exceeds this config, TiKV will check whether the Region should be split
 ## or not. To reduce the cost of scanning data in the checking process, you can set the value to
 ## 32MB during checking and set it back to the default value in normal operations.
-region-split-check-diff = {{ $region_split_check_diff }}
+region-split-check-diff = "{{ $region_split_check_diff }}"
 
 ## The interval of triggering Region split check.
 split-region-check-tick-interval = "10s"
@@ -497,7 +497,7 @@ raft-log-gc-count-limit = 73728
 
 ## When the approximate size of Raft log entries exceeds this value, GC will be forced trigger.
 ## It's recommanded to set it to 3/4 of `region-split-size`.
-raft-log-gc-size-limit = {{ $raft_log_gc_size_limit }}
+raft-log-gc-size-limit = "{{ $raft_log_gc_size_limit }}"
 
 ## Old Raft logs could be reserved if `raft_log_gc_threshold` is not reached.
 ## GC them after ticks `raft_log_reserve_max_ticks` times.
@@ -640,7 +640,7 @@ info-log-dir = ""
 info-log-level = "info"
 
 [rocksdb.defaultcf]
-write-buffer-size = {{ $defaultcf_write_buffer_size }}
+write-buffer-size = "{{ $defaultcf_write_buffer_size }}"
 
 [raftdb.defaultcf]
 ## Recommend to set it the same as `rocksdb.defaultcf.compression-per-level`.
@@ -648,7 +648,7 @@ compression-per-level = ["no", "no", "lz4", "lz4", "lz4", "zstd", "zstd"]
 block-size = "64KB"
 
 ## Recommend to set it the same as `rocksdb.defaultcf.write-buffer-size`.
-write-buffer-size = {{ $defaultcf_write_buffer_size }}
+write-buffer-size = "{{ $defaultcf_write_buffer_size }}"
 max-write-buffer-number = 5
 min-write-buffer-number-to-merge = 1
 
