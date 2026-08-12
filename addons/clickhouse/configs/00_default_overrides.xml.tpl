@@ -60,7 +60,18 @@
       {{- end }}
     </{{ $clusterName }}>
   </remote_servers>
-  {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
+  {{- if (index . "CLICKHOUSE_ZOOKEEPER_POD_FQDNS") }}
+  <!-- Primary ZooKeeper from service reference -->
+  <zookeeper>
+    <root>/clickhouse_{{ $.KB_CLUSTER_NAME }}</root>
+    {{- range $_, $host := splitList "," .CLICKHOUSE_ZOOKEEPER_POD_FQDNS }}
+    <node>
+      <host>{{ $host }}</host>
+      <port>2181</port>
+    </node>
+    {{- end }}
+  </zookeeper>
+  {{- else if (index . "CH_KEEPER_POD_FQDN_LIST") }}
   <!-- Zookeeper configuration -->
   <zookeeper>
     {{- range $_, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
@@ -75,6 +86,35 @@
     </node>
     {{- end }}
   </zookeeper>
+  {{- end }}
+  <!-- Auxiliary ZooKeeper clusters from service references, up to 7.
+       They can be referenced when creating replicated tables/databases,
+       e.g. ReplicatedMergeTree('zookeeper2:/path', 'replica'). -->
+  {{- $auxCount := 0 }}
+  {{- range $i := until 7 }}
+  {{- $varName := printf "CLICKHOUSE_AUX_ZOOKEEPER_%d_POD_FQDNS" (add $i 1) }}
+  {{- if (index $ $varName) }}
+  {{- $auxCount = add $auxCount 1 }}
+  {{- end }}
+  {{- end }}
+  {{- if gt $auxCount 0 }}
+  <auxiliary_zookeepers>
+    {{- range $i := until 7 }}
+    {{- $varName := printf "CLICKHOUSE_AUX_ZOOKEEPER_%d_POD_FQDNS" (add $i 1) }}
+    {{- $podFQDNs := index $ $varName }}
+    {{- if $podFQDNs }}
+    <zookeeper{{ add $i 2 }}>
+      <root>/clickhouse_{{ $.KB_CLUSTER_NAME }}</root>
+      {{- range $_, $host := splitList "," $podFQDNs }}
+      <node>
+        <host>{{ $host }}</host>
+        <port>2181</port>
+      </node>
+      {{- end }}
+    </zookeeper{{ add $i 2 }}>
+    {{- end }}
+    {{- end }}
+  </auxiliary_zookeepers>
   {{- end }}
   <!-- Prometheus metrics -->
   <prometheus>
