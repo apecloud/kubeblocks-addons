@@ -85,7 +85,10 @@ update_configmap_and_sync_to_local_file() {
   update_cm_key_value "$name" "$namespace" "$key" "$new" || return $?
   echo "configmap/$name updated successfully with $key=$new"
 
-  echo $new >> $replicas_history_file
+  printf '%s\n' "$new" >>"$replicas_history_file" || {
+    echo "Failed to write $key to local file $replicas_history_file." >&2
+    return 1
+  }
   echo "the new value $new has been written to the local file $replicas_history_file"
 }
 

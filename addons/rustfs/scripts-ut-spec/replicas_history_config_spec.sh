@@ -5,8 +5,9 @@ Describe "RustFS replicas history ConfigMap contract"
     case_dir=$(mktemp -d -t rustfs-replicas-history-XXXXXX) || return $?
     mock_bin="${case_dir}/bin"
     call_log="${case_dir}/kubectl.calls"
-    history_file="${case_dir}/RUSTFS_REPLICAS_HISTORY"
-    mkdir -p "${mock_bin}" || return $?
+    history_dir="${case_dir}/history"
+    history_file="${history_dir}/RUSTFS_REPLICAS_HISTORY"
+    mkdir -p "${mock_bin}" "${history_dir}" || return $?
     : >"${call_log}" || return $?
 
     cat >"${mock_bin}/kubectl" <<'EOF'
@@ -101,6 +102,15 @@ EOF
     When call run_case fail success success success
     The status should be failure
     The stderr should include "Failed to check ConfigMap"
+    The path "${history_file}" should not be exist
+  End
+
+  It "fails closed when confirmed ConfigMap history cannot be written locally"
+    rm -rf "${history_dir}"
+    When call run_case present success success success
+    The status should be failure
+    The stderr should include "Failed to write RUSTFS_REPLICAS_HISTORY"
+    The output should not include "written to the local file"
     The path "${history_file}" should not be exist
   End
 End
