@@ -25,6 +25,10 @@ memory: 2
 ##
 storage: 20
 
+config:
+  # if not empty, will be set to qdrant's config's storage.collection.replication_factor
+  default_replication_factor: ""
+
 ## customized default values to override kblib chart's values
 extra:
   terminationPolicy: Delete
