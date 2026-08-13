@@ -29,10 +29,13 @@ Describe "RustFS beta.10 version pin"
 
   prepare_chart() {
     tmp_dir=$(mktemp -d -t rustfs-version-pin-XXXXXX) || return $?
-    mkdir -p "${tmp_dir}/addons" || return $?
+    mkdir -p "${tmp_dir}/addons" "${tmp_dir}/addons-cluster" || return $?
     cp -R "$(repo_root)/addons/rustfs" "${tmp_dir}/addons/rustfs" || return $?
     cp -R "$(repo_root)/addons/kblib" "${tmp_dir}/addons/kblib" || return $?
+    cp -R "$(repo_root)/addons-cluster/rustfs" "${tmp_dir}/addons-cluster/rustfs" || return $?
+    cp -R "$(repo_root)/addons-cluster/kblib" "${tmp_dir}/addons-cluster/kblib" || return $?
     helm dependency build "${tmp_dir}/addons/rustfs" >/dev/null || return $?
+    helm dependency build "${tmp_dir}/addons-cluster/rustfs" >/dev/null || return $?
   }
 
   cleanup_chart() {
@@ -98,8 +101,8 @@ Describe "RustFS beta.10 version pin"
   }
 
   validate_readme_boundaries() {
-    addon_render=$(helm template test "$(repo_root)/addons/rustfs") || return $?
-    cluster_render=$(helm template test "$(repo_root)/addons-cluster/rustfs") || return $?
+    addon_render=$(helm template test "${tmp_dir}/addons/rustfs") || return $?
+    cluster_render=$(helm template test "${tmp_dir}/addons-cluster/rustfs") || return $?
     printf '%s\n---\n%s\n' "${addon_render}" "${cluster_render}" | ruby -ryaml -e '
       readme = File.read(ARGV.fetch(0))
       documents = YAML.load_stream($stdin.read).select { |item| item.is_a?(Hash) }
@@ -113,6 +116,7 @@ Describe "RustFS beta.10 version pin"
       component = cluster.dig("spec", "componentSpecs").fetch(0)
       replica_limit = component_definition.dig("spec", "replicasLimit")
       member_leave = component_definition.dig("spec", "lifecycleActions", "memberLeave", "exec", "command").join("\n")
+      abort "rendered Cluster unexpectedly sets serviceVersion" if component.key?("serviceVersion")
 
       required = [
         release.fetch("serviceVersion"),
@@ -121,6 +125,7 @@ Describe "RustFS beta.10 version pin"
         "creates #{component.fetch("replicas")} replicas",
         "does not set `serviceVersion`",
         "Scale-in is rejected",
+        "#{replica_limit.fetch("minReplicas")} through #{replica_limit.fetch("maxReplicas")} replicas",
         "`minReplicas: #{replica_limit.fetch("minReplicas")}`"
       ]
       missing = required.reject { |text| readme.include?(text) }
