@@ -7,14 +7,6 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-wait_for_bootstrap_service() {
-  bootstrap_service_http_uri="$1"
-  until qdrant_curl -sf --max-time 10 "${bootstrap_service_http_uri}/cluster" >/dev/null; do
-    echo "INFO: wait for bootstrap node starting..."
-    sleep 10;
-  done
-}
-
 qdrant_claim_initial_bootstrap() {
   qdrant_pod_uid="${CURRENT_POD_UID:-}"
   if [ -z "$qdrant_pod_uid" ]; then
@@ -109,7 +101,6 @@ qdrant_setup_main() {
       ;;
     join)
       echo "JOIN EXISTING CLUSTER: ${bootstrap_service_host}"
-      wait_for_bootstrap_service "$bootstrap_service_http_uri"
       exec ./qdrant --bootstrap "$bootstrap_service_p2p_uri" --uri "${SCHEME}://${current_pod_fqdn}:6335"
       ;;
     *)
