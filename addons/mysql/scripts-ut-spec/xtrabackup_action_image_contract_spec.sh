@@ -273,6 +273,16 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
       "$(chart_path)/dataprotection/xtrabackup-incremental-restore.sh"
   }
 
+  verify_stale_failure_marker_cleanup() {
+    for script in backup.sh xtrabackup-incremental-backup.sh; do
+      awk '
+        /rm -f "\$\{DP_BACKUP_INFO_FILE\}\.exit"/ { cleaned = 1 }
+        /xtrabackup --backup/ { exit !cleaned }
+        END { if (!cleaned) exit 1 }
+      ' "$(chart_path)/dataprotection/${script}" || return 1
+    done
+  }
+
   It "resolves the exact MySQL 5.7 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 5.7.44
     The status should be success
@@ -281,6 +291,11 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "cleans every transient backup directory before reuse"
     When call verify_transient_dir_cleanup
+    The status should be success
+  End
+
+  It "clears a stale backup failure marker before retrying"
+    When call verify_stale_failure_marker_cleanup
     The status should be success
   End
 

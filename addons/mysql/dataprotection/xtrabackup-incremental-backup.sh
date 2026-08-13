@@ -13,6 +13,7 @@ function handle_exit() {
   fi
 }
 trap handle_exit EXIT
+rm -f "${DP_BACKUP_INFO_FILE}.exit"
 
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 
