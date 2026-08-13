@@ -480,6 +480,9 @@
 
 	// The total number of files that RocksDB can open
 	"rocksdb.max-open-files": int & >=-1 | *20000
+	// The maximum number of concurrent background jobs (compactions + flushes) in RocksDB.
+	"rocksdb.max-background-jobs": int & >=1 | *2
+
 
 	// The number of background threads in RocksDB. When you modify the size of the RocksDB thread pool, refer to [Performance tuning for TiKV thread pools](/tune-tikv-thread-performance.md#performance-tuning-for-tikv-thread-pools).
 	"raftdb.max-background-jobs": int & >=2 | *4
@@ -763,6 +766,14 @@
 	// Specifies the amount of data sampled by Heap Profiling each time, rounding up to the nearest power of 2.
 	"memory.profiling-sample-per-bytes": string | *"512KiB"
 
+
+	// The size of the memtable (write buffer) for RocksDB default column family.
+	// Larger values reduce write amplification but may increase recovery time.
+	"rocksdb.defaultcf.write-buffer-size": string | *"128MB"
+
+	// The size of the memtable (write buffer) for RaftDB default column family.
+	// Recommend to set it the same as rocksdb.defaultcf.write-buffer-size.
+	"raftdb.defaultcf.write-buffer-size": string | *"128MB"
 	...
 }
 
