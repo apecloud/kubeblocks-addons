@@ -97,6 +97,39 @@ Describe "RustFS beta.10 version pin"
     validate_rendered_release
   }
 
+  validate_readme_boundaries() {
+    addon_render=$(helm template test "$(repo_root)/addons/rustfs") || return $?
+    cluster_render=$(helm template test "$(repo_root)/addons-cluster/rustfs") || return $?
+    printf '%s\n---\n%s\n' "${addon_render}" "${cluster_render}" | ruby -ryaml -e '
+      readme = File.read(ARGV.fetch(0))
+      documents = YAML.load_stream($stdin.read).select { |item| item.is_a?(Hash) }
+      component_definition = documents.find { |item| item["kind"] == "ComponentDefinition" }
+      component_version = documents.find { |item| item["kind"] == "ComponentVersion" }
+      cluster = documents.find { |item| item["kind"] == "Cluster" }
+      abort "rendered source objects are missing" unless component_definition && component_version && cluster
+
+      release = component_version.dig("spec", "releases").fetch(0)
+      images = release.fetch("images")
+      component = cluster.dig("spec", "componentSpecs").fetch(0)
+      replica_limit = component_definition.dig("spec", "replicasLimit")
+      member_leave = component_definition.dig("spec", "lifecycleActions", "memberLeave", "exec", "command").join("\n")
+
+      required = [
+        release.fetch("serviceVersion"),
+        images.fetch("rustfs"),
+        images.fetch("init"),
+        "creates #{component.fetch("replicas")} replicas",
+        "does not set `serviceVersion`",
+        "Scale-in is rejected",
+        "`minReplicas: #{replica_limit.fetch("minReplicas")}`"
+      ]
+      missing = required.reject { |text| readme.include?(text) }
+      abort "README boundary facts are missing: #{missing.join(" | ")}" unless missing.empty?
+      abort "memberLeave no longer rejects scale-in" unless member_leave.include?("does not support scale-in") && member_leave.match?(/exit\s+1/)
+      puts "README matches rendered version, replica, and scale-in boundaries"
+    ' "$(repo_root)/addons/rustfs/README.md"
+  }
+
   validate_cleanup_rejects_false_success() {
     chart_dir=${tmp_dir:?}
     fake_rm="${chart_dir}/fake-rm"
@@ -143,6 +176,12 @@ Describe "RustFS beta.10 version pin"
     When call validate_with_beta9_role_probe_image
     The status should be failure
     The stderr should include "unexpected rendered release"
+  End
+
+  It "keeps the README aligned with rendered version and scaling boundaries"
+    When call validate_readme_boundaries
+    The status should be success
+    The output should eq "README matches rendered version, replica, and scale-in boundaries"
   End
 
   It "rejects cleanup success while the chart tree still exists"
