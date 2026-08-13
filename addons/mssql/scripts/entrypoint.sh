@@ -1477,7 +1477,8 @@ function configure_initialized {
 }
 
 function mark_as_initialized() {
-  touch $init_flag
+  touch "$init_flag"
+  rm -f "$restart_configure_flag"
 }
 
 # Run a configure_* function for the background init job and report its real exit code.
@@ -1801,6 +1802,7 @@ function run_internal_mode() {
         *) return 2 ;;
       esac
       init_flag="$ROOT_DIR/.initialized"
+      restart_configure_flag="$ROOT_DIR/.restart-configure"
       run_configure_step "$configure_function"
       mark_as_initialized
       ;;
@@ -1837,15 +1839,17 @@ cp /config/mssql.conf /var/opt/mssql/mssql.conf
 /opt/mssql/bin/mssql-conf set hadr.hadrenabled 1
 configure_tls
 init_flag="$ROOT_DIR/.initialized"
+restart_configure_flag="$ROOT_DIR/.restart-configure"
 
 if [ "$IS_REMOTE_STANDBY" = "false" ] && [ -f $REMOTE_STANDBY_FLAG ]; then
   # when remote standby instance promote to new primary, remove the init flag, do primary configuration
-  rm $init_flag
+  rm -f "$init_flag" "$restart_configure_flag"
 fi
 
 configure_function=""
-if [ -f "$init_flag" ]; then
+if [ -f "$init_flag" ] || [ -f "$restart_configure_flag" ]; then
   log "configure initialized"
+  touch "$restart_configure_flag"
   rm -f "$init_flag"
   configure_function=configure_initialized
 else
