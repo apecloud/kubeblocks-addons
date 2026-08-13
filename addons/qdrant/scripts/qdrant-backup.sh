@@ -29,15 +29,10 @@ function save_backup_size() {
     echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
 }
 
-if [ "${TLS_ENABLED:-}" = "true" ]; then
-  endpoint=https://${DP_DB_HOST}:6333
-  CURL_TLS="-k"
-else
-  endpoint=http://${DP_DB_HOST}:6333
-  CURL_TLS=""
-fi
+qdrant_set_tls_variables
+endpoint="$SCHEME://${DP_DB_HOST}:6333"
 
-collectionRes=$(qdrant_curl -sS -f ${endpoint}/collections)
+collectionRes=$(qdrant_curl --retry 3 -sS -f ${endpoint}/collections)
 if ! echo "${collectionRes}" | jq -e . >/dev/null 2>&1; then
   echo "failed to parse collections response: ${collectionRes}"
   exit 1
@@ -50,7 +45,7 @@ fi
 # snapshot all collections
 for c in ${collections}; do
   echo "INFO: start to snapshot collection ${c}..."
-  snapshot=$(qdrant_curl -sS -f -XPOST ${endpoint}/collections/${c}/snapshots)
+  snapshot=$(qdrant_curl --retry 3 -sS -f -XPOST ${endpoint}/collections/${c}/snapshots)
   status=$(echo "${snapshot}" | jq -r '.status // empty')
   if [ "${status}" != "ok" ]; then
     echo "backup failed, status: ${status}"
@@ -62,8 +57,8 @@ for c in ${collections}; do
     echo "backup failed, snapshot name is empty"
     exit 1
   fi
-  qdrant_curl -sS -f -L ${endpoint}/collections/${c}/snapshots/${name} | datasafed push - "/${c}.snapshot"
-  qdrant_curl -sS -f -XDELETE ${endpoint}/collections/${c}/snapshots/${name} >/dev/null
+  qdrant_curl --retry 3 -sS -f -L ${endpoint}/collections/${c}/snapshots/${name} | datasafed push - "/${c}.snapshot"
+  qdrant_curl --retry 3 -sS -f -XDELETE ${endpoint}/collections/${c}/snapshots/${name} >/dev/null
   echo "INFO: snapshot collection ${c} successfully."
 done
 save_backup_size

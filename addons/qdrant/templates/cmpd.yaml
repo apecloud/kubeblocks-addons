@@ -64,8 +64,24 @@ spec:
           optional: true
     - name: TLS_MOUNT_PATH
       value: {{ .Values.tlsMountPath }}
-
+    - name: COMP_REPLICA_COUNT
+      valueFrom:
+        componentVarRef:
+          replicas: Required
+  roles:
+    - name: leader
+      updatePriority: 2
+      participatesInQuorum: true
+      isExclusive: true
+    - name: follower
+      updatePriority: 1
+      participatesInQuorum: true
   lifecycleActions:
+    roleProbe:
+      periodSeconds: 10
+      exec:
+        container: qdrant
+        command: ["/qdrant/scripts/role-probe.sh"]
     memberLeave:
       timeoutSeconds: 60
       exec:
