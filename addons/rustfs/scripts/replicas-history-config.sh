@@ -6,8 +6,11 @@ create_cm_if_not_exist() {
   name="$1"
   namespace="$2"
 
-  kubectl get configmaps "$name" -n "$namespace"
-  if [ $? -ne 0 ]; then
+  existing=$(kubectl get configmaps "$name" -n "$namespace" --ignore-not-found -o name) || {
+    echo "Failed to check ConfigMap $namespace/$name." >&2
+    return 1
+  }
+  if [ -z "$existing" ]; then
     cat <<EOF | kubectl create -f -
 apiVersion: v1
 kind: ConfigMap
@@ -19,6 +22,11 @@ metadata:
     app.kubernetes.io/instance: {{ .CLUSTER_NAME }}
     apps.kubeblocks.io/component-name: {{ .CLUSTER_COMPONENT_NAME }}
 EOF
+    create_status=$?
+    if [ "$create_status" -ne 0 ]; then
+      echo "Failed to create ConfigMap $namespace/$name." >&2
+      return "$create_status"
+    fi
   fi
 }
 
@@ -27,7 +35,11 @@ get_cm_key_value() {
   namespace="$2"
   key="$3"
 
-  kubectl get configmaps "$name" -n "$namespace" -o jsonpath="{.data.$key}" | tr -d '[]'
+  value=$(kubectl get configmaps "$name" -n "$namespace" -o jsonpath="{.data.$key}") || {
+    echo "Failed to read $key from ConfigMap $namespace/$name." >&2
+    return 1
+  }
+  printf '%s' "$value" | tr -d '[]'
 }
 
 update_cm_key_value() {
@@ -36,7 +48,11 @@ update_cm_key_value() {
   key="$3"
   new_value="$4"
 
-  kubectl patch configmap "$name" -n "$namespace" --type strategic -p "{\"data\":{\"$key\":\"$new_value\"}}"
+  kubectl patch configmap "$name" -n "$namespace" --type strategic \
+    -p "{\"data\":{\"$key\":\"$new_value\"}}" || {
+    echo "Failed to update $key in ConfigMap $namespace/$name." >&2
+    return 1
+  }
 }
 
 get_cm_key_new_value() {
@@ -61,12 +77,12 @@ update_configmap_and_sync_to_local_file() {
   key="RUSTFS_REPLICAS_HISTORY"
   replicas="$RUSTFS_COMP_REPLICAS"
 
-  create_cm_if_not_exist "$name" "$namespace"
+  create_cm_if_not_exist "$name" "$namespace" || return $?
 
-  cur=$(get_cm_key_value "$name" "$namespace" "$key")
+  cur=$(get_cm_key_value "$name" "$namespace" "$key") || return $?
   new=$(get_cm_key_new_value "$cur" "$replicas")
 
-  update_cm_key_value "$name" "$namespace" "$key" "$new"
+  update_cm_key_value "$name" "$namespace" "$key" "$new" || return $?
   echo "configmap/$name updated successfully with $key=$new"
 
   echo $new >> $replicas_history_file
