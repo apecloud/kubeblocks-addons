@@ -16,7 +16,15 @@ printf '%s\n' "$*" >>"${KUBECTL_CALL_LOG}"
 
 case "$*" in
   "get configmaps rustfs-rustfs-configuration -n test --ignore-not-found -o name")
-    case "${KUBECTL_GET_MODE:-present}" in
+    get_count_file="${KUBECTL_GET_COUNT_FILE}"
+    get_count=$(cat "${get_count_file}")
+    get_count=$((get_count + 1))
+    printf '%s\n' "${get_count}" >"${get_count_file}"
+    get_mode="${KUBECTL_GET_MODE:-present}"
+    if [ "${get_count}" -gt 1 ] && [ -n "${KUBECTL_RECHECK_MODE:-}" ]; then
+      get_mode="${KUBECTL_RECHECK_MODE}"
+    fi
+    case "${get_mode}" in
       present) printf '%s\n' 'configmap/rustfs-rustfs-configuration' ;;
       absent) : ;;
       fail) exit 41 ;;
@@ -52,6 +60,8 @@ EOF
 
     export PATH="${mock_bin}:${PATH}"
     export KUBECTL_CALL_LOG="${call_log}"
+    export KUBECTL_GET_COUNT_FILE="${case_dir}/kubectl.get-count"
+    printf '0\n' >"${KUBECTL_GET_COUNT_FILE}" || return $?
     export RUSTFS_COMP_REPLICAS=8
   }
 
@@ -64,6 +74,7 @@ EOF
       KUBECTL_READ_MODE="${2:-success}" \
       KUBECTL_CREATE_MODE="${3:-success}" \
       KUBECTL_PATCH_MODE="${4:-success}" \
+      KUBECTL_RECHECK_MODE="${5:-}" \
       "${SHELLSPEC_SHELL}" "${case_dir}/replicas-history-config.sh"
   }
 
@@ -111,6 +122,27 @@ EOF
     The status should be failure
     The stderr should include "Failed to write RUSTFS_REPLICAS_HISTORY"
     The output should not include "written to the local file"
+    The path "${history_file}" should not be exist
+  End
+
+  It "continues when another pod creates the missing ConfigMap concurrently"
+    When call run_case absent success fail success present
+    The status should be success
+    The output should include "updated successfully"
+    The contents of file "${history_file}" should eq "[4,8]"
+  End
+
+  It "fails closed when create fails and the ConfigMap remains absent"
+    When call run_case absent success fail success absent
+    The status should be failure
+    The stderr should include "Failed to create ConfigMap"
+    The path "${history_file}" should not be exist
+  End
+
+  It "fails closed when create fails and existence cannot be rechecked"
+    When call run_case absent success fail success fail
+    The status should be failure
+    The stderr should include "Failed to create ConfigMap"
     The path "${history_file}" should not be exist
   End
 End

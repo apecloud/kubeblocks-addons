@@ -24,6 +24,10 @@ metadata:
 EOF
     create_status=$?
     if [ "$create_status" -ne 0 ]; then
+      existing=$(kubectl get configmaps "$name" -n "$namespace" --ignore-not-found -o name) || existing=""
+      if [ -n "$existing" ]; then
+        return 0
+      fi
       echo "Failed to create ConfigMap $namespace/$name." >&2
       return "$create_status"
     fi
