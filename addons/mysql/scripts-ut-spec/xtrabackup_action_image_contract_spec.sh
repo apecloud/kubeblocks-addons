@@ -283,6 +283,17 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     done
   }
 
+  verify_restore_markers_are_terminal() {
+    for script in restore.sh xtrabackup-incremental-restore.sh; do
+      awk '
+        /chmod -R 0777/ { permissions_ready = 1 }
+        /touch .*\.xtrabackup_restore/ { if (!permissions_ready) exit 1; restored = 1 }
+        /touch .*\.restore_new_cluster/ { if (!restored) exit 1; new_cluster = 1 }
+        END { if (!permissions_ready || !restored || !new_cluster) exit 1 }
+      ' "$(chart_path)/dataprotection/${script}" || return 1
+    done
+  }
+
   It "resolves the exact MySQL 5.7 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 5.7.44
     The status should be success
@@ -296,6 +307,12 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "clears a stale backup failure marker before retrying"
     When call verify_stale_failure_marker_cleanup
+    The status should be success
+  End
+
+
+  It "publishes restore success markers after all restore work succeeds"
+    When call verify_restore_markers_are_terminal
     The status should be success
   End
 

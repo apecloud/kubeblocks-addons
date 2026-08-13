@@ -59,11 +59,11 @@ rm -rf ${INCS_DIR}/${DP_BACKUP_NAME}
 
 # 4. restore
 xtrabackup --move-back --target-dir=${BASE_DIR} --datadir=${DATA_DIR}
+rm -rf ${BASE_DIR}
+rm -rf ${INCS_DIR}
+chmod -R 0777 ${DATA_DIR}
 touch ${DATA_DIR}/.xtrabackup_restore
 if [ "${BACKUP_FOR_STANDBY}" != "true" ]; then
    touch ${DATA_DIR}/.restore_new_cluster
 fi
-rm -rf ${BASE_DIR}
-rm -rf ${INCS_DIR}
-chmod -R 0777 ${DATA_DIR}
 echo "Restore completed!"
