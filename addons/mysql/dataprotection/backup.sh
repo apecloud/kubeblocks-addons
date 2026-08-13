@@ -22,6 +22,7 @@ if [ "${IMAGE_TAG:?xtrabackup tool version is required}" == "2.4" ]; then
 fi
 
 TMP_DIR=${MYSQL_DIR}/xtrabackup-temp
+rm -rf ${TMP_DIR}
 mkdir -p ${TMP_DIR}
 xtrabackup --backup --safe-slave-backup --slave-info ${lock_per_table_ddl} --stream=xbstream \
   --host=${DP_DB_HOST} --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} \

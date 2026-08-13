@@ -247,10 +247,41 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     verify_all_action_image_mappings
   }
 
+  verify_transient_dir_cleanup() {
+    awk '
+      /TMP_DIR=|BASE_DIR=|INCS_DIR=/ {
+        var = $0
+        sub(/=.*/, "", var)
+        cleaned[var] = 0
+      }
+      /rm -rf \$\{(TMP_DIR|BASE_DIR|INCS_DIR)\}/ {
+        line = $0
+        sub(/^.*\$\{/, "", line)
+        sub(/\}.*/, "", line)
+        cleaned[line] = 1
+      }
+      /mkdir -p \$\{(TMP_DIR|BASE_DIR|INCS_DIR)\}/ {
+        line = $0
+        sub(/^.*\$\{/, "", line)
+        sub(/\}.*/, "", line)
+        if (!cleaned[line]) exit 1
+      }
+    ' \
+      "$(chart_path)/dataprotection/backup.sh" \
+      "$(chart_path)/dataprotection/restore.sh" \
+      "$(chart_path)/dataprotection/xtrabackup-incremental-backup.sh" \
+      "$(chart_path)/dataprotection/xtrabackup-incremental-restore.sh"
+  }
+
   It "resolves the exact MySQL 5.7 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 5.7.44
     The status should be success
     The output should equal "docker.io/apecloud/percona-xtrabackup:2.4@sha256:29ab5ecc6f1902b7e8713d5e9d108eeec7d484e1302b63bbcdaad1bc3494eabc"
+  End
+
+  It "cleans every transient backup directory before reuse"
+    When call verify_transient_dir_cleanup
+    The status should be success
   End
 
   It "resolves the exact MySQL 8.0 full-backup Job image"

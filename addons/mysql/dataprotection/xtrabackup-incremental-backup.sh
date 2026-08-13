@@ -81,6 +81,7 @@ fi
 
 # 3. do incremental xtrabackup
 TMP_DIR=${MYSQL_DIR}/xtrabackup-temp
+rm -rf ${TMP_DIR}
 mkdir -p ${TMP_DIR}
 xtrabackup --backup --safe-slave-backup --slave-info ${lock_per_table_ddl} --stream=xbstream \
   --host=${DP_DB_HOST} --port=${DP_DB_PORT} \

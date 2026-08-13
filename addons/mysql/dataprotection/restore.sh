@@ -5,6 +5,7 @@ export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 mkdir -p ${DATA_DIR}
 TMP_DIR=${MYSQL_DIR}/temp
+rm -rf ${TMP_DIR}
 mkdir -p ${TMP_DIR} && cd ${TMP_DIR}
 
 xbstreamFile="${DP_BACKUP_NAME}.xbstream.zst"
