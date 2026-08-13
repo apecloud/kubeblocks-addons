@@ -125,6 +125,8 @@ spec:
             value: "false"
           - name: "AUDIT_LOG_DIRECTORY"
             value: "/var/opt/mssql/audit"
+          - name: "SLOW_LOG_DIRECTORY"
+            value: "/var/opt/mssql/slowlog"
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mssql
           - name: KB_POD_NAME
