@@ -2,6 +2,77 @@
 ## https://github.com/tikv/tikv/blob/release-7.5/etc/config-template.toml
 
 ## TiKV config template
+{{- /* Dynamic parameter tuning based on container resource limits */ -}}
+{{- $tikv_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
+{{- $tikv_cpu := getContainerCPU ( index $.podSpec.containers 0 ) }}
+
+{{- /* readpool.unified.max-thread-count: default max(4, CPU*0.8) */ -}}
+{{- $readpool_max_threads := 4 }}
+{{- /* storage.scheduler-worker-pool-size: default 4 */ -}}
+{{- $scheduler_worker_pool := 4 }}
+{{- /* storage.scheduler-concurrency: default 524288 */ -}}
+{{- $scheduler_concurrency := 524288 }}
+{{- /* storage.block-cache.capacity: default 0B (auto = 45% of mem) */ -}}
+{{- $block_cache_val := 0 }}
+{{- $block_cache_unit := "B" }}
+{{- /* storage.flow-control.l0-files-threshold */ -}}
+{{- $l0_files_threshold := 20 }}
+{{- /* raftstore.apply-pool-size */ -}}
+{{- $apply_pool_size := 2 }}
+{{- /* raftstore.store-pool-size */ -}}
+{{- $store_pool_size := 2 }}
+{{- /* raftstore.store-io-pool-size */ -}}
+{{- $store_io_pool_size := 0 }}
+{{- /* raftstore.region-split-check-diff */ -}}
+{{- $region_split_check_diff := "6MB" }}
+{{- /* raftstore.raft-log-gc-size-limit */ -}}
+{{- $raft_log_gc_size_limit := "72MB" }}
+{{- /* rocksdb.max-open-files */ -}}
+{{- $rocksdb_max_open_files := 20000 }}
+{{- /* raftdb.max-open-files */ -}}
+{{- $raftdb_max_open_files := 20000 }}
+{{- /* raftdb.max-background-jobs */ -}}
+{{- $raftdb_max_bg_jobs := 4 }}
+{{- /* rocksdb + raftdb defaultcf write-buffer-size */ -}}
+{{- $defaultcf_write_buffer_size := "128MB" }}
+{{- /* rocksdb.max-background-jobs */ -}}
+{{- $rocksdb_max_bg_jobs := 2 }}
+
+{{- if gt $tikv_cpu 0 }}
+{{-   $readpool_max_threads = max 4 ( div ( mul $tikv_cpu 8 ) 10 ) }}
+{{-   $scheduler_worker_pool = max 4 ( min ( int ( sub $tikv_cpu 2 ) ) 8 ) }}
+{{-   $apply_pool_size = max 2 ( min ( int ( div $tikv_cpu 2 ) ) 8 ) }}
+{{-   $store_pool_size = max 2 ( min ( int ( div $tikv_cpu 3 ) ) 4 ) }}
+{{-   if ge $tikv_cpu 8 }}
+{{-     $store_io_pool_size = 1 }}
+{{-     $l0_files_threshold = 40 }}
+{{-     $scheduler_concurrency = 2097152 }}
+{{-     $region_split_check_diff = "32MB" }}
+{{-     $raft_log_gc_size_limit = "128MB" }}
+{{-     $rocksdb_max_open_files = 40960 }}
+{{-     $raftdb_max_open_files = 40960 }}
+{{-     $rocksdb_max_bg_jobs = 6 }}
+{{-     $raftdb_max_bg_jobs = 6 }}
+{{-     $defaultcf_write_buffer_size = "256MB" }}
+{{-   end }}
+{{- end }}
+
+{{- if gt $tikv_memory 0 }}
+{{- /* block-cache = ~45% of total memory */ -}}
+{{-   $cache_bytes := div ( mul $tikv_memory 9 ) 20 }}
+{{-   $block_cache_val = $cache_bytes }}
+{{-   $block_cache_unit = "B" }}
+{{-   if ge $cache_bytes 1048576 }}
+{{-     $block_cache_val = div $cache_bytes 1048576 }}
+{{-     $block_cache_unit = "MB" }}
+{{-   end }}
+{{-   if ge $block_cache_val 1024 }}
+{{-     $block_cache_val = div $block_cache_val 1024 }}
+{{-     $block_cache_unit = "GB" }}
+{{-   end }}
+{{- end }}
+
+
 ##  Human-readable big numbers:
 ##   File size(based on byte, binary units): KB, MB, GB, TB, PB
 ##    e.g.: 1_048_576 = "1MB"
@@ -105,13 +176,16 @@ min-thread-count = 1
 
 ## The maximum working thread count of the thread pool.
 ## The default value is max(4, LOGICAL_CPU_NUM * 0.8).
-max-thread-count = 4
+max-thread-count = {{ $readpool_max_threads }}
 
 ## Size of the stack for each thread in the thread pool.
 stack-size = "10MB"
 
 ## Max running tasks of each worker, reject if exceeded.
 max-tasks-per-worker = 2000
+
+## Automatically adjust thread pool size based on CPU usage.
+auto-adjust-pool-size = true
 
 [readpool.storage]
 ## Whether to use the unified read pool to handle storage requests.
@@ -256,13 +330,13 @@ engine = "raft-kv"
 ## The number of slots in Scheduler latches, which controls write concurrency.
 ## In most cases you can use the default value. When importing data, you can set it to a larger
 ## value.
-scheduler-concurrency = 524288
+scheduler-concurrency = {{ $scheduler_concurrency }}
 
 ## Scheduler's worker pool size, i.e. the number of write threads.
 ## It should be less than total CPU cores. When there are frequent write operations, set it to a
 ## higher value. More specifically, you can run `top -H -p tikv-pid` to check whether the threads
 ## named `sched-worker-pool` are busy.
-scheduler-worker-pool-size = 4
+scheduler-worker-pool-size = {{ $scheduler_worker_pool }}
 
 ## When the pending write bytes exceeds this threshold, the "scheduler too busy" error is displayed.
 scheduler-pending-write-threshold = "100MB"
@@ -270,7 +344,7 @@ scheduler-pending-write-threshold = "100MB"
 ## For async commit transactions, it's possible to response to the client before applying prewrite
 ## requests. Enabling this can ease reduce latency when apply duration is significant, or reduce
 ## latency jittering when apply duration is not stable.
-enable-async-apply-prewrite = false
+enable-async-apply-prewrite = true
 
 ## Reserve some space to ensure recovering the store from `no space left` must succeed.
 ## `max(reserve-space, capacity * 5%)` will be reserved exactly.
@@ -309,7 +383,7 @@ background-error-recovery-window = "1h"
 ##
 ## When storage.engine is "raft-kv", default value is 45% of available system memory.
 ## When storage.engine is "partitioned-raft-kv", default value is 30% of available system memory.
-capacity = "0B"
+capacity = "{{ $block_cache_val }}{{ $block_cache_unit }}"
 
 [storage.flow-control]
 ## Flow controller is used to throttle the write rate at scheduler level, aiming
@@ -325,7 +399,7 @@ enable = true
 memtables-threshold = 5
 
 ## When the number of SST files of level-0 of kvdb reaches the threshold, the flow controller begins to work
-l0-files-threshold = 20
+l0-files-threshold = {{ $l0_files_threshold }}
 
 ## When the number of pending compaction bytes of kvdb reaches the threshold, the flow controller begins to
 ## reject some write requests with `ServerIsBusy` error.
@@ -401,7 +475,7 @@ pd-store-heartbeat-tick-interval = "10s"
 ## When Region size change exceeds this config, TiKV will check whether the Region should be split
 ## or not. To reduce the cost of scanning data in the checking process, you can set the value to
 ## 32MB during checking and set it back to the default value in normal operations.
-region-split-check-diff = "6MB"
+region-split-check-diff = "{{ $region_split_check_diff }}"
 
 ## The interval of triggering Region split check.
 split-region-check-tick-interval = "10s"
@@ -423,7 +497,7 @@ raft-log-gc-count-limit = 73728
 
 ## When the approximate size of Raft log entries exceeds this value, GC will be forced trigger.
 ## It's recommanded to set it to 3/4 of `region-split-size`.
-raft-log-gc-size-limit = "72MB"
+raft-log-gc-size-limit = "{{ $raft_log_gc_size_limit }}"
 
 ## Old Raft logs could be reserved if `raft_log_gc_threshold` is not reached.
 ## GC them after ticks `raft_log_reserve_max_ticks` times.
@@ -474,14 +548,14 @@ consistency-check-interval = "0s"
 cleanup-import-sst-interval = "10m"
 
 ## Use how many threads to handle log apply
-apply-pool-size = 2
+apply-pool-size = {{ $apply_pool_size }}
 
 ## Use how many threads to handle raft messages
-store-pool-size = 2
+store-pool-size = {{ $store_pool_size }}
 
 ## Use how many threads to handle raft io tasks
 ## If it is 0, it means io tasks are handled in store threads.
-store-io-pool-size = 0
+store-io-pool-size = {{ $store_io_pool_size }}
 
 ## When the size of raft db writebatch exceeds this value, write will be triggered.
 raft-write-size-limit = "1MB"
@@ -529,14 +603,15 @@ coprocessor-plugin-directory = "./coprocessors"
 ## level-based compaction.
 # https://github.com/apecloud/apecloud/issues/18181
 # Some enviroments have RLIMIT_NOFILE not big enough
-max-open-files = 20000
+max-open-files = {{ $rocksdb_max_open_files }}
+max-background-jobs = {{ $rocksdb_max_bg_jobs }}
 
 [raftdb]
-max-background-jobs = 4
+max-background-jobs = {{ $raftdb_max_bg_jobs }}
 max-sub-compactions = 2
 # https://github.com/apecloud/apecloud/issues/18181
 # Some enviroments have RLIMIT_NOFILE not big enough
-max-open-files = 20000
+max-open-files = {{ $raftdb_max_open_files }}
 max-manifest-file-size = "20MB"
 create-if-missing = true
 
@@ -564,13 +639,16 @@ info-log-keep-log-file-num = 10
 info-log-dir = ""
 info-log-level = "info"
 
+[rocksdb.defaultcf]
+write-buffer-size = "{{ $defaultcf_write_buffer_size }}"
+
 [raftdb.defaultcf]
 ## Recommend to set it the same as `rocksdb.defaultcf.compression-per-level`.
 compression-per-level = ["no", "no", "lz4", "lz4", "lz4", "zstd", "zstd"]
 block-size = "64KB"
 
 ## Recommend to set it the same as `rocksdb.defaultcf.write-buffer-size`.
-write-buffer-size = "128MB"
+write-buffer-size = "{{ $defaultcf_write_buffer_size }}"
 max-write-buffer-number = 5
 min-write-buffer-number-to-merge = 1
 
@@ -671,7 +749,7 @@ enable-log-recycle = true
 ## Only available for `enable-log-reycle` is true.
 ##
 ## Default: false
-prefill-for-recycle = false
+prefill-for-recycle = true
 
 {{/* a dirty way to inject user defined config */}}
 {{- $conponentTls := false }}
