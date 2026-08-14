@@ -5,6 +5,7 @@ Describe "RustFS replicas history ConfigMap contract"
     case_dir=$(mktemp -d -t rustfs-replicas-history-XXXXXX) || return $?
     mock_bin="${case_dir}/bin"
     call_log="${case_dir}/kubectl.calls"
+    create_manifest="${case_dir}/create-manifest.yaml"
     history_dir="${case_dir}/history"
     history_file="${history_dir}/RUSTFS_REPLICAS_HISTORY"
     mkdir -p "${mock_bin}" "${history_dir}" || return $?
@@ -49,7 +50,7 @@ case "$*" in
     esac
     ;;
   "create -f -")
-    cat >/dev/null
+    cat >"${KUBECTL_CREATE_MANIFEST}"
     [ "${KUBECTL_CREATE_MODE:-success}" = success ] || exit 43
     ;;
   "patch configmap rustfs-rustfs-configuration -n test --type strategic -p "*)
@@ -80,12 +81,17 @@ EOF
       -e "s|replicas_history_file=\"/rustfs-config/RUSTFS_REPLICAS_HISTORY\"|replicas_history_file=\"${history_file}\"|" \
       -e 's/namespace={{ .CLUSTER_NAMESPACE }}/namespace=test/' \
       -e 's/name={{ .RUSTFS_COMPONENT_NAME }}-rustfs-configuration/name=rustfs-rustfs-configuration/' \
+      -e 's/{{ .CLUSTER_NAMESPACE }}/test/g' \
+      -e 's/{{ .RUSTFS_COMPONENT_NAME }}/rustfs/g' \
+      -e 's/{{ .CLUSTER_NAME }}/rustfs/g' \
+      -e 's/{{ .CLUSTER_COMPONENT_NAME }}/rustfs/g' \
       "${SHELLSPEC_CWD}/addons/rustfs/scripts/replicas-history-config.sh" \
       >"${case_dir}/replicas-history-config.sh" || return $?
     chmod +x "${case_dir}/replicas-history-config.sh" || return $?
 
     export PATH="${mock_bin}:${PATH}"
     export KUBECTL_CALL_LOG="${call_log}"
+    export KUBECTL_CREATE_MANIFEST="${create_manifest}"
     export KUBECTL_GET_COUNT_FILE="${case_dir}/kubectl.get-count"
     printf '0\n' >"${KUBECTL_GET_COUNT_FILE}" || return $?
     export KUBECTL_RACE_PHASE_FILE="${case_dir}/kubectl.race-phase"
@@ -123,6 +129,13 @@ EOF
     The status should be success
     The output should include "updated successfully"
     The contents of file "${history_file}" should eq "[8]"
+    The contents of file "${create_manifest}" should include "apiVersion: v1"
+    The contents of file "${create_manifest}" should include "kind: ConfigMap"
+    The contents of file "${create_manifest}" should include "namespace: test"
+    The contents of file "${create_manifest}" should include "name: rustfs-rustfs-configuration"
+    The contents of file "${create_manifest}" should include "app.kubernetes.io/managed-by: kubeblocks"
+    The contents of file "${create_manifest}" should include "app.kubernetes.io/instance: rustfs"
+    The contents of file "${create_manifest}" should include "apps.kubeblocks.io/component-name: rustfs"
   End
 
   It "replaces the local snapshot when an init container retries"
