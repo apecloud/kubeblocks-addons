@@ -847,6 +847,9 @@ ensure_internal_local_admin() {
   #     rpl_semi_sync_master_timeout)
   #   * SELECT, INSERT, UPDATE ON kubeblocks.kb_health_check
   #     (ReadCheck + WriteCheck)
+  #   * BINLOG REPLAY ON *.* (DataProtection postReady PITR replay;
+  #     permits applying binlog events but does not permit changing
+  #     sql_log_bin or bypassing read_only)
   #
   # Refined checkpoint #3 (Jack 15:58): no NEW net capability,
   # no read_only-bypass class. `REPLICATION MASTER ADMIN` is
@@ -976,6 +979,7 @@ ensure_internal_local_admin() {
     GRANT REPLICATION CLIENT ON *.* TO '${user}'@'%';
     GRANT SLAVE MONITOR ON *.* TO '${user}'@'%';
     GRANT REPLICATION MASTER ADMIN ON *.* TO '${user}'@'%';
+    GRANT BINLOG REPLAY ON *.* TO '${user}'@'%';
     GRANT SELECT, INSERT, UPDATE ON kubeblocks.* TO '${user}'@'%';
     GRANT SELECT ON mysql.user TO '${user}'@'%';
     CREATE USER IF NOT EXISTS '${replication_user}'@'%' IDENTIFIED BY '${password}';

@@ -27,6 +27,10 @@ Describe "mariadb backup ActionSet account contract"
       grep -qF "GRANT RELOAD, PROCESS ON *.* TO '\${user}'@'%';" "$(replication_merged_cmpd_path)"
   }
 
+  remote_internal_admin_grants_pitr_replay_privilege() {
+    grep -qF "GRANT BINLOG REPLAY ON *.* TO '\${user}'@'%';" "$(semisync_cmpd_path)"
+  }
+
   selected_account_paths_use_backup_account() {
     awk '
       /mariadb --host="\$\{DP_DB_HOST\}" --user="\$\{BACKUP_DB_USER\}" --password="\$\{BACKUP_DB_PASSWORD\}"/ {
@@ -69,6 +73,12 @@ Describe "mariadb backup ActionSet account contract"
   It "grants the remote internal backup account the mariabackup-required RELOAD and PROCESS privileges"
     When call remote_internal_admin_grants_backup_required_privileges
     The status should be success
+  End
+
+  It "grants the remote internal account only the dedicated privilege required for PITR binlog replay"
+    When call remote_internal_admin_grants_pitr_replay_privilege
+    The status should be success
+    The contents of file "$(semisync_cmpd_path)" should not include "GRANT BINLOG ADMIN ON *.* TO '\${user}'@'%';"
   End
 
   It "documents that target.account is only the DP-selected target secret, not necessarily the runtime SQL execution account"

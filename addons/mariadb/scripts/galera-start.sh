@@ -210,6 +210,7 @@ main() {
 
   local wsrep_args=(
     "--defaults-extra-file=${sst_conf}"
+    "--server-id=$((10#${POD_NAME##*-} + 1))"
     "--wsrep-cluster-address=${cluster_address}"
     "--wsrep-cluster-name=${CLUSTER_NAME:-mariadb-galera}"
     "--wsrep-node-name=${POD_NAME}"

@@ -70,6 +70,10 @@ spec:
             INITDB_EOF
             chmod +x /docker-entrypoint-initdb.d/01-kb-internal-root.sh
 
+            # Binary logs are stored on the data volume for continuous backup.
+            mkdir -p /var/lib/mysql/binlog
+            chown mysql:mysql /var/lib/mysql/binlog
+
             # Copy TLS certs to data dir (root:root 600 mounts are unreadable by mysql user)
             if [ "${TLS_ENABLED:-false}" = "true" ] && [ -d /etc/pki/mariadb-ssl ]; then
               mkdir -p /var/lib/mysql/tls

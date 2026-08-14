@@ -1,0 +1,35 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: mariadb-physical-inc-br
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  backupType: Incremental
+  env:
+    - name: DATA_DIR
+      value: /var/lib/mysql
+    - name: BACKUP_WORK_DIR
+      value: /tmp/mariadb-backup
+    - name: IMAGE_TAG
+      value: {{ .Values.image.tag | quote }}
+  backup:
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/mariadb-incremental-backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/mariadb-incremental-restore.sh" | nindent 10 }}

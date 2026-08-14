@@ -1,4 +1,5 @@
 [mysqld]
+log_bin = /var/lib/mysql/binlog/mariadb-bin
 binlog_format = ROW
 default_storage_engine = InnoDB
 innodb_autoinc_lock_mode = 2

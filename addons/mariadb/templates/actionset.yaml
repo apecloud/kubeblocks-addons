@@ -88,6 +88,9 @@ spec:
           && mariadb-backup --prepare --target-dir=/tmp/data/ \
           && rm -rf ${DATA_DIR}/* \
           && mariadb-backup --copy-back --target-dir=/tmp/data/ --datadir=${DATA_DIR} \
+          && for info in mariadb_backup_binlog_info xtrabackup_binlog_info; do \
+               if [ -s "/tmp/data/${info}" ]; then cp "/tmp/data/${info}" "${DATA_DIR}/.kb-pitr-binlog-info"; break; fi; \
+             done \
           && rm -rf /tmp/data/ \
           && chown -R mysql:mysql ${DATA_DIR} \
           && chmod -R 750 ${DATA_DIR}
