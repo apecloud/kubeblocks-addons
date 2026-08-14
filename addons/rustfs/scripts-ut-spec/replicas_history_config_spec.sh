@@ -157,7 +157,7 @@ EOF
   It "fails closed when the ConfigMap patch is rejected"
     When call run_case present success success fail
     The status should be failure
-    The stderr should include "Failed to update RUSTFS_REPLICAS_HISTORY"
+    The stderr should include "Failed to update RUSTFS_REPLICAS_HISTORY in ConfigMap test/rustfs-rustfs-configuration after 5 attempts."
     The path "${history_file}" should not be exist
   End
 
