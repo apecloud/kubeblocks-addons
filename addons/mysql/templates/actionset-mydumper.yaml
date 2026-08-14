@@ -53,8 +53,6 @@ spec:
     withParameters:
       - threads
       - tables
-      - databases
-      - trx_tables
       - drop_table
     postReady:
     - job:
