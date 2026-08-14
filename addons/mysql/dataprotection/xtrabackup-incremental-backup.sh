@@ -10,7 +10,7 @@ function handle_exit() {
     echo "failed with exit code $exit_code"
     rm -f "${DP_BACKUP_INFO_FILE}.tmp"
     touch "${DP_BACKUP_INFO_FILE}.exit"
-    exit 1
+    exit "${exit_code}"
   fi
 }
 trap handle_exit EXIT

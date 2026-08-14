@@ -334,6 +334,18 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     done
   }
 
+  verify_backup_failure_preserves_exit_code() {
+    for script in backup.sh xtrabackup-incremental-backup.sh; do
+      awk '
+        /function handle_exit/ { in_handler = 1 }
+        in_handler && /exit 1/ { exit 1 }
+        in_handler && /exit "\$\{exit_code\}"/ { preserved = 1 }
+        in_handler && /^}/ { in_handler = 0 }
+        END { if (!preserved) exit 1 }
+      ' "$(chart_path)/dataprotection/${script}" || return 1
+    done
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -423,6 +435,11 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "removes staged progress before publishing backup failure"
     When call verify_failed_progress_publish_cleans_temp
+    The status should be success
+  End
+
+  It "preserves the original backup failure exit code"
+    When call verify_backup_failure_preserves_exit_code
     The status should be success
   End
 
