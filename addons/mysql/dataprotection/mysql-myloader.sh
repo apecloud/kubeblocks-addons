@@ -19,23 +19,25 @@ trap handle_exit EXIT
 if [ -z "$threads" ]; then
   threads=4
 fi
-params="--threads=$threads"
+set -- "--threads=$threads"
 if [ -n "${tables}" ]; then
-  params="${params} -T ${tables}"
+  set -- "$@" -T "${tables}"
 fi
 # DROP, FAIL(default), NONE, TRUNCATE and DELETE
 if [ -n "$drop_table" ]; then
-  params="${params} -o $drop_table"
+  set -- "$@" -o "$drop_table"
 fi
 if [ "${no_data}" == "true" ]; then
-  params="${params} --no-data"
+  set -- "$@" --no-data
 fi
 #if [ -n "$databases" ]; then
 #  params="${params} -s $databases"
 #fi
 
-echo "parameters: $params"
+printf 'parameters:'
+printf ' <%s>' "$@"
+printf '\n'
 
 datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.mydumper.zst" - | myloader --stream  \
   -h ${DP_DB_HOST} -u ${MYSQL_ADMIN_USER} -p ${MYSQL_ADMIN_PASSWORD} -P ${DP_DB_PORT} --regex '^(?!(kubeblocks\.kb_health_check$))' \
-  ${params}
+  "$@"

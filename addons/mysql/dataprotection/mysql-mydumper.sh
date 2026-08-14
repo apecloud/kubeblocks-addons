@@ -18,24 +18,26 @@ trap handle_exit EXIT
 if [ -z "$threads" ]; then
   threads=4
 fi
-params="--threads=$threads --triggers --routines"
+set -- "--threads=$threads" --triggers --routines
 if [ -n "$tables" ]; then
-  params="$params -T $tables"
+  set -- "$@" -T "$tables"
 fi
 if [ "$trx_tables" == "true" ]; then
-  params="$params --trx-tables"
+  set -- "$@" --trx-tables
 fi
 if [ "${no_data}" == "true" ]; then
-  params="${params} --no-data"
+  set -- "$@" --no-data
 fi
 if [ -n "$databases" ]; then
-  params="${params} -B $databases"
+  set -- "$@" -B "$databases"
 fi
 
-echo "parameters: $params"
+printf 'parameters:'
+printf ' <%s>' "$@"
+printf '\n'
 
 mydumper -h ${DP_DB_HOST} -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} -P ${DP_DB_PORT}  \
-  --stream --build-empty-files --chunk-filesize 256 ${params} \
+  --stream --build-empty-files --chunk-filesize 256 "$@" \
   2> >(tee /tmp/mydumper.log >&2) | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.mydumper.zst"
 
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
