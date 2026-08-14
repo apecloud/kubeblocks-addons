@@ -10,6 +10,7 @@ function handle_exit() {
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
     echo "failed with exit code $exit_code"
+    rm -f "${DP_BACKUP_INFO_FILE}.tmp"
     touch "${DP_BACKUP_INFO_FILE}.exit"
     exit 1
   fi

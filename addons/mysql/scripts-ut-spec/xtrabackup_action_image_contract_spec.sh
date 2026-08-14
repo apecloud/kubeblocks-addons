@@ -319,6 +319,21 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     done
   }
 
+  verify_failed_progress_publish_cleans_temp() {
+    for script in backup.sh xtrabackup-incremental-backup.sh; do
+      awk '
+        /function handle_exit/ { in_handler = 1 }
+        in_handler && /rm -f "\$\{DP_BACKUP_INFO_FILE\}\.tmp"/ { temp_cleaned = 1 }
+        in_handler && /touch "\$\{DP_BACKUP_INFO_FILE\}\.exit"/ {
+          if (!temp_cleaned) exit 1
+          failure_marker = 1
+        }
+        in_handler && /^}/ { in_handler = 0 }
+        END { if (!temp_cleaned || !failure_marker) exit 1 }
+      ' "$(chart_path)/dataprotection/${script}" || return 1
+    done
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -403,6 +418,11 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "publishes backup success progress atomically"
     When call verify_backup_progress_is_atomic
+    The status should be success
+  End
+
+  It "removes staged progress before publishing backup failure"
+    When call verify_failed_progress_publish_cleans_temp
     The status should be success
   End
 
