@@ -34,16 +34,17 @@ EOF
   fi
 }
 
-get_cm_key_value() {
+get_cm_key_snapshot() {
   name="$1"
   namespace="$2"
   key="$3"
 
-  value=$(kubectl get configmaps "$name" -n "$namespace" -o jsonpath="{.data.$key}") || {
+  value=$(kubectl get configmaps "$name" -n "$namespace" \
+    -o "jsonpath={.metadata.resourceVersion}{'\\t'}{.data.$key}") || {
     echo "Failed to read $key from ConfigMap $namespace/$name." >&2
     return 1
   }
-  printf '%s' "$value" | tr -d '[]'
+  printf '%s' "$value"
 }
 
 update_cm_key_value() {
@@ -51,12 +52,10 @@ update_cm_key_value() {
   namespace="$2"
   key="$3"
   new_value="$4"
+  resource_version="$5"
 
   kubectl patch configmap "$name" -n "$namespace" --type strategic \
-    -p "{\"data\":{\"$key\":\"$new_value\"}}" || {
-    echo "Failed to update $key in ConfigMap $namespace/$name." >&2
-    return 1
-  }
+    -p "{\"metadata\":{\"resourceVersion\":\"$resource_version\"},\"data\":{\"$key\":\"$new_value\"}}"
 }
 
 get_cm_key_new_value() {
@@ -83,10 +82,32 @@ update_configmap_and_sync_to_local_file() {
 
   create_cm_if_not_exist "$name" "$namespace" || return $?
 
-  cur=$(get_cm_key_value "$name" "$namespace" "$key") || return $?
-  new=$(get_cm_key_new_value "$cur" "$replicas")
+  attempt=1
+  max_attempts=5
+  tab=$(printf '\t')
+  while [ "$attempt" -le "$max_attempts" ]; do
+    snapshot=$(get_cm_key_snapshot "$name" "$namespace" "$key") || return $?
+    case "$snapshot" in
+      *"$tab"*) ;;
+      *)
+        echo "Failed to parse $key snapshot from ConfigMap $namespace/$name." >&2
+        return 1
+        ;;
+    esac
+    resource_version=${snapshot%%"$tab"*}
+    cur=${snapshot#*"$tab"}
+    cur=$(printf '%s' "$cur" | tr -d '[]')
+    new=$(get_cm_key_new_value "$cur" "$replicas")
 
-  update_cm_key_value "$name" "$namespace" "$key" "$new" || return $?
+    if update_cm_key_value "$name" "$namespace" "$key" "$new" "$resource_version"; then
+      break
+    fi
+    attempt=$((attempt + 1))
+  done
+  if [ "$attempt" -gt "$max_attempts" ]; then
+    echo "Failed to update $key in ConfigMap $namespace/$name after $max_attempts attempts." >&2
+    return 1
+  fi
   echo "configmap/$name updated successfully with $key=$new"
 
   printf '%s\n' "$new" >"$replicas_history_file" || {

@@ -35,12 +35,38 @@ case "$*" in
     [ "${KUBECTL_READ_MODE:-success}" = success ] || exit 42
     printf '%s' "${KUBECTL_READ_VALUE-[4]}"
     ;;
+  "get configmaps rustfs-rustfs-configuration -n test -o jsonpath={.metadata.resourceVersion}{'\\t'}{.data.RUSTFS_REPLICAS_HISTORY}")
+    case "${KUBECTL_READ_MODE:-success}" in
+      success)
+        if [ "${KUBECTL_PATCH_MODE:-success}" = race ] && [ "$(cat "${KUBECTL_RACE_PHASE_FILE}")" -gt 0 ]; then
+          printf '2\t[4,12]'
+        else
+          printf '1\t%s' "${KUBECTL_READ_VALUE-[4]}"
+        fi
+        ;;
+      malformed) printf '%s' "${KUBECTL_READ_VALUE-[4]}" ;;
+      *) exit 42 ;;
+    esac
+    ;;
   "create -f -")
     cat >/dev/null
     [ "${KUBECTL_CREATE_MODE:-success}" = success ] || exit 43
     ;;
   "patch configmap rustfs-rustfs-configuration -n test --type strategic -p "*)
-    [ "${KUBECTL_PATCH_MODE:-success}" = success ] || exit 44
+    case "${KUBECTL_PATCH_MODE:-success}" in
+      success) : ;;
+      race)
+        case "$*" in
+          *'"resourceVersion":"1"'*)
+            printf '1\n' >"${KUBECTL_RACE_PHASE_FILE}"
+            exit 44
+            ;;
+          *'"resourceVersion":"2"'*) : ;;
+          *) : ;;
+        esac
+        ;;
+      *) exit 44 ;;
+    esac
     ;;
   *)
     printf 'unexpected kubectl call: %s\n' "$*" >&2
@@ -62,6 +88,8 @@ EOF
     export KUBECTL_CALL_LOG="${call_log}"
     export KUBECTL_GET_COUNT_FILE="${case_dir}/kubectl.get-count"
     printf '0\n' >"${KUBECTL_GET_COUNT_FILE}" || return $?
+    export KUBECTL_RACE_PHASE_FILE="${case_dir}/kubectl.race-phase"
+    printf '0\n' >"${KUBECTL_RACE_PHASE_FILE}" || return $?
     export RUSTFS_COMP_REPLICAS=8
   }
 
@@ -111,6 +139,13 @@ EOF
     The path "${history_file}" should not be exist
   End
 
+  It "fails closed when the ConfigMap snapshot has no resource version"
+    When call run_case present malformed success success
+    The status should be failure
+    The stderr should include "Failed to parse RUSTFS_REPLICAS_HISTORY snapshot"
+    The path "${history_file}" should not be exist
+  End
+
   It "fails closed when a missing ConfigMap cannot be created"
     When call run_case absent success fail success
     The status should be failure
@@ -146,6 +181,13 @@ EOF
     The status should be success
     The output should include "updated successfully"
     The contents of file "${history_file}" should eq "[4,8]"
+  End
+
+  It "preserves a higher concurrent replicas history update"
+    When call run_case present success success race
+    The status should be success
+    The output should include "RUSTFS_REPLICAS_HISTORY=[4,12]"
+    The contents of file "${history_file}" should eq "[4,12]"
   End
 
   It "fails closed when create fails and the ConfigMap remains absent"
