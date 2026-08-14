@@ -19,14 +19,25 @@ trap handle_exit EXIT
 if [ -z "$threads" ]; then
   threads=4
 fi
+case "${threads}" in
+  "" | 0* | *[!0-9]*)
+    echo "threads must be a positive integer" >&2
+    exit 2
+    ;;
+esac
 params="--threads=$threads"
 if [ -n "${tables}" ]; then
   params="${params} -T ${tables}"
 fi
 # DROP, FAIL(default), NONE, TRUNCATE and DELETE
-if [ -n "$drop_table" ]; then
-  params="${params} -o $drop_table"
-fi
+case "${drop_table}" in
+  "") ;;
+  DROP | FAIL | NONE | TRUNCATE | DELETE) params="${params} -o $drop_table" ;;
+  *)
+    echo "drop_table must be one of DROP, FAIL, NONE, TRUNCATE, DELETE" >&2
+    exit 2
+    ;;
+esac
 if [ "${no_data}" == "true" ]; then
   params="${params} --no-data"
 fi
