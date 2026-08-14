@@ -61,7 +61,7 @@ spec:
         image: {{ include "mysql.mydumper.image" . }}
         runOnTargetPodNode: true
         command:
-        - sh
+        - bash
         - -c
         - |
           {{- .Files.Get "dataprotection/mysql-myloader.sh" | nindent 10 }}
