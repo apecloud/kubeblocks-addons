@@ -1,0 +1,27 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: mariadb
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "mariadb.standalone.cmpdRegexpPattern" . }}
+      releases:
+        - 10.6.15
+        - 11.4.5
+        - 11.4.8
+        - 11.4.10
+        - 11.8.4
+        - 12.0.2
+  releases:
+    {{- range tuple "10.6.15" "11.4.5" "11.4.8" "11.4.10" "11.8.4" "12.0.2" }}
+    - name: {{ . }}
+      serviceVersion: {{ . }}
+      images:
+        mariadb: {{ include "mariadb.repository" $ }}:{{ . }}
+        exporter: {{ include "exporter.repository" $ }}:{{ $.Values.image.prom.exporter.tag }}
+    {{- end }}
