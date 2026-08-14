@@ -20,7 +20,8 @@ spec:
           type: string
           description: "The tables to backup, separated by comma. Table name must include database name. For instance: test.t1,test.t2"
         threads:
-          type: number
+          type: integer
+          minimum: 1
           description: "The number of threads to use for the backup."
           default: 4
         no_data:
@@ -28,6 +29,7 @@ spec:
           description: "Whether to backup table structure only without data."
         drop_table:
           type: string
+          enum: [DROP, FAIL, NONE, TRUNCATE, DELETE]
           description: "-o, --drop-table Executes or simulates a DROP TABLE if the table already exists. The drop modes can be: FAIL, NONE, DROP, TRUNCATE and DELETE. If the option is not set, the default is set to: FAIL. If the option is used without a parameter, the default is: DROP."
   backup:
     preBackup: []

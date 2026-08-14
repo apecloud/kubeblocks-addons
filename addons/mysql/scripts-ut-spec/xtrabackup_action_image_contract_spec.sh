@@ -421,6 +421,29 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     [ "${status}" -eq 42 ]
   }
 
+  verify_mydumper_parameter_schema() {
+    render_template actionset-mydumper.yaml | awk '
+      /^        [a-z_]+:$/ {
+        parameter = $1
+        sub(/:$/, "", parameter)
+      }
+      parameter == "threads" && $1 == "type:" && $2 == "integer" {
+        integer_threads = 1
+      }
+      parameter == "threads" && $1 == "minimum:" && $2 == "1" {
+        positive_threads = 1
+      }
+      parameter == "drop_table" && $1 == "enum:" {
+        line = $0
+        sub(/^[[:space:]]+/, "", line)
+        if (line == "enum: [DROP, FAIL, NONE, TRUNCATE, DELETE]") {
+          drop_modes = 1
+        }
+      }
+      END { exit !(integer_threads && positive_threads && drop_modes) }
+    '
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -525,6 +548,11 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "preserves the original mydumper failure when its marker cannot be written"
     When call verify_mydumper_marker_write_failure_preserves_original_exit_code
+    The status should be success
+  End
+
+  It "constrains mydumper parameters in the rendered ActionSet schema"
+    When call verify_mydumper_parameter_schema
     The status should be success
   End
 
