@@ -346,6 +346,49 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     done
   }
 
+  verify_marker_write_failure_preserves_original_exit_code() {
+    for script in backup.sh xtrabackup-incremental-backup.sh; do
+      root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-backup-exit.XXXXXX") || return 1
+      mkdir -p "${root}/mysql/data"
+      printf '%s\n' 'server-uuid=test-server' >"${root}/mysql/data/auto.cnf"
+
+      (
+        datasafed() {
+          case "$1" in
+            list) return 0 ;;
+            pull | push) cat >/dev/null ;;
+            stat) printf '%s\n' 'TotalSize 1' ;;
+          esac
+        }
+        xbstream() { cat >/dev/null; }
+        xtrabackup() { return 42; }
+        export -f datasafed xbstream xtrabackup
+        export MYSQL_DIR="${root}/mysql"
+        export DATA_DIR="${root}/mysql/data"
+        export DP_DATASAFED_BIN_PATH="/bin"
+        export DP_BACKUP_BASE_PATH="/repo/current"
+        export DP_BACKUP_ROOT_PATH="/repo"
+        export DP_BACKUP_NAME="current"
+        export DP_PARENT_BACKUP_NAME="parent"
+        export DP_TARGET_RELATIVE_PATH="data"
+        export DP_BACKUP_INFO_FILE="${root}/missing/progress"
+        export DP_DB_HOST="mysql"
+        export DP_DB_PORT="3306"
+        export DP_DB_USER="backup"
+        export DP_DB_PASSWORD="secret"
+        export IMAGE_TAG="8.0.35"
+        bash "$(chart_path)/dataprotection/${script}" >/dev/null 2>&1
+      )
+      status=$?
+
+      [ "${status}" -eq 42 ] || {
+        rm -rf "${root}"
+        return 1
+      }
+      rm -rf "${root}"
+    done
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -440,6 +483,11 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "preserves the original backup failure exit code"
     When call verify_backup_failure_preserves_exit_code
+    The status should be success
+  End
+
+  It "preserves the original backup failure when its marker cannot be written"
+    When call verify_marker_write_failure_preserves_original_exit_code
     The status should be success
   End
 
