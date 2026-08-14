@@ -160,6 +160,38 @@ EOF
     The path "${history_file}" should not be exist
   End
 
+  It "fails closed before patching a malformed replicas history"
+    When call run_case present success success success '' 'garbage'
+    The status should be failure
+    The stderr should include "Failed to parse RUSTFS_REPLICAS_HISTORY history"
+    The contents of file "${call_log}" should not include "patch configmap"
+    The path "${history_file}" should not be exist
+  End
+
+  It "fails closed before patching duplicate replicas history"
+    When call run_case present success success success '' '[4,4]'
+    The status should be failure
+    The stderr should include "Failed to parse RUSTFS_REPLICAS_HISTORY history"
+    The contents of file "${call_log}" should not include "patch configmap"
+    The path "${history_file}" should not be exist
+  End
+
+  It "fails closed before patching descending replicas history"
+    When call run_case present success success success '' '[8,4]'
+    The status should be failure
+    The stderr should include "Failed to parse RUSTFS_REPLICAS_HISTORY history"
+    The contents of file "${call_log}" should not include "patch configmap"
+    The path "${history_file}" should not be exist
+  End
+
+  It "fails closed before patching replicas history outside shell integer range"
+    When call run_case present success success success '' '[999999999999999999999999999999]'
+    The status should be failure
+    The stderr should include "Failed to parse RUSTFS_REPLICAS_HISTORY history"
+    The contents of file "${call_log}" should not include "patch configmap"
+    The path "${history_file}" should not be exist
+  End
+
   It "fails closed when a missing ConfigMap cannot be created"
     When call run_case absent success fail success
     The status should be failure

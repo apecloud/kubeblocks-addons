@@ -47,6 +47,34 @@ get_cm_key_snapshot() {
   printf '%s' "$value"
 }
 
+parse_cm_key_history() {
+  raw="$1"
+
+  if [ -z "$raw" ]; then
+    return 0
+  fi
+  case "$raw" in
+    \[*\]) value=${raw#\[}; value=${value%\]} ;;
+    *) return 1 ;;
+  esac
+  case "$value" in
+    ''|,*|*,|*,,*|*[!0-9,]*) return 1 ;;
+  esac
+
+  previous=0
+  old_ifs="$IFS"
+  IFS=','
+  for item in $value; do
+    if ! [ "$item" -gt "$previous" ] 2>/dev/null; then
+      IFS="$old_ifs"
+      return 1
+    fi
+    previous="$item"
+  done
+  IFS="$old_ifs"
+  printf '%s' "$value"
+}
+
 update_cm_key_value() {
   name="$1"
   namespace="$2"
@@ -95,8 +123,11 @@ update_configmap_and_sync_to_local_file() {
         ;;
     esac
     resource_version=${snapshot%%"$tab"*}
-    cur=${snapshot#*"$tab"}
-    cur=$(printf '%s' "$cur" | tr -d '[]')
+    raw_cur=${snapshot#*"$tab"}
+    cur=$(parse_cm_key_history "$raw_cur") || {
+      echo "Failed to parse $key history from ConfigMap $namespace/$name." >&2
+      return 1
+    }
     new=$(get_cm_key_new_value "$cur" "$replicas")
 
     if update_cm_key_value "$name" "$namespace" "$key" "$new" "$resource_version"; then
