@@ -15,7 +15,7 @@ function handle_exit() {
   fi
 }
 trap handle_exit EXIT
-rm -f "${DP_BACKUP_INFO_FILE}.exit"
+rm -f "${DP_BACKUP_INFO_FILE}" "${DP_BACKUP_INFO_FILE}.exit"
 
 lock_per_table_ddl=""
 if [ "${IMAGE_TAG:?xtrabackup tool version is required}" == "2.4" ]; then

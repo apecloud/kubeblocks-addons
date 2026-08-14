@@ -273,10 +273,10 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
       "$(chart_path)/dataprotection/xtrabackup-incremental-restore.sh"
   }
 
-  verify_stale_failure_marker_cleanup() {
+  verify_stale_progress_state_cleanup() {
     for script in backup.sh xtrabackup-incremental-backup.sh; do
       awk '
-        /rm -f "\$\{DP_BACKUP_INFO_FILE\}\.exit"/ { cleaned = 1 }
+        /rm -f "\$\{DP_BACKUP_INFO_FILE\}" "\$\{DP_BACKUP_INFO_FILE\}\.exit"/ { cleaned = 1 }
         /xtrabackup --backup/ { exit !cleaned }
         END { if (!cleaned) exit 1 }
       ' "$(chart_path)/dataprotection/${script}" || return 1
@@ -307,8 +307,8 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     The status should be success
   End
 
-  It "clears a stale backup failure marker before retrying"
-    When call verify_stale_failure_marker_cleanup
+  It "clears stale backup progress and failure state before retrying"
+    When call verify_stale_progress_state_cleanup
     The status should be success
   End
 
