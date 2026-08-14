@@ -276,7 +276,7 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
   verify_stale_progress_state_cleanup() {
     for script in backup.sh xtrabackup-incremental-backup.sh; do
       awk '
-        /rm -f "\$\{DP_BACKUP_INFO_FILE\}" "\$\{DP_BACKUP_INFO_FILE\}\.exit"/ { cleaned = 1 }
+        /rm -f "\$\{DP_BACKUP_INFO_FILE\}" "\$\{DP_BACKUP_INFO_FILE\}\.exit" "\$\{DP_BACKUP_INFO_FILE\}\.tmp"/ { cleaned = 1 }
         /xtrabackup --backup/ { exit !cleaned }
         END { if (!cleaned) exit 1 }
       ' "$(chart_path)/dataprotection/${script}" || return 1
@@ -287,7 +287,7 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     awk -v required=1 '
       /xtrabackup --backup/ { backup = 1 }
       backup && /rm -rf \$\{TMP_DIR\}/ { cleanups++ }
-      /echo .*totalSize.*>"\$\{DP_BACKUP_INFO_FILE\}"/ {
+      /mv "\$\{DP_BACKUP_INFO_FILE\}\.tmp" "\$\{DP_BACKUP_INFO_FILE\}"/ {
         if (cleanups < required) exit 1
         progress = 1
       }
@@ -297,12 +297,26 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     awk -v required=2 '
       /xtrabackup --backup/ { backup = 1 }
       backup && /rm -rf \$\{(PARENT_DIR|TMP_DIR)\}/ { cleanups++ }
-      /echo .*totalSize.*>"\$\{DP_BACKUP_INFO_FILE\}"/ {
+      /mv "\$\{DP_BACKUP_INFO_FILE\}\.tmp" "\$\{DP_BACKUP_INFO_FILE\}"/ {
         if (cleanups < required) exit 1
         progress = 1
       }
       END { if (!progress) exit 1 }
     ' "$(chart_path)/dataprotection/xtrabackup-incremental-backup.sh"
+  }
+
+  verify_backup_progress_is_atomic() {
+    for script in backup.sh xtrabackup-incremental-backup.sh; do
+      awk '
+        />"\$\{DP_BACKUP_INFO_FILE\}"/ { exit 1 }
+        />"\$\{DP_BACKUP_INFO_FILE\}\.tmp"/ { staged = 1 }
+        /mv "\$\{DP_BACKUP_INFO_FILE\}\.tmp" "\$\{DP_BACKUP_INFO_FILE\}"/ {
+          if (!staged) exit 1
+          published = 1
+        }
+        END { if (!staged || !published) exit 1 }
+      ' "$(chart_path)/dataprotection/${script}" || return 1
+    done
   }
 
   verify_restore_markers_are_terminal() {
@@ -384,6 +398,11 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "publishes backup success progress only after final cleanup"
     When call verify_backup_progress_is_terminal
+    The status should be success
+  End
+
+  It "publishes backup success progress atomically"
+    When call verify_backup_progress_is_atomic
     The status should be success
   End
 

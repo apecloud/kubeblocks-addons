@@ -15,7 +15,7 @@ function handle_exit() {
   fi
 }
 trap handle_exit EXIT
-rm -f "${DP_BACKUP_INFO_FILE}" "${DP_BACKUP_INFO_FILE}.exit"
+rm -f "${DP_BACKUP_INFO_FILE}" "${DP_BACKUP_INFO_FILE}.exit" "${DP_BACKUP_INFO_FILE}.tmp"
 
 lock_per_table_ddl=""
 if [ "${IMAGE_TAG:?xtrabackup tool version is required}" == "2.4" ]; then
@@ -38,4 +38,5 @@ cat "${TMP_DIR}/xtrabackup.log" \
 cat ${MYSQL_DIR}/data/auto.cnf | grep server-uuid | awk -F '=' '{print $2}' | datasafed push - "${DP_BACKUP_NAME}.server-uuid"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 rm -rf ${TMP_DIR}
-echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
+printf '{"totalSize":"%s"}\n' "${TOTAL_SIZE}" >"${DP_BACKUP_INFO_FILE}.tmp"
+mv "${DP_BACKUP_INFO_FILE}.tmp" "${DP_BACKUP_INFO_FILE}"
