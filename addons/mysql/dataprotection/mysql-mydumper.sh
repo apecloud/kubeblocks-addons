@@ -18,6 +18,12 @@ trap handle_exit EXIT
 if [ -z "$threads" ]; then
   threads=4
 fi
+case "${threads}" in
+  "" | 0* | *[!0-9]*)
+    echo "threads must be a positive integer" >&2
+    exit 2
+    ;;
+esac
 params="--threads=$threads --triggers --routines"
 if [ -n "$tables" ]; then
   params="$params -T $tables"

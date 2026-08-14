@@ -421,6 +421,89 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     [ "${status}" -eq 42 ]
   }
 
+  verify_mydumper_rejects_invalid_threads() {
+    root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-mydumper-threads.XXXXXX") || return 1
+
+    (
+      datasafed() {
+        case "$1" in
+          push) cat >/dev/null ;;
+          stat) printf '%s\n' 'TotalSize 7' ;;
+        esac
+      }
+      mydumper() {
+        touch "${TOOL_CALLED}"
+      }
+      export -f datasafed mydumper
+      export TOOL_CALLED="${root}/mydumper-called"
+      export DP_DATASAFED_BIN_PATH="/bin"
+      export DP_BACKUP_BASE_PATH="/repo/current"
+      export DP_BACKUP_NAME="current"
+      export DP_BACKUP_INFO_FILE="${root}/progress"
+      export DP_DB_HOST="mysql"
+      export DP_DB_PORT="3306"
+      export DP_DB_USER="backup"
+      export DP_DB_PASSWORD="secret"
+      export threads="0"
+      export tables=""
+      export trx_tables="false"
+      export no_data="false"
+      export databases=""
+      bash "$(chart_path)/dataprotection/mysql-mydumper.sh" >/dev/null 2>&1
+    )
+    status=$?
+
+    [ "${status}" -ne 0 ] && [ ! -e "${root}/mydumper-called" ] || {
+      rm -rf "${root}"
+      return 1
+    }
+    rm -rf "${root}"
+  }
+
+  verify_myloader_rejects_invalid_parameters() {
+    for scenario in threads drop_table; do
+      root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-myloader-parameter.XXXXXX") || return 1
+
+      (
+        datasafed() {
+          if [ "$1" = "pull" ]; then
+            printf '%s\n' 'dump'
+          fi
+        }
+        myloader() {
+          touch "${TOOL_CALLED}"
+          cat >/dev/null
+        }
+        export -f datasafed myloader
+        export TOOL_CALLED="${root}/myloader-called"
+        export DP_DATASAFED_BIN_PATH="/bin"
+        export DP_BACKUP_BASE_PATH="/repo/current"
+        export DP_BACKUP_NAME="current"
+        export DP_BACKUP_INFO_FILE="${root}/progress"
+        export DP_DB_HOST="mysql"
+        export DP_DB_PORT="3306"
+        export MYSQL_ADMIN_USER="root"
+        export MYSQL_ADMIN_PASSWORD="secret"
+        export threads="4"
+        export tables=""
+        export drop_table=""
+        export no_data="false"
+        case "${scenario}" in
+          threads) export threads="0" ;;
+          drop_table) export drop_table="INVALID" ;;
+        esac
+        sh "$(chart_path)/dataprotection/mysql-myloader.sh" >/dev/null 2>&1
+      )
+      status=$?
+
+      [ "${status}" -ne 0 ] && [ ! -e "${root}/myloader-called" ] || {
+        rm -rf "${root}"
+        return 1
+      }
+      rm -rf "${root}"
+    done
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -525,6 +608,16 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "preserves the original mydumper failure when its marker cannot be written"
     When call verify_mydumper_marker_write_failure_preserves_original_exit_code
+    The status should be success
+  End
+
+  It "rejects a non-positive mydumper thread count before invoking the tool"
+    When call verify_mydumper_rejects_invalid_threads
+    The status should be success
+  End
+
+  It "rejects invalid myloader parameter values before invoking the tool"
+    When call verify_myloader_rejects_invalid_parameters
     The status should be success
   End
 
