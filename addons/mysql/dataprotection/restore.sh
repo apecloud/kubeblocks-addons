@@ -4,6 +4,7 @@ set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 mkdir -p ${DATA_DIR}
+rm -f ${DATA_DIR}/.xtrabackup_restore ${DATA_DIR}/.restore_new_cluster
 TMP_DIR=${MYSQL_DIR}/temp
 rm -rf ${TMP_DIR}
 mkdir -p ${TMP_DIR} && cd ${TMP_DIR}

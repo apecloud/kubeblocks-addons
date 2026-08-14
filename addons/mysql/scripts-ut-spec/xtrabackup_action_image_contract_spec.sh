@@ -286,10 +286,12 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
+        /rm -f .*\.xtrabackup_restore .*\.restore_new_cluster/ { invalidated = 1 }
+        /^(TMP_DIR|BASE_DIR)=/ { if (!invalidated) exit 1; workspace_ready = 1 }
         /chmod -R 0777/ { permissions_ready = 1 }
         /touch .*\.xtrabackup_restore/ { if (!permissions_ready) exit 1; restored = 1 }
         /touch .*\.restore_new_cluster/ { if (!restored) exit 1; new_cluster = 1 }
-        END { if (!permissions_ready || !restored || !new_cluster) exit 1 }
+        END { if (!invalidated || !workspace_ready || !permissions_ready || !restored || !new_cluster) exit 1 }
       ' "$(chart_path)/dataprotection/${script}" || return 1
     done
   }
@@ -311,7 +313,7 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
   End
 
 
-  It "publishes restore success markers after all restore work succeeds"
+  It "invalidates stale restore markers before work and republishes them last"
     When call verify_restore_markers_are_terminal
     The status should be success
   End
