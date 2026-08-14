@@ -33,7 +33,6 @@ fi
 # 2. prepare backup files
 # prepare base data
 mkdir -p ${DATA_DIR}
-rm -f ${DATA_DIR}/.xtrabackup_restore ${DATA_DIR}/.restore_new_cluster
 BASE_DIR=${MYSQL_DIR}/xtrabackup-base
 rm -rf ${BASE_DIR}
 download_backup_file "${DP_BASE_BACKUP_NAME}" "${BASE_DIR}"
