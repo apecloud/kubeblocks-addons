@@ -88,6 +88,14 @@ EOF
     The contents of file "${history_file}" should eq "[4,8]"
   End
 
+  It "replaces the local snapshot when an init container retries"
+    run_case present success success success >/dev/null || return $?
+    When call run_case present success success success
+    The status should be success
+    The output should include "updated successfully"
+    The contents of file "${history_file}" should eq "[4,8]"
+  End
+
   It "fails closed when ConfigMap data cannot be read"
     When call run_case present fail success success
     The status should be failure
