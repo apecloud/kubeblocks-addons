@@ -421,6 +421,39 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     [ "${status}" -eq 42 ]
   }
 
+  verify_mydumper_action_shells() {
+    output=$(render_template actionset-mydumper.yaml) || return 1
+    [ "$(printf '%s\n' "$output" | grep -Ec '^[[:space:]]+- bash$')" -eq 2 ] || return 1
+    ! printf '%s\n' "$output" | grep -Eq '^[[:space:]]+- sh$'
+  }
+
+  verify_myloader_marker_write_failure_preserves_original_exit_code() {
+    root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-myloader-exit.XXXXXX") || return 1
+
+    (
+      datasafed() { return 0; }
+      myloader() { return 42; }
+      export -f datasafed myloader
+      export DP_DATASAFED_BIN_PATH="/bin"
+      export DP_BACKUP_BASE_PATH="/repo/current"
+      export DP_BACKUP_NAME="current"
+      export DP_BACKUP_INFO_FILE="${root}/missing/progress"
+      export DP_DB_HOST="mysql"
+      export DP_DB_PORT="3306"
+      export MYSQL_ADMIN_USER="root"
+      export MYSQL_ADMIN_PASSWORD="secret"
+      export threads=""
+      export tables=""
+      export drop_table=""
+      export no_data="false"
+      bash "$(chart_path)/dataprotection/mysql-myloader.sh" >/dev/null 2>&1
+    )
+    status=$?
+
+    rm -rf "${root}"
+    [ "${status}" -eq 42 ]
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -525,6 +558,16 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "preserves the original mydumper failure when its marker cannot be written"
     When call verify_mydumper_marker_write_failure_preserves_original_exit_code
+    The status should be success
+  End
+
+  It "runs both mydumper backup and restore scripts with bash"
+    When call verify_mydumper_action_shells
+    The status should be success
+  End
+
+  It "preserves the original myloader failure when its marker cannot be written"
+    When call verify_myloader_marker_write_failure_preserves_original_exit_code
     The status should be success
   End
 
