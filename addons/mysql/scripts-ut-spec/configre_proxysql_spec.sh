@@ -31,6 +31,35 @@ Describe "ProxySQL Configuration Script Tests"
 
   Describe "MySQL Exec Function Tests"
 
+    verify_backend_argument_boundaries() {
+      root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-proxysql-argv.XXXXXX") || return 1
+
+      (
+        mysql() {
+          : >"${MYSQL_ARGS}"
+          for arg do
+            printf '<%s>\n' "$arg" >>"${MYSQL_ARGS}"
+          done
+          printf '0\n'
+        }
+        export MYSQL_ARGS="${root}/mysql.args"
+        export BACKEND_TLS_ENABLED="true"
+        export MYSQL_ROOT_USER="root"
+        export MYSQL_ROOT_PASSWORD='alpha beta[*]'
+        export MYSQL_FQDNS="mysql-0"
+        export MYSQL_PORT="3306"
+        export BACKEND_SERVER="fallback"
+
+        [ "$(get_writable_mysql_server)" = "mysql-0" ] \
+          && grep -Fx '<--password=alpha beta[*]>' "${MYSQL_ARGS}" >/dev/null \
+          && grep -Fx '<--ssl-ca=/var/lib/certs/ca.crt>' "${MYSQL_ARGS}" >/dev/null
+      )
+      status=$?
+
+      rm -rf "${root}"
+      return "${status}"
+    }
+
     It "executes MySQL command successfully"
       mysql() {
         echo "MySQL command executed: $*"
@@ -49,6 +78,11 @@ Describe "ProxySQL Configuration Script Tests"
       When call mysql_exec "root" "password" "localhost" "3306" "INVALID COMMAND"
       The status should be failure
       The stderr should match pattern "MySQL command failed: * INVALID COMMAND"
+    End
+
+    It "preserves backend password and TLS options as single mysql arguments"
+      When call verify_backend_argument_boundaries
+      The status should be success
     End
   End
 

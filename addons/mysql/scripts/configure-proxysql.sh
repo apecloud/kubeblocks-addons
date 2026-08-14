@@ -31,13 +31,19 @@ function mysql_exec() {
     local port="$4"
     local query="$5"
     local exec_opt="$6"
-    pass_ssl=""
+    local -a mysql_args=()
+    local -a exec_args=()
+    if [[ -n "$exec_opt" ]]; then
+        read -r -a exec_args <<< "$exec_opt"
+        mysql_args+=("${exec_args[@]}")
+    fi
     if [ "$BACKEND_TLS_ENABLED" == "true" ]; then
-        if [ $port == 3306 ]; then
-            pass_ssl="--ssl-ca=/var/lib/certs/ca.crt"
+        if [ "$port" == 3306 ]; then
+            mysql_args+=("--ssl-ca=/var/lib/certs/ca.crt")
         fi
     fi
-    mysql $exec_opt ${pass_ssl} --user=${user} --password=${pass} --host=${server} -P${port} -NBe "${query}"
+    mysql_args+=("--user=${user}" "--password=${pass}" "--host=${server}" "-P${port}" -NBe "${query}")
+    mysql "${mysql_args[@]}"
 }
 
 function wait_for_mysql() {
@@ -48,7 +54,7 @@ function wait_for_mysql() {
 
     log "INFO" "Waiting for host $server to be online ..."
     for i in {900..0}; do
-        out=$(mysql_exec ${user} ${pass} ${server} ${port} "select 1;")
+        out=$(mysql_exec "$user" "$pass" "$server" "$port" "select 1;")
         if [[ "$out" == "1" ]]; then
             break
         fi
@@ -69,7 +75,7 @@ function get_writable_mysql_server() {
 
     IFS=',' read -ra servers <<< "$MYSQL_FQDNS"
     for server in "${servers[@]}"; do
-        super_read_only=$(mysql_exec ${MYSQL_ROOT_USER} ${MYSQL_ROOT_PASSWORD} ${server} ${MYSQL_PORT} "select @@global.super_read_only;" 2>/dev/null || true)
+        super_read_only=$(mysql_exec "$MYSQL_ROOT_USER" "$MYSQL_ROOT_PASSWORD" "$server" "$MYSQL_PORT" "select @@global.super_read_only;" 2>/dev/null || true)
         if [[ "$super_read_only" == "0" || "$super_read_only" == "OFF" ]]; then
             echo "$server"
             return 0
@@ -83,7 +89,7 @@ function is_group_replication_backend() {
     local server="$1"
     local group_name
 
-    group_name=$(mysql_exec ${MYSQL_ROOT_USER} ${MYSQL_ROOT_PASSWORD} ${server} ${MYSQL_PORT} "select @@global.group_replication_group_name;" 2>/dev/null || true)
+    group_name=$(mysql_exec "$MYSQL_ROOT_USER" "$MYSQL_ROOT_PASSWORD" "$server" "$MYSQL_PORT" "select @@global.group_replication_group_name;" 2>/dev/null || true)
     [[ -n "$group_name" && "$group_name" != "NULL" ]]
 }
 
@@ -153,7 +159,7 @@ SQL
 )
 
     log "INFO" "Initializing ProxySQL Group Replication monitor objects on $server"
-    mysql_exec ${MYSQL_ROOT_USER} ${MYSQL_ROOT_PASSWORD} ${server} ${MYSQL_PORT} "$query" $opt
+    mysql_exec "$MYSQL_ROOT_USER" "$MYSQL_ROOT_PASSWORD" "$server" "$MYSQL_PORT" "$query" "$opt"
 }
 
 # if test by shellspec include, just return 0
@@ -163,10 +169,10 @@ fi
 
 
 log "INFO" "Connecting to MySQL backend $BACKEND_SERVER:$MYSQL_PORT as $MYSQL_ROOT_USER"
-wait_for_mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT
+wait_for_mysql "$MYSQL_ROOT_USER" "$MYSQL_ROOT_PASSWORD" "$BACKEND_SERVER" "$MYSQL_PORT"
 
 writable_mysql_server=$(get_writable_mysql_server)
-mysql_version=$(mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $writable_mysql_server $MYSQL_PORT  'select @@version')
+mysql_version=$(mysql_exec "$MYSQL_ROOT_USER" "$MYSQL_ROOT_PASSWORD" "$writable_mysql_server" "$MYSQL_PORT" 'select @@version')
 
 # echo "mysql version $mysql_version"
 # if [[ $mysql_version == *"8"* ]]; then
@@ -181,10 +187,10 @@ log "INFO" "Using writable MySQL backend $writable_mysql_server:$MYSQL_PORT as $
 if is_group_replication_backend "$writable_mysql_server"; then
     init_group_replication_monitor_view "$writable_mysql_server"
 fi
-mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $writable_mysql_server $MYSQL_PORT "$additional_sys_query" $opt
+mysql_exec "$MYSQL_ROOT_USER" "$MYSQL_ROOT_PASSWORD" "$writable_mysql_server" "$MYSQL_PORT" "$additional_sys_query" "$opt"
 
 # wait for proxysql process to run
-wait_for_mysql admin ${PROXYSQL_ADMIN_PASSWORD} 127.0.0.1 6032
+wait_for_mysql admin "${PROXYSQL_ADMIN_PASSWORD}" 127.0.0.1 6032
 
 log "INFO" "CURRENT CONFIGURATION"
 
