@@ -115,6 +115,7 @@ EOF
     The status should be success
     The output should include "updated successfully"
     The contents of file "${history_file}" should eq "[4,8]"
+    The contents of file "${call_log}" should include 'patch configmap rustfs-rustfs-configuration -n test --type strategic -p {"metadata":{"resourceVersion":"1"},"data":{"RUSTFS_REPLICAS_HISTORY":"[4,8]"}}'
   End
 
   It "creates a missing ConfigMap and writes the initial history snapshot"
@@ -188,6 +189,7 @@ EOF
     The status should be success
     The output should include "RUSTFS_REPLICAS_HISTORY=[4,12]"
     The contents of file "${history_file}" should eq "[4,12]"
+    The contents of file "${call_log}" should include 'patch configmap rustfs-rustfs-configuration -n test --type strategic -p {"metadata":{"resourceVersion":"2"},"data":{"RUSTFS_REPLICAS_HISTORY":"[4,12]"}}'
   End
 
   It "fails closed when create fails and the ConfigMap remains absent"
