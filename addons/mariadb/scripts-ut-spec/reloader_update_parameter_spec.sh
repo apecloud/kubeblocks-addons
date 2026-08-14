@@ -57,6 +57,7 @@ EOF
       The status should eq 0
       The contents of file "${MARIADB_TEST_ARGS_FILE}" should include "--user=kb_internal_root"
       The contents of file "${MARIADB_TEST_ARGS_FILE}" should not include "--user=root"
+      The contents of file "${MARIADB_TEST_ARGS_FILE}" should include "--skip-ssl"
       The contents of file "${MARIADB_TEST_ARGS_FILE}" should include 'SET GLOBAL `slave_parallel_threads` = 4;'
     End
 

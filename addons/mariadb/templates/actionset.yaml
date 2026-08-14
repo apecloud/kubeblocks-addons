@@ -8,10 +8,12 @@ spec:
   env:
     - name: DATA_DIR
       value: /var/lib/mysql
+    - name: IMAGE_TAG
+      value: {{ .Values.image.tag | quote }}
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
       runOnTargetPodNode: true
       command:
         - bash
@@ -72,7 +74,7 @@ spec:
           echo "{\"totalSize\":\"${TOTAL_SIZE}\"}" > "${DP_BACKUP_INFO_FILE}"
   restore:
     prepareData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
       command:
         - bash
         - -c

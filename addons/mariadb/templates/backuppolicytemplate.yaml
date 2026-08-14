@@ -42,6 +42,22 @@ spec:
     - name: mariadb-backup
       snapshotVolumes: false
       actionSetName: mariadb-physical-br
+      env:
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              - serviceVersions: ["10.6.15"]
+                mappedValue: "10.6.15"
+              - serviceVersions: ["11.4.5"]
+                mappedValue: "11.4.5"
+              - serviceVersions: ["11.4.8"]
+                mappedValue: "11.4.8"
+              - serviceVersions: ["11.4.10"]
+                mappedValue: "11.4.10"
+              - serviceVersions: ["11.8.4"]
+                mappedValue: "11.8.4"
+              - serviceVersions: ["12.0.2"]
+                mappedValue: "12.0.2"
       targetVolumes:
         volumeMounts:
           - name: data

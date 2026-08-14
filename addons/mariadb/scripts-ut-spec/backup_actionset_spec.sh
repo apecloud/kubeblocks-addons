@@ -76,4 +76,13 @@ Describe "mariadb backup ActionSet account contract"
     The status should be success
   End
 
+  It "selects a mariadb-backup image matching the target service version"
+    When call grep -qF 'image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)' "$(actionset_path)"
+    The status should be success
+    The contents of file "$(bpt_path)" should include 'serviceVersions: ["10.6.15"]'
+    The contents of file "$(bpt_path)" should include 'mappedValue: "10.6.15"'
+    The contents of file "$(bpt_path)" should include 'serviceVersions: ["12.0.2"]'
+    The contents of file "$(bpt_path)" should include 'mappedValue: "12.0.2"'
+  End
+
 End

@@ -226,7 +226,7 @@ reconfigure:
         mariadb_exec() {
           query="$1"
           INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
-          "${MARIADB_CLI}" --user="${INTERNAL_ROOT_USER}" --password="${MARIADB_ROOT_PASSWORD}" --host=127.0.0.1 -P 3306 -NBe "${query}"
+          "${MARIADB_CLI}" --user="${INTERNAL_ROOT_USER}" --password="${MARIADB_ROOT_PASSWORD}" --host=127.0.0.1 -P 3306 --skip-ssl -NBe "${query}"
         }
 
         to_numeric_value() {
@@ -579,7 +579,7 @@ reconfigure:
         mariadb_exec() {
           query="$1"
           INTERNAL_ROOT_USER="${MARIADB_INTERNAL_ROOT_USER:-kb_internal_root}"
-          "${MARIADB_CLI}" --user="${INTERNAL_ROOT_USER}" --password="${MARIADB_ROOT_PASSWORD}" --host=127.0.0.1 -P 3306 -NBe "${query}"
+          "${MARIADB_CLI}" --user="${INTERNAL_ROOT_USER}" --password="${MARIADB_ROOT_PASSWORD}" --host=127.0.0.1 -P 3306 --skip-ssl -NBe "${query}"
         }
 
         to_numeric_value() {
