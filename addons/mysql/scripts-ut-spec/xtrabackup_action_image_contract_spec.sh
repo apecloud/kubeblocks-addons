@@ -389,6 +389,38 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     done
   }
 
+  verify_mydumper_marker_write_failure_preserves_original_exit_code() {
+    root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-mydumper-exit.XXXXXX") || return 1
+
+    (
+      datasafed() {
+        if [ "$1" = "push" ]; then
+          cat >/dev/null
+        fi
+      }
+      mydumper() { return 42; }
+      export -f datasafed mydumper
+      export DP_DATASAFED_BIN_PATH="/bin"
+      export DP_BACKUP_BASE_PATH="/repo/current"
+      export DP_BACKUP_NAME="current"
+      export DP_BACKUP_INFO_FILE="${root}/missing/progress"
+      export DP_DB_HOST="mysql"
+      export DP_DB_PORT="3306"
+      export DP_DB_USER="backup"
+      export DP_DB_PASSWORD="secret"
+      export threads=""
+      export tables=""
+      export trx_tables="false"
+      export no_data="false"
+      export databases=""
+      bash "$(chart_path)/dataprotection/mysql-mydumper.sh" >/dev/null 2>&1
+    )
+    status=$?
+
+    rm -rf "${root}"
+    [ "${status}" -eq 42 ]
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -488,6 +520,11 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "preserves the original backup failure when its marker cannot be written"
     When call verify_marker_write_failure_preserves_original_exit_code
+    The status should be success
+  End
+
+  It "preserves the original mydumper failure when its marker cannot be written"
+    When call verify_mydumper_marker_write_failure_preserves_original_exit_code
     The status should be success
   End
 
