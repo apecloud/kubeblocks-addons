@@ -421,6 +421,98 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     [ "${status}" -eq 42 ]
   }
 
+  verify_mydumper_preserves_password_argument_boundary() {
+    root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-mydumper-password.XXXXXX") || return 1
+
+    (
+      password_is_single_argument() {
+        while [ "$#" -gt 0 ]; do
+          if [ "$1" = "-p" ]; then
+            [ "$#" -ge 2 ] && [ "$2" = "${EXPECTED_PASSWORD}" ]
+            return
+          fi
+          shift
+        done
+        return 1
+      }
+      datasafed() {
+        case "$1" in
+          push) cat >/dev/null ;;
+          stat) printf '%s\n' 'TotalSize 7' ;;
+        esac
+      }
+      mydumper() {
+        password_is_single_argument "$@" || return 64
+        printf '%s\n' 'dump'
+      }
+      export -f password_is_single_argument datasafed mydumper
+      export EXPECTED_PASSWORD='alpha beta[*]'
+      export DP_DATASAFED_BIN_PATH="/bin"
+      export DP_BACKUP_BASE_PATH="/repo/current"
+      export DP_BACKUP_NAME="current"
+      export DP_BACKUP_INFO_FILE="${root}/progress"
+      export DP_DB_HOST="mysql"
+      export DP_DB_PORT="3306"
+      export DP_DB_USER="backup"
+      export DP_DB_PASSWORD="${EXPECTED_PASSWORD}"
+      export threads=""
+      export tables=""
+      export trx_tables="false"
+      export no_data="false"
+      export databases=""
+      bash "$(chart_path)/dataprotection/mysql-mydumper.sh" >/dev/null 2>&1
+    )
+    status=$?
+
+    rm -rf "${root}"
+    [ "${status}" -eq 0 ]
+  }
+
+  verify_myloader_preserves_password_argument_boundary() {
+    root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-myloader-password.XXXXXX") || return 1
+
+    (
+      password_is_single_argument() {
+        while [ "$#" -gt 0 ]; do
+          if [ "$1" = "-p" ]; then
+            [ "$#" -ge 2 ] && [ "$2" = "${EXPECTED_PASSWORD}" ]
+            return
+          fi
+          shift
+        done
+        return 1
+      }
+      datasafed() {
+        if [ "$1" = "pull" ]; then
+          printf '%s\n' 'dump'
+        fi
+      }
+      myloader() {
+        password_is_single_argument "$@" || return 64
+        cat >/dev/null
+      }
+      export -f password_is_single_argument datasafed myloader
+      export EXPECTED_PASSWORD='alpha beta[*]'
+      export DP_DATASAFED_BIN_PATH="/bin"
+      export DP_BACKUP_BASE_PATH="/repo/current"
+      export DP_BACKUP_NAME="current"
+      export DP_BACKUP_INFO_FILE="${root}/progress"
+      export DP_DB_HOST="mysql"
+      export DP_DB_PORT="3306"
+      export MYSQL_ADMIN_USER="root"
+      export MYSQL_ADMIN_PASSWORD="${EXPECTED_PASSWORD}"
+      export threads=""
+      export tables=""
+      export drop_table=""
+      export no_data="false"
+      bash "$(chart_path)/dataprotection/mysql-myloader.sh" >/dev/null 2>&1
+    )
+    status=$?
+
+    rm -rf "${root}"
+    [ "${status}" -eq 0 ]
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -525,6 +617,16 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "preserves the original mydumper failure when its marker cannot be written"
     When call verify_mydumper_marker_write_failure_preserves_original_exit_code
+    The status should be success
+  End
+
+  It "preserves a user-provided password as one mydumper argument"
+    When call verify_mydumper_preserves_password_argument_boundary
+    The status should be success
+  End
+
+  It "preserves a user-provided password as one myloader argument"
+    When call verify_myloader_preserves_password_argument_boundary
     The status should be success
   End
 

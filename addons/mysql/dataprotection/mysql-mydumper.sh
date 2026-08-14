@@ -34,7 +34,7 @@ fi
 
 echo "parameters: $params"
 
-mydumper -h ${DP_DB_HOST} -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} -P ${DP_DB_PORT}  \
+mydumper -h ${DP_DB_HOST} -u ${DP_DB_USER} -p "${DP_DB_PASSWORD}" -P ${DP_DB_PORT}  \
   --stream --build-empty-files --chunk-filesize 256 ${params} \
   2> >(tee /tmp/mydumper.log >&2) | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.mydumper.zst"
 
