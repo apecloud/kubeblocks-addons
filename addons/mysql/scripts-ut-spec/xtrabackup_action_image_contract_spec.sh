@@ -421,6 +421,73 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     [ "${status}" -eq 42 ]
   }
 
+  verify_mydumper_clears_stale_progress_state() {
+    root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-mydumper-progress.XXXXXX") || return 1
+    progress_file="${root}/progress"
+    printf '%s\n' 'stale-success' >"${progress_file}"
+    touch "${progress_file}.exit" "${progress_file}.tmp"
+
+    (
+      datasafed() {
+        case "$1" in
+          push) cat >/dev/null ;;
+          stat) printf '%s\n' 'TotalSize 7' ;;
+        esac
+      }
+      mydumper() { return 0; }
+      export -f datasafed mydumper
+      export DP_DATASAFED_BIN_PATH="/bin"
+      export DP_BACKUP_BASE_PATH="/repo/current"
+      export DP_BACKUP_NAME="current"
+      export DP_BACKUP_INFO_FILE="${progress_file}"
+      export DP_DB_HOST="mysql"
+      export DP_DB_PORT="3306"
+      export DP_DB_USER="backup"
+      export DP_DB_PASSWORD="secret"
+      export threads=""
+      export tables=""
+      export trx_tables="false"
+      export no_data="false"
+      export databases=""
+      bash "$(chart_path)/dataprotection/mysql-mydumper.sh" >/dev/null 2>&1
+    )
+    status=$?
+
+    [ "${status}" -eq 0 ] \
+      && [ "$(cat "${progress_file}")" = '{"totalSize":"7"}' ] \
+      && [ ! -e "${progress_file}.exit" ] \
+      && [ ! -e "${progress_file}.tmp" ] || {
+        rm -rf "${root}"
+        return 1
+      }
+    rm -rf "${root}"
+  }
+
+  verify_mydumper_progress_is_atomic() {
+    awk '
+      />"\$\{DP_BACKUP_INFO_FILE\}"/ { exit 1 }
+      />"\$\{DP_BACKUP_INFO_FILE\}\.tmp"/ { staged = 1 }
+      /mv "\$\{DP_BACKUP_INFO_FILE\}\.tmp" "\$\{DP_BACKUP_INFO_FILE\}"/ {
+        if (!staged) exit 1
+        published = 1
+      }
+      END { if (!staged || !published) exit 1 }
+    ' "$(chart_path)/dataprotection/mysql-mydumper.sh"
+  }
+
+  verify_failed_mydumper_publish_cleans_temp() {
+    awk '
+      /function handle_exit/ { in_handler = 1 }
+      in_handler && /rm -f "\$\{DP_BACKUP_INFO_FILE\}\.tmp"/ { temp_cleaned = 1 }
+      in_handler && /touch "\$\{DP_BACKUP_INFO_FILE\}\.exit"/ {
+        if (!temp_cleaned) exit 1
+        failure_marker = 1
+      }
+      in_handler && /^}/ { in_handler = 0 }
+      END { if (!temp_cleaned || !failure_marker) exit 1 }
+    ' "$(chart_path)/dataprotection/mysql-mydumper.sh"
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -525,6 +592,21 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "preserves the original mydumper failure when its marker cannot be written"
     When call verify_mydumper_marker_write_failure_preserves_original_exit_code
+    The status should be success
+  End
+
+  It "clears stale mydumper progress and failure state before retrying"
+    When call verify_mydumper_clears_stale_progress_state
+    The status should be success
+  End
+
+  It "publishes mydumper success progress atomically"
+    When call verify_mydumper_progress_is_atomic
+    The status should be success
+  End
+
+  It "removes staged mydumper progress before publishing failure"
+    When call verify_failed_mydumper_publish_cleans_temp
     The status should be success
   End
 

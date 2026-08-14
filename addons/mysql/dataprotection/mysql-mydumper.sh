@@ -10,11 +10,13 @@ function handle_exit() {
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
     echo "failed with exit code $exit_code"
+    rm -f "${DP_BACKUP_INFO_FILE}.tmp" || true
     touch "${DP_BACKUP_INFO_FILE}.exit" || true
     exit "${exit_code}"
   fi
 }
 trap handle_exit EXIT
+rm -f "${DP_BACKUP_INFO_FILE}" "${DP_BACKUP_INFO_FILE}.exit" "${DP_BACKUP_INFO_FILE}.tmp"
 if [ -z "$threads" ]; then
   threads=4
 fi
@@ -39,4 +41,5 @@ mydumper -h ${DP_DB_HOST} -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} -P ${DP_DB_PORT}
   2> >(tee /tmp/mydumper.log >&2) | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.mydumper.zst"
 
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
+echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}.tmp"
+mv "${DP_BACKUP_INFO_FILE}.tmp" "${DP_BACKUP_INFO_FILE}"
