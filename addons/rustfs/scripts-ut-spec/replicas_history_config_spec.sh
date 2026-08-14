@@ -33,7 +33,7 @@ case "$*" in
     ;;
   "get configmaps rustfs-rustfs-configuration -n test -o jsonpath={.data.RUSTFS_REPLICAS_HISTORY}")
     [ "${KUBECTL_READ_MODE:-success}" = success ] || exit 42
-    printf '%s' '[4]'
+    printf '%s' "${KUBECTL_READ_VALUE-[4]}"
     ;;
   "create -f -")
     cat >/dev/null
@@ -75,6 +75,7 @@ EOF
       KUBECTL_CREATE_MODE="${3:-success}" \
       KUBECTL_PATCH_MODE="${4:-success}" \
       KUBECTL_RECHECK_MODE="${5:-}" \
+      KUBECTL_READ_VALUE="${6-[4]}" \
       "${SHELLSPEC_SHELL}" "${case_dir}/replicas-history-config.sh"
   }
 
@@ -86,6 +87,13 @@ EOF
     The status should be success
     The output should include "updated successfully"
     The contents of file "${history_file}" should eq "[4,8]"
+  End
+
+  It "creates a missing ConfigMap and writes the initial history snapshot"
+    When call run_case absent success success success '' ''
+    The status should be success
+    The output should include "updated successfully"
+    The contents of file "${history_file}" should eq "[8]"
   End
 
   It "replaces the local snapshot when an init container retries"
