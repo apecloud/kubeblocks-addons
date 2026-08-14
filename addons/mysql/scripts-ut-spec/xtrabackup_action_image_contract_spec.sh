@@ -283,6 +283,28 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     done
   }
 
+  verify_backup_progress_is_terminal() {
+    awk -v required=1 '
+      /xtrabackup --backup/ { backup = 1 }
+      backup && /rm -rf \$\{TMP_DIR\}/ { cleanups++ }
+      /echo .*totalSize.*>"\$\{DP_BACKUP_INFO_FILE\}"/ {
+        if (cleanups < required) exit 1
+        progress = 1
+      }
+      END { if (!progress) exit 1 }
+    ' "$(chart_path)/dataprotection/backup.sh" || return 1
+
+    awk -v required=2 '
+      /xtrabackup --backup/ { backup = 1 }
+      backup && /rm -rf \$\{(PARENT_DIR|TMP_DIR)\}/ { cleanups++ }
+      /echo .*totalSize.*>"\$\{DP_BACKUP_INFO_FILE\}"/ {
+        if (cleanups < required) exit 1
+        progress = 1
+      }
+      END { if (!progress) exit 1 }
+    ' "$(chart_path)/dataprotection/xtrabackup-incremental-backup.sh"
+  }
+
   verify_restore_markers_are_terminal() {
     for script in restore.sh xtrabackup-incremental-restore.sh; do
       awk '
@@ -356,6 +378,12 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "clears stale backup progress and failure state before retrying"
     When call verify_stale_progress_state_cleanup
+    The status should be success
+  End
+
+
+  It "publishes backup success progress only after final cleanup"
+    When call verify_backup_progress_is_terminal
     The status should be success
   End
 

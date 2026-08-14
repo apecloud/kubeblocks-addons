@@ -98,6 +98,6 @@ cat "${TMP_DIR}/xtrabackup.log" \
 # record server uuid
 echo "${server_uuid}" | datasafed push - "${DP_BACKUP_NAME}.server-uuid"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
 rm -rf ${PARENT_DIR}
 rm -rf ${TMP_DIR}
+echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
