@@ -18,6 +18,20 @@ trap handle_exit EXIT
 if [ -z "$threads" ]; then
   threads=4
 fi
+case "${trx_tables}" in
+  "" | true | false) ;;
+  *)
+    echo "trx_tables must be true or false" >&2
+    exit 1
+    ;;
+esac
+case "${no_data}" in
+  "" | true | false) ;;
+  *)
+    echo "no_data must be true or false" >&2
+    exit 1
+    ;;
+esac
 params="--threads=$threads --triggers --routines"
 if [ -n "$tables" ]; then
   params="$params -T $tables"
