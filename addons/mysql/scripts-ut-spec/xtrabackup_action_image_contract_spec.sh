@@ -295,6 +295,54 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
     done
   }
 
+  verify_completed_restore_replay_preserves_markers() {
+    for script in restore.sh xtrabackup-incremental-restore.sh; do
+      root=$(mktemp -d "${TMPDIR:-/tmp}/mysql-restore-replay.XXXXXX") || return 1
+      mkdir -p "${root}/data"
+      touch "${root}/data/.xtrabackup_restore" "${root}/data/.restore_new_cluster"
+      printf "valid-restored-data\n" >"${root}/data/replay-sentinel"
+
+      (
+        datasafed() {
+          if [ "$1" = "list" ]; then
+            printf "%s\n" "$2"
+          fi
+        }
+        xbstream() { return 0; }
+        xtrabackup() {
+          for arg in "$@"; do
+            if [ "${arg}" = "--move-back" ]; then
+              return 42
+            fi
+          done
+          return 0
+        }
+        export -f datasafed xbstream xtrabackup
+        export MYSQL_DIR="${root}"
+        export DATA_DIR="${root}/data"
+        export DP_DATASAFED_BIN_PATH="/bin"
+        export DP_BACKUP_BASE_PATH="/repo"
+        export DP_BACKUP_NAME="current"
+        export DP_BASE_BACKUP_NAME="base"
+        export DP_BACKUP_ROOT_PATH="/root"
+        export DP_TARGET_RELATIVE_PATH="data"
+        export DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES=""
+        export BACKUP_FOR_STANDBY="false"
+        bash "$(chart_path)/dataprotection/${script}" >/dev/null 2>&1
+      )
+      status=$?
+
+      [ "${status}" -eq 42 ] \
+        && [ -f "${root}/data/.xtrabackup_restore" ] \
+        && [ -f "${root}/data/.restore_new_cluster" ] \
+        && [ "$(cat "${root}/data/replay-sentinel")" = "valid-restored-data" ] || {
+          rm -rf "${root}"
+          return 1
+        }
+      rm -rf "${root}"
+    done
+  }
+
   It "resolves the exact MySQL 5.7 full-backup Job image"
     When call resolve_action_image backuppolicytemplate.yaml xtrabackup actionset-xtrabackup-v2.yaml 5.7.44
     The status should be success
@@ -314,6 +362,12 @@ $(render_template actionset-xtrabackup-inc-v2.yaml)" || return 1
 
   It "preserves durable restore markers and publishes them only after finalization"
     When call verify_restore_markers_are_terminal
+    The status should be success
+  End
+
+
+  It "preserves completed restore data and markers when prepareData is replayed"
+    When call verify_completed_restore_replay_preserves_markers
     The status should be success
   End
 
