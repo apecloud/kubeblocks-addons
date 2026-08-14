@@ -52,6 +52,55 @@ Describe "ProxySQL Configuration Script Tests"
     End
   End
 
+  Describe "ProxySQL User Configuration Tests"
+    run_configure_proxysql_with_quoted_credentials() {
+      local status
+      MYSQL_SQL_LOG=$(mktemp)
+      export MYSQL_SQL_LOG
+
+      mysql() {
+        local arg
+        for arg in "$@"; do
+          case "$arg" in
+            *"insert or replace into mysql_users"*)
+              printf '%s\n' "$arg" >> "$MYSQL_SQL_LOG"
+              ;;
+          esac
+        done
+
+        case "$*" in
+          *"select 1;"*) printf '1\n' ;;
+          *"super_read_only"*) printf '0\n' ;;
+          *"group_replication_group_name"*) printf 'NULL\n' ;;
+          *"@@version"*) printf '8.0.0\n' ;;
+        esac
+      }
+      export -f mysql
+
+      MYSQL_ROOT_USER="ro'ot"
+      MYSQL_ROOT_PASSWORD="pa'ss"
+      PROXYSQL_ADMIN_PASSWORD=admin
+      BACKEND_SERVER=mysql-0
+      MYSQL_FQDNS=mysql-0
+      MYSQL_PORT=3306
+      BACKEND_TLS_ENABLED=false
+      export MYSQL_ROOT_USER MYSQL_ROOT_PASSWORD PROXYSQL_ADMIN_PASSWORD
+      export BACKEND_SERVER MYSQL_FQDNS MYSQL_PORT BACKEND_TLS_ENABLED
+
+      bash ../scripts/configure-proxysql.sh >/dev/null 2>&1
+      status=$?
+      cat "$MYSQL_SQL_LOG"
+      rm -f "$MYSQL_SQL_LOG"
+      return "$status"
+    }
+
+    It "escapes root credentials used as SQL literals"
+      When call run_configure_proxysql_with_quoted_credentials
+      The status should be success
+      The stdout should include "values ('ro''ot','pa''ss',1)"
+    End
+  End
+
   Describe "Wait for MySQL Function Tests"
     setup() {
       # Mock the mysql_exec function to simulate MySQL responses

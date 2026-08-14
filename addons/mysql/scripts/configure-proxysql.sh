@@ -40,6 +40,14 @@ function mysql_exec() {
     mysql $exec_opt ${pass_ssl} --user=${user} --password=${pass} --host=${server} -P${port} -NBe "${query}"
 }
 
+function escape_sql_literal() {
+    local value="$1"
+    local quote="'"
+    local escaped_quote="''"
+
+    printf '%s' "${value//$quote/$escaped_quote}"
+}
+
 function wait_for_mysql() {
     local user="$1"
     local pass="$2"
@@ -204,7 +212,9 @@ select * from runtime_proxysql_servers;
 mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "$configuration_sql"
 
 mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "delete from mysql_query_rules;insert into mysql_query_rules (rule_id,active,match_digest,destination_hostgroup,apply,re_modifiers) values (1,1,'^SELECT.*FOR UPDATE$',1,1,'CASELESS'),(2,1,'^SELECT',2,1,'CASELESS');LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;"
-mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "insert or replace into mysql_users (username,password,default_hostgroup) values ('$MYSQL_ROOT_USER','$MYSQL_ROOT_PASSWORD',1);LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"
+mysql_root_user_sql=$(escape_sql_literal "$MYSQL_ROOT_USER")
+mysql_root_password_sql=$(escape_sql_literal "$MYSQL_ROOT_PASSWORD")
+mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "insert or replace into mysql_users (username,password,default_hostgroup) values ('$mysql_root_user_sql','$mysql_root_password_sql',1);LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"
 if is_group_replication_backend "$writable_mysql_server"; then
     mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "insert or replace into mysql_group_replication_hostgroups (writer_hostgroup,backup_writer_hostgroup,reader_hostgroup,offline_hostgroup,active,max_writers,writer_is_also_reader,max_transactions_behind,comment) values (1,4,2,3,1,1,0,100,'proxy');LOAD MYSQL SERVERS TO RUNTIME;SAVE MYSQL SERVERS TO DISK;"
     mysql -uadmin -p${PROXYSQL_ADMIN_PASSWORD} -h127.0.0.1 -P6032 -vvve "select * from runtime_mysql_group_replication_hostgroups; select * from mysql_group_replication_hostgroups;"
