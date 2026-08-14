@@ -21,6 +21,12 @@ REMOTE_STANDBY_FLAG="${ROOT_DIR}/.remotestandby"
 BACKUP_DIR="${ROOT_DIR}/backup"
 AUDIT_SERVER_NAME="kbAuditLog"
 AUDIT_LOG_DIRECTORY="${AUDIT_LOG_DIRECTORY:-${ROOT_DIR}/audit}"
+SLOW_LOG_SESSION_NAME="kbSlowQueryLog"
+SLOW_LOG_DIRECTORY="${SLOW_LOG_DIRECTORY:-${ROOT_DIR}/slowlog}"
+SLOW_LOG_FILE_NAME="kb_slow_query.xel"
+SLOW_LOG_BOOTSTRAP_THRESHOLD_US=1000000
+SLOW_LOG_BOOTSTRAP_MAX_FILE_SIZE_MB=100
+SLOW_LOG_BOOTSTRAP_MAX_ROLLOVER_FILES=5
 
 # Log rotation settings
 MAX_LOG_SIZE=$((10 * 1024 * 1024))  # 10MB
@@ -924,6 +930,58 @@ EOF
   fi
 }
 
+function config_slowquery_xe() {
+  log "config mssql slow query extended events"
+  if [ ! -d "${SLOW_LOG_DIRECTORY}" ]; then
+    mkdir -p "${SLOW_LOG_DIRECTORY}"
+    chown -R mssql:mssql "${SLOW_LOG_DIRECTORY}"
+  fi
+
+  # Bootstrap only. Runtime settings are managed by the platform API after creation.
+  local event_file="${SLOW_LOG_DIRECTORY%/}/${SLOW_LOG_FILE_NAME}"
+  local event_file_literal=${event_file//\'/\'\'}
+  local slowquery_xe_sql
+  slowquery_xe_sql=$(cat <<EOF
+IF NOT EXISTS (SELECT 1 FROM sys.server_event_sessions WHERE name = N'${SLOW_LOG_SESSION_NAME}')
+BEGIN
+  CREATE EVENT SESSION [${SLOW_LOG_SESSION_NAME}] ON SERVER
+  ADD EVENT sqlserver.rpc_completed(
+    ACTION(sqlserver.sql_text, sqlserver.database_name, sqlserver.username,
+           sqlserver.client_hostname, sqlserver.client_app_name,
+           sqlserver.session_id)
+    WHERE ([duration] >= ${SLOW_LOG_BOOTSTRAP_THRESHOLD_US})
+  ),
+  ADD EVENT sqlserver.sql_batch_completed(
+    ACTION(sqlserver.sql_text, sqlserver.database_name, sqlserver.username,
+           sqlserver.client_hostname, sqlserver.client_app_name,
+           sqlserver.session_id)
+    WHERE ([duration] >= ${SLOW_LOG_BOOTSTRAP_THRESHOLD_US})
+  )
+  ADD TARGET package0.event_file(
+    SET filename=N'${event_file_literal}',
+        max_file_size=(${SLOW_LOG_BOOTSTRAP_MAX_FILE_SIZE_MB}),
+        max_rollover_files=(${SLOW_LOG_BOOTSTRAP_MAX_ROLLOVER_FILES})
+  )
+  WITH (MAX_MEMORY=4096 KB,
+        EVENT_RETENTION_MODE=ALLOW_SINGLE_EVENT_LOSS,
+        MAX_DISPATCH_LATENCY=30 SECONDS,
+        STARTUP_STATE=ON);
+END;
+
+IF NOT EXISTS (SELECT 1 FROM sys.dm_xe_sessions WHERE name = N'${SLOW_LOG_SESSION_NAME}')
+BEGIN
+  ALTER EVENT SESSION [${SLOW_LOG_SESSION_NAME}] ON SERVER STATE = START;
+END;
+EOF
+  )
+
+  log "create/start slow query extended events session: ${SLOW_LOG_SESSION_NAME}, event_file=${event_file}"
+  if ! conn_local "${slowquery_xe_sql}"; then
+    log "create/start slow query extended events session failed"
+    return 1
+  fi
+}
+
 
 function config_db_auditlog() {
   local dbname=$1
@@ -1200,6 +1258,7 @@ function configure_primary {
     add_db_to_ag "$DEFAULT_DB_NAME"
   fi
   config_auditlog_primary
+  config_slowquery_xe
   create_ape_sp
 }
 
@@ -1225,6 +1284,7 @@ function configure_secondary {
   finish_backup
   create_ape_sp
   config_auditlog_secondary
+  config_slowquery_xe
   sync_all_logins_from_primary
 }
 
@@ -1243,6 +1303,7 @@ function configure_remote_secondary {
   restore_login_names
   finish_backup
   create_ape_sp
+  config_slowquery_xe
   if [ ! -f "$REMOTE_STANDBY_FLAG" ]; then
     touch "$REMOTE_STANDBY_FLAG"
   fi
@@ -1412,10 +1473,12 @@ function configure_initialized {
   # destructive, never gates startup. "|| true" is belt-and-suspenders so a
   # future contract regression cannot crash-loop the entrypoint.
   d06_restart_db_detect || true
+  config_slowquery_xe
 }
 
 function mark_as_initialized() {
-  touch $init_flag
+  touch "$init_flag"
+  rm -f "$restart_configure_flag"
 }
 
 # Run a configure_* function for the background init job and report its real exit code.
@@ -1739,6 +1802,7 @@ function run_internal_mode() {
         *) return 2 ;;
       esac
       init_flag="$ROOT_DIR/.initialized"
+      restart_configure_flag="$ROOT_DIR/.restart-configure"
       run_configure_step "$configure_function"
       mark_as_initialized
       ;;
@@ -1775,15 +1839,18 @@ cp /config/mssql.conf /var/opt/mssql/mssql.conf
 /opt/mssql/bin/mssql-conf set hadr.hadrenabled 1
 configure_tls
 init_flag="$ROOT_DIR/.initialized"
+restart_configure_flag="$ROOT_DIR/.restart-configure"
 
 if [ "$IS_REMOTE_STANDBY" = "false" ] && [ -f $REMOTE_STANDBY_FLAG ]; then
   # when remote standby instance promote to new primary, remove the init flag, do primary configuration
-  rm $init_flag
+  rm -f "$init_flag" "$restart_configure_flag"
 fi
 
 configure_function=""
-if [ -f "$init_flag" ]; then
+if [ -f "$init_flag" ] || [ -f "$restart_configure_flag" ]; then
   log "configure initialized"
+  touch "$restart_configure_flag"
+  rm -f "$init_flag"
   configure_function=configure_initialized
 else
   IFS=' ' read -r -a pods <<< "$(get_pod_list true)"
