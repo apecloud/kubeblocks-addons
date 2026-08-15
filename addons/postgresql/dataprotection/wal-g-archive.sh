@@ -57,6 +57,7 @@ function get_wal_log_start_time() {
     local wal_dump_output
     local wal_dump_status
     local START_TIME
+    local normalized_start_time
     wal_dump_output=$(pg_waldump "${file}" --rmgr=Transaction 2>/dev/null)
     wal_dump_status=$?
     START_TIME=$(printf '%s\n' "${wal_dump_output}" | grep 'desc: COMMIT' |head -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
@@ -65,8 +66,11 @@ function get_wal_log_start_time() {
        return 1
     fi
     if [[ ! -z ${START_TIME} ]];then
-       START_TIME=$(date -d "${START_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
-       echo $START_TIME
+       if ! normalized_start_time=$(date -d "${START_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ'); then
+          DP_error_log "failed to normalize oldest WAL timestamp: ${file}" >&2
+          return 1
+       fi
+       echo "${normalized_start_time}"
    fi
 }
 

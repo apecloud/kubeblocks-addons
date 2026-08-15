@@ -26,7 +26,8 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
-      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_OUT PG_WALDUMP_EXIT PG_WALDUMP_OUT \
+      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT \
+      PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
@@ -81,6 +82,9 @@ EOF
     cat > "${bindir}/date" <<'EOF'
 #!/bin/sh
 if [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
+  if [ "${DATE_D_EXIT:-0}" -ne 0 ]; then
+    exit "${DATE_D_EXIT}"
+  fi
   printf '%s\n' "${DATE_D_OUT}"
 else
   exec /bin/date "$@"
@@ -292,6 +296,17 @@ EOF
       When call save_backup_status
       The status should be failure
       The error should include "failed to analyze oldest WAL"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "fails without publishing when oldest WAL timestamp normalization fails"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000001.zst","mtime":"2026-08-16T00:00:00Z"}]'
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16T00:00:00Z; origin: node'
+      export DATE_D_OUT="2026-08-16T00:00:00Z" DATE_D_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "failed to normalize oldest WAL timestamp"
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
 

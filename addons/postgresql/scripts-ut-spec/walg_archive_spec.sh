@@ -320,6 +320,23 @@ EOF
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
 
+    It "fails without publishing when oldest WAL timestamp normalization fails"
+      wal_path="/20260816/000000010000000000000001.zst"
+      wal_name="000000010000000000000001"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT="[{\"path\":\"${wal_path}\",\"mtime\":\"2026-08-16T00:00:00Z\"}]"
+      mkdir -p "${KB_BACKUP_WORKDIR}"
+      printf '%s\n' "${wal_path}" > "${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
+      touch "${KB_BACKUP_WORKDIR}/${wal_name}"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16 00:00:00 UTC; origin: node'
+      export DATE_D_OUT="2026-08-16T00:00:00Z"
+      export DATE_D_FAIL_ON_CALL=1 DATE_D_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "failed to normalize oldest WAL timestamp"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
     It "uses a commit record from a partial oldest WAL despite pg_waldump's final nonzero status"
       wal_path="/20260816/000000010000000000000001.zst"
       wal_name="000000010000000000000001"
