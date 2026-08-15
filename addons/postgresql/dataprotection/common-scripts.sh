@@ -29,15 +29,27 @@ function DP_save_backup_status_info() {
     local timeZone=$4
     local extras=$5
     local timeZoneStr=""
+    local backupInfo
+    local backupInfoTmp="${DP_BACKUP_INFO_FILE}.tmp.$$"
     if [ ! -z ${timeZone} ]; then
        timeZoneStr=",\"timeZone\":\"${timeZone}\""
     fi
     if [ -z "${stopTime}" ];then
-      echo "{\"totalSize\":\"${totalSize}\"}" > ${DP_BACKUP_INFO_FILE}
+      printf -v backupInfo '{"totalSize":"%s"}' "${totalSize}"
     elif [ -z "${startTime}" ];then
-      echo "{\"totalSize\":\"${totalSize}\",\"extras\":[${extras}],\"timeRange\":{\"end\":\"${stopTime}\"${timeZoneStr}}}" > ${DP_BACKUP_INFO_FILE}
+      printf -v backupInfo '{"totalSize":"%s","extras":[%s],"timeRange":{"end":"%s"%s}}' \
+        "${totalSize}" "${extras}" "${stopTime}" "${timeZoneStr}"
     else
-      echo "{\"totalSize\":\"${totalSize}\",\"extras\":[${extras}],\"timeRange\":{\"start\":\"${startTime}\",\"end\":\"${stopTime}\"${timeZoneStr}}}" > ${DP_BACKUP_INFO_FILE}
+      printf -v backupInfo '{"totalSize":"%s","extras":[%s],"timeRange":{"start":"%s","end":"%s"%s}}' \
+        "${totalSize}" "${extras}" "${startTime}" "${stopTime}" "${timeZoneStr}"
+    fi
+    if ! printf '%s\n' "${backupInfo}" > "${backupInfoTmp}"; then
+      rm -f "${backupInfoTmp}"
+      return 1
+    fi
+    if ! mv -f "${backupInfoTmp}" "${DP_BACKUP_INFO_FILE}"; then
+      rm -f "${backupInfoTmp}"
+      return 1
     fi
 }
 
@@ -116,4 +128,3 @@ function getTimeZoneOffset() {
    fi
    echo "${symbol}${offset}:00"
 }
-
