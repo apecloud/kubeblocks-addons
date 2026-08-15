@@ -251,6 +251,19 @@ EOF
       The status should eq 0
       The output should include "push-count=1"
     End
+
+    It "does not let a timeline-history object hide a missing WAL"
+      wal_name="000000010000000000000001"
+      export DATASAFED_LIST_OUT='[
+        {"path":"/00000002.history.zst","mtime":"2026-08-15T23:59:00Z"},
+        {"path":"/20260816/000000010000000000000000.zst","mtime":"2026-08-16T00:00:00Z"}
+      ]'
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.done"
+      When call uploadMissingLogs
+      The status should eq 0
+      The result of function call_log should include "datasafed push -z zstd ${wal_name} /20260816/${wal_name}.zst"
+    End
   End
 
   Describe "save_backup_status()"
@@ -286,6 +299,23 @@ EOF
       The error should include "failed to pull oldest WAL"
       The path "${KB_BACKUP_WORKDIR}/dp_oldest_file.info" should not be exist
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "ignores an older timeline-history object when deriving the WAL start"
+      history_path="/00000002.history.zst"
+      wal_path="/20260816/000000010000000000000001.zst"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT="[{
+        \"path\":\"${history_path}\",\"mtime\":\"2026-08-15T23:59:00Z\"
+      },{
+        \"path\":\"${wal_path}\",\"mtime\":\"2026-08-16T00:00:00Z\"
+      }]"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16T00:00:00Z; origin: node'
+      export DATE_D_OUT="2026-08-16T00:00:00Z"
+      When call save_backup_status
+      The status should eq 0
+      The result of function call_log should not include "${history_path}"
+      The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"4096"}'
     End
 
 
