@@ -26,7 +26,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
-      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT \
+      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_TODAY_OUT \
       PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT PSQL_EXIT 2>/dev/null || true
 
@@ -86,6 +86,8 @@ if [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
     exit "${DATE_D_EXIT}"
   fi
   printf '%s\n' "${DATE_D_OUT}"
+elif [ "$1" = "+%Y%m%d" ] && [ -n "${DATE_TODAY_OUT:-}" ]; then
+  printf '%s\n' "${DATE_TODAY_OUT}"
 else
   exec /bin/date "$@"
 fi
@@ -258,6 +260,7 @@ EOF
         {"path":"/00000002.history.zst","mtime":"2026-08-15T23:59:00Z"},
         {"path":"/20260816/000000010000000000000000.zst","mtime":"2026-08-16T00:00:00Z"}
       ]'
+      export DATE_TODAY_OUT="20260816"
       touch "${LOG_DIR}/${wal_name}"
       touch "${LOG_DIR}/archive_status/${wal_name}.done"
       When call uploadMissingLogs
