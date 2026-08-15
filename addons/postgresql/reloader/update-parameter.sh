@@ -51,7 +51,11 @@ update_parameter() {
 
     command="reload"
     paramName="${1:?missing param name}"
-    paramValue="${2:?missing value}"
+    if [ "$#" -lt 2 ]; then
+        echo "missing value" >&2
+        return 1
+    fi
+    paramValue=$2
     case "$paramValue" in
         \'*\')
             paramValue=${paramValue#\'}
