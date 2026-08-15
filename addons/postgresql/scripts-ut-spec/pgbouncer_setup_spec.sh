@@ -29,6 +29,14 @@ Describe "PostgreSQL Pgbouncer setup fail-fast contract"
     test -z "${1:-}"
   }
 
+  printf() {
+    if test "$PGB_FAIL_STEP" = "database_header" && test "${1:-}" = '\n[databases]\n'; then
+      return 42
+    fi
+    # shellcheck disable=SC2059
+    builtin printf "$@"
+  }
+
   Mock useradd
     exit 0
   End
@@ -75,6 +83,13 @@ Describe "PostgreSQL Pgbouncer setup fail-fast contract"
 
   It "does not start Pgbouncer after copying the template fails"
     export PGB_FAIL_STEP=cp
+    When call main
+    The status should be failure
+    The output should not include "start-called"
+  End
+
+  It "does not start Pgbouncer after an early database config write fails"
+    export PGB_FAIL_STEP=database_header
     When call main
     The status should be failure
     The output should not include "start-called"

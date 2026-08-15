@@ -23,11 +23,10 @@ build_pgbouncer_conf() {
   mkdir -p "$pgbouncer_conf_dir" "$pgbouncer_log_dir" "$pgbouncer_tmp_dir" || return $?
   cp "$pgbouncer_template_conf_file" "$pgbouncer_conf_dir" || return $?
   printf '"%s" "%s"\n' "$POSTGRESQL_USERNAME" "$POSTGRESQL_PASSWORD" > "$pgbouncer_user_list_file" || return $?
-  {
-    printf '\n[databases]\n'
-    printf 'postgres=host=%s port=5432 dbname=postgres\n' "$CURRENT_POD_IP"
-    printf '*=host=%s port=5432\n' "$CURRENT_POD_IP"
-  } >> "$pgbouncer_conf_file" || return $?
+  # shellcheck disable=SC2129
+  printf '\n[databases]\n' >> "$pgbouncer_conf_file" || return $?
+  printf 'postgres=host=%s port=5432 dbname=postgres\n' "$CURRENT_POD_IP" >> "$pgbouncer_conf_file" || return $?
+  printf '*=host=%s port=5432\n' "$CURRENT_POD_IP" >> "$pgbouncer_conf_file" || return $?
   chmod 644 "$pgbouncer_conf_file" || return $?
   chmod 600 "$pgbouncer_user_list_file" || return $?
 
