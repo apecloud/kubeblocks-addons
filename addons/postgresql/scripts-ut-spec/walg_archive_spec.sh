@@ -28,7 +28,7 @@ Describe "dataprotection/wal-g-archive.sh"
     export PATH CALL_LOG VOLUME_DATA_DIR LOG_DIR KB_BACKUP_WORKDIR \
       DP_BACKUP_INFO_FILE UPLOAD_MISSING_LOGS_RETRY_INTERVAL \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
-    unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_STAT_EXIT \
+    unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_STAT_EXIT \
       DATASAFED_STAT_OUT MV_EXIT WALG_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
@@ -79,6 +79,9 @@ case "$1" in
   list)
     printf '%s' "${DATASAFED_LIST_OUT:-}"
     exit "${DATASAFED_LIST_EXIT:-0}"
+    ;;
+  pull)
+    exit "${DATASAFED_PULL_EXIT:-0}"
     ;;
 esac
 EOF
@@ -269,6 +272,17 @@ EOF
       When call save_backup_status
       The status should be failure
       The error should include "datasafed WAL listing returned invalid JSON"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "fails without caching or publishing when the oldest WAL pull fails"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000001.zst","mtime":"2026-08-16T00:00:00Z"}]'
+      export DATASAFED_PULL_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "failed to pull oldest WAL"
+      The path "${KB_BACKUP_WORKDIR}/dp_oldest_file.info" should not be exist
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
   End

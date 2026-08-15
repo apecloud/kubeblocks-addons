@@ -25,7 +25,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     mkdir -p "${LOG_DIR}/archive_status"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
-    unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PUSH_EXIT \
+    unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
       DATASAFED_STAT_EXIT DATASAFED_STAT_OUT MV_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
@@ -52,6 +52,9 @@ printf 'datasafed %s\n' "$*" >> "${CALL_LOG}"
 case "$1" in
   push)
     exit "${DATASAFED_PUSH_EXIT:-0}"
+    ;;
+  pull)
+    exit "${DATASAFED_PULL_EXIT:-0}"
     ;;
   stat)
     printf '%s\n' "${DATASAFED_STAT_OUT:-TotalSize: 0}"
@@ -244,6 +247,17 @@ EOF
       When call save_backup_status
       The status should be failure
       The error should include "datasafed WAL listing failed"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "fails without caching or publishing when the oldest WAL pull fails"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000001.zst","mtime":"2026-08-16T00:00:00Z"}]'
+      export DATASAFED_PULL_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "failed to pull oldest WAL"
+      The path "${KB_BACKUP_WORKDIR}/dp_oldest_file.info" should not be exist
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
   End

@@ -112,7 +112,10 @@ function get_start_time_for_range() {
    fi
    local OLDEST_FILE="${WAL_FILES%%$'\n'*}"
    if [ ! -z ${OLDEST_FILE} ]; then
-     START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log)
+     local START_TIME
+     if ! START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log); then
+       return 1
+     fi
      echo ${START_TIME}
    fi
 }
