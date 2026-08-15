@@ -285,5 +285,20 @@ EOF
       The path "${KB_BACKUP_WORKDIR}/dp_oldest_file.info" should not be exist
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
+
+    It "fails without publishing when the latest WAL pull fails"
+      wal_path="/20260816/000000010000000000000001.zst"
+      wal_name="000000010000000000000001"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT="[{\"path\":\"${wal_path}\",\"mtime\":\"2026-08-16T00:00:00Z\"}]"
+      mkdir -p "${KB_BACKUP_WORKDIR}"
+      printf '%s\n' "${wal_path}" > "${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
+      touch "${KB_BACKUP_WORKDIR}/${wal_name}"
+      export DATASAFED_PULL_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "failed to pull latest WAL"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
   End
 End

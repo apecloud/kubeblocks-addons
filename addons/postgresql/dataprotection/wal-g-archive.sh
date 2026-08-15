@@ -72,7 +72,10 @@ function pull_wal_log() {
 function get_wal_log_end_time() {
     wal_file="${1:?missing file name to pull}"
     mkdir -p "${KB_BACKUP_WORKDIR}" && cd "${KB_BACKUP_WORKDIR}" || return 1
-    pull_wal_log ${wal_file}
+    if ! pull_wal_log "${wal_file}"; then
+       DP_error_log "failed to pull latest WAL: ${wal_file}" >&2
+       return 1
+    fi
     wal_file_name=$(DP_get_file_name_without_ext "$(basename "${wal_file}")")
     local END_TIME=$(pg_waldump $wal_file_name --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
     if [[ ! -z ${END_TIME} ]];then
@@ -107,7 +110,9 @@ function save_backup_status() {
     if [ -n "${wal_files}" ]; then
       # get the end time from the latest 10 files
       for file in $(echo $wal_files | tr ' ' '\n' | tail -n 10 | tac); do
-         END_TIME=$(get_wal_log_end_time ${file})
+         if ! END_TIME=$(get_wal_log_end_time "${file}"); then
+           return 1
+         fi
          if [ -n "${END_TIME}" ];then
              break
          fi
