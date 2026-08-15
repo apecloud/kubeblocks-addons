@@ -3,9 +3,9 @@ set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
-export PGPASSWORD=${POSTGRES_PASSWORD}
+export PGPASSWORD=${DP_DB_PASSWORD}
 BACKUP_DIR=$BACKUP_DIR/${DP_BACKUP_NAME}
-psql_cmd="psql -h ${DP_DB_HOST} -U ${POSTGRES_USER} -p ${DP_DB_PORT}"
+psql_cmd="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -p ${DP_DB_PORT}"
 mkdir -p $BACKUP_DIR
 trap "[ -d $BACKUP_DIR ] && rm -rf $BACKUP_DIR" EXIT
 
@@ -88,7 +88,7 @@ echo "parameters: $params"
 # so /tmp/pg_restore.log is guaranteed complete before it is grepped below.
 exec 3>&1
 set +e
-pg_restore -h ${DP_DB_HOST} -U ${POSTGRES_USER} -p ${DP_DB_PORT} ${params} $BACKUP_DIR 2>&1 1>&3 | tee /tmp/pg_restore.log >&2
+pg_restore -h ${DP_DB_HOST} -U ${DP_DB_USER} -p ${DP_DB_PORT} ${params} $BACKUP_DIR 2>&1 1>&3 | tee /tmp/pg_restore.log >&2
 exit_code=${PIPESTATUS[0]}
 set -e
 exec 3>&-
