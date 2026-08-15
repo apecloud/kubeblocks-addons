@@ -216,6 +216,8 @@ lifecycleActions:
           # captured explicitly via $? -- if it stayed on, set -e would exit before the
           # rc-save line on any non-zero result.
           { previous_state=$(set +o); set +ex; } 2>/dev/null
+          # statement.create embeds this value in a single-quoted MySQL literal.
+          KB_ACCOUNT_PASSWORD=${KB_ACCOUNT_PASSWORD//\'/\'\'}
           eval statement=\"${KB_ACCOUNT_STATEMENT}\"
           mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
           mysql_rc=$?
