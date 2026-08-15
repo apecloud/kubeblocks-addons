@@ -47,6 +47,7 @@ Describe "PostgreSQL Pgbouncer auth-file contract"
   It "doubles quotes in overridden passwords for the PgBouncer auth file"
     When call build_pgbouncer_conf
     The status should be success
+    The output should include "pgbouncer user and group are ready"
     The path "$pgbouncer_user_list_file" should be file
     The contents of file "$pgbouncer_user_list_file" should equal '"postgres" "pa""ss"'
   End
