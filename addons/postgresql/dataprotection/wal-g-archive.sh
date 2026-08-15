@@ -84,9 +84,12 @@ function get_wal_log_end_time() {
 
 # save backup status info to sync file
 function save_backup_status() {
-    local TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+    local TOTAL_SIZE
+    if ! TOTAL_SIZE=$(DP_get_backup_total_size); then
+       return 1
+    fi
     # if no size changes, return
-    if [[ -z ${TOTAL_SIZE} || ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == "${GLOBAL_OLD_SIZE}" ]];then
+    if [[ ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == "${GLOBAL_OLD_SIZE}" ]];then
        return
     fi
     GLOBAL_OLD_SIZE=${TOTAL_SIZE}
