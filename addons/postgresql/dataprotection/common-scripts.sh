@@ -13,6 +13,21 @@ function DP_error_log() {
     echo "${curr_date} ERROR: $msg"
 }
 
+function DP_get_backup_total_size() {
+    local statOutput
+    local totalSize
+    if ! statOutput=$(datasafed stat /); then
+      DP_error_log "datasafed stat failed" >&2
+      return 1
+    fi
+    totalSize=$(printf '%s\n' "${statOutput}" | awk '/TotalSize/ { print $2; exit }')
+    if [[ ! ${totalSize} =~ ^[0-9]+$ ]]; then
+      DP_error_log "datasafed stat returned an invalid TotalSize" >&2
+      return 1
+    fi
+    printf '%s\n' "${totalSize}"
+}
+
 # Get file names without extensions based on the incoming file path
 function DP_get_file_name_without_ext() {
     local fileName=$1

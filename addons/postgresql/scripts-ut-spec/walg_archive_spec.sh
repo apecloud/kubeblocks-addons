@@ -28,7 +28,7 @@ Describe "dataprotection/wal-g-archive.sh"
     export PATH CALL_LOG VOLUME_DATA_DIR LOG_DIR KB_BACKUP_WORKDIR \
       DP_BACKUP_INFO_FILE UPLOAD_MISSING_LOGS_RETRY_INTERVAL \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
-    unset WALG_EXIT PSQL_EXIT 2>/dev/null || true
+    unset DATASAFED_STAT_EXIT DATASAFED_STAT_OUT WALG_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -71,7 +71,10 @@ EOF
 #!/bin/sh
 printf 'datasafed %s\n' "$*" >> "${CALL_LOG}"
 case "$1" in
-  stat) echo "TotalSize 0" ;;
+  stat)
+    printf '%s\n' "${DATASAFED_STAT_OUT:-TotalSize: 0}"
+    exit "${DATASAFED_STAT_EXIT:-0}"
+    ;;
 esac
 EOF
     # `date -r <file> +%s` is GNU-only; make it portable for local macOS runs
@@ -201,6 +204,24 @@ EOF
       When run config_wal_g "some/path"
       The status should be failure
       The output should include "wal-g binary not found"
+    End
+  End
+
+  Describe "save_backup_status()"
+    It "publishes the byte count from the real datasafed TotalSize format"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      When call save_backup_status
+      The status should eq 0
+      The output should include "total size: 4096"
+      The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"4096"}'
+    End
+
+    It "rejects malformed successful datasafed size output instead of retaining stale progress silently"
+      export DATASAFED_STAT_OUT="TotalSize: unknown"
+      When call save_backup_status
+      The status should be failure
+      The error should include "invalid TotalSize"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
   End
 End
