@@ -12,6 +12,10 @@ if echo "${paramName}" | grep -q "^loose_"; then
     paramName=${paramName//"loose_"/}
 fi
 paramName=$(echo "${paramName}" | tr '-' '_')
+if [[ ! "${paramName}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+    echo "Invalid parameter name: ${paramName}"
+    exit 1
+fi
 
 var_int=-1
 if [[ "${paramValue}" =~ ^[0-9]+$ ]]; then
@@ -34,17 +38,14 @@ if [ "${var_int}" -ge 0 ]; then
     ret=$(mysql_exec "SET GLOBAL ${paramName} = ${var_int};" 2>&1)
     status=$?
 else
-    ret=$(mysql_exec "SET GLOBAL ${paramName} = '${paramValue}';" 2>&1)
+    escaped_param_value=${paramValue//\'/\'\'}
+    ret=$(mysql_exec "SET GLOBAL ${paramName} = '${escaped_param_value}';" 2>&1)
     status=$?
 fi
 
 if [ $status -ne 0 ]; then
-    if echo "${ret}" | grep -q "ERROR 1045 (28000)"; then
-        echo "Failed to set parameter ${paramName} to value ${paramValue}, result: ${ret}"
-        exit 1
-    fi
-    # Ignore other errors
+    echo "Failed to set parameter ${paramName} to value ${paramValue}, result: ${ret}"
+    exit 1
 else
     echo "Set parameter ${paramName} to value ${paramValue}, result: ${ret}"
 fi
-
