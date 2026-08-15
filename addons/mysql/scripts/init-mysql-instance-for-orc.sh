@@ -20,17 +20,27 @@ mysql_error() {
 	exit 1
 }
 
+mysql_escape_string_literal() {
+  local value="$1"
+  printf '%s' "$value" | sed "s/'/''/g"
+}
+
 # create orchestrator user in mysql
 create_mysql_user() {
   mysql_note "Create MySQL User and Grant Permissions..."
 
+  local topology_user
+  local topology_password
+  topology_user=$(mysql_escape_string_literal "$ORC_TOPOLOGY_USER")
+  topology_password=$(mysql_escape_string_literal "$ORC_TOPOLOGY_PASSWORD")
+
   mysql -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 set SQL_LOG_BIN=off;
-CREATE USER IF NOT EXISTS '$ORC_TOPOLOGY_USER'@'%' IDENTIFIED BY '$ORC_TOPOLOGY_PASSWORD';
-ALTER USER '$ORC_TOPOLOGY_USER'@'%' IDENTIFIED BY '$ORC_TOPOLOGY_PASSWORD';
-GRANT SUPER, PROCESS, REPLICATION SLAVE, REPLICATION CLIENT, RELOAD ON *.* TO '$ORC_TOPOLOGY_USER'@'%';
-GRANT SELECT ON mysql.slave_master_info TO '$ORC_TOPOLOGY_USER'@'%';
-GRANT DROP ON _pseudo_gtid_.* to '$ORC_TOPOLOGY_USER'@'%';
+CREATE USER IF NOT EXISTS '$topology_user'@'%' IDENTIFIED BY '$topology_password';
+ALTER USER '$topology_user'@'%' IDENTIFIED BY '$topology_password';
+GRANT SUPER, PROCESS, REPLICATION SLAVE, REPLICATION CLIENT, RELOAD ON *.* TO '$topology_user'@'%';
+GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
+GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
 FLUSH PRIVILEGES;
 set SQL_LOG_BIN=on;
 EOF
@@ -157,6 +167,13 @@ EOF
 change_master() {
   local master_host=$1
   local master_port=3306
+  local escaped_master_host
+  local escaped_root_user
+  local escaped_root_password
+
+  escaped_master_host=$(mysql_escape_string_literal "$master_host")
+  escaped_root_user=$(mysql_escape_string_literal "$MYSQL_ROOT_USER")
+  escaped_root_password=$(mysql_escape_string_literal "$MYSQL_ROOT_PASSWORD")
 
   mysql_note "Change master"
 
@@ -169,10 +186,10 @@ CHANGE MASTER TO
 MASTER_AUTO_POSITION=1,
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
-MASTER_HOST='$master_host',
+MASTER_HOST='$escaped_master_host',
 MASTER_PORT=$master_port,
-MASTER_USER='$MYSQL_ROOT_USER',
-MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+MASTER_USER='$escaped_root_user',
+MASTER_PASSWORD='$escaped_root_password';
 START SLAVE;
 EOF
   else
@@ -185,10 +202,10 @@ SOURCE_AUTO_POSITION=1,
 SOURCE_SSL=1,
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
-MASTER_HOST='$master_host',
+MASTER_HOST='$escaped_master_host',
 MASTER_PORT=$master_port,
-MASTER_USER='$MYSQL_ROOT_USER',
-MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+MASTER_USER='$escaped_root_user',
+MASTER_PASSWORD='$escaped_root_password';
 START SLAVE;
 EOF
   fi
