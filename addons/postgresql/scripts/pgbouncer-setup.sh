@@ -20,15 +20,16 @@ build_pgbouncer_conf() {
     exit 1
   fi
 
-  mkdir -p $pgbouncer_conf_dir $pgbouncer_log_dir $pgbouncer_tmp_dir
-  cp $pgbouncer_template_conf_file $pgbouncer_conf_dir
-  echo "\"$POSTGRESQL_USERNAME\" \"$POSTGRESQL_PASSWORD\"" > $pgbouncer_user_list_file
-  # shellcheck disable=SC2129
-  echo -e "\\n[databases]" >> $pgbouncer_conf_file
-  echo "postgres=host=$CURRENT_POD_IP port=5432 dbname=postgres" >> $pgbouncer_conf_file
-  echo "*=host=$CURRENT_POD_IP port=5432" >> $pgbouncer_conf_file
-  chmod 644 $pgbouncer_conf_file
-  chmod 600 $pgbouncer_user_list_file
+  mkdir -p "$pgbouncer_conf_dir" "$pgbouncer_log_dir" "$pgbouncer_tmp_dir" || return $?
+  cp "$pgbouncer_template_conf_file" "$pgbouncer_conf_dir" || return $?
+  printf '"%s" "%s"\n' "$POSTGRESQL_USERNAME" "$POSTGRESQL_PASSWORD" > "$pgbouncer_user_list_file" || return $?
+  {
+    printf '\n[databases]\n'
+    printf 'postgres=host=%s port=5432 dbname=postgres\n' "$CURRENT_POD_IP"
+    printf '*=host=%s port=5432\n' "$CURRENT_POD_IP"
+  } >> "$pgbouncer_conf_file" || return $?
+  chmod 644 "$pgbouncer_conf_file" || return $?
+  chmod 600 "$pgbouncer_user_list_file" || return $?
 
   # Try to add user
   useradd pgbouncer 2>/dev/null || true
@@ -51,7 +52,7 @@ build_pgbouncer_conf() {
       next_uid=$((next_uid + 1))
 
       # Add user to /etc/passwd
-      echo "pgbouncer:x:$next_uid:$next_uid:pgbouncer user:/nonexistent:/bin/false" >> /etc/passwd
+      printf 'pgbouncer:x:%s:%s:pgbouncer user:/nonexistent:/bin/false\n' "$next_uid" "$next_uid" >> /etc/passwd || return $?
       echo "Added pgbouncer user to /etc/passwd"
   fi
 
@@ -62,13 +63,13 @@ build_pgbouncer_conf() {
       # Get the user's GID if user exists
       if id "pgbouncer" >/dev/null 2>&1; then
           user_gid=$(id -g pgbouncer)
-          echo "pgbouncer:x:$user_gid:" >> /etc/group
+          printf 'pgbouncer:x:%s:\n' "$user_gid" >> /etc/group || return $?
           echo "Added pgbouncer group with GID $user_gid to /etc/group"
       else
           # Fallback: use next available GID
           next_gid=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $3}' /etc/group | sort -n | tail -1)
           next_gid=$((next_gid + 1))
-          echo "pgbouncer:x:$next_gid:" >> /etc/group
+          printf 'pgbouncer:x:%s:\n' "$next_gid" >> /etc/group || return $?
           echo "Added pgbouncer group with GID $next_gid to /etc/group"
       fi
   fi
@@ -81,7 +82,7 @@ build_pgbouncer_conf() {
       exit 1
   fi
 
-  chown -R pgbouncer:pgbouncer $pgbouncer_conf_dir $pgbouncer_log_dir $pgbouncer_tmp_dir
+  chown -R pgbouncer:pgbouncer "$pgbouncer_conf_dir" "$pgbouncer_log_dir" "$pgbouncer_tmp_dir"
 }
 
 start_pgbouncer() {

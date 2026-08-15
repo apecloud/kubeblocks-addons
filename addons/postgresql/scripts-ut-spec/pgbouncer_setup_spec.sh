@@ -15,6 +15,7 @@ Describe "PostgreSQL Pgbouncer setup fail-fast contract"
     POSTGRESQL_USERNAME=postgres
     POSTGRESQL_PASSWORD=secret
     CURRENT_POD_IP=127.0.0.1
+    export PGB_FAIL_STEP=chown
   }
 
   cleanup() {
@@ -47,8 +48,18 @@ Describe "PostgreSQL Pgbouncer setup fail-fast contract"
     exit 0
   End
 
+  Mock cp
+    if test "$PGB_FAIL_STEP" = "cp"; then
+      exit 42
+    fi
+    /bin/cp "$@"
+  End
+
   Mock chown
-    exit 42
+    if test "$PGB_FAIL_STEP" = "chown"; then
+      exit 42
+    fi
+    exit 0
   End
 
   Mock start_pgbouncer
@@ -57,6 +68,13 @@ Describe "PostgreSQL Pgbouncer setup fail-fast contract"
   End
 
   It "does not start Pgbouncer after ownership setup fails"
+    When call main
+    The status should be failure
+    The output should not include "start-called"
+  End
+
+  It "does not start Pgbouncer after copying the template fails"
+    export PGB_FAIL_STEP=cp
     When call main
     The status should be failure
     The output should not include "start-called"
