@@ -76,6 +76,13 @@ EOF
       The result of function curl_log should not include '"archive_command": "'\''/bin/true'\''"'
     End
 
+    It "passes an explicit empty PostgreSQL GUC value to Patroni"
+      When run sh "$(script_path)" "archive_command" ""
+      The status should eq 0
+      The result of function curl_log should include '"archive_command": ""'
+      The result of function curl_log should include 'http://localhost:8008/reload'
+    End
+
     It "routes a patroni DCS parameter at top level and reloads"
       When run sh "$(script_path)" "loop_wait" "10"
       The status should eq 0
