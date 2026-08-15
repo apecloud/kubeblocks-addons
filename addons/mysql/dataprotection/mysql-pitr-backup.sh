@@ -15,9 +15,9 @@ export MYSQL_PWD=${DP_DB_PASSWORD}
 export KB_BACKUP_WORKDIR=${VOLUME_DATA_DIR}/kb-backup
 
 # get binlog basename
-MYSQL_CMD="mysql -u ${DP_DB_USER} -h ${DP_DB_HOST} -N"
-MYSQL_CMD_WITH_COL="mysql -u ${DP_DB_USER} -h ${DP_DB_HOST}"
-log_bin_basename=$(${MYSQL_CMD} -e "SHOW VARIABLES LIKE 'log_bin_basename';" | awk -F'\t' '{print $2}')
+MYSQL_CMD=(mysql "--user=${DP_DB_USER}" "--host=${DP_DB_HOST}" "--port=${DP_DB_PORT}" --skip-column-names)
+MYSQL_CMD_WITH_COL=(mysql "--user=${DP_DB_USER}" "--host=${DP_DB_HOST}" "--port=${DP_DB_PORT}")
+log_bin_basename=$("${MYSQL_CMD[@]}" --execute="SHOW VARIABLES LIKE 'log_bin_basename';" | awk -F'\t' '{print $2}')
 if [ -z "${log_bin_basename}" ]; then
    echo "ERROR: pod/${DP_TARGET_POD_NAME} connect failed."
    exit 1
@@ -52,7 +52,7 @@ function check_mysql_process() {
        slave_note="Replica_IO_Running: Yes"
     fi
     for ((i=1;i<4;i++));do
-      is_secondary=$(${MYSQL_CMD_WITH_COL} -e "${sql}" 2>/dev/null | grep "${slave_note}" &>/dev/null && echo "t" || echo "f")
+      is_secondary=$("${MYSQL_CMD_WITH_COL[@]}" --execute="${sql}" 2>/dev/null | grep "${slave_note}" &>/dev/null && echo "t" || echo "f")
       if [[ $? -eq 0  && (-z ${TARGET_POD_ROLE} || "${global_backup_in_secondary}" == "${is_secondary}") ]]; then
         is_ok=true
         break
@@ -89,7 +89,7 @@ function flush_binlogs() {
   # if size greater than FLUSH_BINLOG_AFTER_SIZE, will flush binary logs.
   if [ $(stat -c%s ${LOG_DIR}/${binlog}) -gt "${FLUSH_BINLOG_AFTER_SIZE}" ]; then
      DP_log "flush binary logs"
-     ${MYSQL_CMD} -e "flush binary logs";
+     "${MYSQL_CMD[@]}" --execute="flush binary logs";
      global_last_flush_logs_time=${curr_time}
      return
   fi
@@ -101,7 +101,7 @@ function flush_binlogs() {
   # only flush bin logs when Xid exists
   if [[ -n "${LATEST_TRANS}" ]]; then
     DP_log "flush binary logs"
-    ${MYSQL_CMD} -e "flush binary logs";
+    "${MYSQL_CMD[@]}" --execute="flush binary logs";
   fi
   global_last_flush_logs_time=${curr_time}
 }
@@ -168,8 +168,8 @@ cleanup_mysql_binlogs() {
         # Check synchronization status of each replica
         for host in "${REPLICA_HOSTS[@]}"; do
             local status_output=$(
-                mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e "SHOW REPLICA STATUS\G" 2>/dev/null ||
-                mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE STATUS\G"
+                mysql -u"${DP_DB_USER}" -h"$host" -P"${DP_DB_PORT}" -p"${DP_DB_PASSWORD}" -N -e "SHOW REPLICA STATUS\G" 2>/dev/null ||
+                mysql -u"${DP_DB_USER}" -h"$host" -P"${DP_DB_PORT}" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE STATUS\G"
             )
             local current_file=$(echo "$status_output" | grep -o "${DP_TARGET_POD_NAME}-bin\.[0-9]*" | tail -n1)
 
@@ -243,7 +243,7 @@ cleanup_mysql_binlogs() {
           if echo "$synced_files" | grep -q "$base_name" && echo "$uploaded_files" | grep -q "$base_name"; then
               echo "Purging binary log: $base_name from master host"
 
-              if mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e \
+              if mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -P"${DP_DB_PORT}" -p"${DP_DB_PASSWORD}" -N -e \
                   "PURGE BINARY LOGS TO '$base_name'" &>/dev/null; then
                   echo "Successfully purged binary log: $base_name on master host ${DP_DB_HOST}"
               else
@@ -263,7 +263,7 @@ cleanup_mysql_binlogs() {
             echo "Processing replica host: $host"
 
             # Get all binlog files on this replica, sorted by sequence number
-            local binlog_files=$(mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e \
+            local binlog_files=$(mysql -u"${DP_DB_USER}" -h"$host" -P"${DP_DB_PORT}" -p"${DP_DB_PASSWORD}" -N -e \
                 "SHOW BINARY LOGS" 2>/dev/null | awk '{print $1}' | sort -V)
 
             if [[ -z "$binlog_files" ]]; then
@@ -285,7 +285,7 @@ cleanup_mysql_binlogs() {
             local target_binlog=$(echo "$binlog_files" | head -n $files_to_delete | tail -n 1)
 
             # Execute PURGE BINARY LOGS command
-            if mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e \
+            if mysql -u"${DP_DB_USER}" -h"$host" -P"${DP_DB_PORT}" -p"${DP_DB_PASSWORD}" -N -e \
                 "PURGE BINARY LOGS TO '$target_binlog'" &>/dev/null; then
                 echo "Successfully purged binary logs up to $target_binlog on replica host $host"
             else
