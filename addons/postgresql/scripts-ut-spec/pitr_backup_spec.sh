@@ -196,6 +196,16 @@ EOF
       The output should include "failed to upload 000000010000000000000001, will retry reconciliation"
       The output should include "push-count=2"
     End
+
+    It "fails when a remotely missing done WAL has no local source file"
+      export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000000.zst","mtime":"2026-08-16T00:00:00Z"}]'
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      touch "${LOG_DIR}/archive_status/000000010000000000000001.done"
+      When call uploadMissingLogs
+      The status should be failure
+      The output should include "cannot reconcile 000000010000000000000001: local WAL file is missing"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
   End
 
   Describe "save_backup_status()"
