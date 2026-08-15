@@ -89,6 +89,12 @@ start_pgbouncer() {
   su pgbouncer -c "/opt/bitnami/scripts/pgbouncer/run.sh"
 }
 
+main() {
+  load_common_library || return $?
+  build_pgbouncer_conf || return $?
+  start_pgbouncer
+}
+
 # This is magic for shellspec ut framework.
 # Sometime, functions are defined in a single shell script.
 # You will want to test it. but you do not want to run the script.
@@ -96,7 +102,4 @@ start_pgbouncer() {
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
 
-# main
-load_common_library
-build_pgbouncer_conf
-start_pgbouncer
+main
