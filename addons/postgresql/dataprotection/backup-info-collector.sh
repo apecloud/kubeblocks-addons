@@ -20,7 +20,16 @@ function stat_and_save_backup_info() {
     echo "ERROR: datasafed stat returned an invalid TotalSize" >&2
     return 1
   fi
-  echo "{\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"
+  local backup_info_tmp="${DP_BACKUP_INFO_FILE}.tmp.$$"
+  if ! printf '{"totalSize":"%s","timeRange":{"start":"%s","end":"%s"}}\n' \
+      "${TOTAL_SIZE}" "${START_TIME}" "${STOP_TIME}" >"${backup_info_tmp}"; then
+    rm -f "${backup_info_tmp}"
+    return 1
+  fi
+  if ! mv -f "${backup_info_tmp}" "${DP_BACKUP_INFO_FILE}"; then
+    rm -f "${backup_info_tmp}"
+    return 1
+  fi
 }
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
