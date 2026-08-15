@@ -62,6 +62,20 @@ EOF
       The result of function curl_log should include 'http://localhost:8008/reload'
     End
 
+    It "preserves embedded single quotes in a PostgreSQL GUC value"
+      When run sh "$(script_path)" "archive_command" "test ! -f '/archive/%f' && cp '%p' '/archive/%f'"
+      The status should eq 0
+      The result of function curl_log should include '"archive_command": "test ! -f '\''/archive/%f'\'' && cp '\''%p'\'' '\''/archive/%f'\''"'
+      The result of function curl_log should include 'http://localhost:8008/reload'
+    End
+
+    It "removes one surrounding quote pair from a PostgreSQL literal"
+      When run sh "$(script_path)" "archive_command" "'/bin/true'"
+      The status should eq 0
+      The result of function curl_log should include '"archive_command": "/bin/true"'
+      The result of function curl_log should not include '"archive_command": "'\''/bin/true'\''"'
+    End
+
     It "routes a patroni DCS parameter at top level and reloads"
       When run sh "$(script_path)" "loop_wait" "10"
       The status should eq 0

@@ -52,7 +52,12 @@ update_parameter() {
     command="reload"
     paramName="${1:?missing param name}"
     paramValue="${2:?missing value}"
-    paramValue=$(echo "$paramValue" | sed "s/'//g")
+    case "$paramValue" in
+        \'*\')
+            paramValue=${paramValue#\'}
+            paramValue=${paramValue%\'}
+            ;;
+    esac
 
     json_params="{}"
     if in_array "$paramName" "$patroni_params"; then
