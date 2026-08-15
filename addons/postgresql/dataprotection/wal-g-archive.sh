@@ -113,12 +113,18 @@ function save_backup_status() {
 # Upload historical .history files that are marked as .done but not yet uploaded to remote
 # These are timeline history files (e.g., 00000002.history) that are critical for PITR recovery
 function uploadDoneHistoryWALs() {
+  local upload_failed=false
   DP_log "Checking for historical .history files with .done status to upload..."
 
   # Find all .done status files for .history files in archive_status directory
   for done_file in $(find "${LOG_DIR}/archive_status/" -name "*.history.done" -type f | sort); do
     history_name=$(basename "$done_file" .done)
     history_path="${LOG_DIR}/${history_name}"
+    uploaded_marker="${done_file}.walg-uploaded"
+
+    if [ -f "${uploaded_marker}" ]; then
+      continue
+    fi
 
     # Check if the actual .history file still exists
     if [ -f "$history_path" ]; then
@@ -128,14 +134,23 @@ function uploadDoneHistoryWALs() {
       envdir "${VOLUME_DATA_DIR}/wal-g/env" "${VOLUME_DATA_DIR}/wal-g/wal-g" wal-push "${history_path}"
       exit_code=$?
       if [ "$exit_code" -eq 0 ]; then
-        DP_log "Successfully uploaded file: ${history_name}"
+        if touch "${uploaded_marker}"; then
+          DP_log "Successfully uploaded file: ${history_name}"
+        else
+          DP_error_log "Uploaded ${history_name} but failed to persist its success marker"
+          upload_failed=true
+        fi
       else
         DP_error_log "Failed to upload file: ${history_name}, exit code: ${exit_code}"
+        upload_failed=true
       fi
     fi
   done
 
   DP_log "Completed uploading historical .history files"
+  if [ "${upload_failed}" == "true" ]; then
+    return 1
+  fi
 }
 
 # Upload missing ready WAL files and rename the ready file to done.
@@ -212,12 +227,12 @@ trap "echo 'Terminating...' && exit 0" TERM
 DP_log "start to archive and update wal infos"
 config_wal_g "$(dirname "${DP_BACKUP_BASE_PATH}")/wal-g"
 
-# Upload historical .history files on first run
-uploadDoneHistoryWALs
-
 while true; do
   # check if pg process is ok
   check_pg_process
+  # Retry timeline history uploads until each local file has a persisted
+  # success marker; cross-timeline PITR depends on these files.
+  uploadDoneHistoryWALs || DP_error_log "timeline history upload incomplete; will retry"
   # upload wal logs
   uploadMissingLogs
   # save backup status which will be updated to `backup` CR by the sidecar

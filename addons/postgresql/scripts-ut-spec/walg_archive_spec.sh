@@ -103,6 +103,48 @@ EOF
     cat "${CALL_LOG}"
   }
 
+  wal_g_call_count() {
+    awk '/^wal-g / { calls++ } END { print calls + 0 }' "${CALL_LOG}"
+  }
+
+  history_upload_calls_inside_loop() {
+    awk '
+      /^while true; do$/ { in_loop = 1; next }
+      in_loop && /^done$/ { in_loop = 0 }
+      in_loop && /uploadDoneHistoryWALs/ { calls++ }
+      END { print calls + 0 }
+    ' ../dataprotection/wal-g-archive.sh
+  }
+
+  Describe "uploadDoneHistoryWALs()"
+    It "reports failure and retains timeline history for retry when wal-push fails"
+      touch "${LOG_DIR}/00000002.history"
+      touch "${LOG_DIR}/archive_status/00000002.history.done"
+      export WALG_EXIT=41
+      When call uploadDoneHistoryWALs
+      The status should be failure
+      The output should include "Failed to upload file: 00000002.history"
+      The path "${LOG_DIR}/00000002.history" should be exist
+      The path "${LOG_DIR}/archive_status/00000002.history.done" should be exist
+      The path "${LOG_DIR}/archive_status/00000002.history.done.walg-uploaded" should not be exist
+    End
+
+    It "persists success and does not upload the same timeline history twice"
+      touch "${LOG_DIR}/00000002.history"
+      touch "${LOG_DIR}/archive_status/00000002.history.done"
+      uploadDoneHistoryWALs
+      When call uploadDoneHistoryWALs
+      The status should eq 0
+      The path "${LOG_DIR}/archive_status/00000002.history.done.walg-uploaded" should be exist
+      The result of function wal_g_call_count should eq 1
+    End
+
+    It "is invoked from every archive loop iteration"
+      When call history_upload_calls_inside_loop
+      The output should eq 1
+    End
+  End
+
   Describe "uploadMissingLogs()"
     It "keeps the .ready file and the tracking file when wal-push fails"
       touch "${LOG_DIR}/000000010000000000000001"
