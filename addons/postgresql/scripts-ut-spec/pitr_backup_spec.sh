@@ -26,7 +26,8 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
-      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT MV_EXIT PSQL_EXIT 2>/dev/null || true
+      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_OUT PG_WALDUMP_EXIT PG_WALDUMP_OUT \
+      MV_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -74,7 +75,16 @@ echo "f"
 EOF
     cat > "${bindir}/pg_waldump" <<'EOF'
 #!/bin/sh
-exit 0
+printf '%s' "${PG_WALDUMP_OUT:-}"
+exit "${PG_WALDUMP_EXIT:-0}"
+EOF
+    cat > "${bindir}/date" <<'EOF'
+#!/bin/sh
+if [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
+  printf '%s\n' "${DATE_D_OUT}"
+else
+  exec /bin/date "$@"
+fi
 EOF
     cat > "${bindir}/mv" <<'EOF'
 #!/bin/sh
@@ -84,7 +94,8 @@ if [ "${MV_EXIT:-0}" -ne 0 ]; then
 fi
 exec /bin/mv "$@"
 EOF
-    chmod +x "${bindir}/datasafed" "${bindir}/psql" "${bindir}/pg_waldump" "${bindir}/mv"
+    chmod +x "${bindir}/datasafed" "${bindir}/psql" "${bindir}/pg_waldump" \
+      "${bindir}/date" "${bindir}/mv"
   }
 
   build_shim() {
@@ -271,6 +282,27 @@ EOF
       The error should include "failed to pull oldest WAL"
       The path "${KB_BACKUP_WORKDIR}/dp_oldest_file.info" should not be exist
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+
+    It "fails without publishing when oldest WAL analysis fails"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000001.zst","mtime":"2026-08-16T00:00:00Z"}]'
+      export PG_WALDUMP_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "failed to analyze oldest WAL"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "uses a commit record from a partial oldest WAL despite pg_waldump's final nonzero status"
+      export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000001.zst","mtime":"2026-08-16T00:00:00Z"}]'
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16T00:00:00Z; origin: node'
+      export PG_WALDUMP_EXIT=17
+      export DATE_D_OUT="2026-08-16T00:00:00Z"
+      When call get_start_time_for_range
+      The status should eq 0
+      The output should eq "2026-08-16T00:00:00Z"
     End
 
     It "refreshes a matching oldest-WAL cache when its local artifact is missing"

@@ -89,7 +89,16 @@ function upload_wal_log() {
 # get start time of the wal log
 function get_wal_log_start_time() {
     local file="${1:?missing wal log name to analyze}"
-    local START_TIME=$(pg_waldump $file --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |head -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    local wal_dump_output
+    local wal_dump_status
+    local START_TIME
+    wal_dump_output=$(pg_waldump "${file}" --rmgr=Transaction 2>/dev/null)
+    wal_dump_status=$?
+    START_TIME=$(printf '%s\n' "${wal_dump_output}" | grep 'desc: COMMIT' |head -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    if [[ ${wal_dump_status} -ne 0 && -z ${START_TIME} ]]; then
+       DP_error_log "failed to analyze oldest WAL: ${file}" >&2
+       return 1
+    fi
     if [[ ! -z ${START_TIME} ]];then
        START_TIME=$(date -d "${START_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
        echo $START_TIME
