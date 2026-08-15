@@ -35,7 +35,13 @@ function DP_list_backup_files_by_mtime() {
       DP_error_log "datasafed WAL listing failed" >&2
       return 1
     fi
-    if ! sortedFiles=$(printf '%s\n' "${listOutput}" | jq -s -r '.[] | sort_by(.mtime) | .[] | .path'); then
+    if ! sortedFiles=$(printf '%s\n' "${listOutput}" | jq -s -r '
+      .[]
+      | map(select(.path | test("/[0-9A-F]{24}(\\.partial)?\\.zst$")))
+      | sort_by(.mtime)
+      | .[]
+      | .path
+    '); then
       DP_error_log "datasafed WAL listing returned invalid JSON" >&2
       return 1
     fi

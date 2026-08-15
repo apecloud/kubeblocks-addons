@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 
-Describe "dataprotection/common-scripts.sh backup-info publication"
+Describe "dataprotection/common-scripts.sh backup metadata"
   Include ../dataprotection/common-scripts.sh
 
   setup() {
@@ -10,7 +10,7 @@ Describe "dataprotection/common-scripts.sh backup-info publication"
     PATH="${bindir}:${PATH}"
     DP_BACKUP_INFO_FILE="${tmpdir}/backup-info"
     export PATH DP_BACKUP_INFO_FILE
-    unset MV_EXIT 2>/dev/null || true
+    unset DATASAFED_LIST_OUT MV_EXIT 2>/dev/null || true
     write_stubs
   }
 
@@ -29,7 +29,13 @@ if [ "${MV_EXIT:-0}" -ne 0 ]; then
 fi
 exec /bin/mv "$@"
 EOF
-    chmod +x "${bindir}/mv"
+    cat > "${bindir}/datasafed" <<'EOF'
+#!/bin/sh
+if [ "$1" = "list" ]; then
+  printf '%s' "${DATASAFED_LIST_OUT:-}"
+fi
+EOF
+    chmod +x "${bindir}/datasafed" "${bindir}/mv"
   }
 
   publish_with_existence_observer() {
@@ -65,6 +71,19 @@ EOF
   backup_info_temp_count() {
     find "${tmpdir}" -maxdepth 1 -name 'backup-info.tmp.*' -print | wc -l | tr -d '[:space:]'
   }
+
+  It "returns only mtime-sorted PostgreSQL WAL archive objects"
+    export DATASAFED_LIST_OUT='[
+      {"path":"/00000002.history.zst","mtime":"2026-08-15T16:59:00Z"},
+      {"path":"/20260815/not-a-wal.zst","mtime":"2026-08-15T16:59:30Z"},
+      {"path":"/20260815/000000010000000000000002.partial.zst","mtime":"2026-08-15T17:01:00Z"},
+      {"path":"/20260815/000000010000000000000001.zst","mtime":"2026-08-15T17:00:00Z"}
+    ]'
+    When call DP_list_backup_files_by_mtime
+    The status should eq 0
+    The output should eq "/20260815/000000010000000000000001.zst
+/20260815/000000010000000000000002.partial.zst"
+  End
 
   It "publishes a complete document before the final path is visible"
     When call publish_with_existence_observer

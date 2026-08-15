@@ -26,7 +26,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
-      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT \
+      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_TODAY_OUT \
       PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT PSQL_EXIT 2>/dev/null || true
 
@@ -86,6 +86,8 @@ if [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
     exit "${DATE_D_EXIT}"
   fi
   printf '%s\n' "${DATE_D_OUT}"
+elif [ "$1" = "+%Y%m%d" ] && [ -n "${DATE_TODAY_OUT:-}" ]; then
+  printf '%s\n' "${DATE_TODAY_OUT}"
 else
   exec /bin/date "$@"
 fi
@@ -251,6 +253,20 @@ EOF
       The status should eq 0
       The output should include "push-count=1"
     End
+
+    It "does not let a timeline-history object hide a missing WAL"
+      wal_name="000000010000000000000001"
+      export DATASAFED_LIST_OUT='[
+        {"path":"/00000002.history.zst","mtime":"2026-08-15T23:59:00Z"},
+        {"path":"/20260816/000000010000000000000000.zst","mtime":"2026-08-16T00:00:00Z"}
+      ]'
+      export DATE_TODAY_OUT="20260816"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.done"
+      When call uploadMissingLogs
+      The status should eq 0
+      The result of function call_log should include "datasafed push -z zstd ${wal_name} /20260816/${wal_name}.zst"
+    End
   End
 
   Describe "save_backup_status()"
@@ -286,6 +302,23 @@ EOF
       The error should include "failed to pull oldest WAL"
       The path "${KB_BACKUP_WORKDIR}/dp_oldest_file.info" should not be exist
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "ignores an older timeline-history object when deriving the WAL start"
+      history_path="/00000002.history.zst"
+      wal_path="/20260816/000000010000000000000001.zst"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT="[{
+        \"path\":\"${history_path}\",\"mtime\":\"2026-08-15T23:59:00Z\"
+      },{
+        \"path\":\"${wal_path}\",\"mtime\":\"2026-08-16T00:00:00Z\"
+      }]"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16T00:00:00Z; origin: node'
+      export DATE_D_OUT="2026-08-16T00:00:00Z"
+      When call save_backup_status
+      The status should eq 0
+      The result of function call_log should not include "${history_path}"
+      The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"4096"}'
     End
 
 
