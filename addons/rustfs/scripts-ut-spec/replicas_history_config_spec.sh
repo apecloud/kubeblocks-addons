@@ -192,6 +192,15 @@ EOF
     The path "${history_file}" should not be exist
   End
 
+  It "preserves the largest valid history value when the current replica count is lower"
+    When call run_case present success success success '' '[9223372036854775807]'
+    The status should be success
+    The output should include "RUSTFS_REPLICAS_HISTORY=[9223372036854775807]"
+    The stderr should not include "integer expression expected"
+    The contents of file "${history_file}" should eq "[9223372036854775807]"
+    The contents of file "${call_log}" should include '"RUSTFS_REPLICAS_HISTORY":"[9223372036854775807]"'
+  End
+
   It "fails closed when a missing ConfigMap cannot be created"
     When call run_case absent success fail success
     The status should be failure

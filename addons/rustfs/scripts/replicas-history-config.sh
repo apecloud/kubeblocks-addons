@@ -93,7 +93,7 @@ get_cm_key_new_value() {
   if [ -z "$cur" ]; then
     printf "[%s]" "$replicas"
   else
-    max=$(echo "$cur" | tr ',' '\n' | awk 'BEGIN{m=0} {if($1+0>m)m=$1+0} END{print m}')
+    max=${cur##*,}
     if [ "$replicas" -le "$max" ]; then
       printf "[%s]" "$cur"
     else
