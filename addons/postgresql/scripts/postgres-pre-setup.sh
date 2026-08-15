@@ -30,6 +30,12 @@ copy_necessary_binaries() {
   cp /spilo-init/bin/wal-g ${postgres_walg_dir}/wal-g
 }
 
+main() {
+  build_real_postgres_conf
+  init_postgres_log
+  copy_necessary_binaries
+}
+
 # This is magic for shellspec ut framework.
 # Sometime, functions are defined in a single shell script.
 # You will want to test it. but you do not want to run the script.
@@ -37,7 +43,4 @@ copy_necessary_binaries() {
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
 
-# main
-build_real_postgres_conf
-init_postgres_log
-copy_necessary_binaries
+main
