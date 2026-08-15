@@ -127,7 +127,10 @@ function DP_analyze_start_time_from_datasafed() {
       fi
     fi
     # pull file
-    ${datasafed_pull} ${oldest_file}
+    if ! ${datasafed_pull} ${oldest_file}; then
+      DP_error_log "failed to pull oldest WAL" >&2
+      return 1
+    fi
     # record last oldest file
     echo ${oldest_file} > ${info_file}
     oldest_file_name=$(DP_get_file_name_without_ext ${oldest_file})

@@ -100,7 +100,9 @@ function save_backup_status() {
     local START_TIME=
     local END_TIME=
     if [ ! -z ${OLDEST_FILE} ]; then
-       START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log)
+       if ! START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log); then
+         return 1
+       fi
     fi
     if [ -n "${wal_files}" ]; then
       # get the end time from the latest 10 files
