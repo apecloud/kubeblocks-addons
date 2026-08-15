@@ -28,6 +28,20 @@ function DP_get_backup_total_size() {
     printf '%s\n' "${totalSize}"
 }
 
+function DP_list_backup_files_by_mtime() {
+    local listOutput
+    local sortedFiles
+    if ! listOutput=$(datasafed list -f --recursive / -o json); then
+      DP_error_log "datasafed WAL listing failed" >&2
+      return 1
+    fi
+    if ! sortedFiles=$(printf '%s\n' "${listOutput}" | jq -s -r '.[] | sort_by(.mtime) | .[] | .path'); then
+      DP_error_log "datasafed WAL listing returned invalid JSON" >&2
+      return 1
+    fi
+    printf '%s\n' "${sortedFiles}"
+}
+
 # Get file names without extensions based on the incoming file path
 function DP_get_file_name_without_ext() {
     local fileName=$1
