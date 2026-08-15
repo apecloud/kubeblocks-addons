@@ -21,6 +21,11 @@ mysql_error() {
 	exit 1
 }
 
+# Escape values before embedding them in a single-quoted MySQL string literal.
+mysql_escape_sql_literal() {
+	printf '%s' "$1" | sed "s/'/''/g"
+}
+
 # usage: file_env VAR [DEFAULT]
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
 # (will allow for "$XYZ_DB_PASSWORD_FILE" to fill in the value of
@@ -295,20 +300,24 @@ docker_setup_db() {
 	fi
 	# Sets root password and creates root users for non-localhost hosts
 	local rootCreate=
+	local escapedRootHost
+	local escapedRootPassword
+	escapedRootHost="$(mysql_escape_sql_literal "$MYSQL_ROOT_HOST")"
+	escapedRootPassword="$(mysql_escape_sql_literal "$MYSQL_ROOT_PASSWORD")"
 	# default root to listen for connections from anywhere
 	if [ -n "$MYSQL_ROOT_HOST" ] && [ "$MYSQL_ROOT_HOST" != 'localhost' ]; then
 		# no, we don't care if read finds a terminating character in this heredoc
 		# https://unix.stackexchange.com/questions/265149/why-is-set-o-errexit-breaking-this-read-heredoc-expression/265151#265151
 		read -r -d '' rootCreate <<-EOSQL || true
-			CREATE USER 'root'@'${MYSQL_ROOT_HOST}' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
-			GRANT ALL ON *.* TO 'root'@'${MYSQL_ROOT_HOST}' WITH GRANT OPTION ;
+			CREATE USER 'root'@'${escapedRootHost}' IDENTIFIED BY '${escapedRootPassword}' ;
+			GRANT ALL ON *.* TO 'root'@'${escapedRootHost}' WITH GRANT OPTION ;
 		EOSQL
 	fi
 
 	local passwordSet=
 	# no, we don't care if read finds a terminating character in this heredoc (see above)
 	read -r -d '' passwordSet <<-EOSQL || true
-		ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
+		ALTER USER 'root'@'localhost' IDENTIFIED BY '${escapedRootPassword}' ;
 	EOSQL
 
 	# tell docker_process_sql to not use MYSQL_ROOT_PASSWORD since it is just now being set
