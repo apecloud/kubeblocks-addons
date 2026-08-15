@@ -130,6 +130,15 @@ EOF
     printf 'push-count=%s\n' "$(grep -c '^datasafed push ' "${CALL_LOG}")"
   }
 
+  reconcile_wal_into_empty_repository() {
+    touch "${LOG_DIR}/000000010000000000000001"
+    touch "${LOG_DIR}/archive_status/000000010000000000000001.done"
+    uploadMissingLogs || return
+    local push_count
+    push_count=$(grep -c '^datasafed push ' "${CALL_LOG}" || true)
+    printf 'push-count=%s\n' "${push_count}"
+  }
+
   Describe "upload_wal_log()"
     It "does not mark the WAL segment done when the upload fails"
       touch "${LOG_DIR}/000000010000000000000001"
@@ -205,6 +214,12 @@ EOF
       The status should be failure
       The output should include "cannot reconcile 000000010000000000000001: local WAL file is missing"
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "uploads local done WALs when the repository is empty"
+      When call reconcile_wal_into_empty_repository
+      The status should eq 0
+      The output should include "push-count=1"
     End
   End
 

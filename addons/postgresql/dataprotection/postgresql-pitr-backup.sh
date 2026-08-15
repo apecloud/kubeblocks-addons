@@ -166,17 +166,17 @@ function uploadMissingLogs() {
     if ! uploadedLogs=$(DP_list_backup_files_by_mtime); then
       return 1
     fi
-    if [[ -z ${uploadedLogs} ]]; then
-      return
+    local OLDEST_FILE=
+    if [[ -n ${uploadedLogs} ]]; then
+      OLDEST_FILE=$(echo $uploadedLogs | awk '{print $1}')
+      OLDEST_FILE=$(basename $OLDEST_FILE)
+      DP_log "oldest uploaded wal: ${OLDEST_FILE}"
     fi
-    OLDEST_FILE=$(echo $uploadedLogs | awk '{print $1}')
-    OLDEST_FILE=$(basename $OLDEST_FILE)
-    DP_log "oldest uploaded wal: ${OLDEST_FILE}"
     local reconciliation_failed=false
     for i in $(find ./archive_status -type f | sort | grep .done); do
       wal_done_name=$(basename ${i})
       wal_name=${wal_done_name%.*}
-      if [[ "$wal_name" < "$OLDEST_FILE" ]]; then
+      if [[ -n ${OLDEST_FILE} && "$wal_name" < "$OLDEST_FILE" ]]; then
         continue
       fi
       if echo "$uploadedLogs" | grep -qE "${wal_name}\.(zst|partial\.zst)";then
