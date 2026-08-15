@@ -28,7 +28,8 @@ Describe "dataprotection/wal-g-archive.sh"
     export PATH CALL_LOG VOLUME_DATA_DIR LOG_DIR KB_BACKUP_WORKDIR \
       DP_BACKUP_INFO_FILE UPLOAD_MISSING_LOGS_RETRY_INTERVAL \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
-    unset DATASAFED_STAT_EXIT DATASAFED_STAT_OUT MV_EXIT WALG_EXIT PSQL_EXIT 2>/dev/null || true
+    unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_STAT_EXIT \
+      DATASAFED_STAT_OUT MV_EXIT WALG_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -74,6 +75,10 @@ case "$1" in
   stat)
     printf '%s\n' "${DATASAFED_STAT_OUT:-TotalSize: 0}"
     exit "${DATASAFED_STAT_EXIT:-0}"
+    ;;
+  list)
+    printf '%s' "${DATASAFED_LIST_OUT:-}"
+    exit "${DATASAFED_LIST_EXIT:-0}"
     ;;
 esac
 EOF
@@ -247,6 +252,24 @@ EOF
       The status should eq 0
       The output should include "total size: 4096"
       The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"4096"}'
+    End
+
+    It "fails without publishing metadata when the WAL repository listing fails"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "datasafed WAL listing failed"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "rejects malformed WAL listing JSON before publishing metadata"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT="not-json"
+      When call save_backup_status
+      The status should be failure
+      The error should include "datasafed WAL listing returned invalid JSON"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
   End
 End

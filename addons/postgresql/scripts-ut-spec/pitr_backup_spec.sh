@@ -25,7 +25,8 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     mkdir -p "${LOG_DIR}/archive_status"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
-    unset DATASAFED_PUSH_EXIT DATASAFED_STAT_EXIT DATASAFED_STAT_OUT MV_EXIT PSQL_EXIT 2>/dev/null || true
+    unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PUSH_EXIT \
+      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT MV_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -55,6 +56,10 @@ case "$1" in
   stat)
     printf '%s\n' "${DATASAFED_STAT_OUT:-TotalSize: 0}"
     exit "${DATASAFED_STAT_EXIT:-0}"
+    ;;
+  list)
+    printf '%s' "${DATASAFED_LIST_OUT:-}"
+    exit "${DATASAFED_LIST_EXIT:-0}"
     ;;
 esac
 EOF
@@ -162,6 +167,15 @@ EOF
       When call retry_same_size_after_publication_failure
       The status should eq 0
       The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"4096"}'
+    End
+
+    It "fails without publishing metadata when the WAL repository listing fails"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "datasafed WAL listing failed"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
   End
 End

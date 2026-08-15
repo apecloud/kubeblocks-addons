@@ -92,7 +92,10 @@ function save_backup_status() {
     if [[ ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == "${GLOBAL_OLD_SIZE}" ]];then
        return
     fi
-    local wal_files=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) |.[] |.path')
+    local wal_files
+    if ! wal_files=$(DP_list_backup_files_by_mtime); then
+       return 1
+    fi
     local OLDEST_FILE=$(echo $wal_files | tr ' ' '\n' |head -n 1)
     local START_TIME=
     local END_TIME=

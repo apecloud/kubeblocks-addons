@@ -105,7 +105,11 @@ function pull_wal_log() {
 
 # get the start time for backup.status.timeRange
 function get_start_time_for_range() {
-   local OLDEST_FILE=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) | .[] | .path' |head -n 1)
+   local WAL_FILES
+   if ! WAL_FILES=$(DP_list_backup_files_by_mtime); then
+     return 1
+   fi
+   local OLDEST_FILE="${WAL_FILES%%$'\n'*}"
    if [ ! -z ${OLDEST_FILE} ]; then
      START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log)
      echo ${START_TIME}
@@ -122,7 +126,10 @@ function save_backup_status() {
     if [[ ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == ${global_old_size} ]];then
        return
     fi
-    local START_TIME=$(get_start_time_for_range)
+    local START_TIME
+    if ! START_TIME=$(get_start_time_for_range); then
+       return 1
+    fi
     if ! DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${global_stop_time}"; then
        return 1
     fi
