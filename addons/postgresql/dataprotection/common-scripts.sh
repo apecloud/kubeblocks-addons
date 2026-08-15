@@ -116,7 +116,7 @@ function DP_analyze_start_time_from_datasafed() {
     if [ -f ${info_file} ]; then
       last_oldest_file=$(cat ${info_file})
       last_oldest_file_name=$(DP_get_file_name_without_ext ${last_oldest_file})
-      if [ "$last_oldest_file" == "${oldest_file}" ]; then
+      if [ "$last_oldest_file" == "${oldest_file}" ] && [ -f ${last_oldest_file_name} ]; then
         # oldest file no changed.
         ${get_start_time_from_file} $last_oldest_file_name
         return

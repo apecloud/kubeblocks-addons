@@ -142,6 +142,18 @@ EOF
     printf 'push-count=%s\n' "${push_count}"
   }
 
+  refresh_missing_cached_oldest_wal() {
+    local oldest_wal="/20260816/000000010000000000000001.zst"
+    mkdir -p "${KB_BACKUP_WORKDIR}"
+    printf '%s\n' "${oldest_wal}" > "${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
+    export DATASAFED_STAT_OUT="TotalSize: 4096"
+    export DATASAFED_LIST_OUT="[{\"path\":\"${oldest_wal}\",\"mtime\":\"2026-08-16T00:00:00Z\"}]"
+    save_backup_status || return
+    local pull_count
+    pull_count=$(grep -c '^datasafed pull ' "${CALL_LOG}" || true)
+    printf 'pull-count=%s\n' "${pull_count}"
+  }
+
   Describe "upload_wal_log()"
     It "does not mark the WAL segment done when the upload fails"
       touch "${LOG_DIR}/000000010000000000000001"
@@ -259,6 +271,12 @@ EOF
       The error should include "failed to pull oldest WAL"
       The path "${KB_BACKUP_WORKDIR}/dp_oldest_file.info" should not be exist
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "refreshes a matching oldest-WAL cache when its local artifact is missing"
+      When call refresh_missing_cached_oldest_wal
+      The status should eq 0
+      The output should include "pull-count=1"
     End
   End
 End
