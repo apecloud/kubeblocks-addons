@@ -12,6 +12,7 @@ global_last_purge_time=$(date +%s)
 global_switch_wal_interval=300
 global_stop_time=
 global_old_size=0
+global_missing_logs_reconciled=false
 
 if [[ ${SWITCH_WAL_INTERVAL_SECONDS} =~ ^[0-9]+$ ]];then
   global_switch_wal_interval=${SWITCH_WAL_INTERVAL_SECONDS}
@@ -161,7 +162,10 @@ function uploadMissingLogs() {
     DP_log "start to upload the wal log which maybe misses"
     local TODAY_INCR_LOG=$(date +%Y%m%d)
     cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
-    uploadedLogs=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) | .[] | .path')
+    local uploadedLogs
+    if ! uploadedLogs=$(DP_list_backup_files_by_mtime); then
+      return 1
+    fi
     if [[ -z ${uploadedLogs} ]]; then
       return
     fi
@@ -187,13 +191,26 @@ function uploadMissingLogs() {
 
 # trap term signal
 trap "echo 'Terminating...' && sync && exit 0" TERM
-uploadMissingLogs
+if uploadMissingLogs; then
+  global_missing_logs_reconciled=true
+else
+  DP_error_log "missing WAL reconciliation incomplete; will retry"
+fi
 
 DP_log "start to archive wal logs"
 while true; do
 
   # check if pg process is ok
   check_pg_process
+
+  # Retry startup reconciliation until one complete repository read succeeds.
+  if [[ ${global_missing_logs_reconciled} == "false" ]]; then
+    if uploadMissingLogs; then
+      global_missing_logs_reconciled=true
+    else
+      DP_error_log "missing WAL reconciliation incomplete; will retry"
+    fi
+  fi
 
   # switch wal log
   switch_wal_log
