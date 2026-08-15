@@ -29,7 +29,8 @@ Describe "dataprotection/wal-g-archive.sh"
       DP_BACKUP_INFO_FILE UPLOAD_MISSING_LOGS_RETRY_INTERVAL \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_STAT_EXIT \
-      DATASAFED_STAT_OUT MV_EXIT WALG_EXIT PSQL_EXIT 2>/dev/null || true
+      DATASAFED_STAT_OUT DATE_D_OUT MV_EXIT PG_WALDUMP_EXIT PG_WALDUMP_FAIL_ON_CALL \
+      PG_WALDUMP_OUT WALG_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -53,6 +54,15 @@ Describe "dataprotection/wal-g-archive.sh"
 #!/bin/sh
 printf 'wal-g %s\n' "$*" >> "${CALL_LOG}"
 exit "${WALG_EXIT:-0}"
+EOF
+    cat > "${bindir}/pg_waldump" <<'EOF'
+#!/bin/sh
+printf 'pg_waldump %s\n' "$*" >> "${CALL_LOG}"
+call_count=$(awk '/^pg_waldump / { calls++ } END { print calls + 0 }' "${CALL_LOG}")
+printf '%s' "${PG_WALDUMP_OUT:-}"
+if [ "${PG_WALDUMP_FAIL_ON_CALL:-0}" -eq "${call_count}" ]; then
+  exit "${PG_WALDUMP_EXIT:-17}"
+fi
 EOF
     # the script invokes wal-g through envdir (daemontools), which the test
     # host may not have: pass through to the wrapped command, skipping the dir
@@ -88,7 +98,9 @@ EOF
     # `date -r <file> +%s` is GNU-only; make it portable for local macOS runs
     cat > "${bindir}/date" <<'EOF'
 #!/bin/sh
-if [ "$1" = "-r" ]; then
+if [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
+  printf '%s\n' "${DATE_D_OUT}"
+elif [ "$1" = "-r" ]; then
   f=$2
   # GNU form first: on GNU, `stat -f %m <file>` is not an error — it prints
   # the filesystem mount point — so a BSD-first chain returns garbage.
@@ -105,7 +117,8 @@ if [ "${MV_EXIT:-0}" -ne 0 ]; then
 fi
 exec /bin/mv "$@"
 EOF
-    chmod +x "${VOLUME_DATA_DIR}/wal-g/wal-g" "${bindir}/psql" "${bindir}/datasafed" "${bindir}/date" "${bindir}/mv"
+    chmod +x "${VOLUME_DATA_DIR}/wal-g/wal-g" "${bindir}/psql" "${bindir}/datasafed" \
+      "${bindir}/date" "${bindir}/mv" "${bindir}/pg_waldump"
   }
 
   build_shim() {
@@ -299,6 +312,38 @@ EOF
       The status should be failure
       The error should include "failed to pull latest WAL"
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "fails without publishing when latest WAL analysis fails"
+      wal_path="/20260816/000000010000000000000001.zst"
+      wal_name="000000010000000000000001"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT="[{\"path\":\"${wal_path}\",\"mtime\":\"2026-08-16T00:00:00Z\"}]"
+      mkdir -p "${KB_BACKUP_WORKDIR}"
+      printf '%s\n' "${wal_path}" > "${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
+      touch "${KB_BACKUP_WORKDIR}/${wal_name}"
+      export PG_WALDUMP_FAIL_ON_CALL=2 PG_WALDUMP_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "failed to analyze latest WAL"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "uses a commit record from a partial latest WAL despite pg_waldump's final nonzero status"
+      wal_path="/20260816/000000010000000000000001.zst"
+      wal_name="000000010000000000000001"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT="[{\"path\":\"${wal_path}\",\"mtime\":\"2026-08-16T00:00:00Z\"}]"
+      mkdir -p "${KB_BACKUP_WORKDIR}"
+      printf '%s\n' "${wal_path}" > "${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
+      touch "${KB_BACKUP_WORKDIR}/${wal_name}"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16 00:00:00 UTC; origin: node'
+      export PG_WALDUMP_FAIL_ON_CALL=2 PG_WALDUMP_EXIT=17
+      export DATE_D_OUT="2026-08-16T00:00:00Z"
+      When call save_backup_status
+      The status should eq 0
+      The output should include "end time of the latest wal: 2026-08-16T00:00:00Z"
+      The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"4096","extras":[],"timeRange":{"start":"2026-08-16T00:00:00Z","end":"2026-08-16T00:00:00Z"}}'
     End
   End
 End

@@ -77,12 +77,22 @@ function get_wal_log_end_time() {
        return 1
     fi
     wal_file_name=$(DP_get_file_name_without_ext "$(basename "${wal_file}")")
-    local END_TIME=$(pg_waldump $wal_file_name --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    local wal_dump_output
+    local wal_dump_status
+    local END_TIME
+    wal_dump_output=$(pg_waldump "${wal_file_name}" --rmgr=Transaction 2>/dev/null)
+    wal_dump_status=$?
+    END_TIME=$(printf '%s\n' "${wal_dump_output}" | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    if [[ ${wal_dump_status} -ne 0 && -z ${END_TIME} ]]; then
+       DP_error_log "failed to analyze latest WAL: ${wal_file}" >&2
+       rm -rf "${wal_file_name}"
+       return 1
+    fi
     if [[ ! -z ${END_TIME} ]];then
        END_TIME=$(date -d "${END_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
        echo $END_TIME
     fi
-    rm -rf $wal_file_name
+    rm -rf "${wal_file_name}"
 }
 
 # save backup status info to sync file
