@@ -29,7 +29,8 @@ Describe "dataprotection/wal-g-archive.sh"
       DP_BACKUP_INFO_FILE UPLOAD_MISSING_LOGS_RETRY_INTERVAL \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_STAT_EXIT \
-      DATASAFED_STAT_OUT DATE_D_OUT MV_EXIT PG_WALDUMP_EXIT PG_WALDUMP_FAIL_ON_CALL \
+      DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_FAIL_ON_CALL DATE_D_OUT MV_EXIT \
+      PG_WALDUMP_EXIT PG_WALDUMP_FAIL_ON_CALL \
       PG_WALDUMP_OUT WALG_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
@@ -99,6 +100,11 @@ EOF
     cat > "${bindir}/date" <<'EOF'
 #!/bin/sh
 if [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
+  printf 'date %s\n' "$*" >> "${CALL_LOG}"
+  call_count=$(awk '/^date / { calls++ } END { print calls + 0 }' "${CALL_LOG}")
+  if [ "${DATE_D_FAIL_ON_CALL:-0}" -eq "${call_count}" ]; then
+    exit "${DATE_D_EXIT:-17}"
+  fi
   printf '%s\n' "${DATE_D_OUT}"
 elif [ "$1" = "-r" ]; then
   f=$2
@@ -326,6 +332,23 @@ EOF
       When call save_backup_status
       The status should be failure
       The error should include "failed to analyze latest WAL"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "fails without publishing when latest WAL timestamp normalization fails"
+      wal_path="/20260816/000000010000000000000001.zst"
+      wal_name="000000010000000000000001"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT="[{\"path\":\"${wal_path}\",\"mtime\":\"2026-08-16T00:00:00Z\"}]"
+      mkdir -p "${KB_BACKUP_WORKDIR}"
+      printf '%s\n' "${wal_path}" > "${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
+      touch "${KB_BACKUP_WORKDIR}/${wal_name}"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16 00:00:00 UTC; origin: node'
+      export DATE_D_OUT="2026-08-16T00:00:00Z"
+      export DATE_D_FAIL_ON_CALL=2 DATE_D_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "failed to normalize latest WAL timestamp"
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
 

@@ -89,7 +89,13 @@ function get_wal_log_end_time() {
        return 1
     fi
     if [[ ! -z ${END_TIME} ]];then
-       END_TIME=$(date -d "${END_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
+       local normalized_end_time
+       if ! normalized_end_time=$(date -d "${END_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ'); then
+          DP_error_log "failed to normalize latest WAL timestamp: ${wal_file}" >&2
+          rm -rf "${wal_file_name}"
+          return 1
+       fi
+       END_TIME="${normalized_end_time}"
        echo $END_TIME
     fi
     rm -rf "${wal_file_name}"
