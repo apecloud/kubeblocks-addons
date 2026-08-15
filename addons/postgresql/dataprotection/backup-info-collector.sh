@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 function get_current_time() {
   curr_time=$(psql -U "${DP_DB_USER}" -h "${DP_DB_HOST}" -p "${DP_DB_PORT}" -d postgres -t -c "SELECT now() AT TIME ZONE 'UTC'")
   echo $curr_time
