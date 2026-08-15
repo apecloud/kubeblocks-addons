@@ -25,7 +25,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     mkdir -p "${LOG_DIR}/archive_status"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
-    unset DATASAFED_PUSH_EXIT DATASAFED_STAT_EXIT DATASAFED_STAT_OUT PSQL_EXIT 2>/dev/null || true
+    unset DATASAFED_PUSH_EXIT DATASAFED_STAT_EXIT DATASAFED_STAT_OUT MV_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -68,7 +68,15 @@ EOF
 #!/bin/sh
 exit 0
 EOF
-    chmod +x "${bindir}/datasafed" "${bindir}/psql" "${bindir}/pg_waldump"
+    cat > "${bindir}/mv" <<'EOF'
+#!/bin/sh
+printf 'mv %s\n' "$*" >> "${CALL_LOG}"
+if [ "${MV_EXIT:-0}" -ne 0 ]; then
+  exit "${MV_EXIT}"
+fi
+exec /bin/mv "$@"
+EOF
+    chmod +x "${bindir}/datasafed" "${bindir}/psql" "${bindir}/pg_waldump" "${bindir}/mv"
   }
 
   build_shim() {
@@ -83,6 +91,16 @@ EOF
 
   call_log() {
     cat "${CALL_LOG}"
+  }
+
+  retry_same_size_after_publication_failure() {
+    export DATASAFED_STAT_OUT="TotalSize: 4096"
+    export MV_EXIT=17
+    if save_backup_status; then
+      return 90
+    fi
+    export MV_EXIT=0
+    save_backup_status
   }
 
   Describe "upload_wal_log()"
@@ -138,6 +156,12 @@ EOF
       The status should be failure
       The error should include "datasafed stat failed"
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "retries the same size after an atomic publication failure"
+      When call retry_same_size_after_publication_failure
+      The status should eq 0
+      The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"4096"}'
     End
   End
 End

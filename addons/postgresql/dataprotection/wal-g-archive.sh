@@ -92,7 +92,6 @@ function save_backup_status() {
     if [[ ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == "${GLOBAL_OLD_SIZE}" ]];then
        return
     fi
-    GLOBAL_OLD_SIZE=${TOTAL_SIZE}
     local wal_files=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) |.[] |.path')
     local OLDEST_FILE=$(echo $wal_files | tr ' ' '\n' |head -n 1)
     local START_TIME=
@@ -110,7 +109,10 @@ function save_backup_status() {
       done
     fi
     DP_log "start time of the oldest wal: ${START_TIME}, end time of the latest wal: ${END_TIME}, total size: ${TOTAL_SIZE}"
-    DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${END_TIME}"
+    if ! DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${END_TIME}"; then
+       return 1
+    fi
+    GLOBAL_OLD_SIZE=${TOTAL_SIZE}
 }
 
 # Upload historical .history files that are marked as .done but not yet uploaded to remote
