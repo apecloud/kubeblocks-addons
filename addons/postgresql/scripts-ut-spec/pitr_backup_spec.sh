@@ -117,6 +117,19 @@ EOF
     save_backup_status
   }
 
+  retry_missing_wal_push_after_failure() {
+    export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000000.zst","mtime":"2026-08-16T00:00:00Z"}]'
+    touch "${LOG_DIR}/000000010000000000000001"
+    touch "${LOG_DIR}/archive_status/000000010000000000000001.done"
+    export DATASAFED_PUSH_EXIT=17
+    if uploadMissingLogs; then
+      return 90
+    fi
+    export DATASAFED_PUSH_EXIT=0
+    uploadMissingLogs || return
+    printf 'push-count=%s\n' "$(grep -c '^datasafed push ' "${CALL_LOG}")"
+  }
+
   Describe "upload_wal_log()"
     It "does not mark the WAL segment done when the upload fails"
       touch "${LOG_DIR}/000000010000000000000001"
@@ -175,6 +188,13 @@ EOF
     It "keeps a retry path inside the archive loop after a startup failure"
       When call missing_wal_reconciliation_calls_inside_loop
       The output should eq 1
+    End
+
+    It "retries a missing WAL after its first push fails"
+      When call retry_missing_wal_push_after_failure
+      The status should eq 0
+      The output should include "failed to upload 000000010000000000000001, will retry reconciliation"
+      The output should include "push-count=2"
     End
   End
 
