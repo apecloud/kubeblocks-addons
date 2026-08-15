@@ -100,13 +100,25 @@ function DP_purge_expired_files() {
   if [[ -z ${DP_TTL_SECONDS} || ${diff_time} -lt ${interval_seconds} ]]; then
      return
   fi
-  expiredUnix=$((${currentUnix}-${DP_TTL_SECONDS}))
-  files=$(datasafed list -f --recursive --older-than ${expiredUnix} ${root_path} )
+  local expiredUnix=$((${currentUnix}-${DP_TTL_SECONDS}))
+  local files
+  if ! files=$(datasafed list -f --recursive --older-than ${expiredUnix} ${root_path}); then
+      DP_error_log "failed to list expired WAL files" >&2
+      return 1
+  fi
+  local purge_failed=false
   for file in ${files}
   do
-      datasafed rm ${file}
-      echo ${file}
+      if datasafed rm ${file}; then
+          echo ${file}
+      else
+          DP_error_log "failed to remove expired WAL: ${file}" >&2
+          purge_failed=true
+      fi
   done
+  if [[ ${purge_failed} == "true" ]]; then
+      return 1
+  fi
 }
 
 # analyze the start time of the earliest file from the datasafed backend.

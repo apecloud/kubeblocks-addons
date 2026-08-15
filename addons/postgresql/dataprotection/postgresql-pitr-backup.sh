@@ -28,7 +28,13 @@ fi
 # clean up expired logfiles, interval is 600s
 function purge_expired_files() {
     local currentUnix=$(date +%s)
-    info=$(DP_purge_expired_files ${currentUnix} ${global_last_purge_time} / 600)
+    local info
+    if ! info=$(DP_purge_expired_files ${currentUnix} ${global_last_purge_time} / 600); then
+       if [ ! -z "${info}" ]; then
+          DP_log "cleanup expired wal-log files: ${info}"
+       fi
+       return 1
+    fi
     if [ ! -z "${info}" ]; then
        global_last_purge_time=${currentUnix}
        DP_log "cleanup expired wal-log files: ${info}"

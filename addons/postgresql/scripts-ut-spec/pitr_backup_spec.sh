@@ -26,8 +26,9 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
+      DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
       DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_TODAY_OUT \
-      PG_WALDUMP_EXIT PG_WALDUMP_OUT \
+      DP_TTL_SECONDS PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
@@ -65,6 +66,12 @@ case "$1" in
   list)
     printf '%s' "${DATASAFED_LIST_OUT:-}"
     exit "${DATASAFED_LIST_EXIT:-0}"
+    ;;
+  rm)
+    if [ -n "${DATASAFED_RM_FAIL_PATH:-}" ] && [ "$2" = "${DATASAFED_RM_FAIL_PATH}" ]; then
+      exit 17
+    fi
+    exit "${DATASAFED_RM_EXIT:-0}"
     ;;
 esac
 EOF
@@ -170,6 +177,50 @@ EOF
     pull_count=$(grep -c '^datasafed pull ' "${CALL_LOG}" || true)
     printf 'pull-count=%s\n' "${pull_count}"
   }
+
+  purge_and_report_checkpoint() {
+    global_last_purge_time=123
+    local status=0
+    purge_expired_files || status=$?
+    printf 'purge-checkpoint=%s\n' "${global_last_purge_time}"
+    return "${status}"
+  }
+
+  Describe "purge_expired_files()"
+    It "fails without advancing the checkpoint when the expired-WAL listing fails"
+      export DP_TTL_SECONDS=3600 DATASAFED_LIST_EXIT=17
+      When call purge_and_report_checkpoint
+      The status should be failure
+      The error should include "failed to list expired WAL files"
+      The output should include "purge-checkpoint=123"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "reports only successful deletions and keeps the checkpoint when one deletion fails"
+      removed_wal="/20260816/000000010000000000000001.zst"
+      failed_wal="/20260816/000000010000000000000002.zst"
+      export DP_TTL_SECONDS=3600 DATASAFED_LIST_OUT="${removed_wal} ${failed_wal}"
+      export DATASAFED_RM_FAIL_PATH="${failed_wal}"
+      When call purge_and_report_checkpoint
+      The status should be failure
+      The error should include "failed to remove expired WAL: ${failed_wal}"
+      The output should include "cleanup expired wal-log files: ${removed_wal}"
+      The output should not include "cleanup expired wal-log files: ${failed_wal}"
+      The output should include "purge-checkpoint=123"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "publishes the reduced size after a successful expiration pass"
+      expired_wal="/20260816/000000010000000000000001.zst"
+      global_last_purge_time=123
+      export DP_TTL_SECONDS=3600 DATASAFED_LIST_OUT="${expired_wal}"
+      export DATASAFED_STAT_OUT="TotalSize: 2048"
+      When call purge_expired_files
+      The status should eq 0
+      The output should include "cleanup expired wal-log files: ${expired_wal}"
+      The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"2048"}'
+    End
+  End
 
   Describe "upload_wal_log()"
     It "does not mark the WAL segment done when the upload fails"
