@@ -25,7 +25,8 @@ Describe "dataprotection PITR restore"
     DP_DATASAFED_BIN_PATH="${bindir}"
     export PATH CALL_LOG DATA_DIR PITR_DIR CONF_DIR RESTORE_SCRIPT_DIR \
       DP_RESTORE_TIME DP_RESTORE_TIMESTAMP DP_BACKUP_BASE_PATH DP_DATASAFED_BIN_PATH
-    unset DATASAFED_LIST_ROOT DATASAFED_LIST_DIR 2>/dev/null || true
+    unset DATASAFED_LIST_ROOT DATASAFED_LIST_DIR DATASAFED_ROOT_LIST_EXIT \
+      DATASAFED_DIR_LIST_EXIT 2>/dev/null || true
 
     write_stubs
     build_concat
@@ -45,8 +46,14 @@ printf 'datasafed %s\n' "$*" >> "${CALL_LOG}"
 case "$1" in
   list)
     if [ "$2" = "/" ]; then
+      if [ "${DATASAFED_ROOT_LIST_EXIT:-0}" -ne 0 ]; then
+        exit "${DATASAFED_ROOT_LIST_EXIT}"
+      fi
       printf '%s\n' "${DATASAFED_LIST_ROOT:-}"
     else
+      if [ "${DATASAFED_DIR_LIST_EXIT:-0}" -ne 0 ]; then
+        exit "${DATASAFED_DIR_LIST_EXIT}"
+      fi
       printf '%s\n' "${DATASAFED_LIST_DIR:-}"
     fi
     ;;
@@ -140,6 +147,29 @@ EOF
       The output should include "done."
       The path "${CONF_DIR}/recovery.conf" should be exist
       The path "${DATA_DIR}.old" should be exist
+    End
+
+    It "fails before staging data when the WAL repository root cannot be listed"
+      mkdir -p "${DATA_DIR}/pg_wal"
+      echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
+      export DATASAFED_ROOT_LIST_EXIT=42
+      When run bash "${concat}"
+      The status should be failure
+      The output should include "failed to list the WAL archive root"
+      The path "${DATA_DIR}" should be exist
+      The path "${DATA_DIR}.old" should not be exist
+    End
+
+    It "fails before staging data when a WAL archive directory cannot be listed"
+      mkdir -p "${DATA_DIR}/pg_wal"
+      echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
+      export DATASAFED_LIST_ROOT="waldir/"
+      export DATASAFED_DIR_LIST_EXIT=43
+      When run bash "${concat}"
+      The status should be failure
+      The output should include "failed to list WAL archive directory waldir/"
+      The path "${DATA_DIR}" should be exist
+      The path "${DATA_DIR}.old" should not be exist
     End
   End
 
