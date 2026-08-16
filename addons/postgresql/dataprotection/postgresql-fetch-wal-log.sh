@@ -15,7 +15,11 @@ function fetch-wal-log(){
     pitr=$4
     DP_log "PITR: $pitr"
 
-    exit_fetch_wal=0 && mkdir -p $wal_destination_dir
+    exit_fetch_wal=0
+    if ! mkdir -p "$wal_destination_dir"; then
+       DP_error_log "failed to create WAL destination ${wal_destination_dir}"
+       return 1
+    fi
     if ! dir_names=$(datasafed list /); then
        DP_error_log "failed to list the WAL archive root"
        return 1
