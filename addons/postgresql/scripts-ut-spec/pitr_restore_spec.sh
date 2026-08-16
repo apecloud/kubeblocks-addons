@@ -209,6 +209,15 @@ EOF
       The result of function call_log should not include "datasafed"
     End
 
+    It "fails before repository access when the WAL destination cannot be created"
+      blocked_parent="${tmpdir}/blocked"
+      printf 'not-a-directory\n' > "${blocked_parent}"
+      When call fetch-wal-log "${blocked_parent}/dest" "000000010000000000000001" "2026-01-01 00:00:00" true
+      The status should be failure
+      The output should include "failed to create WAL destination ${blocked_parent}/dest"
+      The result of function call_log should not include "datasafed"
+    End
+
     It "fetches older archive directories before newer ones when the repository listing is unsorted"
       export DATASAFED_LIST_ROOT="20260817/
 20260816/"
