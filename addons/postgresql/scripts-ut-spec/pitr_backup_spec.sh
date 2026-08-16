@@ -285,6 +285,14 @@ EOF
   }
 
   Describe "startup clock initialization"
+    It "fails when the initial WAL switch clock is not a decimal epoch"
+      export DATE_EPOCH_OUT="not-an-epoch"
+      When run run_startup_preamble
+      The status should be failure
+      The output should include "failed to determine initial WAL switch time"
+      The output should not include "switch-time=not-an-epoch"
+    End
+
     It "fails when the initial WAL switch clock cannot be read"
       export DATE_EPOCH_FAIL_ON_CALL=1
       When run run_startup_preamble
@@ -322,6 +330,15 @@ EOF
   End
 
   Describe "switch_wal_log()"
+    It "fails before arithmetic when the current time is not a decimal epoch"
+      export DATE_EPOCH_OUT="not-an-epoch"
+      When call switch_and_report_checkpoint
+      The status should be failure
+      The output should include "failed to determine current time for WAL switch"
+      The output should include "switch-checkpoint=123"
+      The contents of file "${CALL_LOG}" should not include "psql"
+    End
+
     It "fails before requesting a switch when archive-status inspection fails"
       export DATE_EPOCH_OUT=456 PG_WALDUMP_OUT="transaction record" FIND_EXIT=17
       When call switch_and_report_checkpoint
@@ -386,6 +403,15 @@ EOF
   End
 
   Describe "purge_expired_files()"
+    It "fails before expiry arithmetic when the retention clock is not a decimal epoch"
+      export DATE_EPOCH_OUT="not-an-epoch" DP_TTL_SECONDS=3600
+      When call purge_and_report_checkpoint
+      The status should be failure
+      The output should include "failed to determine current time for WAL retention"
+      The output should include "purge-checkpoint=123"
+      The contents of file "${CALL_LOG}" should not include "datasafed"
+    End
+
     It "fails before expiry arithmetic when the retention clock cannot be read"
       export DATE_EPOCH_EXIT=17 DP_TTL_SECONDS=3600
       When call purge_and_report_checkpoint
