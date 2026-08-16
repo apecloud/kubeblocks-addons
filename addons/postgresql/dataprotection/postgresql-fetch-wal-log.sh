@@ -17,6 +17,10 @@ function fetch-wal-log(){
        DP_error_log "failed to list the WAL archive root"
        return 1
     fi
+    if ! dir_names=$(printf '%s\n' "${dir_names}" | sort); then
+       DP_error_log "failed to sort the WAL archive root"
+       return 1
+    fi
     for dir_name in $dir_names ; do
       if [[ $exit_fetch_wal -eq 1 ]]; then
          break
@@ -24,6 +28,10 @@ function fetch-wal-log(){
 
       if ! dir_files=$(datasafed list "${dir_name}"); then
          DP_error_log "failed to list WAL archive directory ${dir_name}"
+         return 1
+      fi
+      if ! dir_files=$(printf '%s\n' "${dir_files}" | sort); then
+         DP_error_log "failed to sort WAL archive directory ${dir_name}"
          return 1
       fi
       # check if the latest_wal_log after the start_wal_log
