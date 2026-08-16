@@ -50,7 +50,11 @@ function purge_expired_files() {
 
 # switch wal log
 function switch_wal_log() {
-    local curr_time=$(date +%s)
+    local curr_time
+    if ! curr_time=$(date +%s) || [[ -z ${curr_time} ]]; then
+      DP_error_log "failed to determine current time for WAL switch"
+      return 1
+    fi
     local diff_time=$((${curr_time}-${global_last_switch_wal_time}))
     if [[ ${diff_time} -lt ${global_switch_wal_interval} ]]; then
        return
