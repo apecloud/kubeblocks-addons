@@ -460,6 +460,19 @@ EOF
   End
 
   Describe "uploadMissingLogs()"
+    It "fails before repository access when the archive partition cannot be generated"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.done"
+      export DATE_TODAY_EXIT=17
+      When call uploadMissingLogs
+      The status should be failure
+      The output should include "failed to determine missing-WAL upload partition"
+      The contents of file "${CALL_LOG}" should not include "datasafed"
+      The path "${LOG_DIR}/archive_status/${wal_name}.done" should be exist
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
     It "fails when the remote WAL listing is unavailable"
       export DATASAFED_LIST_EXIT=17
       When call uploadMissingLogs
