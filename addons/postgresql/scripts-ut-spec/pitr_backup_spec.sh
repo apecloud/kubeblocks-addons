@@ -29,7 +29,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
       DATASAFED_PUSH_FAIL_WAL \
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
       DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_EXIT DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
-      DP_TTL_SECONDS FIND_EXIT PG_WALDUMP_EXIT PG_WALDUMP_OUT \
+      DP_TTL_SECONDS FIND_EXIT FIND_FAIL_ON_CALL PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT MV_FAIL_SOURCE PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
 
     write_stubs
@@ -129,7 +129,10 @@ EOF
     cat > "${bindir}/find" <<'EOF'
 #!/bin/sh
 printf 'find %s\n' "$*" >> "${CALL_LOG}"
-if [ "${FIND_EXIT:-0}" -ne 0 ]; then
+call_count=$(awk '/^find / { calls++ } END { print calls + 0 }' "${CALL_LOG}")
+if [ "${FIND_FAIL_ON_CALL:-0}" -eq "${call_count}" ]; then
+  exit 17
+elif [ "${FIND_EXIT:-0}" -ne 0 ]; then
   exit "${FIND_EXIT}"
 fi
 exec /usr/bin/find "$@"
@@ -242,6 +245,26 @@ EOF
   }
 
   Describe "switch_wal_log()"
+    It "fails before requesting a switch when archive-status inspection fails"
+      export DATE_EPOCH_OUT=456 PG_WALDUMP_OUT="transaction record" FIND_EXIT=17
+      When call switch_and_report_checkpoint
+      The status should be failure
+      The output should include "failed to inspect WAL archive status before switch"
+      The output should not include "timed out waiting for switched WAL"
+      The output should include "switch-checkpoint=123"
+      The contents of file "${CALL_LOG}" should not include "select pg_switch_wal()"
+    End
+
+    It "fails while confirming a switch when archive-status inspection fails"
+      export DATE_EPOCH_OUT=456 PG_WALDUMP_OUT="transaction record" FIND_FAIL_ON_CALL=2
+      When call switch_and_report_checkpoint
+      The status should be failure
+      The output should include "failed to inspect WAL archive status after switch"
+      The output should not include "timed out waiting for switched WAL"
+      The output should include "switch-checkpoint=123"
+      The contents of file "${CALL_LOG}" should include "select pg_switch_wal()"
+    End
+
     It "fails before throttle evaluation when the current time cannot be read"
       export DATE_EPOCH_EXIT=17
       When call switch_and_report_checkpoint

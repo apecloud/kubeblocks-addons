@@ -77,7 +77,12 @@ function switch_wal_log() {
       DP_error_log "failed to inspect current WAL for switch: ${current_wal}" >&2
       return 1
     fi
-    if [ "${LAST_TRANS}" != "" ] && [ "$(find ${LOG_DIR}/archive_status/ -name '*.ready')" = "" ]; then
+    local ready_wal_files
+    if ! ready_wal_files=$(find ${LOG_DIR}/archive_status/ -name '*.ready'); then
+      DP_error_log "failed to inspect WAL archive status before switch"
+      return 1
+    fi
+    if [ "${LAST_TRANS}" != "" ] && [ "${ready_wal_files}" = "" ]; then
       DP_log "start to switch wal file"
       if ! ${PSQL} -c "select pg_switch_wal()"; then
         DP_error_log "pg_switch_wal failed, will retry on the next round"
@@ -85,7 +90,11 @@ function switch_wal_log() {
       fi
       local switch_confirmed=false
       for i in $(seq 1 60); do
-        if [ "$(find ${LOG_DIR}/archive_status/ -name '*.ready')" != "" ]; then
+        if ! ready_wal_files=$(find ${LOG_DIR}/archive_status/ -name '*.ready'); then
+          DP_error_log "failed to inspect WAL archive status after switch"
+          return 1
+        fi
+        if [ "${ready_wal_files}" != "" ]; then
           DP_log "switch wal file successfully"
           switch_confirmed=true
           break;
