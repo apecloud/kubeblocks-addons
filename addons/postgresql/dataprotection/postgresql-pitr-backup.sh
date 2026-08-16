@@ -99,18 +99,26 @@ function switch_wal_log() {
 # upload wal log
 function upload_wal_log() {
     local TODAY_INCR_LOG=$(date +%Y%m%d);
+    local normalized_stop_time
     cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
     for i in $(ls -tr ./archive_status/ | grep .ready); do
       wal_name=${i%.*}
       LOG_STOP_TIME=$(pg_waldump ${wal_name} --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+      normalized_stop_time=
+      if [[ ! -z $LOG_STOP_TIME ]];then
+        if ! normalized_stop_time=$(date -d "${LOG_STOP_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ'); then
+          DP_error_log "failed to normalize stop time for ${wal_name}, keeping ${i} for retry"
+          break
+        fi
+      fi
       if [ -f ${wal_name} ]; then
         DP_log "upload ${wal_name}"
         # Rename .ready to .done only after a successful upload. Marking a
         # failed upload as .done lets PostgreSQL recycle a WAL segment that
         # never reached the repository, leaving a hole in the PITR chain.
         if datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst"; then
-          if [[ ! -z $LOG_STOP_TIME ]];then
-            global_stop_time=$(date -d "${LOG_STOP_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
+          if [[ ! -z $normalized_stop_time ]];then
+            global_stop_time=${normalized_stop_time}
           fi
           mv -f ./archive_status/${i} ./archive_status/${wal_name}.done;
         else
