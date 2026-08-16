@@ -21,7 +21,7 @@ global_old_size=0
 global_missing_logs_reconciled=false
 
 if [[ ${SWITCH_WAL_INTERVAL_SECONDS} =~ ^[0-9]+$ ]];then
-  global_switch_wal_interval=${SWITCH_WAL_INTERVAL_SECONDS}
+  global_switch_wal_interval=$((10#${SWITCH_WAL_INTERVAL_SECONDS}))
 fi
 
 global_backup_in_secondary=
