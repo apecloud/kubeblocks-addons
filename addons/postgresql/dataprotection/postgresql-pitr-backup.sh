@@ -132,7 +132,10 @@ function upload_wal_log() {
           if [[ ! -z $normalized_stop_time ]];then
             global_stop_time=${normalized_stop_time}
           fi
-          mv -f ./archive_status/${i} ./archive_status/${wal_name}.done;
+          if ! mv -f ./archive_status/${i} ./archive_status/${wal_name}.done; then
+            DP_error_log "failed to mark ${wal_name} done, keeping ${i} for retry"
+            return 1
+          fi
         else
           DP_error_log "failed to upload ${wal_name}, keeping ${i} for retry"
           break
