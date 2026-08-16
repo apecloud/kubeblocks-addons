@@ -26,6 +26,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
+      DATASAFED_PUSH_FAIL_WAL \
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
       DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_OUT DATE_TODAY_OUT \
       DP_TTL_SECONDS PG_WALDUMP_EXIT PG_WALDUMP_OUT \
@@ -54,6 +55,9 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
 printf 'datasafed %s\n' "$*" >> "${CALL_LOG}"
 case "$1" in
   push)
+    if [ -n "${DATASAFED_PUSH_FAIL_WAL:-}" ] && [ "$4" = "${DATASAFED_PUSH_FAIL_WAL}" ]; then
+      exit 17
+    fi
     exit "${DATASAFED_PUSH_EXIT:-0}"
     ;;
   pull)
@@ -307,6 +311,24 @@ EOF
   End
 
   Describe "upload_wal_log()"
+    It "does not upload or publish past the first failed WAL segment"
+      first_wal="000000010000000000000001"
+      second_wal="000000010000000000000002"
+      touch "${LOG_DIR}/${first_wal}" "${LOG_DIR}/${second_wal}"
+      touch -t 202608160000.00 "${LOG_DIR}/archive_status/${first_wal}.ready"
+      touch -t 202608160001.00 "${LOG_DIR}/archive_status/${second_wal}.ready"
+      export DATASAFED_PUSH_FAIL_WAL="${first_wal}"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16T00:01:00Z; origin: node'
+      export DATE_D_OUT="2026-08-16T00:01:00Z"
+      When call upload_and_report_stop_time
+      The status should eq 0
+      The output should include "stop-time=2026-08-15T23:59:00Z"
+      The contents of file "${CALL_LOG}" should include "datasafed push -z zstd ${first_wal}"
+      The contents of file "${CALL_LOG}" should not include "datasafed push -z zstd ${second_wal}"
+      The path "${LOG_DIR}/archive_status/${first_wal}.ready" should be exist
+      The path "${LOG_DIR}/archive_status/${second_wal}.ready" should be exist
+    End
+
     It "does not advance the metadata stop time when the upload fails"
       wal_name="000000010000000000000001"
       touch "${LOG_DIR}/${wal_name}"
