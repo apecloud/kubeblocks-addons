@@ -164,6 +164,24 @@ EOF
     shim="${tmpdir}/shim.sh"
     awk '/^function [a-zA-Z_]/ { capture=1 } capture { print } capture && /^\}/ { capture=0 }' \
       ../dataprotection/postgresql-pitr-backup.sh > "${shim}"
+    awk '
+      /^while true; do$/ {
+        print "archive_loop_once() {"
+        capture = 1
+        next
+      }
+      capture && /^done$/ {
+        print "}"
+        exit
+      }
+      capture {
+        if ($0 ~ /^[[:space:]]*continue[[:space:]]*$/) {
+          print "    return 1"
+        } else {
+          print
+        }
+      }
+    ' ../dataprotection/postgresql-pitr-backup.sh >> "${shim}"
     # shellcheck disable=SC1090
     . ../dataprotection/common-scripts.sh
     # shellcheck disable=SC1090
@@ -251,6 +269,25 @@ EOF
     printf 'stop-time=%s\n' "${global_stop_time}"
     return "${status}"
   }
+
+  archive_round_with_upload_listing_failure() {
+    global_missing_logs_reconciled=true
+    check_pg_process() { :; }
+    switch_wal_log() { :; }
+    purge_expired_files() { printf 'purge_expired_files\n' >> "${CALL_LOG}"; }
+    export LS_EXIT=17
+    archive_loop_once
+  }
+
+  Describe "archive loop"
+    It "stops the round before metadata and retention after a hard upload failure"
+      When call archive_round_with_upload_listing_failure
+      The status should be failure
+      The output should include "failed to list WAL archive status"
+      The contents of file "${CALL_LOG}" should not include "datasafed stat"
+      The contents of file "${CALL_LOG}" should not include "purge_expired_files"
+    End
+  End
 
   Describe "switch_wal_log()"
     It "fails before requesting a switch when archive-status inspection fails"
