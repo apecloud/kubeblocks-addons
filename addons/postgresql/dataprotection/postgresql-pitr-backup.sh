@@ -38,6 +38,9 @@ function purge_expired_files() {
       DP_error_log "failed to determine current time for WAL retention"
       return 1
     fi
+    if [[ -z ${DP_TTL_SECONDS} || $((currentUnix - global_last_purge_time)) -lt 600 ]]; then
+      return
+    fi
     local info
     if ! info=$(DP_purge_expired_files ${currentUnix} ${global_last_purge_time} / 600); then
        if [ ! -z "${info}" ]; then
