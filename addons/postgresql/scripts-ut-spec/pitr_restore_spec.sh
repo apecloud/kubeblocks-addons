@@ -27,7 +27,7 @@ Describe "dataprotection PITR restore"
       DP_RESTORE_TIME DP_RESTORE_TIMESTAMP DP_BACKUP_BASE_PATH DP_DATASAFED_BIN_PATH
     unset DATASAFED_LIST_ROOT DATASAFED_LIST_DIR DATASAFED_LIST_DIR_20260816 \
       DATASAFED_LIST_DIR_20260817 DATASAFED_ROOT_LIST_EXIT \
-      DATASAFED_DIR_LIST_EXIT 2>/dev/null || true
+      DATASAFED_DIR_LIST_EXIT DATASAFED_PULL_FAIL_OBJECT 2>/dev/null || true
 
     write_stubs
     build_concat
@@ -63,6 +63,9 @@ case "$1" in
     fi
     ;;
   pull)
+    if [ "$4" = "${DATASAFED_PULL_FAIL_OBJECT:-}" ]; then
+      exit 44
+    fi
     # last arg is the destination file
     for arg; do dest="$arg"; done
     echo "wal-bytes" > "$dest"
@@ -116,6 +119,10 @@ EOF
 
   first_pulled_archive() {
     awk '/^datasafed pull / { print $5; exit }' "${CALL_LOG}"
+  }
+
+  call_log() {
+    cat "${CALL_LOG}"
   }
 
   Describe "prepareData script (concatenated form)"
@@ -203,6 +210,17 @@ EOF
       When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2026-01-01 00:00:00" true
       The status should eq 0
       The result of function first_pulled_archive should eq "000000010000000000000002.zst"
+    End
+
+    It "stops at the first WAL pull failure instead of crossing an archive gap"
+      export DATASAFED_LIST_ROOT="20260816/"
+      export DATASAFED_LIST_DIR="000000010000000000000002.zst
+000000010000000000000003.zst"
+      export DATASAFED_PULL_FAIL_OBJECT="000000010000000000000002.zst"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2026-01-01 00:00:00" true
+      The status should be failure
+      The output should include "failed to pull WAL archive 000000010000000000000002.zst"
+      The result of function call_log should not include "datasafed pull -d zstd 000000010000000000000003.zst"
     End
 
     It "stops at the target time with numeric epoch comparison (9-digit vs 10-digit)"
