@@ -311,6 +311,21 @@ EOF
   End
 
   Describe "upload_wal_log()"
+    It "keeps the WAL retryable when its stop time cannot be normalized"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.ready"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT invalid-time; origin: node'
+      export DATE_D_OUT="unused" DATE_D_EXIT=17
+      When call upload_and_report_stop_time
+      The status should eq 0
+      The output should include "failed to normalize stop time for ${wal_name}, keeping ${wal_name}.ready for retry"
+      The output should include "stop-time=2026-08-15T23:59:00Z"
+      The contents of file "${CALL_LOG}" should not include "datasafed push"
+      The path "${LOG_DIR}/archive_status/${wal_name}.ready" should be exist
+      The path "${LOG_DIR}/archive_status/${wal_name}.done" should not be exist
+    End
+
     It "does not upload or publish past the first failed WAL segment"
       first_wal="000000010000000000000001"
       second_wal="000000010000000000000002"
