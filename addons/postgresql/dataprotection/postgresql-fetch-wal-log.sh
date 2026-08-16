@@ -51,6 +51,9 @@ function fetch-wal-log(){
       DP_log "start to fetch wal logs from ${dir_name}"
       for file in $(printf '%s\n' "${dir_files}" | grep ".zst"); do
          wal_name=$(get_wal_name ${file})
+         if [[ ! $wal_name =~ ^[0-9A-F]{24}$ && ! $wal_name =~ ^[0-9A-F]{8}\.history$ ]]; then
+            continue
+         fi
          if [[ $wal_name < $start_wal_name ]]; then
             continue
          fi
