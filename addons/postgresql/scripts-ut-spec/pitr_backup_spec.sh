@@ -29,7 +29,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
       DATASAFED_PUSH_FAIL_WAL \
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
       DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_EXIT DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
-      DP_TTL_SECONDS PG_WALDUMP_EXIT PG_WALDUMP_OUT \
+      DP_TTL_SECONDS FIND_EXIT PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT MV_FAIL_SOURCE PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
 
     write_stubs
@@ -126,6 +126,14 @@ EOF
 #!/bin/sh
 exit 0
 EOF
+    cat > "${bindir}/find" <<'EOF'
+#!/bin/sh
+printf 'find %s\n' "$*" >> "${CALL_LOG}"
+if [ "${FIND_EXIT:-0}" -ne 0 ]; then
+  exit "${FIND_EXIT}"
+fi
+exec /usr/bin/find "$@"
+EOF
     cat > "${bindir}/mv" <<'EOF'
 #!/bin/sh
 printf 'mv %s\n' "$*" >> "${CALL_LOG}"
@@ -138,7 +146,7 @@ fi
 exec /bin/mv "$@"
 EOF
     chmod +x "${bindir}/datasafed" "${bindir}/psql" "${bindir}/pg_waldump" \
-      "${bindir}/date" "${bindir}/mv" "${bindir}/sleep"
+      "${bindir}/date" "${bindir}/find" "${bindir}/mv" "${bindir}/sleep"
   }
 
   build_shim() {
@@ -499,6 +507,16 @@ EOF
   End
 
   Describe "uploadMissingLogs()"
+    It "fails before metadata work when local archive-status listing is unavailable"
+      export FIND_EXIT=17
+      When call uploadMissingLogs
+      The status should be failure
+      The output should include "failed to list local WAL archive status"
+      The contents of file "${CALL_LOG}" should include "find ./archive_status -type f"
+      The contents of file "${CALL_LOG}" should not include "datasafed stat"
+      The contents of file "${CALL_LOG}" should not include "datasafed push"
+    End
+
     It "fails before repository access when the archive partition cannot be generated"
       wal_name="000000010000000000000001"
       touch "${LOG_DIR}/${wal_name}"

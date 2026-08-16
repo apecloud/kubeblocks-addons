@@ -255,7 +255,16 @@ function uploadMissingLogs() {
       DP_log "oldest uploaded wal: ${OLDEST_FILE}"
     fi
     local reconciliation_failed=false
-    for i in $(find ./archive_status -type f | sort | grep .done); do
+    local wal_status_files
+    if ! wal_status_files=$(find ./archive_status -type f -name '*.done'); then
+      DP_error_log "failed to list local WAL archive status"
+      return 1
+    fi
+    if ! wal_status_files=$(printf '%s\n' "${wal_status_files}" | sort); then
+      DP_error_log "failed to sort local WAL archive status"
+      return 1
+    fi
+    for i in ${wal_status_files}; do
       wal_done_name=$(basename ${i})
       wal_name=${wal_done_name%.*}
       if [[ -n ${OLDEST_FILE} && "$wal_name" < "$OLDEST_FILE" ]]; then
