@@ -16,8 +16,11 @@ fi
 
 mkdir -p ${PITR_DIR};
 
-latest_wal=$(ls ${DATA_DIR}/pg_wal -lI "*.history" | grep ^- | awk '{print $9}' | sort | tail -n 1)
-start_wal_log=`basename $latest_wal`
+start_wal_log=$(ls "${DATA_DIR}/pg_wal" -lI "*.history" | grep '^-' | awk '{print $9}' | grep -E '^[0-9A-F]{24}$' | sort | tail -n 1)
+if [[ -z ${start_wal_log} ]]; then
+  DP_error_log "failed to find a valid starting WAL in ${DATA_DIR}/pg_wal"
+  exit 1
+fi
 
 DP_log "fetch-wal-log ${PITR_DIR} ${start_wal_log} \"${DP_RESTORE_TIME}\" true"
 fetch-wal-log ${PITR_DIR} ${start_wal_log} "${DP_RESTORE_TIME}" true
