@@ -100,10 +100,18 @@ function switch_wal_log() {
 function upload_wal_log() {
     local TODAY_INCR_LOG=$(date +%Y%m%d);
     local normalized_stop_time
+    local wal_dump_output
+    local wal_dump_status
     cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
     for i in $(ls -tr ./archive_status/ | grep .ready); do
       wal_name=${i%.*}
-      LOG_STOP_TIME=$(pg_waldump ${wal_name} --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+      wal_dump_output=$(pg_waldump ${wal_name} --rmgr=Transaction 2>/dev/null)
+      wal_dump_status=$?
+      LOG_STOP_TIME=$(printf '%s\n' "${wal_dump_output}" | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+      if (( wal_dump_status != 0 )) && [[ -z $LOG_STOP_TIME ]]; then
+        DP_error_log "failed to inspect ${wal_name} for stop time, keeping ${i} for retry"
+        break
+      fi
       normalized_stop_time=
       if [[ ! -z $LOG_STOP_TIME ]];then
         if ! normalized_stop_time=$(date -d "${LOG_STOP_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ'); then

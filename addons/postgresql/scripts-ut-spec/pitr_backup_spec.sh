@@ -311,6 +311,35 @@ EOF
   End
 
   Describe "upload_wal_log()"
+    It "keeps the WAL retryable when analysis fails without a usable COMMIT"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.ready"
+      export PG_WALDUMP_EXIT=17
+      When call upload_and_report_stop_time
+      The status should eq 0
+      The output should include "failed to inspect ${wal_name} for stop time, keeping ${wal_name}.ready for retry"
+      The output should include "stop-time=2026-08-15T23:59:00Z"
+      The contents of file "${CALL_LOG}" should not include "datasafed push"
+      The path "${LOG_DIR}/archive_status/${wal_name}.ready" should be exist
+      The path "${LOG_DIR}/archive_status/${wal_name}.done" should not be exist
+    End
+
+    It "accepts a usable COMMIT from a partial-WAL analysis failure"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.ready"
+      export PG_WALDUMP_EXIT=17
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16T00:00:00Z; origin: node'
+      export DATE_D_OUT="2026-08-16T00:00:00Z"
+      When call upload_and_report_stop_time
+      The status should eq 0
+      The output should include "stop-time=2026-08-16T00:00:00Z"
+      The contents of file "${CALL_LOG}" should include "datasafed push -z zstd ${wal_name}"
+      The path "${LOG_DIR}/archive_status/${wal_name}.done" should be exist
+      The path "${LOG_DIR}/archive_status/${wal_name}.ready" should not be exist
+    End
+
     It "keeps the WAL retryable when its stop time cannot be normalized"
       wal_name="000000010000000000000001"
       touch "${LOG_DIR}/${wal_name}"
