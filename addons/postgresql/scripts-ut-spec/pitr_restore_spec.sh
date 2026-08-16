@@ -275,6 +275,17 @@ EOF
       The result of function call_log should not include "datasafed pull -d zstd 000000010000000000000001metadata.zst"
     End
 
+    It "pulls timeline history without inspecting it as a WAL segment"
+      export DATASAFED_LIST_ROOT="20260816/"
+      export DATASAFED_LIST_DIR="000000010000000000000002.zst
+00000002.history.zst"
+      export PG_WALDUMP_FAIL_OBJECT="00000002.history"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2026-01-01 00:00:00" true
+      The status should eq 0
+      The output should not include "failed to inspect WAL 00000002.history"
+      The path "${tmpdir}/dest/00000002.history" should be exist
+    End
+
     It "stops at the first WAL pull failure instead of crossing an archive gap"
       export DATASAFED_LIST_ROOT="20260816/"
       export DATASAFED_LIST_DIR="000000010000000000000002.zst
