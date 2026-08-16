@@ -220,6 +220,27 @@ EOF
       The output should include "cleanup expired wal-log files: ${expired_wal}"
       The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"2048"}'
     End
+
+    It "keeps the checkpoint when reduced-size lookup fails"
+      expired_wal="/20260816/000000010000000000000001.zst"
+      export DP_TTL_SECONDS=3600 DATASAFED_LIST_OUT="${expired_wal}"
+      export DATASAFED_STAT_EXIT=17
+      When call purge_and_report_checkpoint
+      The status should be failure
+      The error should include "datasafed stat failed"
+      The output should include "purge-checkpoint=123"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "keeps the checkpoint when reduced-size publication fails"
+      expired_wal="/20260816/000000010000000000000001.zst"
+      export DP_TTL_SECONDS=3600 DATASAFED_LIST_OUT="${expired_wal}"
+      export DATASAFED_STAT_OUT="TotalSize: 2048" MV_EXIT=17
+      When call purge_and_report_checkpoint
+      The status should be failure
+      The output should include "purge-checkpoint=123"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
   End
 
   Describe "upload_wal_log()"
