@@ -100,7 +100,7 @@ function DP_purge_expired_files() {
   if [[ -z ${DP_TTL_SECONDS} || ${diff_time} -lt ${interval_seconds} ]]; then
      return
   fi
-  local expiredUnix=$((${currentUnix}-${DP_TTL_SECONDS}))
+  local expiredUnix=$((${currentUnix}-10#${DP_TTL_SECONDS}))
   local files
   if ! files=$(datasafed list -f --recursive --older-than ${expiredUnix} ${root_path}); then
       DP_error_log "failed to list expired WAL files" >&2
