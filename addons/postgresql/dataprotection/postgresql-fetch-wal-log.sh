@@ -8,7 +8,10 @@ function get_wal_name() {
 function fetch-wal-log(){
     wal_destination_dir=$1
     start_wal_name=$2
-    restore_time=`date -d "$3" +%s`
+    if ! restore_time=$(date -d "$3" +%s); then
+       DP_error_log "failed to parse PITR restore time $3"
+       return 1
+    fi
     pitr=$4
     DP_log "PITR: $pitr"
 
