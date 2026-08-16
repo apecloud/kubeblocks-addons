@@ -206,6 +206,14 @@ EOF
     return "${status}"
   }
 
+  upload_and_report_stop_time() {
+    global_stop_time="2026-08-15T23:59:00Z"
+    local status=0
+    upload_wal_log || status=$?
+    printf 'stop-time=%s\n' "${global_stop_time}"
+    return "${status}"
+  }
+
   Describe "switch_wal_log()"
     It "fails without advancing the checkpoint when the switch request fails"
       export DATE_EPOCH_OUT=456 PG_WALDUMP_OUT="transaction record"
@@ -299,6 +307,28 @@ EOF
   End
 
   Describe "upload_wal_log()"
+    It "does not advance the metadata stop time when the upload fails"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.ready"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16T00:00:00Z; origin: node'
+      export DATE_D_OUT="2026-08-16T00:00:00Z" DATASAFED_PUSH_EXIT=17
+      When call upload_and_report_stop_time
+      The status should eq 0
+      The output should include "stop-time=2026-08-15T23:59:00Z"
+    End
+
+    It "advances the metadata stop time after a successful upload"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.ready"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16T00:00:00Z; origin: node'
+      export DATE_D_OUT="2026-08-16T00:00:00Z"
+      When call upload_and_report_stop_time
+      The status should eq 0
+      The output should include "stop-time=2026-08-16T00:00:00Z"
+    End
+
     It "does not mark the WAL segment done when the upload fails"
       touch "${LOG_DIR}/000000010000000000000001"
       touch "${LOG_DIR}/archive_status/000000010000000000000001.ready"
