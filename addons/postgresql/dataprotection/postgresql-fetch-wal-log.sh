@@ -70,6 +70,10 @@ function fetch-wal-log(){
             return 1
          fi
 
+         if [[ $wal_name =~ \.history$ ]]; then
+            continue
+         fi
+
          # check if the wal_log contains the restore_time logs. if ture, stop fetching
          if ! wal_dump=$(pg_waldump "${wal_destination_dir}/${wal_name}" --rmgr=Transaction 2>/dev/null); then
             DP_error_log "failed to inspect WAL ${wal_name}"
