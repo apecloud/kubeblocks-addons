@@ -4,6 +4,11 @@ export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
+if ! recovery_target_time=$(date -d "@${DP_RESTORE_TIMESTAMP}" '+%F %T%::z'); then
+  DP_error_log "failed to format PITR recovery timestamp ${DP_RESTORE_TIMESTAMP}"
+  exit 1
+fi
+
 if [[ -d ${DATA_DIR}.old ]] && [[ ! -d ${DATA_DIR} ]]; then
   # A previous run already completed the final staging mv. Un-staging and
   # exiting 0 here (the old behavior) left a populated DATA_DIR carrying
@@ -36,7 +41,7 @@ echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 cat << EOF > "${CONF_DIR}/recovery.conf"
 restore_command='cp ${PITR_DIR}/%f %p'
-recovery_target_time='$( date -d "@${DP_RESTORE_TIMESTAMP}" '+%F %T%::z' )'
+recovery_target_time='${recovery_target_time}'
 recovery_target_action='promote'
 recovery_target_timeline='latest'
 EOF
