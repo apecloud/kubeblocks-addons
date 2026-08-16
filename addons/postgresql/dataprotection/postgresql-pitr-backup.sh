@@ -286,7 +286,6 @@ function uploadMissingLogs() {
       OLDEST_FILE=$(basename $OLDEST_FILE)
       DP_log "oldest uploaded wal: ${OLDEST_FILE}"
     fi
-    local reconciliation_failed=false
     local wal_status_files
     if ! wal_status_files=$(find ./archive_status -type f -name '*.done'); then
       DP_error_log "failed to list local WAL archive status"
@@ -309,16 +308,13 @@ function uploadMissingLogs() {
         DP_log "upload ${wal_name}"
         if ! datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst"; then
           DP_error_log "failed to upload ${wal_name}, will retry reconciliation"
-          reconciliation_failed=true
+          return 1
         fi
       else
         DP_error_log "cannot reconcile ${wal_name}: local WAL file is missing"
-        reconciliation_failed=true
+        return 1
       fi
     done
-    if [[ ${reconciliation_failed} == "true" ]]; then
-      return 1
-    fi
     save_backup_status
 }
 

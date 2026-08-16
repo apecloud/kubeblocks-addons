@@ -738,6 +738,21 @@ EOF
       The output should include "push-count=2"
     End
 
+    It "does not reconcile past the first failed WAL upload"
+      older_wal="000000010000000000000001"
+      newer_wal="000000010000000000000002"
+      export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000000.zst","mtime":"2026-08-16T00:00:00Z"}]'
+      export DATASAFED_PUSH_FAIL_WAL="${older_wal}"
+      touch "${LOG_DIR}/${older_wal}" "${LOG_DIR}/${newer_wal}"
+      touch "${LOG_DIR}/archive_status/${older_wal}.done" \
+        "${LOG_DIR}/archive_status/${newer_wal}.done"
+      When call uploadMissingLogs
+      The status should be failure
+      The output should include "failed to upload ${older_wal}, will retry reconciliation"
+      The contents of file "${CALL_LOG}" should include "datasafed push -z zstd ${older_wal}"
+      The contents of file "${CALL_LOG}" should not include "datasafed push -z zstd ${newer_wal}"
+    End
+
     It "fails when a remotely missing done WAL has no local source file"
       export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000000.zst","mtime":"2026-08-16T00:00:00Z"}]'
       export DATASAFED_STAT_OUT="TotalSize: 4096"
@@ -746,6 +761,19 @@ EOF
       The status should be failure
       The output should include "cannot reconcile 000000010000000000000001: local WAL file is missing"
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "does not reconcile past the first WAL whose local source is missing"
+      older_wal="000000010000000000000001"
+      newer_wal="000000010000000000000002"
+      export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000000.zst","mtime":"2026-08-16T00:00:00Z"}]'
+      touch "${LOG_DIR}/${newer_wal}"
+      touch "${LOG_DIR}/archive_status/${older_wal}.done" \
+        "${LOG_DIR}/archive_status/${newer_wal}.done"
+      When call uploadMissingLogs
+      The status should be failure
+      The output should include "cannot reconcile ${older_wal}: local WAL file is missing"
+      The contents of file "${CALL_LOG}" should not include "datasafed push -z zstd ${newer_wal}"
     End
 
     It "uploads local done WALs when the repository is empty"
