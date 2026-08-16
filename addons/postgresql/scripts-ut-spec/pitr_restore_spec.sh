@@ -25,7 +25,8 @@ Describe "dataprotection PITR restore"
     DP_DATASAFED_BIN_PATH="${bindir}"
     export PATH CALL_LOG DATA_DIR PITR_DIR CONF_DIR RESTORE_SCRIPT_DIR \
       DP_RESTORE_TIME DP_RESTORE_TIMESTAMP DP_BACKUP_BASE_PATH DP_DATASAFED_BIN_PATH
-    unset DATASAFED_LIST_ROOT DATASAFED_LIST_DIR DATASAFED_ROOT_LIST_EXIT \
+    unset DATASAFED_LIST_ROOT DATASAFED_LIST_DIR DATASAFED_LIST_DIR_20260816 \
+      DATASAFED_LIST_DIR_20260817 DATASAFED_ROOT_LIST_EXIT \
       DATASAFED_DIR_LIST_EXIT 2>/dev/null || true
 
     write_stubs
@@ -54,7 +55,11 @@ case "$1" in
       if [ "${DATASAFED_DIR_LIST_EXIT:-0}" -ne 0 ]; then
         exit "${DATASAFED_DIR_LIST_EXIT}"
       fi
-      printf '%s\n' "${DATASAFED_LIST_DIR:-}"
+      case "$2" in
+        20260816/) printf '%s\n' "${DATASAFED_LIST_DIR_20260816:-${DATASAFED_LIST_DIR:-}}" ;;
+        20260817/) printf '%s\n' "${DATASAFED_LIST_DIR_20260817:-${DATASAFED_LIST_DIR:-}}" ;;
+        *) printf '%s\n' "${DATASAFED_LIST_DIR:-}" ;;
+      esac
     fi
     ;;
   pull)
@@ -107,6 +112,10 @@ EOF
       cat ../dataprotection/postgresql-fetch-wal-log.sh; echo
       cat ../dataprotection/postgresql-pitr-restore.sh; echo
     } > "${concat}"
+  }
+
+  first_pulled_archive() {
+    awk '/^datasafed pull / { print $5; exit }' "${CALL_LOG}"
   }
 
   Describe "prepareData script (concatenated form)"
@@ -176,6 +185,25 @@ EOF
   Describe "fetch-wal-log()"
     Include ../dataprotection/common-scripts.sh
     Include ../dataprotection/postgresql-fetch-wal-log.sh
+
+    It "fetches older archive directories before newer ones when the repository listing is unsorted"
+      export DATASAFED_LIST_ROOT="20260817/
+20260816/"
+      export DATASAFED_LIST_DIR_20260816="000000010000000000000002.zst"
+      export DATASAFED_LIST_DIR_20260817="000000010000000000000003.zst"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2026-01-01 00:00:00" true
+      The status should eq 0
+      The result of function first_pulled_archive should eq "000000010000000000000002.zst"
+    End
+
+    It "fetches older WAL objects before newer ones when a directory listing is unsorted"
+      export DATASAFED_LIST_ROOT="20260816/"
+      export DATASAFED_LIST_DIR="000000010000000000000003.zst
+000000010000000000000002.zst"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2026-01-01 00:00:00" true
+      The status should eq 0
+      The result of function first_pulled_archive should eq "000000010000000000000002.zst"
+    End
 
     It "stops at the target time with numeric epoch comparison (9-digit vs 10-digit)"
       export DATASAFED_LIST_ROOT="waldir/"
