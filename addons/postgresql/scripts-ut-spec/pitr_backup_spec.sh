@@ -28,7 +28,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
       DATASAFED_PUSH_FAIL_WAL \
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
-      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_OUT DATE_TODAY_OUT \
+      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
       DP_TTL_SECONDS PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
 
@@ -104,8 +104,14 @@ elif [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
     exit "${DATE_D_EXIT}"
   fi
   printf '%s\n' "${DATE_D_OUT}"
-elif [ "$1" = "+%Y%m%d" ] && [ -n "${DATE_TODAY_OUT:-}" ]; then
-  printf '%s\n' "${DATE_TODAY_OUT}"
+elif [ "$1" = "+%Y%m%d" ]; then
+  if [ "${DATE_TODAY_EXIT:-0}" -ne 0 ]; then
+    exit "${DATE_TODAY_EXIT}"
+  elif [ -n "${DATE_TODAY_OUT:-}" ]; then
+    printf '%s\n' "${DATE_TODAY_OUT}"
+  else
+    exec /bin/date "$@"
+  fi
 else
   exec /bin/date "$@"
 fi
@@ -311,6 +317,19 @@ EOF
   End
 
   Describe "upload_wal_log()"
+    It "fails before pushing when the archive partition cannot be generated"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.ready"
+      export DATE_TODAY_EXIT=17
+      When call upload_wal_log
+      The status should be failure
+      The output should include "failed to determine WAL upload partition"
+      The contents of file "${CALL_LOG}" should not include "datasafed push"
+      The path "${LOG_DIR}/archive_status/${wal_name}.ready" should be exist
+      The path "${LOG_DIR}/archive_status/${wal_name}.done" should not be exist
+    End
+
     It "keeps the WAL retryable when analysis fails without a usable COMMIT"
       wal_name="000000010000000000000001"
       touch "${LOG_DIR}/${wal_name}"
