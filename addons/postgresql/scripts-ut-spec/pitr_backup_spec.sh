@@ -28,7 +28,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
       DATASAFED_PUSH_FAIL_WAL \
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
-      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_EXIT DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
+      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_EXIT DATE_EPOCH_FAIL_ON_CALL DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
       DP_TTL_SECONDS FIND_EXIT FIND_FAIL_ON_CALL LS_EXIT PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT MV_FAIL_SOURCE PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
 
@@ -98,7 +98,11 @@ EOF
     cat > "${bindir}/date" <<'EOF'
 #!/bin/sh
 if [ "$1" = "+%s" ]; then
-  if [ "${DATE_EPOCH_EXIT:-0}" -ne 0 ]; then
+  printf 'date %s\n' "$*" >> "${CALL_LOG}"
+  call_count=$(awk '/^date \+%s$/ { calls++ } END { print calls + 0 }' "${CALL_LOG}")
+  if [ "${DATE_EPOCH_FAIL_ON_CALL:-0}" -eq "${call_count}" ]; then
+    exit 17
+  elif [ "${DATE_EPOCH_EXIT:-0}" -ne 0 ]; then
     exit "${DATE_EPOCH_EXIT}"
   elif [ -n "${DATE_EPOCH_OUT:-}" ]; then
     printf '%s\n' "${DATE_EPOCH_OUT}"
@@ -269,6 +273,34 @@ EOF
     printf 'stop-time=%s\n' "${global_stop_time}"
     return "${status}"
   }
+
+  run_startup_preamble() {
+    startup="${tmpdir}/startup.sh"
+    awk '/^# clean up expired logfiles/ { exit } { print }' \
+      ../dataprotection/postgresql-pitr-backup.sh > "${startup}"
+    # shellcheck disable=SC1090
+    . "${startup}"
+    printf 'switch-time=%s retention-time=%s\n' \
+      "${global_last_switch_wal_time}" "${global_last_purge_time}"
+  }
+
+  Describe "startup clock initialization"
+    It "fails when the initial WAL switch clock cannot be read"
+      export DATE_EPOCH_FAIL_ON_CALL=1
+      When run run_startup_preamble
+      The status should be failure
+      The output should include "failed to determine initial WAL switch time"
+      The output should not include "failed to determine initial WAL retention time"
+    End
+
+    It "fails when the initial WAL retention clock cannot be read"
+      export DATE_EPOCH_FAIL_ON_CALL=2
+      When run run_startup_preamble
+      The status should be failure
+      The output should include "failed to determine initial WAL retention time"
+      The output should not include "failed to determine initial WAL switch time"
+    End
+  End
 
   archive_round_with_upload_listing_failure() {
     global_missing_logs_reconciled=true

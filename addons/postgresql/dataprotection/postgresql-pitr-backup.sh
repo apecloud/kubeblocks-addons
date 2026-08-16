@@ -7,8 +7,14 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 export KB_BACKUP_WORKDIR=${VOLUME_DATA_DIR}/kb-backup
 
 PSQL="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -d postgres"
-global_last_switch_wal_time=$(date +%s)
-global_last_purge_time=$(date +%s)
+if ! global_last_switch_wal_time=$(date +%s) || [[ -z ${global_last_switch_wal_time} ]]; then
+  DP_error_log "failed to determine initial WAL switch time"
+  exit 1
+fi
+if ! global_last_purge_time=$(date +%s) || [[ -z ${global_last_purge_time} ]]; then
+  DP_error_log "failed to determine initial WAL retention time"
+  exit 1
+fi
 global_switch_wal_interval=300
 global_stop_time=
 global_old_size=0
