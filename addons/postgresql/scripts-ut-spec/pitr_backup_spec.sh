@@ -540,6 +540,19 @@ EOF
       The path "${LOG_DIR}/archive_status/${wal_name}.done" should not be exist
     End
 
+    It "fails before pushing when the archive partition is malformed"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.ready"
+      export DATE_TODAY_OUT="../invalid"
+      When call upload_wal_log
+      The status should be failure
+      The output should include "failed to determine WAL upload partition"
+      The contents of file "${CALL_LOG}" should not include "datasafed"
+      The path "${LOG_DIR}/archive_status/${wal_name}.ready" should be exist
+      The path "${LOG_DIR}/archive_status/${wal_name}.done" should not be exist
+    End
+
     It "keeps the WAL retryable when analysis fails without a usable COMMIT"
       wal_name="000000010000000000000001"
       touch "${LOG_DIR}/${wal_name}"
@@ -691,6 +704,18 @@ EOF
       The contents of file "${CALL_LOG}" should not include "datasafed"
       The path "${LOG_DIR}/archive_status/${wal_name}.done" should be exist
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "fails before repository access when the reconciliation partition is malformed"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.done"
+      export DATE_TODAY_OUT="../invalid"
+      When call uploadMissingLogs
+      The status should be failure
+      The output should include "failed to determine missing-WAL upload partition"
+      The contents of file "${CALL_LOG}" should not include "datasafed"
+      The path "${LOG_DIR}/archive_status/${wal_name}.done" should be exist
     End
 
     It "fails when the remote WAL listing is unavailable"

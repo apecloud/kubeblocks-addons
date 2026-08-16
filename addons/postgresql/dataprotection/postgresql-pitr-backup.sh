@@ -122,7 +122,7 @@ function switch_wal_log() {
 # upload wal log
 function upload_wal_log() {
     local TODAY_INCR_LOG
-    if ! TODAY_INCR_LOG=$(date +%Y%m%d) || [[ -z ${TODAY_INCR_LOG} ]]; then
+    if ! TODAY_INCR_LOG=$(date +%Y%m%d) || [[ ! ${TODAY_INCR_LOG} =~ ^[0-9]{8}$ ]]; then
       DP_error_log "failed to determine WAL upload partition"
       return 1
     fi
@@ -271,7 +271,7 @@ function check_pg_process() {
 function uploadMissingLogs() {
     DP_log "start to upload the wal log which maybe misses"
     local TODAY_INCR_LOG
-    if ! TODAY_INCR_LOG=$(date +%Y%m%d) || [[ -z ${TODAY_INCR_LOG} ]]; then
+    if ! TODAY_INCR_LOG=$(date +%Y%m%d) || [[ ! ${TODAY_INCR_LOG} =~ ^[0-9]{8}$ ]]; then
       DP_error_log "failed to determine missing-WAL upload partition"
       return 1
     fi
