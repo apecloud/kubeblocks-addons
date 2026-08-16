@@ -54,8 +54,8 @@ function purge_expired_files() {
        if ! DP_save_backup_status_info "${TOTAL_SIZE}"; then
          return 1
        fi
-       global_last_purge_time=${currentUnix}
     fi
+    global_last_purge_time=${currentUnix}
 }
 
 # switch wal log
