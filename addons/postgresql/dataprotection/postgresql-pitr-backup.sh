@@ -335,7 +335,10 @@ while true; do
   switch_wal_log
 
   # upload wal log
-  upload_wal_log
+  if ! upload_wal_log; then
+    sleep ${LOG_ARCHIVE_SECONDS}
+    continue
+  fi
 
   # save backup status which will be updated to `backup` CR by the sidecar
   save_backup_status
