@@ -28,7 +28,7 @@ Describe "dataprotection PITR restore"
     unset DATASAFED_LIST_ROOT DATASAFED_LIST_DIR DATASAFED_LIST_DIR_20260816 \
       DATASAFED_LIST_DIR_20260817 DATASAFED_ROOT_LIST_EXIT \
       DATASAFED_DIR_LIST_EXIT DATASAFED_PULL_FAIL_OBJECT DATE_FAIL_VALUE \
-      2>/dev/null || true
+      PG_WALDUMP_FAIL_OBJECT 2>/dev/null || true
 
     write_stubs
     build_concat
@@ -75,6 +75,10 @@ esac
 EOF
     cat > "${bindir}/pg_waldump" <<'EOF'
 #!/bin/sh
+wal_name=${1##*/}
+if [ "$wal_name" = "${PG_WALDUMP_FAIL_OBJECT:-}" ]; then
+  exit 46
+fi
 echo "rmgr: Transaction desc: COMMIT 2026-01-01 00:00:00 UTC; inval msgs"
 EOF
     # minimal GNU `date -d` emulation with canned epochs; the pair is chosen
@@ -243,6 +247,17 @@ EOF
       When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2001-01-01 00:00:00" true
       The status should be failure
       The output should include "failed to parse commit time for WAL 000000010000000000000002"
+      The result of function call_log should not include "datasafed pull -d zstd 000000010000000000000003.zst"
+    End
+
+    It "stops when an archived WAL cannot be inspected"
+      export DATASAFED_LIST_ROOT="20260816/"
+      export DATASAFED_LIST_DIR="000000010000000000000002.zst
+000000010000000000000003.zst"
+      export PG_WALDUMP_FAIL_OBJECT="000000010000000000000002"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2001-01-01 00:00:00" true
+      The status should be failure
+      The output should include "failed to inspect WAL 000000010000000000000002"
       The result of function call_log should not include "datasafed pull -d zstd 000000010000000000000003.zst"
     End
 
