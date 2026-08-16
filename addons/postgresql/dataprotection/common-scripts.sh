@@ -136,23 +136,37 @@ function DP_analyze_start_time_from_datasafed() {
       last_oldest_file_name=$(DP_get_file_name_without_ext ${last_oldest_file})
       if [ "$last_oldest_file" == "${oldest_file}" ] && [ -f ${last_oldest_file_name} ]; then
         # oldest file no changed.
-        ${get_start_time_from_file} $last_oldest_file_name
+        local cached_start_time
+        if ! cached_start_time=$(${get_start_time_from_file} "${last_oldest_file_name}"); then
+          rm -f "${info_file}" "${last_oldest_file_name}"
+          return 1
+        fi
+        printf '%s\n' "${cached_start_time}"
         return
       fi
-         # remove last oldest file
+      # remove last oldest file
       if [ -f ${last_oldest_file_name} ];then
-          rm -rf ${last_oldest_file_name}
+          rm -f ${last_oldest_file_name}
       fi
+      rm -f "${info_file}"
     fi
     # pull file
     if ! ${datasafed_pull} ${oldest_file}; then
       DP_error_log "failed to pull oldest WAL" >&2
       return 1
     fi
-    # record last oldest file
-    echo ${oldest_file} > ${info_file}
     oldest_file_name=$(DP_get_file_name_without_ext ${oldest_file})
-    ${get_start_time_from_file} ${oldest_file_name}
+    local start_time
+    if ! start_time=$(${get_start_time_from_file} "${oldest_file_name}"); then
+      rm -f "${oldest_file_name}"
+      return 1
+    fi
+    if ! printf '%s\n' "${oldest_file}" > "${info_file}"; then
+      DP_error_log "failed to cache oldest WAL" >&2
+      rm -f "${info_file}" "${oldest_file_name}"
+      return 1
+    fi
+    printf '%s\n' "${start_time}"
 }
 
 # get the timeZone offset for location, such as Asia/Shanghai
