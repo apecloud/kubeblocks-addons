@@ -55,7 +55,24 @@ function switch_wal_log() {
     if [[ ${diff_time} -lt ${global_switch_wal_interval} ]]; then
        return
     fi
-    LAST_TRANS=$(pg_waldump $(${PSQL} -Atc "select pg_walfile_name(pg_current_wal_lsn())") --rmgr=Transaction 2>/dev/null |tail -n 1)
+    local current_wal
+    local current_wal_status
+    current_wal=$(${PSQL} -Atc "select pg_walfile_name(pg_current_wal_lsn())")
+    current_wal_status=$?
+    if [[ ${current_wal_status} -ne 0 || -z ${current_wal} ]]; then
+      DP_error_log "failed to resolve current WAL for switch" >&2
+      return 1
+    fi
+    local wal_dump_output
+    local wal_dump_status
+    local LAST_TRANS
+    wal_dump_output=$(pg_waldump "${current_wal}" --rmgr=Transaction 2>/dev/null)
+    wal_dump_status=$?
+    LAST_TRANS=$(printf '%s\n' "${wal_dump_output}" | tail -n 1)
+    if [[ ${wal_dump_status} -ne 0 && -z ${LAST_TRANS} ]]; then
+      DP_error_log "failed to inspect current WAL for switch: ${current_wal}" >&2
+      return 1
+    fi
     if [ "${LAST_TRANS}" != "" ] && [ "$(find ${LOG_DIR}/archive_status/ -name '*.ready')" = "" ]; then
       DP_log "start to switch wal file"
       if ! ${PSQL} -c "select pg_switch_wal()"; then
