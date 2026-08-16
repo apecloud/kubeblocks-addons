@@ -286,6 +286,16 @@ EOF
       The path "${tmpdir}/dest/00000002.history" should be exist
     End
 
+    It "fetches current timeline history even when it sorts below the start WAL"
+      export DATASAFED_LIST_ROOT="20260816/"
+      export DATASAFED_LIST_DIR="00000002.history.zst
+000000020000000000000001.zst"
+      When call fetch-wal-log "${tmpdir}/dest" "000000020000000000000001" "2026-01-01 00:00:00" true
+      The status should eq 0
+      The path "${tmpdir}/dest/00000002.history" should be exist
+      The result of function call_log should include "datasafed pull -d zstd 00000002.history.zst"
+    End
+
     It "stops at the first WAL pull failure instead of crossing an archive gap"
       export DATASAFED_LIST_ROOT="20260816/"
       export DATASAFED_LIST_DIR="000000010000000000000002.zst
