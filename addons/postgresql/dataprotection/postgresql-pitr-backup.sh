@@ -27,7 +27,11 @@ fi
 
 # clean up expired logfiles, interval is 600s
 function purge_expired_files() {
-    local currentUnix=$(date +%s)
+    local currentUnix
+    if ! currentUnix=$(date +%s) || [[ -z ${currentUnix} ]]; then
+      DP_error_log "failed to determine current time for WAL retention"
+      return 1
+    fi
     local info
     if ! info=$(DP_purge_expired_files ${currentUnix} ${global_last_purge_time} / 600); then
        if [ ! -z "${info}" ]; then
