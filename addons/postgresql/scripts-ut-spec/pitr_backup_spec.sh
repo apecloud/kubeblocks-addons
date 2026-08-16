@@ -376,6 +376,19 @@ EOF
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
 
+    It "fails before pulling when the oldest-WAL workdir cannot be prepared"
+      blocked_workdir="${tmpdir}/blocked-workdir"
+      printf 'not a directory\n' > "${blocked_workdir}"
+      KB_BACKUP_WORKDIR="${blocked_workdir}"
+      export DATASAFED_STAT_OUT="TotalSize: 4096"
+      export DATASAFED_LIST_OUT='[{"path":"/20260816/000000010000000000000001.zst","mtime":"2026-08-16T00:00:00Z"}]'
+      When call save_backup_status
+      The status should be failure
+      The error should include "failed to prepare oldest WAL workdir"
+      The result of function call_log should not include "datasafed pull "
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
     It "ignores an older timeline-history object when deriving the WAL start"
       history_path="/00000002.history.zst"
       wal_path="/20260816/000000010000000000000001.zst"
