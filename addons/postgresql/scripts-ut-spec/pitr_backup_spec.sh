@@ -28,7 +28,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
       DATASAFED_PUSH_FAIL_WAL \
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
-      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
+      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_EXIT DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
       DP_TTL_SECONDS PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT MV_FAIL_SOURCE PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
 
@@ -97,8 +97,14 @@ exit "${PG_WALDUMP_EXIT:-0}"
 EOF
     cat > "${bindir}/date" <<'EOF'
 #!/bin/sh
-if [ "$1" = "+%s" ] && [ -n "${DATE_EPOCH_OUT:-}" ]; then
-  printf '%s\n' "${DATE_EPOCH_OUT}"
+if [ "$1" = "+%s" ]; then
+  if [ "${DATE_EPOCH_EXIT:-0}" -ne 0 ]; then
+    exit "${DATE_EPOCH_EXIT}"
+  elif [ -n "${DATE_EPOCH_OUT:-}" ]; then
+    printf '%s\n' "${DATE_EPOCH_OUT}"
+  else
+    exec /bin/date "$@"
+  fi
 elif [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
   if [ "${DATE_D_EXIT:-0}" -ne 0 ]; then
     exit "${DATE_D_EXIT}"
@@ -228,6 +234,15 @@ EOF
   }
 
   Describe "switch_wal_log()"
+    It "fails before throttle evaluation when the current time cannot be read"
+      export DATE_EPOCH_EXIT=17
+      When call switch_and_report_checkpoint
+      The status should be failure
+      The output should include "failed to determine current time for WAL switch"
+      The output should include "switch-checkpoint=123"
+      The contents of file "${CALL_LOG}" should not include "psql"
+    End
+
     It "fails without advancing the checkpoint when the switch request fails"
       export DATE_EPOCH_OUT=456 PG_WALDUMP_OUT="transaction record"
       export PG_WALDUMP_EXIT=17 PSQL_FAIL_ON_CALL=2 PSQL_EXIT=17
