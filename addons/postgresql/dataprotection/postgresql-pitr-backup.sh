@@ -38,6 +38,10 @@ function purge_expired_files() {
       DP_error_log "failed to determine current time for WAL retention"
       return 1
     fi
+    if [[ -n ${DP_TTL_SECONDS} && ! ${DP_TTL_SECONDS} =~ ^[0-9]+$ ]]; then
+      DP_error_log "invalid WAL retention TTL: ${DP_TTL_SECONDS}"
+      return 1
+    fi
     if [[ -z ${DP_TTL_SECONDS} || $((currentUnix - global_last_purge_time)) -lt 600 ]]; then
       return
     fi
