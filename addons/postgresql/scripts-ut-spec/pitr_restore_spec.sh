@@ -188,6 +188,19 @@ EOF
       The path "${DATA_DIR}.old" should be exist
     End
 
+    It "fails before repository access when the recovery target timestamp cannot be formatted"
+      mkdir -p "${DATA_DIR}/pg_wal"
+      echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
+      DP_RESTORE_TIMESTAMP="invalid-epoch"
+      export DP_RESTORE_TIMESTAMP DATE_FAIL_VALUE="@invalid-epoch"
+      When run bash "${concat}"
+      The status should be failure
+      The output should include "failed to format PITR recovery timestamp invalid-epoch"
+      The result of function call_log should not include "datasafed"
+      The path "${DATA_DIR}" should be exist
+      The path "${DATA_DIR}.old" should not be exist
+    End
+
     It "fails before staging data when the WAL repository root cannot be listed"
       mkdir -p "${DATA_DIR}/pg_wal"
       echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
