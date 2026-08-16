@@ -58,14 +58,23 @@ function switch_wal_log() {
     LAST_TRANS=$(pg_waldump $(${PSQL} -Atc "select pg_walfile_name(pg_current_wal_lsn())") --rmgr=Transaction 2>/dev/null |tail -n 1)
     if [ "${LAST_TRANS}" != "" ] && [ "$(find ${LOG_DIR}/archive_status/ -name '*.ready')" = "" ]; then
       DP_log "start to switch wal file"
-      ${PSQL} -c "select pg_switch_wal()" || DP_error_log "pg_switch_wal failed, will retry on the next round"
+      if ! ${PSQL} -c "select pg_switch_wal()"; then
+        DP_error_log "pg_switch_wal failed, will retry on the next round"
+        return 1
+      fi
+      local switch_confirmed=false
       for i in $(seq 1 60); do
         if [ "$(find ${LOG_DIR}/archive_status/ -name '*.ready')" != "" ]; then
           DP_log "switch wal file successfully"
+          switch_confirmed=true
           break;
         fi
         sleep 1
       done
+      if [[ ${switch_confirmed} == "false" ]]; then
+        DP_error_log "timed out waiting for switched WAL, will retry on the next round"
+        return 1
+      fi
     fi
     global_last_switch_wal_time=${curr_time}
 }
