@@ -55,7 +55,10 @@ function fetch-wal-log(){
          fi
          DP_log "copying $wal_name"
          # pull and decompress
-         datasafed pull -d zstd $file ${wal_destination_dir}/$wal_name
+         if ! datasafed pull -d zstd "$file" "${wal_destination_dir}/${wal_name}"; then
+            DP_error_log "failed to pull WAL archive ${file}"
+            return 1
+         fi
 
          # check if the wal_log contains the restore_time logs. if ture, stop fetching
          latest_commit_time=$(pg_waldump ${wal_destination_dir}/$wal_name --rmgr=Transaction 2>/dev/null |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
