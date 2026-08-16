@@ -433,6 +433,14 @@ EOF
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
 
+    It "treats a digit-only retention TTL as decimal when it has leading zeros"
+      export DATE_EPOCH_OUT=10000 DP_TTL_SECONDS=03600 DATASAFED_LIST_OUT=""
+      When call purge_and_report_checkpoint
+      The status should eq 0
+      The output should include "purge-checkpoint=10000"
+      The contents of file "${CALL_LOG}" should include "datasafed list -f --recursive --older-than 6400 /"
+    End
+
     It "fails without advancing the checkpoint when the expired-WAL listing fails"
       export DP_TTL_SECONDS=3600 DATASAFED_LIST_EXIT=17
       When call purge_and_report_checkpoint
