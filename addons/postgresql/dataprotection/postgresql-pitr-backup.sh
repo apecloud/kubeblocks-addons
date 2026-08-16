@@ -231,7 +231,11 @@ function check_pg_process() {
 
 function uploadMissingLogs() {
     DP_log "start to upload the wal log which maybe misses"
-    local TODAY_INCR_LOG=$(date +%Y%m%d)
+    local TODAY_INCR_LOG
+    if ! TODAY_INCR_LOG=$(date +%Y%m%d) || [[ -z ${TODAY_INCR_LOG} ]]; then
+      DP_error_log "failed to determine missing-WAL upload partition"
+      return 1
+    fi
     cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
     local uploadedLogs
     if ! uploadedLogs=$(DP_list_backup_files_by_mtime); then
