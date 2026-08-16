@@ -401,6 +401,7 @@ EOF
       When call save_backup_status
       The status should be failure
       The error should include "failed to analyze oldest WAL"
+      The path "${KB_BACKUP_WORKDIR}/dp_oldest_file.info" should not be exist
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
 
