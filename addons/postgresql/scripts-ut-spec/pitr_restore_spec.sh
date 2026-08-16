@@ -265,6 +265,16 @@ EOF
       The result of function first_pulled_archive should eq "000000010000000000000002.zst"
     End
 
+    It "ignores unrelated compressed objects before fetching WAL archives"
+      export DATASAFED_LIST_ROOT="20260816/"
+      export DATASAFED_LIST_DIR="000000010000000000000001metadata.zst
+000000010000000000000002.zst"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2001-01-01 00:00:00" true
+      The status should eq 0
+      The result of function first_pulled_archive should eq "000000010000000000000002.zst"
+      The result of function call_log should not include "datasafed pull -d zstd 000000010000000000000001metadata.zst"
+    End
+
     It "stops at the first WAL pull failure instead of crossing an archive gap"
       export DATASAFED_LIST_ROOT="20260816/"
       export DATASAFED_LIST_DIR="000000010000000000000002.zst
