@@ -103,15 +103,15 @@ function upload_wal_log() {
     for i in $(ls -tr ./archive_status/ | grep .ready); do
       wal_name=${i%.*}
       LOG_STOP_TIME=$(pg_waldump ${wal_name} --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
-      if [[ ! -z $LOG_STOP_TIME ]];then
-         global_stop_time=$(date -d "${LOG_STOP_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
-      fi
       if [ -f ${wal_name} ]; then
         DP_log "upload ${wal_name}"
         # Rename .ready to .done only after a successful upload. Marking a
         # failed upload as .done lets PostgreSQL recycle a WAL segment that
         # never reached the repository, leaving a hole in the PITR chain.
         if datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst"; then
+          if [[ ! -z $LOG_STOP_TIME ]];then
+            global_stop_time=$(date -d "${LOG_STOP_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
+          fi
           mv -f ./archive_status/${i} ./archive_status/${wal_name}.done;
         else
           DP_error_log "failed to upload ${wal_name}, keeping ${i} for retry"
