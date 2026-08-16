@@ -98,7 +98,11 @@ function switch_wal_log() {
 
 # upload wal log
 function upload_wal_log() {
-    local TODAY_INCR_LOG=$(date +%Y%m%d);
+    local TODAY_INCR_LOG
+    if ! TODAY_INCR_LOG=$(date +%Y%m%d) || [[ -z ${TODAY_INCR_LOG} ]]; then
+      DP_error_log "failed to determine WAL upload partition"
+      return 1
+    fi
     local normalized_stop_time
     local wal_dump_output
     local wal_dump_status
