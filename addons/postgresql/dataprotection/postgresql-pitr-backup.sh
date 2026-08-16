@@ -7,11 +7,11 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 export KB_BACKUP_WORKDIR=${VOLUME_DATA_DIR}/kb-backup
 
 PSQL="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -d postgres"
-if ! global_last_switch_wal_time=$(date +%s) || [[ -z ${global_last_switch_wal_time} ]]; then
+if ! global_last_switch_wal_time=$(date +%s) || [[ ! ${global_last_switch_wal_time} =~ ^[0-9]+$ ]]; then
   DP_error_log "failed to determine initial WAL switch time"
   exit 1
 fi
-if ! global_last_purge_time=$(date +%s) || [[ -z ${global_last_purge_time} ]]; then
+if ! global_last_purge_time=$(date +%s) || [[ ! ${global_last_purge_time} =~ ^[0-9]+$ ]]; then
   DP_error_log "failed to determine initial WAL retention time"
   exit 1
 fi
@@ -34,7 +34,7 @@ fi
 # clean up expired logfiles, interval is 600s
 function purge_expired_files() {
     local currentUnix
-    if ! currentUnix=$(date +%s) || [[ -z ${currentUnix} ]]; then
+    if ! currentUnix=$(date +%s) || [[ ! ${currentUnix} =~ ^[0-9]+$ ]]; then
       DP_error_log "failed to determine current time for WAL retention"
       return 1
     fi
@@ -61,7 +61,7 @@ function purge_expired_files() {
 # switch wal log
 function switch_wal_log() {
     local curr_time
-    if ! curr_time=$(date +%s) || [[ -z ${curr_time} ]]; then
+    if ! curr_time=$(date +%s) || [[ ! ${curr_time} =~ ^[0-9]+$ ]]; then
       DP_error_log "failed to determine current time for WAL switch"
       return 1
     fi
