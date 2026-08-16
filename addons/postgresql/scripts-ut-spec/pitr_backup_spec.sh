@@ -29,7 +29,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
       DATASAFED_PUSH_FAIL_WAL \
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
       DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_EXIT DATE_EPOCH_FAIL_ON_CALL DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
-      DP_TTL_SECONDS FIND_EXIT FIND_FAIL_ON_CALL LS_EXIT PG_WALDUMP_EXIT PG_WALDUMP_OUT \
+      DP_TTL_SECONDS SWITCH_WAL_INTERVAL_SECONDS FIND_EXIT FIND_FAIL_ON_CALL LS_EXIT PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT MV_FAIL_SOURCE PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
 
     write_stubs
@@ -266,6 +266,17 @@ EOF
     return "${status}"
   }
 
+  switch_with_configured_interval() {
+    export SWITCH_WAL_INTERVAL_SECONDS=00300 DATE_EPOCH_OUT=350
+    run_startup_preamble >/dev/null || return
+    global_last_switch_wal_time=123
+    local status=0
+    switch_wal_log || status=$?
+    printf 'switch-interval=%s switch-checkpoint=%s\n' \
+      "${global_switch_wal_interval}" "${global_last_switch_wal_time}"
+    return "${status}"
+  }
+
   upload_and_report_stop_time() {
     global_stop_time="2026-08-15T23:59:00Z"
     local status=0
@@ -330,6 +341,13 @@ EOF
   End
 
   Describe "switch_wal_log()"
+    It "treats a digit-only switch interval as decimal when it has leading zeros"
+      When call switch_with_configured_interval
+      The status should eq 0
+      The output should include "switch-interval=300 switch-checkpoint=123"
+      The contents of file "${CALL_LOG}" should not include "psql"
+    End
+
     It "fails before arithmetic when the current time is not a decimal epoch"
       export DATE_EPOCH_OUT="not-an-epoch"
       When call switch_and_report_checkpoint
