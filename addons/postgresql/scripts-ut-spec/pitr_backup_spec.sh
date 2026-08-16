@@ -421,6 +421,18 @@ EOF
       The contents of file "${CALL_LOG}" should not include "datasafed"
     End
 
+    It "fails before expiry arithmetic when the retention TTL is malformed"
+      expired_wal="/20260816/000000010000000000000001.zst"
+      export DATE_EPOCH_OUT=1000 DP_TTL_SECONDS="not-a-number"
+      export DATASAFED_LIST_OUT="${expired_wal}"
+      When call purge_and_report_checkpoint
+      The status should be failure
+      The output should include "invalid WAL retention TTL: not-a-number"
+      The output should include "purge-checkpoint=123"
+      The contents of file "${CALL_LOG}" should not include "datasafed"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
     It "fails without advancing the checkpoint when the expired-WAL listing fails"
       export DP_TTL_SECONDS=3600 DATASAFED_LIST_EXIT=17
       When call purge_and_report_checkpoint
