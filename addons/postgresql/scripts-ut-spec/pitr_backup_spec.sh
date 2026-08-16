@@ -30,7 +30,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
       DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
       DP_TTL_SECONDS PG_WALDUMP_EXIT PG_WALDUMP_OUT \
-      MV_EXIT PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
+      MV_EXIT MV_FAIL_SOURCE PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -123,6 +123,9 @@ EOF
     cat > "${bindir}/mv" <<'EOF'
 #!/bin/sh
 printf 'mv %s\n' "$*" >> "${CALL_LOG}"
+if [ -n "${MV_FAIL_SOURCE:-}" ] && [ "$2" = "${MV_FAIL_SOURCE}" ]; then
+  exit 17
+fi
 if [ "${MV_EXIT:-0}" -ne 0 ]; then
   exit "${MV_EXIT}"
 fi
@@ -317,6 +320,27 @@ EOF
   End
 
   Describe "upload_wal_log()"
+    It "stops before later WALs when the archive-status commit fails"
+      first_wal="000000010000000000000001"
+      second_wal="000000010000000000000002"
+      touch "${LOG_DIR}/${first_wal}" "${LOG_DIR}/${second_wal}"
+      touch -t 202608160000.00 "${LOG_DIR}/archive_status/${first_wal}.ready"
+      touch -t 202608160001.00 "${LOG_DIR}/archive_status/${second_wal}.ready"
+      export MV_FAIL_SOURCE="./archive_status/${first_wal}.ready"
+      export PG_WALDUMP_OUT='rmgr: Transaction desc: COMMIT 2026-08-16T00:00:00Z; origin: node'
+      export DATE_D_OUT="2026-08-16T00:00:00Z"
+      When call upload_and_report_stop_time
+      The status should be failure
+      The output should include "failed to mark ${first_wal} done, keeping ${first_wal}.ready for retry"
+      The output should include "stop-time=2026-08-16T00:00:00Z"
+      The contents of file "${CALL_LOG}" should include "datasafed push -z zstd ${first_wal}"
+      The contents of file "${CALL_LOG}" should not include "datasafed push -z zstd ${second_wal}"
+      The path "${LOG_DIR}/archive_status/${first_wal}.ready" should be exist
+      The path "${LOG_DIR}/archive_status/${first_wal}.done" should not be exist
+      The path "${LOG_DIR}/archive_status/${second_wal}.ready" should be exist
+      The path "${LOG_DIR}/archive_status/${second_wal}.done" should not be exist
+    End
+
     It "fails before pushing when the archive partition cannot be generated"
       wal_name="000000010000000000000001"
       touch "${LOG_DIR}/${wal_name}"
