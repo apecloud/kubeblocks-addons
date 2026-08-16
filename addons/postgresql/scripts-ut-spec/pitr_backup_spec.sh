@@ -430,6 +430,15 @@ EOF
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
 
+    It "keeps the checkpoint when the retention interval has not elapsed"
+      export DATE_EPOCH_OUT=456 DP_TTL_SECONDS=3600
+      When call purge_and_report_checkpoint
+      The status should eq 0
+      The output should include "purge-checkpoint=123"
+      The contents of file "${CALL_LOG}" should not include "datasafed"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
     It "advances the checkpoint when a successful expiration scan finds no files"
       export DATE_EPOCH_OUT=1000 DP_TTL_SECONDS=3600 DATASAFED_LIST_OUT=""
       When call purge_and_report_checkpoint
