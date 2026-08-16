@@ -64,7 +64,11 @@ function fetch-wal-log(){
          fi
 
          # check if the wal_log contains the restore_time logs. if ture, stop fetching
-         latest_commit_time=$(pg_waldump ${wal_destination_dir}/$wal_name --rmgr=Transaction 2>/dev/null |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+         if ! wal_dump=$(pg_waldump "${wal_destination_dir}/${wal_name}" --rmgr=Transaction 2>/dev/null); then
+            DP_error_log "failed to inspect WAL ${wal_name}"
+            return 1
+         fi
+         latest_commit_time=$(printf '%s\n' "${wal_dump}" | tail -n 1 | awk -F ' COMMIT ' '{print $2}' | awk -F ';' '{print $1}')
          if [[ -z $latest_commit_time ]]; then
             continue
          fi
