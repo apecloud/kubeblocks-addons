@@ -68,7 +68,10 @@ function fetch-wal-log(){
          if [[ -z $latest_commit_time ]]; then
             continue
          fi
-         timestamp=`date -d "$latest_commit_time" +%s`
+         if ! timestamp=$(date -d "$latest_commit_time" +%s); then
+            DP_error_log "failed to parse commit time for WAL ${wal_name}: ${latest_commit_time}"
+            return 1
+         fi
          if [[ $latest_commit_time != "" && $timestamp -gt $restore_time ]]; then
             DP_log "exit when reaching the target time log."
             exit_fetch_wal=1
