@@ -29,7 +29,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
       DATASAFED_PUSH_FAIL_WAL \
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
       DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_EXIT DATE_EPOCH_OUT DATE_TODAY_EXIT DATE_TODAY_OUT \
-      DP_TTL_SECONDS FIND_EXIT FIND_FAIL_ON_CALL PG_WALDUMP_EXIT PG_WALDUMP_OUT \
+      DP_TTL_SECONDS FIND_EXIT FIND_FAIL_ON_CALL LS_EXIT PG_WALDUMP_EXIT PG_WALDUMP_OUT \
       MV_EXIT MV_FAIL_SOURCE PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
 
     write_stubs
@@ -137,6 +137,14 @@ elif [ "${FIND_EXIT:-0}" -ne 0 ]; then
 fi
 exec /usr/bin/find "$@"
 EOF
+    cat > "${bindir}/ls" <<'EOF'
+#!/bin/sh
+printf 'ls %s\n' "$*" >> "${CALL_LOG}"
+if [ "${LS_EXIT:-0}" -ne 0 ]; then
+  exit "${LS_EXIT}"
+fi
+exec /bin/ls "$@"
+EOF
     cat > "${bindir}/mv" <<'EOF'
 #!/bin/sh
 printf 'mv %s\n' "$*" >> "${CALL_LOG}"
@@ -149,7 +157,7 @@ fi
 exec /bin/mv "$@"
 EOF
     chmod +x "${bindir}/datasafed" "${bindir}/psql" "${bindir}/pg_waldump" \
-      "${bindir}/date" "${bindir}/find" "${bindir}/mv" "${bindir}/sleep"
+      "${bindir}/date" "${bindir}/find" "${bindir}/ls" "${bindir}/mv" "${bindir}/sleep"
   }
 
   build_shim() {
@@ -366,6 +374,19 @@ EOF
   End
 
   Describe "upload_wal_log()"
+    It "fails before pushing when archive-status enumeration fails"
+      wal_name="000000010000000000000001"
+      touch "${LOG_DIR}/${wal_name}"
+      touch "${LOG_DIR}/archive_status/${wal_name}.ready"
+      export LS_EXIT=17
+      When call upload_wal_log
+      The status should be failure
+      The output should include "failed to list WAL archive status"
+      The contents of file "${CALL_LOG}" should include "ls -tr ./archive_status/"
+      The contents of file "${CALL_LOG}" should not include "datasafed push"
+      The path "${LOG_DIR}/archive_status/${wal_name}.ready" should be exist
+    End
+
     It "stops before later WALs when the archive-status commit fails"
       first_wal="000000010000000000000001"
       second_wal="000000010000000000000002"
