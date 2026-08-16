@@ -27,9 +27,9 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
       DP_TARGET_POD_NAME TARGET_POD_ROLE
     unset DATASAFED_LIST_EXIT DATASAFED_LIST_OUT DATASAFED_PULL_EXIT DATASAFED_PUSH_EXIT \
       DATASAFED_RM_EXIT DATASAFED_RM_FAIL_PATH \
-      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_TODAY_OUT \
+      DATASAFED_STAT_EXIT DATASAFED_STAT_OUT DATE_D_EXIT DATE_D_OUT DATE_EPOCH_OUT DATE_TODAY_OUT \
       DP_TTL_SECONDS PG_WALDUMP_EXIT PG_WALDUMP_OUT \
-      MV_EXIT PSQL_EXIT 2>/dev/null || true
+      MV_EXIT PSQL_EXIT PSQL_FAIL_ON_CALL 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -78,7 +78,12 @@ EOF
     cat > "${bindir}/psql" <<'EOF'
 #!/bin/sh
 printf 'psql %s\n' "$*" >> "${CALL_LOG}"
-if [ "${PSQL_EXIT:-0}" -ne 0 ]; then exit "${PSQL_EXIT}"; fi
+call_count=$(awk '/^psql / { calls++ } END { print calls + 0 }' "${CALL_LOG}")
+if [ "${PSQL_FAIL_ON_CALL:-0}" -ne 0 ]; then
+  if [ "${PSQL_FAIL_ON_CALL}" -eq "${call_count}" ]; then exit "${PSQL_EXIT:-17}"; fi
+elif [ "${PSQL_EXIT:-0}" -ne 0 ]; then
+  exit "${PSQL_EXIT}"
+fi
 echo "f"
 EOF
     cat > "${bindir}/pg_waldump" <<'EOF'
@@ -88,7 +93,9 @@ exit "${PG_WALDUMP_EXIT:-0}"
 EOF
     cat > "${bindir}/date" <<'EOF'
 #!/bin/sh
-if [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
+if [ "$1" = "+%s" ] && [ -n "${DATE_EPOCH_OUT:-}" ]; then
+  printf '%s\n' "${DATE_EPOCH_OUT}"
+elif [ "$1" = "-d" ] && [ -n "${DATE_D_OUT:-}" ]; then
   if [ "${DATE_D_EXIT:-0}" -ne 0 ]; then
     exit "${DATE_D_EXIT}"
   fi
@@ -99,6 +106,10 @@ else
   exec /bin/date "$@"
 fi
 EOF
+    cat > "${bindir}/sleep" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
     cat > "${bindir}/mv" <<'EOF'
 #!/bin/sh
 printf 'mv %s\n' "$*" >> "${CALL_LOG}"
@@ -108,7 +119,7 @@ fi
 exec /bin/mv "$@"
 EOF
     chmod +x "${bindir}/datasafed" "${bindir}/psql" "${bindir}/pg_waldump" \
-      "${bindir}/date" "${bindir}/mv"
+      "${bindir}/date" "${bindir}/mv" "${bindir}/sleep"
   }
 
   build_shim() {
@@ -185,6 +196,34 @@ EOF
     printf 'purge-checkpoint=%s\n' "${global_last_purge_time}"
     return "${status}"
   }
+
+  switch_and_report_checkpoint() {
+    global_last_switch_wal_time=123
+    global_switch_wal_interval=0
+    local status=0
+    switch_wal_log || status=$?
+    printf 'switch-checkpoint=%s\n' "${global_last_switch_wal_time}"
+    return "${status}"
+  }
+
+  Describe "switch_wal_log()"
+    It "fails without advancing the checkpoint when the switch request fails"
+      export DATE_EPOCH_OUT=456 PG_WALDUMP_OUT="transaction record"
+      export PSQL_FAIL_ON_CALL=2 PSQL_EXIT=17
+      When call switch_and_report_checkpoint
+      The status should be failure
+      The output should include "pg_switch_wal failed, will retry on the next round"
+      The output should include "switch-checkpoint=123"
+    End
+
+    It "fails without advancing the checkpoint when no ready WAL confirms the switch"
+      export DATE_EPOCH_OUT=456 PG_WALDUMP_OUT="transaction record"
+      When call switch_and_report_checkpoint
+      The status should be failure
+      The output should include "timed out waiting for switched WAL"
+      The output should include "switch-checkpoint=123"
+    End
+  End
 
   Describe "purge_expired_files()"
     It "fails without advancing the checkpoint when the expired-WAL listing fails"
