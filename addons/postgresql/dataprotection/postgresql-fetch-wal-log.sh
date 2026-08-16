@@ -54,7 +54,7 @@ function fetch-wal-log(){
          if [[ ! $wal_name =~ ^[0-9A-F]{24}$ && ! $wal_name =~ ^[0-9A-F]{8}\.history$ ]]; then
             continue
          fi
-         if [[ $wal_name < $start_wal_name ]]; then
+         if [[ ! $wal_name =~ \.history$ && $wal_name < $start_wal_name ]]; then
             continue
          fi
          if [[ $pitr != "true" && $file =~ ".history"  ]]; then
