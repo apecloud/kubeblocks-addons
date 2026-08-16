@@ -130,7 +130,10 @@ function DP_analyze_start_time_from_datasafed() {
     local get_start_time_from_file="${2:?missing get_start_time_from_file function}"
     local datasafed_pull="${3:?missing datasafed_pull function}"
     local info_file="${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
-    mkdir -p ${KB_BACKUP_WORKDIR} && cd ${KB_BACKUP_WORKDIR}
+    if ! mkdir -p "${KB_BACKUP_WORKDIR}" || ! cd "${KB_BACKUP_WORKDIR}"; then
+      DP_error_log "failed to prepare oldest WAL workdir: ${KB_BACKUP_WORKDIR}" >&2
+      return 1
+    fi
     if [ -f ${info_file} ]; then
       last_oldest_file=$(cat ${info_file})
       last_oldest_file_name=$(DP_get_file_name_without_ext ${last_oldest_file})
