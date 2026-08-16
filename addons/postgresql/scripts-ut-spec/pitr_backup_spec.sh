@@ -411,6 +411,21 @@ EOF
   End
 
   Describe "upload_wal_log()"
+    It "does not upload past a ready marker whose WAL file is missing"
+      missing_wal="000000010000000000000001"
+      newer_wal="000000010000000000000002"
+      touch "${LOG_DIR}/${newer_wal}"
+      touch -t 202608160000.00 "${LOG_DIR}/archive_status/${missing_wal}.ready"
+      touch -t 202608160001.00 "${LOG_DIR}/archive_status/${newer_wal}.ready"
+      When call upload_wal_log
+      The status should eq 0
+      The output should include "local WAL file ${missing_wal} is missing, keeping ${missing_wal}.ready for retry"
+      The contents of file "${CALL_LOG}" should not include "datasafed push -z zstd ${newer_wal}"
+      The path "${LOG_DIR}/archive_status/${missing_wal}.ready" should be exist
+      The path "${LOG_DIR}/archive_status/${newer_wal}.ready" should be exist
+      The path "${LOG_DIR}/archive_status/${newer_wal}.done" should not be exist
+    End
+
     It "fails before pushing when archive-status enumeration fails"
       wal_name="000000010000000000000001"
       touch "${LOG_DIR}/${wal_name}"
