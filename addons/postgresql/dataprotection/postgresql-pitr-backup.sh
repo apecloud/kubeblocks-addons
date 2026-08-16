@@ -119,8 +119,17 @@ function upload_wal_log() {
     local normalized_stop_time
     local wal_dump_output
     local wal_dump_status
+    local archive_status_files
     cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
-    for i in $(ls -tr ./archive_status/ | grep .ready); do
+    if ! archive_status_files=$(ls -tr ./archive_status/); then
+      DP_error_log "failed to list WAL archive status"
+      return 1
+    fi
+    for i in ${archive_status_files}; do
+      case ${i} in
+        *.ready) ;;
+        *) continue ;;
+      esac
       wal_name=${i%.*}
       wal_dump_output=$(pg_waldump ${wal_name} --rmgr=Transaction 2>/dev/null)
       wal_dump_status=$?
