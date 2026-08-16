@@ -235,6 +235,17 @@ EOF
       The result of function call_log should not include "datasafed pull -d zstd 000000010000000000000003.zst"
     End
 
+    It "stops when a WAL commit timestamp cannot be parsed"
+      export DATASAFED_LIST_ROOT="20260816/"
+      export DATASAFED_LIST_DIR="000000010000000000000002.zst
+000000010000000000000003.zst"
+      export DATE_FAIL_VALUE="2026-01-01 00:00:00 UTC"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2001-01-01 00:00:00" true
+      The status should be failure
+      The output should include "failed to parse commit time for WAL 000000010000000000000002"
+      The result of function call_log should not include "datasafed pull -d zstd 000000010000000000000003.zst"
+    End
+
     It "stops at the target time with numeric epoch comparison (9-digit vs 10-digit)"
       export DATASAFED_LIST_ROOT="waldir/"
       export DATASAFED_LIST_DIR="000000010000000000000002.zst"
