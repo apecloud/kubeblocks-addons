@@ -131,6 +131,10 @@ function upload_wal_log() {
         *) continue ;;
       esac
       wal_name=${i%.*}
+      if [ ! -f ${wal_name} ]; then
+        DP_error_log "local WAL file ${wal_name} is missing, keeping ${i} for retry"
+        break
+      fi
       wal_dump_output=$(pg_waldump ${wal_name} --rmgr=Transaction 2>/dev/null)
       wal_dump_status=$?
       LOG_STOP_TIME=$(printf '%s\n' "${wal_dump_output}" | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
