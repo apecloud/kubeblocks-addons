@@ -430,6 +430,16 @@ EOF
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
 
+    It "advances the checkpoint when a successful expiration scan finds no files"
+      export DATE_EPOCH_OUT=1000 DP_TTL_SECONDS=3600 DATASAFED_LIST_OUT=""
+      When call purge_and_report_checkpoint
+      The status should eq 0
+      The output should include "purge-checkpoint=1000"
+      The contents of file "${CALL_LOG}" should include "datasafed list -f --recursive --older-than"
+      The contents of file "${CALL_LOG}" should not include "datasafed stat"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
     It "reports only successful deletions and keeps the checkpoint when one deletion fails"
       removed_wal="/20260816/000000010000000000000001.zst"
       failed_wal="/20260816/000000010000000000000002.zst"
