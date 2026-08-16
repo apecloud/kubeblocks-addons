@@ -354,6 +354,15 @@ EOF
   End
 
   Describe "purge_expired_files()"
+    It "fails before expiry arithmetic when the retention clock cannot be read"
+      export DATE_EPOCH_EXIT=17 DP_TTL_SECONDS=3600
+      When call purge_and_report_checkpoint
+      The status should be failure
+      The output should include "failed to determine current time for WAL retention"
+      The output should include "purge-checkpoint=123"
+      The contents of file "${CALL_LOG}" should not include "datasafed"
+    End
+
     It "fails without advancing the checkpoint when the expired-WAL listing fails"
       export DP_TTL_SECONDS=3600 DATASAFED_LIST_EXIT=17
       When call purge_and_report_checkpoint
