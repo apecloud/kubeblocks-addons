@@ -209,10 +209,26 @@ EOF
   Describe "switch_wal_log()"
     It "fails without advancing the checkpoint when the switch request fails"
       export DATE_EPOCH_OUT=456 PG_WALDUMP_OUT="transaction record"
-      export PSQL_FAIL_ON_CALL=2 PSQL_EXIT=17
+      export PG_WALDUMP_EXIT=17 PSQL_FAIL_ON_CALL=2 PSQL_EXIT=17
       When call switch_and_report_checkpoint
       The status should be failure
       The output should include "pg_switch_wal failed, will retry on the next round"
+      The output should include "switch-checkpoint=123"
+    End
+
+    It "fails without advancing the checkpoint when the current WAL lookup fails"
+      export DATE_EPOCH_OUT=456 PSQL_FAIL_ON_CALL=1 PSQL_EXIT=17
+      When call switch_and_report_checkpoint
+      The status should be failure
+      The error should include "failed to resolve current WAL for switch"
+      The output should include "switch-checkpoint=123"
+    End
+
+    It "fails without advancing the checkpoint when current WAL analysis has no usable record"
+      export DATE_EPOCH_OUT=456 PG_WALDUMP_EXIT=17
+      When call switch_and_report_checkpoint
+      The status should be failure
+      The error should include "failed to inspect current WAL for switch: f"
       The output should include "switch-checkpoint=123"
     End
 
