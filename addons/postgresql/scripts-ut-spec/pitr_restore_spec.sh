@@ -173,6 +173,21 @@ EOF
       The path "${DATA_DIR}.old" should be exist
     End
 
+    It "ignores unrelated local files when selecting the starting WAL"
+      mkdir -p "${DATA_DIR}/pg_wal"
+      echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
+      echo x > "${DATA_DIR}/pg_wal/README"
+      export DATASAFED_LIST_ROOT="20260816/"
+      export DATASAFED_LIST_DIR="000000010000000000000002.zst"
+      DP_RESTORE_TIME="2001-01-01 00:00:00"
+      export DP_RESTORE_TIME
+      When run bash "${concat}"
+      The status should eq 0
+      The output should include "fetch-wal-log ${PITR_DIR} 000000010000000000000001"
+      The result of function first_pulled_archive should eq "000000010000000000000002.zst"
+      The path "${DATA_DIR}.old" should be exist
+    End
+
     It "fails before staging data when the WAL repository root cannot be listed"
       mkdir -p "${DATA_DIR}/pg_wal"
       echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
