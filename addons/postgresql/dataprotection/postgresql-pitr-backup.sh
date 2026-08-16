@@ -115,6 +115,7 @@ function upload_wal_log() {
           mv -f ./archive_status/${i} ./archive_status/${wal_name}.done;
         else
           DP_error_log "failed to upload ${wal_name}, keeping ${i} for retry"
+          break
         fi
       fi
     done
