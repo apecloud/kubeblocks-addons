@@ -41,13 +41,6 @@ function fetch-wal-log(){
          DP_error_log "failed to sort WAL archive directory ${dir_name}"
          return 1
       fi
-      # check if the latest_wal_log after the start_wal_log
-      latest_wal=$(printf '%s\n' "${dir_files}" | tail -n 1)
-      latest_wal_name=$(get_wal_name ${latest_wal})
-      if [[ ${latest_wal_name} < $start_wal_name ]]; then
-         continue
-      fi
-
       DP_log "start to fetch wal logs from ${dir_name}"
       for file in $(printf '%s\n' "${dir_files}" | grep ".zst"); do
          wal_name=$(get_wal_name ${file})
