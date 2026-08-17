@@ -27,7 +27,8 @@ Describe "dataprotection PITR restore"
       DP_RESTORE_TIME DP_RESTORE_TIMESTAMP DP_BACKUP_BASE_PATH DP_DATASAFED_BIN_PATH
     unset DATASAFED_LIST_ROOT DATASAFED_LIST_DIR DATASAFED_LIST_DIR_20260816 \
       DATASAFED_LIST_DIR_20260817 DATASAFED_ROOT_LIST_EXIT \
-      DATASAFED_DIR_LIST_EXIT DATASAFED_PULL_FAIL_OBJECT DATE_FAIL_VALUE \
+      DATASAFED_DIR_LIST_EXIT DATASAFED_LIST_FAIL_PATH \
+      DATASAFED_PULL_FAIL_OBJECT DATE_FAIL_VALUE \
       PG_WALDUMP_FAIL_OBJECT 2>/dev/null || true
 
     write_stubs
@@ -53,6 +54,9 @@ case "$1" in
       fi
       printf '%s\n' "${DATASAFED_LIST_ROOT:-}"
     else
+      if [ "$2" = "${DATASAFED_LIST_FAIL_PATH:-}" ]; then
+        exit 43
+      fi
       if [ "${DATASAFED_DIR_LIST_EXIT:-0}" -ne 0 ]; then
         exit "${DATASAFED_DIR_LIST_EXIT}"
       fi
@@ -234,6 +238,22 @@ EOF
       The output should include "failed to list WAL archive directory waldir/"
       The path "${DATA_DIR}" should be exist
       The path "${DATA_DIR}.old" should not be exist
+    End
+
+    It "ignores unrelated repository root objects before listing archive directories"
+      mkdir -p "${DATA_DIR}/pg_wal"
+      echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
+      export DATASAFED_LIST_ROOT="!README
+20260816/"
+      export DATASAFED_LIST_FAIL_PATH="!README"
+      export DATASAFED_LIST_DIR="000000010000000000000002.zst"
+      DP_RESTORE_TIME="2001-01-01 00:00:00"
+      export DP_RESTORE_TIME
+      When run bash "${concat}"
+      The status should eq 0
+      The result of function first_pulled_archive should eq "000000010000000000000002.zst"
+      The result of function call_log should not include "datasafed list !README"
+      The path "${DATA_DIR}.old" should be exist
     End
   End
 
