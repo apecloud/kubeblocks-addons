@@ -126,6 +126,11 @@ spec:
   systemAccounts:
     - name: admin
       initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
   vars:
     - name: BITNAMI_DEBUG
       value: "false"
