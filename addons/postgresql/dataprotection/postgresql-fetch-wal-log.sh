@@ -24,6 +24,7 @@ function fetch-wal-log(){
        DP_error_log "failed to list the WAL archive root"
        return 1
     fi
+    dir_names=$(printf '%s\n' "${dir_names}" | awk '/\/$/')
     if ! dir_names=$(printf '%s\n' "${dir_names}" | sort); then
        DP_error_log "failed to sort the WAL archive root"
        return 1
