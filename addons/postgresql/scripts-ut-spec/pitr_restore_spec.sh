@@ -158,6 +158,18 @@ EOF
       The path "${CONF_DIR}/recovery.conf" should be exist
     End
 
+    It "fails before repository access when live and staged data directories both exist"
+      mkdir -p "${DATA_DIR}/pg_wal" "${DATA_DIR}.old/pg_wal"
+      echo live > "${DATA_DIR}/pg_wal/000000010000000000000001"
+      echo staged > "${DATA_DIR}.old/pg_wal/000000010000000000000001"
+      When run bash "${concat}"
+      The status should be failure
+      The output should include "both ${DATA_DIR} and ${DATA_DIR}.old exist"
+      The result of function call_log should not include "datasafed"
+      The path "${DATA_DIR}" should be exist
+      The path "${DATA_DIR}.old/data" should not be exist
+    End
+
     It "continues preparation after the target WAL is found before another archive directory"
       mkdir -p "${DATA_DIR}/pg_wal"
       echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
