@@ -41,6 +41,7 @@ mkdir -p ${CONF_DIR};
 chmod 777 -R ${CONF_DIR};
 mkdir -p ${RESTORE_SCRIPT_DIR};
 echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
+echo "set -e" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
