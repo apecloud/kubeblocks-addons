@@ -60,6 +60,7 @@ default_clickhouse_resources_are_unchanged() {
 
 zookeeper_service_endpoints_are_consumed() {
   local component config
+  helm dependency build --skip-refresh .. >/dev/null || return
   component=$(helm template clickhouse .. --show-only templates/cmpd-ch.yaml) || return
   config=$(helm template clickhouse .. --show-only templates/config-template.yaml) || return
 
