@@ -6,8 +6,11 @@ create_cm_if_not_exist() {
   name="$1"
   namespace="$2"
 
-  kubectl get configmaps "$name" -n "$namespace"
-  if [ $? -ne 0 ]; then
+  existing=$(kubectl get configmaps "$name" -n "$namespace" --ignore-not-found -o name) || {
+    echo "Failed to check ConfigMap $namespace/$name." >&2
+    return 1
+  }
+  if [ -z "$existing" ]; then
     cat <<EOF | kubectl create -f -
 apiVersion: v1
 kind: ConfigMap
@@ -19,15 +22,57 @@ metadata:
     app.kubernetes.io/instance: {{ .CLUSTER_NAME }}
     apps.kubeblocks.io/component-name: {{ .CLUSTER_COMPONENT_NAME }}
 EOF
+    create_status=$?
+    if [ "$create_status" -ne 0 ]; then
+      existing=$(kubectl get configmaps "$name" -n "$namespace" --ignore-not-found -o name) || existing=""
+      if [ -n "$existing" ]; then
+        return 0
+      fi
+      echo "Failed to create ConfigMap $namespace/$name." >&2
+      return "$create_status"
+    fi
   fi
 }
 
-get_cm_key_value() {
+get_cm_key_snapshot() {
   name="$1"
   namespace="$2"
   key="$3"
 
-  kubectl get configmaps "$name" -n "$namespace" -o jsonpath="{.data.$key}" | tr -d '[]'
+  value=$(kubectl get configmaps "$name" -n "$namespace" \
+    -o "jsonpath={.metadata.resourceVersion}{'\\t'}{.data.$key}") || {
+    echo "Failed to read $key from ConfigMap $namespace/$name." >&2
+    return 1
+  }
+  printf '%s' "$value"
+}
+
+parse_cm_key_history() {
+  raw="$1"
+
+  if [ -z "$raw" ]; then
+    return 0
+  fi
+  case "$raw" in
+    \[*\]) value=${raw#\[}; value=${value%\]} ;;
+    *) return 1 ;;
+  esac
+  case "$value" in
+    ''|,*|*,|*,,*|*[!0-9,]*) return 1 ;;
+  esac
+
+  previous=0
+  old_ifs="$IFS"
+  IFS=','
+  for item in $value; do
+    if ! [ "$item" -gt "$previous" ] 2>/dev/null; then
+      IFS="$old_ifs"
+      return 1
+    fi
+    previous="$item"
+  done
+  IFS="$old_ifs"
+  printf '%s' "$value"
 }
 
 update_cm_key_value() {
@@ -35,8 +80,10 @@ update_cm_key_value() {
   namespace="$2"
   key="$3"
   new_value="$4"
+  resource_version="$5"
 
-  kubectl patch configmap "$name" -n "$namespace" --type strategic -p "{\"data\":{\"$key\":\"$new_value\"}}"
+  kubectl patch configmap "$name" -n "$namespace" --type strategic \
+    -p "{\"metadata\":{\"resourceVersion\":\"$resource_version\"},\"data\":{\"$key\":\"$new_value\"}}"
 }
 
 get_cm_key_new_value() {
@@ -46,7 +93,7 @@ get_cm_key_new_value() {
   if [ -z "$cur" ]; then
     printf "[%s]" "$replicas"
   else
-    max=$(echo "$cur" | tr ',' '\n' | awk 'BEGIN{m=0} {if($1+0>m)m=$1+0} END{print m}')
+    max=${cur##*,}
     if [ "$replicas" -le "$max" ]; then
       printf "[%s]" "$cur"
     else
@@ -55,21 +102,83 @@ get_cm_key_new_value() {
   fi
 }
 
+get_confirmed_cm_key_value() {
+  name="$1"
+  namespace="$2"
+  key="$3"
+  replicas="$4"
+  tab=$(printf '\t')
+
+  snapshot=$(get_cm_key_snapshot "$name" "$namespace" "$key") || return $?
+  case "$snapshot" in
+    *"$tab"*) ;;
+    *)
+      echo "Failed to parse confirmed $key snapshot from ConfigMap $namespace/$name." >&2
+      return 1
+      ;;
+  esac
+  resource_version=${snapshot%%"$tab"*}
+  raw_cur=${snapshot#*"$tab"}
+  cur=$(parse_cm_key_history "$raw_cur") || {
+    echo "Failed to parse confirmed $key history from ConfigMap $namespace/$name." >&2
+    return 1
+  }
+  confirmed=$(get_cm_key_new_value "$cur" "$replicas")
+  if [ "$confirmed" != "[$cur]" ]; then
+    echo "Confirmed $key in ConfigMap $namespace/$name does not contain replicas $replicas." >&2
+    return 1
+  fi
+  printf '%s\t%s' "$resource_version" "$confirmed"
+}
+
 update_configmap_and_sync_to_local_file() {
   namespace={{ .CLUSTER_NAMESPACE }}
   name={{ .RUSTFS_COMPONENT_NAME }}-rustfs-configuration
   key="RUSTFS_REPLICAS_HISTORY"
   replicas="$RUSTFS_COMP_REPLICAS"
 
-  create_cm_if_not_exist "$name" "$namespace"
+  create_cm_if_not_exist "$name" "$namespace" || return $?
 
-  cur=$(get_cm_key_value "$name" "$namespace" "$key")
-  new=$(get_cm_key_new_value "$cur" "$replicas")
+  attempt=1
+  max_attempts=5
+  tab=$(printf '\t')
+  while [ "$attempt" -le "$max_attempts" ]; do
+    snapshot=$(get_cm_key_snapshot "$name" "$namespace" "$key") || return $?
+    case "$snapshot" in
+      *"$tab"*) ;;
+      *)
+        echo "Failed to parse $key snapshot from ConfigMap $namespace/$name." >&2
+        return 1
+        ;;
+    esac
+    resource_version=${snapshot%%"$tab"*}
+    raw_cur=${snapshot#*"$tab"}
+    cur=$(parse_cm_key_history "$raw_cur") || {
+      echo "Failed to parse $key history from ConfigMap $namespace/$name." >&2
+      return 1
+    }
+    new=$(get_cm_key_new_value "$cur" "$replicas")
 
-  update_cm_key_value "$name" "$namespace" "$key" "$new"
+    if update_cm_key_value "$name" "$namespace" "$key" "$new" "$resource_version"; then
+      confirmed_snapshot=$(get_confirmed_cm_key_value "$name" "$namespace" "$key" "$replicas") || return $?
+      confirmed_resource_version=${confirmed_snapshot%%"$tab"*}
+      new=${confirmed_snapshot#*"$tab"}
+      printf '%s\n' "$new" >"$replicas_history_file" || {
+        echo "Failed to write $key to local file $replicas_history_file." >&2
+        return 1
+      }
+      if update_cm_key_value "$name" "$namespace" "$key" "$new" "$confirmed_resource_version"; then
+        break
+      fi
+    fi
+    attempt=$((attempt + 1))
+  done
+  if [ "$attempt" -gt "$max_attempts" ]; then
+    rm -f "$replicas_history_file"
+    echo "Failed to update $key in ConfigMap $namespace/$name after $max_attempts attempts." >&2
+    return 1
+  fi
   echo "configmap/$name updated successfully with $key=$new"
-
-  echo $new >> $replicas_history_file
   echo "the new value $new has been written to the local file $replicas_history_file"
 }
 
