@@ -151,6 +151,21 @@ EOF
       The path "${RESTORE_SCRIPT_DIR}/kb_restore.sh" should be exist
     End
 
+    It "propagates a postReady data move failure"
+      mkdir -p "${DATA_DIR}/pg_wal"
+      echo x > "${DATA_DIR}/pg_wal/000000010000000000000001"
+      bash "${concat}" >/dev/null
+      mkdir -p "${DATA_DIR}"
+      cat > "${bindir}/mv" <<'EOF'
+#!/bin/sh
+exit 47
+EOF
+      chmod +x "${bindir}/mv"
+      When run bash "${RESTORE_SCRIPT_DIR}/kb_restore.sh"
+      The status should be failure
+      The path "${DATA_DIR}.old/pg_wal" should be exist
+    End
+
     It "retries idempotently when a previous run already staged the data dir"
       mkdir -p "${DATA_DIR}.old/pg_wal"
       echo x > "${DATA_DIR}.old/pg_wal/000000010000000000000001"
