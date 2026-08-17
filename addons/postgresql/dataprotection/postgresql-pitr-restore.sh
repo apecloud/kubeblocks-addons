@@ -9,6 +9,11 @@ if ! recovery_target_time=$(date -d "@${DP_RESTORE_TIMESTAMP}" '+%F %T%::z'); th
   exit 1
 fi
 
+if [[ -d ${DATA_DIR}.old ]] && [[ -d ${DATA_DIR} ]]; then
+  DP_error_log "both ${DATA_DIR} and ${DATA_DIR}.old exist; refusing ambiguous PITR handoff"
+  exit 1
+fi
+
 if [[ -d ${DATA_DIR}.old ]] && [[ ! -d ${DATA_DIR} ]]; then
   # A previous run already completed the final staging mv. Un-staging and
   # exiting 0 here (the old behavior) left a populated DATA_DIR carrying
