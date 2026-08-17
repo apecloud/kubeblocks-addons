@@ -117,6 +117,7 @@ get_confirmed_cm_key_value() {
       return 1
       ;;
   esac
+  resource_version=${snapshot%%"$tab"*}
   raw_cur=${snapshot#*"$tab"}
   cur=$(parse_cm_key_history "$raw_cur") || {
     echo "Failed to parse confirmed $key history from ConfigMap $namespace/$name." >&2
@@ -127,7 +128,7 @@ get_confirmed_cm_key_value() {
     echo "Confirmed $key in ConfigMap $namespace/$name does not contain replicas $replicas." >&2
     return 1
   fi
-  printf '%s' "$confirmed"
+  printf '%s\t%s' "$resource_version" "$confirmed"
 }
 
 update_configmap_and_sync_to_local_file() {
@@ -159,21 +160,25 @@ update_configmap_and_sync_to_local_file() {
     new=$(get_cm_key_new_value "$cur" "$replicas")
 
     if update_cm_key_value "$name" "$namespace" "$key" "$new" "$resource_version"; then
-      new=$(get_confirmed_cm_key_value "$name" "$namespace" "$key" "$replicas") || return $?
-      break
+      confirmed_snapshot=$(get_confirmed_cm_key_value "$name" "$namespace" "$key" "$replicas") || return $?
+      confirmed_resource_version=${confirmed_snapshot%%"$tab"*}
+      new=${confirmed_snapshot#*"$tab"}
+      printf '%s\n' "$new" >"$replicas_history_file" || {
+        echo "Failed to write $key to local file $replicas_history_file." >&2
+        return 1
+      }
+      if update_cm_key_value "$name" "$namespace" "$key" "$new" "$confirmed_resource_version"; then
+        break
+      fi
     fi
     attempt=$((attempt + 1))
   done
   if [ "$attempt" -gt "$max_attempts" ]; then
+    rm -f "$replicas_history_file"
     echo "Failed to update $key in ConfigMap $namespace/$name after $max_attempts attempts." >&2
     return 1
   fi
   echo "configmap/$name updated successfully with $key=$new"
-
-  printf '%s\n' "$new" >"$replicas_history_file" || {
-    echo "Failed to write $key to local file $replicas_history_file." >&2
-    return 1
-  }
   echo "the new value $new has been written to the local file $replicas_history_file"
 }
 

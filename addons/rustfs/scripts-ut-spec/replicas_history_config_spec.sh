@@ -41,7 +41,24 @@ case "$*" in
       success)
         case "${KUBECTL_PATCH_MODE:-success}:$(cat "${KUBECTL_RACE_PHASE_FILE}")" in
           race:1) printf '2\t[4,12]' ;;
+          race:2) printf '3\t[4,12]' ;;
           post_patch_race:1) printf '2\t[4,8,12]' ;;
+          post_confirm_race:0) printf '1\t[4]' ;;
+          post_confirm_race:1)
+            printf '2\n' >"${KUBECTL_RACE_PHASE_FILE}"
+            printf '2\t[4,8]'
+            ;;
+          post_confirm_race:3) printf '3\t[4,8,12]' ;;
+          post_confirm_race:4) printf '4\t[4,8,12]' ;;
+          fence_fail:*)
+            phase=$(cat "${KUBECTL_RACE_PHASE_FILE}")
+            resource_version=$((phase + 1))
+            if [ "${phase}" -eq 0 ]; then
+              printf '%s\t[4]' "${resource_version}"
+            else
+              printf '%s\t[4,8]' "${resource_version}"
+            fi
+            ;;
           *)
             if [ -s "${KUBECTL_PATCHED_VALUE_FILE}" ]; then
               case "${KUBECTL_CONFIRM_MODE:-success}" in
@@ -81,13 +98,40 @@ case "$*" in
             ;;
           *'"resourceVersion":"2"'*)
             printf '%s' "$*" | sed -n 's/.*"RUSTFS_REPLICAS_HISTORY":"\([^"]*\)".*/\1/p' >"${KUBECTL_PATCHED_VALUE_FILE}"
+            printf '2\n' >"${KUBECTL_RACE_PHASE_FILE}"
             ;;
+          *'"resourceVersion":"3"'*) : ;;
           *) : ;;
         esac
         ;;
       post_patch_race)
         printf '%s' "$*" | sed -n 's/.*"RUSTFS_REPLICAS_HISTORY":"\([^"]*\)".*/\1/p' >"${KUBECTL_PATCHED_VALUE_FILE}"
         printf '1\n' >"${KUBECTL_RACE_PHASE_FILE}"
+        ;;
+      post_confirm_race)
+        case "$*" in
+          *'"resourceVersion":"1"'*)
+            printf '1\n' >"${KUBECTL_RACE_PHASE_FILE}"
+            ;;
+          *'"resourceVersion":"2"'*)
+            printf '3\n' >"${KUBECTL_RACE_PHASE_FILE}"
+            exit 44
+            ;;
+          *'"resourceVersion":"3"'*)
+            printf '4\n' >"${KUBECTL_RACE_PHASE_FILE}"
+            ;;
+          *'"resourceVersion":"4"'*) : ;;
+          *) exit 48 ;;
+        esac
+        ;;
+      fence_fail)
+        resource_version=$(printf '%s' "$*" | sed -n 's/.*"resourceVersion":"\([0-9]*\)".*/\1/p')
+        printf '%s\n' "${resource_version}" >"${KUBECTL_RACE_PHASE_FILE}"
+        case "${resource_version}" in
+          1|3|5|7|9) : ;;
+          2|4|6|8|10) exit 44 ;;
+          *) exit 49 ;;
+        esac
         ;;
       *) exit 44 ;;
     esac
@@ -279,6 +323,14 @@ EOF
     The contents of file "${history_file}" should eq "[4,8,12]"
   End
 
+  It "retries when another pod advances history after confirmation but before the local write fence"
+    When call run_case present success success post_confirm_race
+    The status should be success
+    The output should include "RUSTFS_REPLICAS_HISTORY=[4,8,12]"
+    The contents of file "${history_file}" should eq "[4,8,12]"
+    The contents of file "${call_log}" should include '"resourceVersion":"4"'
+  End
+
   It "fails closed when the patched ConfigMap cannot be confirmed"
     When call run_case present success success success '' '[4]' fail
     The status should be failure
@@ -297,6 +349,13 @@ EOF
     When call run_case present success success success '' '[4]' stale
     The status should be failure
     The stderr should include "does not contain replicas 8"
+    The path "${history_file}" should not be exist
+  End
+
+  It "removes an unfenced local history when confirmation conflicts exhaust retries"
+    When call run_case present success success fence_fail
+    The status should be failure
+    The stderr should include "after 5 attempts"
     The path "${history_file}" should not be exist
   End
 
