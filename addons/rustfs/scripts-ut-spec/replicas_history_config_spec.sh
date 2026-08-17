@@ -39,11 +39,26 @@ case "$*" in
   "get configmaps rustfs-rustfs-configuration -n test -o jsonpath={.metadata.resourceVersion}{'\\t'}{.data.RUSTFS_REPLICAS_HISTORY}")
     case "${KUBECTL_READ_MODE:-success}" in
       success)
-        if [ "${KUBECTL_PATCH_MODE:-success}" = race ] && [ "$(cat "${KUBECTL_RACE_PHASE_FILE}")" -gt 0 ]; then
-          printf '2\t[4,12]'
-        else
-          printf '1\t%s' "${KUBECTL_READ_VALUE-[4]}"
-        fi
+        case "${KUBECTL_PATCH_MODE:-success}:$(cat "${KUBECTL_RACE_PHASE_FILE}")" in
+          race:1) printf '2\t[4,12]' ;;
+          post_patch_race:1) printf '2\t[4,8,12]' ;;
+          *)
+            if [ -s "${KUBECTL_PATCHED_VALUE_FILE}" ]; then
+              case "${KUBECTL_CONFIRM_MODE:-success}" in
+                success)
+                  printf '2\t'
+                  cat "${KUBECTL_PATCHED_VALUE_FILE}"
+                  ;;
+                fail) exit 42 ;;
+                malformed) printf '2' ;;
+                stale) printf '2\t[4]' ;;
+                *) exit 47 ;;
+              esac
+            else
+              printf '1\t%s' "${KUBECTL_READ_VALUE-[4]}"
+            fi
+            ;;
+        esac
         ;;
       malformed) printf '%s' "${KUBECTL_READ_VALUE-[4]}" ;;
       *) exit 42 ;;
@@ -55,16 +70,24 @@ case "$*" in
     ;;
   "patch configmap rustfs-rustfs-configuration -n test --type strategic -p "*)
     case "${KUBECTL_PATCH_MODE:-success}" in
-      success) : ;;
+      success)
+        printf '%s' "$*" | sed -n 's/.*"RUSTFS_REPLICAS_HISTORY":"\([^"]*\)".*/\1/p' >"${KUBECTL_PATCHED_VALUE_FILE}"
+        ;;
       race)
         case "$*" in
           *'"resourceVersion":"1"'*)
             printf '1\n' >"${KUBECTL_RACE_PHASE_FILE}"
             exit 44
             ;;
-          *'"resourceVersion":"2"'*) : ;;
+          *'"resourceVersion":"2"'*)
+            printf '%s' "$*" | sed -n 's/.*"RUSTFS_REPLICAS_HISTORY":"\([^"]*\)".*/\1/p' >"${KUBECTL_PATCHED_VALUE_FILE}"
+            ;;
           *) : ;;
         esac
+        ;;
+      post_patch_race)
+        printf '%s' "$*" | sed -n 's/.*"RUSTFS_REPLICAS_HISTORY":"\([^"]*\)".*/\1/p' >"${KUBECTL_PATCHED_VALUE_FILE}"
+        printf '1\n' >"${KUBECTL_RACE_PHASE_FILE}"
         ;;
       *) exit 44 ;;
     esac
@@ -96,6 +119,8 @@ EOF
     printf '0\n' >"${KUBECTL_GET_COUNT_FILE}" || return $?
     export KUBECTL_RACE_PHASE_FILE="${case_dir}/kubectl.race-phase"
     printf '0\n' >"${KUBECTL_RACE_PHASE_FILE}" || return $?
+    export KUBECTL_PATCHED_VALUE_FILE="${case_dir}/kubectl.patched-value"
+    : >"${KUBECTL_PATCHED_VALUE_FILE}" || return $?
     export RUSTFS_COMP_REPLICAS=8
   }
 
@@ -110,6 +135,7 @@ EOF
       KUBECTL_PATCH_MODE="${4:-success}" \
       KUBECTL_RECHECK_MODE="${5:-}" \
       KUBECTL_READ_VALUE="${6-[4]}" \
+      KUBECTL_CONFIRM_MODE="${7:-success}" \
       "${SHELLSPEC_SHELL}" "${case_dir}/replicas-history-config.sh"
   }
 
@@ -244,6 +270,34 @@ EOF
     The output should include "RUSTFS_REPLICAS_HISTORY=[4,12]"
     The contents of file "${history_file}" should eq "[4,12]"
     The contents of file "${call_log}" should include 'patch configmap rustfs-rustfs-configuration -n test --type strategic -p {"metadata":{"resourceVersion":"2"},"data":{"RUSTFS_REPLICAS_HISTORY":"[4,12]"}}'
+  End
+
+  It "writes the confirmed history when another pod advances it after patch success"
+    When call run_case present success success post_patch_race
+    The status should be success
+    The output should include "RUSTFS_REPLICAS_HISTORY=[4,8,12]"
+    The contents of file "${history_file}" should eq "[4,8,12]"
+  End
+
+  It "fails closed when the patched ConfigMap cannot be confirmed"
+    When call run_case present success success success '' '[4]' fail
+    The status should be failure
+    The stderr should include "Failed to read RUSTFS_REPLICAS_HISTORY"
+    The path "${history_file}" should not be exist
+  End
+
+  It "fails closed when the confirmed ConfigMap snapshot is malformed"
+    When call run_case present success success success '' '[4]' malformed
+    The status should be failure
+    The stderr should include "Failed to parse confirmed RUSTFS_REPLICAS_HISTORY snapshot"
+    The path "${history_file}" should not be exist
+  End
+
+  It "fails closed when confirmed history does not include the current replicas"
+    When call run_case present success success success '' '[4]' stale
+    The status should be failure
+    The stderr should include "does not contain replicas 8"
+    The path "${history_file}" should not be exist
   End
 
   It "fails closed when create fails and the ConfigMap remains absent"

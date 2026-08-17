@@ -102,6 +102,34 @@ get_cm_key_new_value() {
   fi
 }
 
+get_confirmed_cm_key_value() {
+  name="$1"
+  namespace="$2"
+  key="$3"
+  replicas="$4"
+  tab=$(printf '\t')
+
+  snapshot=$(get_cm_key_snapshot "$name" "$namespace" "$key") || return $?
+  case "$snapshot" in
+    *"$tab"*) ;;
+    *)
+      echo "Failed to parse confirmed $key snapshot from ConfigMap $namespace/$name." >&2
+      return 1
+      ;;
+  esac
+  raw_cur=${snapshot#*"$tab"}
+  cur=$(parse_cm_key_history "$raw_cur") || {
+    echo "Failed to parse confirmed $key history from ConfigMap $namespace/$name." >&2
+    return 1
+  }
+  confirmed=$(get_cm_key_new_value "$cur" "$replicas")
+  if [ "$confirmed" != "[$cur]" ]; then
+    echo "Confirmed $key in ConfigMap $namespace/$name does not contain replicas $replicas." >&2
+    return 1
+  fi
+  printf '%s' "$confirmed"
+}
+
 update_configmap_and_sync_to_local_file() {
   namespace={{ .CLUSTER_NAMESPACE }}
   name={{ .RUSTFS_COMPONENT_NAME }}-rustfs-configuration
@@ -131,6 +159,7 @@ update_configmap_and_sync_to_local_file() {
     new=$(get_cm_key_new_value "$cur" "$replicas")
 
     if update_cm_key_value "$name" "$namespace" "$key" "$new" "$resource_version"; then
+      new=$(get_confirmed_cm_key_value "$name" "$namespace" "$key" "$replicas") || return $?
       break
     fi
     attempt=$((attempt + 1))
