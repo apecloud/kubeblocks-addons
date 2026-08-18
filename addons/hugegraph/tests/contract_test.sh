@@ -49,11 +49,18 @@ required_files=(
   "${ADDON_DIR}/templates/actionset.yaml"
   "${ADDON_DIR}/templates/script-template.yaml"
   "${ADDON_DIR}/scripts/start.sh"
+  "${ADDON_DIR}/scripts/start-pd.sh"
+  "${ADDON_DIR}/scripts/start-store.sh"
+  "${ADDON_DIR}/scripts/start-server.sh"
   "${ADDON_DIR}/scripts/shutdown.sh"
   "${ADDON_DIR}/scripts/backup.sh"
   "${ADDON_DIR}/scripts/restore.sh"
+  "${ADDON_DIR}/templates/cmpd-pd.yaml"
+  "${ADDON_DIR}/templates/cmpd-store.yaml"
+  "${ADDON_DIR}/templates/cmpd-server.yaml"
   "${ADDON_DIR}/tests/scripts_test.sh"
   "${ADDON_DIR}/exporter/Dockerfile"
+  "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml"
   "${ADDON_DIR}/exporter/go.mod"
   "${CLUSTER_DIR}/Chart.yaml"
   "${CLUSTER_DIR}/templates/cluster.yaml"
@@ -68,6 +75,9 @@ done
 
 bash -n \
   "${ADDON_DIR}/scripts/start.sh" \
+  "${ADDON_DIR}/scripts/start-pd.sh" \
+  "${ADDON_DIR}/scripts/start-store.sh" \
+  "${ADDON_DIR}/scripts/start-server.sh" \
   "${ADDON_DIR}/scripts/shutdown.sh" \
   "${ADDON_DIR}/scripts/backup.sh" \
   "${ADDON_DIR}/scripts/restore.sh"
@@ -139,31 +149,31 @@ assert_contains "${definition_render}" 'metricsPath: /metrics'
 assert_contains "${definition_render}" 'collectionInterval: 30s'
 
 assert_equal \
-  "$(yq 'select(.kind == "ComponentDefinition") | .spec.runtime.containers | length' "${definition_render}")" \
+  "$(yq 'select(.kind == "ComponentDefinition" and .metadata.name == "hugegraph-1.0.0") | .spec.runtime.containers | length' "${definition_render}")" \
   "2" \
-  "component container count"
+  "standalone container count"
 assert_equal \
-  "$(yq 'select(.kind == "ComponentDefinition") | .spec.volumes | length' "${definition_render}")" \
+  "$(yq 'select(.kind == "ComponentDefinition" and .metadata.name == "hugegraph-1.0.0") | .spec.volumes | length' "${definition_render}")" \
   "1" \
-  "component volume count"
+  "standalone volume count"
 assert_equal \
-  "$(yq 'select(.kind == "ComponentDefinition") | .spec.volumes[0].name' "${definition_render}")" \
+  "$(yq 'select(.kind == "ComponentDefinition" and .metadata.name == "hugegraph-1.0.0") | .spec.volumes[0].name' "${definition_render}")" \
   "data" \
-  "component data volume"
+  "standalone data volume"
 assert_equal \
-  "$(yq 'select(.kind == "ComponentDefinition") | .spec.runtime.containers[] | select(.name == "hugegraph") | .volumeMounts | length' "${definition_render}")" \
+  "$(yq 'select(.kind == "ComponentDefinition" and .metadata.name == "hugegraph-1.0.0") | .spec.runtime.containers[] | select(.name == "hugegraph") | .volumeMounts | length' "${definition_render}")" \
   "2" \
   "main container volume mounts"
 assert_equal \
-  "$(yq 'select(.kind == "ComponentDefinition") | .spec.runtime.containers[] | select(.name == "hugegraph-exporter") | (.volumeMounts // []) | length' "${definition_render}")" \
+  "$(yq 'select(.kind == "ComponentDefinition" and .metadata.name == "hugegraph-1.0.0") | .spec.runtime.containers[] | select(.name == "hugegraph-exporter") | (.volumeMounts // []) | length' "${definition_render}")" \
   "0" \
   "exporter PVC mounts"
 assert_equal \
-  "$(yq 'select(.kind == "ComponentDefinition") | .spec.runtime.containers[] | select(.name == "hugegraph-exporter") | .env | length' "${definition_render}")" \
+  "$(yq 'select(.kind == "ComponentDefinition" and .metadata.name == "hugegraph-1.0.0") | .spec.runtime.containers[] | select(.name == "hugegraph-exporter") | .env | length' "${definition_render}")" \
   "2" \
   "exporter credential env count"
 assert_equal \
-  "$(yq 'select(.kind == "ComponentDefinition") | .spec.exporter.containerName' "${definition_render}")" \
+  "$(yq 'select(.kind == "ComponentDefinition" and .metadata.name == "hugegraph-1.0.0") | .spec.exporter.containerName' "${definition_render}")" \
   "hugegraph-exporter" \
   "spec.exporter container"
 assert_equal \
@@ -177,6 +187,34 @@ assert_contains "${cluster_render}" 'clusterDef: hugegraph'
 assert_contains "${cluster_render}" 'topology: standalone'
 assert_contains "${cluster_render}" 'replicas: 1'
 assert_contains "${cluster_render}" 'serviceVersion: [\"]?1\.7\.0[\"]?'
+
+assert_contains "${definition_render}" 'name: distributed'
+assert_contains "${definition_render}" 'name: hugegraph-pd-1.0.0'
+assert_contains "${definition_render}" 'name: hugegraph-store-1.0.0'
+assert_contains "${definition_render}" 'name: hugegraph-server-1.0.0'
+assert_contains "${definition_render}" 'compDef: \^hugegraph-\[0-9\]'
+assert_contains "${definition_render}" 'compDef: \^hugegraph-pd-'
+assert_contains "${definition_render}" 'docker.io/hugegraph/pd:1.7.0'
+assert_contains "${definition_render}" 'docker.io/hugegraph/store:1.7.0'
+assert_contains "${definition_render}" 'docker.io/hugegraph/server:1.7.0'
+assert_contains "${ADDON_DIR}/scripts/start-pd.sh" 'HG_PD_RAFT_PEERS_LIST'
+assert_contains "${ADDON_DIR}/scripts/start-pd.sh" 'HG_PD_RAFT_ADDRESS'
+assert_contains "${ADDON_DIR}/scripts/start-store.sh" 'HG_STORE_PD_ADDRESS'
+assert_contains "${ADDON_DIR}/scripts/start-server.sh" 'HG_SERVER_BACKEND=hstore'
+assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'topology: distributed'
+assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'name: pd'
+assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'name: store'
+
+distributed_render=$(mktemp)
+helm template hugegraph "${CLUSTER_DIR}" --namespace demo --set topology=distributed >"${distributed_render}"
+assert_contains "${distributed_render}" 'topology: distributed'
+assert_contains "${distributed_render}" 'name: pd'
+assert_contains "${distributed_render}" 'name: store'
+assert_equal \
+  "$(yq '[select(.kind == "Cluster") | .spec.componentSpecs[].name] | join(",")' "${distributed_render}")" \
+  "pd,store,server" \
+  "distributed component names"
+rm -f "${distributed_render}"
 assert_contains "${ADDON_DIR}/.helmignore" '^exporter/'
 
 package_dir=$(mktemp -d)

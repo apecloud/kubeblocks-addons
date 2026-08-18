@@ -13,3 +13,21 @@ spec:
       components:
         - name: server
           compDef: {{ include "hugegraph.cmpdPattern" . }}
+    - name: distributed
+      components:
+        - name: pd
+          compDef: {{ include "hugegraph.pdCmpdPattern" . }}
+        - name: store
+          compDef: {{ include "hugegraph.storeCmpdPattern" . }}
+        - name: server
+          compDef: {{ include "hugegraph.serverCmpdPattern" . }}
+      orders:
+        provision:
+          - pd,store
+          - server
+        terminate:
+          - server
+          - store,pd
+        update:
+          - pd,store
+          - server

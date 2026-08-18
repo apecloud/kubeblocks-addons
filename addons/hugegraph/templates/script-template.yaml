@@ -9,3 +9,9 @@ data:
     {{- .Files.Get "scripts/start.sh" | nindent 4 }}
   shutdown.sh: |-
     {{- .Files.Get "scripts/shutdown.sh" | nindent 4 }}
+  start-pd.sh: |-
+    {{- .Files.Get "scripts/start-pd.sh" | nindent 4 }}
+  start-store.sh: |-
+    {{- .Files.Get "scripts/start-store.sh" | nindent 4 }}
+  start-server.sh: |-
+    {{- .Files.Get "scripts/start-server.sh" | nindent 4 }}

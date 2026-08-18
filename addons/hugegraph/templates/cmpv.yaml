@@ -12,8 +12,32 @@ spec:
         - {{ include "hugegraph.cmpdPattern" . }}
       releases:
         - hugegraph-1.7.0
+    - compDefs:
+        - {{ include "hugegraph.pdCmpdPattern" . }}
+      releases:
+        - hugegraph-pd-1.7.0
+    - compDefs:
+        - {{ include "hugegraph.storeCmpdPattern" . }}
+      releases:
+        - hugegraph-store-1.7.0
+    - compDefs:
+        - {{ include "hugegraph.serverCmpdPattern" . }}
+      releases:
+        - hugegraph-server-1.7.0
   releases:
     - name: hugegraph-1.7.0
       serviceVersion: 1.7.0
       images:
         hugegraph: {{ include "hugegraph.image" . }}
+    - name: hugegraph-pd-1.7.0
+      serviceVersion: 1.7.0
+      images:
+        pd: {{ include "hugegraph.pdImage" . }}
+    - name: hugegraph-store-1.7.0
+      serviceVersion: 1.7.0
+      images:
+        store: {{ include "hugegraph.storeImage" . }}
+    - name: hugegraph-server-1.7.0
+      serviceVersion: 1.7.0
+      images:
+        server: {{ include "hugegraph.serverImage" . }}
