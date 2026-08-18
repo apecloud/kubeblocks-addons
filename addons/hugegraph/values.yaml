@@ -21,6 +21,19 @@ exporter:
       cpu: 100m
       memory: 128Mi
 
+distributed:
+  pd:
+    repository: hugegraph/pd
+    tag: "1.7.0"
+    dataMountPath: /hugegraph-pd/pd_data
+  store:
+    repository: hugegraph/store
+    tag: "1.7.0"
+    dataMountPath: /hugegraph-store/storage
+  server:
+    repository: hugegraph/server
+    tag: "1.7.0"
+
 serviceVersion: "1.7.0"
 dataMountPath: /hugegraph-data
 

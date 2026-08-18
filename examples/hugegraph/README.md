@@ -1,6 +1,7 @@
 # HugeGraph Examples
 
-These examples target KubeBlocks `release-1.0` and HugeGraph 1.7.0 standalone.
+These examples target KubeBlocks `release-1.0` and HugeGraph 1.7.0.
+`cluster.yaml` is standalone. `cluster-distributed.yaml` is PD + Store + Server.
 
 ## Create
 

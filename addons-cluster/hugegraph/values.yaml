@@ -1,5 +1,11 @@
 version: "1.7.0"
+topology: standalone
 replicas: 1
+
+distributed:
+  pdReplicas: 3
+  storeReplicas: 3
+  serverReplicas: 1
 
 cpu: 1
 memory: 2

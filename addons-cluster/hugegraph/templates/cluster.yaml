@@ -6,11 +6,28 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   clusterDef: hugegraph
-  topology: standalone
+  topology: {{ .Values.topology | default "standalone" }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
+    {{- if eq (.Values.topology | default "standalone") "distributed" }}
+    - name: pd
+      serviceVersion: {{ .Values.version | quote }}
+      replicas: {{ .Values.distributed.pdReplicas | default 3 }}
+      {{- include "kblib.componentResources" . | nindent 6 }}
+      {{- include "kblib.componentStorages" . | nindent 6 }}
+    - name: store
+      serviceVersion: {{ .Values.version | quote }}
+      replicas: {{ .Values.distributed.storeReplicas | default 3 }}
+      {{- include "kblib.componentResources" . | nindent 6 }}
+      {{- include "kblib.componentStorages" . | nindent 6 }}
+    - name: server
+      serviceVersion: {{ .Values.version | quote }}
+      replicas: {{ .Values.distributed.serverReplicas | default 1 }}
+      {{- include "kblib.componentResources" . | nindent 6 }}
+    {{- else }}
     - name: server
       serviceVersion: {{ .Values.version | quote }}
       replicas: 1
       {{- include "kblib.componentResources" . | nindent 6 }}
       {{- include "kblib.componentStorages" . | nindent 6 }}
+    {{- end }}

@@ -33,7 +33,43 @@ hugegraph-{{ .Chart.Version }}
 {{- end }}
 
 {{- define "hugegraph.cmpdPattern" -}}
-^hugegraph-
+^hugegraph-[0-9]
+{{- end }}
+
+{{- define "hugegraph.pdCmpdName" -}}
+hugegraph-pd-{{ .Chart.Version }}
+{{- end }}
+
+{{- define "hugegraph.pdCmpdPattern" -}}
+^hugegraph-pd-
+{{- end }}
+
+{{- define "hugegraph.storeCmpdName" -}}
+hugegraph-store-{{ .Chart.Version }}
+{{- end }}
+
+{{- define "hugegraph.storeCmpdPattern" -}}
+^hugegraph-store-
+{{- end }}
+
+{{- define "hugegraph.serverCmpdName" -}}
+hugegraph-server-{{ .Chart.Version }}
+{{- end }}
+
+{{- define "hugegraph.serverCmpdPattern" -}}
+^hugegraph-server-
+{{- end }}
+
+{{- define "hugegraph.pdImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.distributed.pd.repository }}:{{ .Values.distributed.pd.tag }}
+{{- end }}
+
+{{- define "hugegraph.storeImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.distributed.store.repository }}:{{ .Values.distributed.store.tag }}
+{{- end }}
+
+{{- define "hugegraph.serverImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.distributed.server.repository }}:{{ .Values.distributed.server.tag }}
 {{- end }}
 
 {{- define "hugegraph.scriptsTemplateName" -}}

@@ -1,0 +1,100 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "hugegraph.storeCmpdName" . }}
+  labels:
+    {{- include "hugegraph.labels" . | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "hugegraph.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Apache HugeGraph 1.7.0 HStore.
+  serviceKind: hugegraph-store
+  serviceVersion: {{ .Values.serviceVersion }}
+  podManagementPolicy: Parallel
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 5
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: rest
+            port: 8520
+            targetPort: rest
+          - name: grpc
+            port: 8500
+            targetPort: grpc
+          - name: raft
+            port: 8510
+            targetPort: raft
+  scripts:
+    - name: hugegraph-scripts
+      template: {{ include "hugegraph.scriptsTemplateName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  volumes:
+    - name: data
+  vars:
+    - name: PD_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "hugegraph.pdCmpdPattern" . }}
+          optional: false
+          podFQDNs: Required
+    - name: STORE_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "hugegraph.storeCmpdPattern" . }}
+          optional: false
+          podFQDNs: Required
+  runtime:
+    containers:
+      - name: store
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - /scripts/start-store.sh
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: HG_STORE_DATA_PATH
+            value: {{ .Values.distributed.store.dataMountPath }}
+        ports:
+          - name: rest
+            containerPort: 8520
+          - name: grpc
+            containerPort: 8500
+          - name: raft
+            containerPort: 8510
+        startupProbe:
+          httpGet:
+            path: /v1/health
+            port: rest
+          failureThreshold: 48
+          periodSeconds: 5
+          timeoutSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /v1/health
+            port: rest
+          failureThreshold: 3
+          periodSeconds: 10
+          timeoutSeconds: 3
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: rest
+          failureThreshold: 6
+          periodSeconds: 15
+          timeoutSeconds: 3
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.distributed.store.dataMountPath }}
+          - name: scripts
+            mountPath: /scripts
