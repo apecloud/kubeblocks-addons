@@ -15,6 +15,7 @@ Server with embedded RocksDB. Topology `distributed` is PD + Store + Server.
 | Volume expansion | Yes, when the StorageClass supports expansion | PD/Store only, when the StorageClass supports expansion |
 | Expose | Yes | Yes |
 | Full backup/restore | RocksDB checkpoint | No |
+| System account | `admin` init Secret | No |
 | Horizontal scaling | No | No. Store scale-in/rebalance is not supported |
 | roleProbe / switchover | No | No |
 | Reconfigure | No | No |
@@ -34,6 +35,9 @@ initialization marker before the first HugeGraph process starts.
 
 `BackupPolicyTemplate` matches only the standalone Server ComponentDefinition.
 Do not treat a distributed Cluster as backup-capable.
+
+Distributed PD, Store, and Server do not declare `systemAccounts`. There is
+no generated admin Secret for `topology=distributed`.
 
 ## Storage
 
