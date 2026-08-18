@@ -177,6 +177,18 @@ assert_contains "${cluster_render}" 'clusterDef: hugegraph'
 assert_contains "${cluster_render}" 'topology: standalone'
 assert_contains "${cluster_render}" 'replicas: 1'
 assert_contains "${cluster_render}" 'serviceVersion: [\"]?1\.7\.0[\"]?'
+assert_contains "${ADDON_DIR}/.helmignore" '^exporter/'
+
+package_dir=$(mktemp -d)
+trap 'rm -f "${definition_render}" "${cluster_render}"; rm -rf "${package_dir}"' EXIT
+helm package "${ADDON_DIR}" -d "${package_dir}" >/dev/null
+package_tgz=$(echo "${package_dir}"/hugegraph-*.tgz)
+[[ -f "${package_tgz}" ]] || fail "helm package missing"
+if tar tzf "${package_tgz}" | grep -E '(^|/)exporter/'; then
+  fail "packaged chart includes exporter/ source"
+fi
+package_bytes=$(wc -c < "${package_tgz}" | tr -d ' ')
+[[ "${package_bytes}" -lt 100000 ]] || fail "packaged chart too large: ${package_bytes} bytes"
 
 "${ADDON_DIR}/tests/scripts_test.sh"
 
