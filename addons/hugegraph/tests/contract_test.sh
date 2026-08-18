@@ -204,6 +204,10 @@ assert_contains "${ADDON_DIR}/scripts/start-server.sh" 'HG_SERVER_BACKEND=hstore
 assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'topology: distributed'
 assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'name: pd'
 assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'name: store'
+assert_contains "${ADDON_DIR}/README.md" 'Topology `distributed`'
+assert_contains "${ADDON_DIR}/README.md" 'Distributed backup/restore'
+assert_contains "${ADDON_DIR}/README.md" 'Store scale-in/rebalance is not supported'
+assert_contains "${ADDON_DIR}/README.md" 'matches only the standalone Server ComponentDefinition'
 
 distributed_render=$(mktemp)
 helm template hugegraph "${CLUSTER_DIR}" --namespace demo --set topology=distributed >"${distributed_render}"

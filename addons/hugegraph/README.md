@@ -1,23 +1,24 @@
 # HugeGraph
 
-This addon runs Apache HugeGraph 1.7.0 as a single HugeGraph Server backed by
-RocksDB.
+This addon runs Apache HugeGraph 1.7.0. Default topology `standalone` is one
+Server with embedded RocksDB. Topology `distributed` is PD + Store + Server.
 
 ## Capabilities
 
-| Capability | Standalone |
-| --- | --- |
-| Replicas | Exactly 1 |
-| Persistent data | Yes |
-| Restart | Yes |
-| Stop/Start | Yes |
-| Vertical scaling | Yes |
-| Volume expansion | Yes, when the StorageClass supports expansion |
-| Expose | Yes |
-| Full backup/restore | RocksDB checkpoint |
-| Horizontal scaling | No |
-| Reconfigure | No |
-| TLS | No |
+| Capability | Standalone | Distributed |
+| --- | --- | --- |
+| Replicas | Exactly 1 server | pd 3, store 3, server 1 |
+| Persistent data | Yes | PD and Store data PVCs |
+| Restart | Yes | Yes |
+| Stop/Start | Yes | Yes |
+| Vertical scaling | Yes | Yes |
+| Volume expansion | Yes, when the StorageClass supports expansion | PD/Store only, when the StorageClass supports expansion |
+| Expose | Yes | Yes |
+| Full backup/restore | RocksDB checkpoint | No |
+| Horizontal scaling | No | No. Store scale-in/rebalance is not supported |
+| roleProbe / switchover | No | No |
+| Reconfigure | No | No |
+| TLS | No | No |
 
 The `checkpoint` backup method calls HugeGraph's `snapshot_create` API for
 every persistent graph. It uploads graph configurations, a format-versioned
@@ -25,11 +26,14 @@ manifest, SHA-256 checksums, and all RocksDB checkpoints through datasafed. It
 does not use CSI volume snapshots.
 
 Restore is supported only to a new HugeGraph 1.7.0 standalone Cluster. It
-restores the complete instance. Single-graph restore, PITR, incremental backup,
-RebuildInstance, cross-version restore, and cross-topology restore are not
-supported. The restore action validates every graph config and checkpoint file,
-then creates the persistent upstream initialization marker before the first
-HugeGraph process starts.
+restores the complete instance. Distributed backup/restore, single-graph
+restore, PITR, incremental backup, RebuildInstance, cross-version restore, and
+cross-topology restore are not supported. The restore action validates every
+graph config and checkpoint file, then creates the persistent upstream
+initialization marker before the first HugeGraph process starts.
+
+`BackupPolicyTemplate` matches only the standalone Server ComponentDefinition.
+Do not treat a distributed Cluster as backup-capable.
 
 ## Storage
 
@@ -66,10 +70,12 @@ transaction timestamp.
 
 ## Image
 
-The runtime and data protection actions use
-`docker.io/hugegraph/hugegraph:1.7.0`. No custom tools image is required.
+Standalone uses `docker.io/hugegraph/hugegraph:1.7.0`. Distributed uses
+`hugegraph/pd:1.7.0`, `hugegraph/store:1.7.0`, and `hugegraph/server:1.7.0`.
+No custom tools image is required. Chart CI rewrites those official names to
+`docker.io/apecloud/*` and requires amd64+arm64 indexes.
 
 ## Examples
 
-See `examples/hugegraph` for Cluster, backup, restore, restart, stop/start,
-vertical scaling, and volume expansion manifests.
+See `examples/hugegraph` for standalone Cluster, backup, restore, restart,
+stop/start, vertical scaling, volume expansion, and `cluster-distributed.yaml`.
