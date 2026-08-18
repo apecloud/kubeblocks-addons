@@ -7,6 +7,20 @@ image:
   tag: "1.7.0"
   pullPolicy: IfNotPresent
 
+exporter:
+  image:
+    registry: docker.io
+    repository: apecloud/hugegraph-exporter
+    tag: "0.1.1"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
 serviceVersion: "1.7.0"
 dataMountPath: /hugegraph-data
 

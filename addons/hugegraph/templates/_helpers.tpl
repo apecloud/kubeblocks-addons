@@ -51,3 +51,7 @@ hugegraph-backup-policy-template
 {{- define "hugegraph.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
 {{- end }}
+
+{{- define "hugegraph.exporterImage" -}}
+{{ .Values.exporter.image.registry | default "docker.io" }}/{{ .Values.exporter.image.repository }}:{{ .Values.exporter.image.tag }}
+{{- end }}

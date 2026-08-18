@@ -4,3 +4,4 @@
 tests/
 *.swp
 *.tmp
+exporter/
