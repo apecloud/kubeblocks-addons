@@ -38,7 +38,7 @@ PVC。
 - 多 graph 之间的全局事务时间点。每个 graph 自身 checkpoint 一致，但 graph 之间
   按顺序创建 checkpoint，存在短时间窗口。
 - RebuildInstance、scaleOut.fromBackup、跨 HugeGraph 版本、跨 topology 恢复。
-- TLS、在线参数变更、分布式 PD/Store/Server topology。
+- TLS、在线参数变更。分布式 PD/Store/Server 见 `DESIGN-distributed.zh.md`；本文件只覆盖 standalone。
 
 ## 3. 存储和启动
 
