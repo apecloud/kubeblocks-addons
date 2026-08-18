@@ -11,7 +11,7 @@ exporter:
   image:
     registry: docker.io
     repository: apecloud/hugegraph-exporter
-    tag: "0.1.0-31358092"
+    tag: "0.1.1"
     pullPolicy: IfNotPresent
   resources:
     requests:
