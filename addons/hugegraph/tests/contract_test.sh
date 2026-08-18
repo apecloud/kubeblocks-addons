@@ -208,6 +208,16 @@ assert_contains "${ADDON_DIR}/README.md" 'Topology `distributed`'
 assert_contains "${ADDON_DIR}/README.md" 'Distributed backup/restore'
 assert_contains "${ADDON_DIR}/README.md" 'Store scale-in/rebalance is not supported'
 assert_contains "${ADDON_DIR}/README.md" 'matches only the standalone Server ComponentDefinition'
+assert_contains "${ADDON_DIR}/README.md" 'do not declare `systemAccounts`'
+assert_contains "${ADDON_DIR}/README.md" 'no generated admin Secret'
+assert_equal \
+  "$(yq '[select(.kind == "BackupPolicyTemplate") | .spec.compDefs[]] | join(",")' "${definition_render}" | tr -d '\n')" \
+  "^hugegraph-[0-9]" \
+  "BPT matches only standalone server"
+assert_equal \
+  "$(yq ea '[select(.kind == "ComponentDefinition" and (.metadata.name == "hugegraph-pd-1.0.0" or .metadata.name == "hugegraph-store-1.0.0" or .metadata.name == "hugegraph-server-1.0.0")) | .spec | has("systemAccounts")] | map(select(. == true)) | length' "${definition_render}" | tr -d '\n')" \
+  "0" \
+  "distributed CmpDs have no systemAccounts"
 
 distributed_render=$(mktemp)
 helm template hugegraph "${CLUSTER_DIR}" --namespace demo --set topology=distributed >"${distributed_render}"

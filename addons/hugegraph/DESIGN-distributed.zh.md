@@ -58,5 +58,6 @@ headless Service 名。
 - PD / Store switchover、roleProbe
 - TLS、reconfigure
 - Hubble
+- distributed `systemAccounts` / 生成 admin Secret
 
 BackupPolicyTemplate 继续只命中 standalone server CmpD。
