@@ -96,4 +96,31 @@ export HG_SERVER_DRY_RUN=1
 grep -qx 'stores_healthy=3' "${WORK_ROOT}/out-ok" \
   || fail "all-Store wait did not report stores_healthy=3: $(cat "${WORK_ROOT}/out-ok" "${WORK_ROOT}/err-ok")"
 
+# Empty Store FQDNs must fail closed before any health wait.
+export HG_SERVER_DRY_RUN=1
+export PD_POD_FQDNS=pd-0.pd-headless
+export STORE_POD_FQDNS=
+set +e
+(
+  cd "$WORK_ROOT"
+  bash "${ADDON_DIR}/scripts/start-server.sh"
+) >"${WORK_ROOT}/out-empty-store" 2>"${WORK_ROOT}/err-empty-store"
+empty_store_rc=$?
+set -e
+[[ "$empty_store_rc" -ne 0 ]] || fail "start-server.sh continued with empty STORE_POD_FQDNS"
+grep -q 'STORE_POD_FQDNS is required' "${WORK_ROOT}/err-empty-store" \
+  || fail "start-server.sh did not refuse empty STORE_POD_FQDNS"
+
+export STORE_POD_FQDNS=,
+set +e
+(
+  cd "$WORK_ROOT"
+  bash "${ADDON_DIR}/scripts/start-server.sh"
+) >"${WORK_ROOT}/out-blank-store" 2>"${WORK_ROOT}/err-blank-store"
+blank_store_rc=$?
+set -e
+[[ "$blank_store_rc" -ne 0 ]] || fail "start-server.sh continued with comma-only STORE_POD_FQDNS"
+grep -q 'cannot derive Store list' "${WORK_ROOT}/err-blank-store" \
+  || fail "start-server.sh did not report comma-only STORE_POD_FQDNS"
+
 echo "HugeGraph start-server Store wait tests passed"
