@@ -25,5 +25,20 @@ export HG_SERVER_USE_PD=true
 export HG_SERVER_INIT_STORE_ENABLED=false
 export STORE_REST="${first_store}:8520"
 
+attempts=${HG_SERVER_HEALTH_ATTEMPTS:-60}
+sleep_secs=${HG_SERVER_HEALTH_SLEEP:-2}
+store_healthy=0
+for _ in $(seq 1 "${attempts}"); do
+  if curl -fsS "http://${first_store}:8520/v1/health" >/dev/null; then
+    store_healthy=1
+    break
+  fi
+  sleep "${sleep_secs}"
+done
+[[ "${store_healthy}" -eq 1 ]] || {
+  echo "Store is not healthy at http://${first_store}:8520/v1/health after ${attempts} attempt(s)" >&2
+  exit 1
+}
+
 cd /hugegraph-server
 exec /usr/bin/dumb-init -- ./docker-entrypoint.sh
