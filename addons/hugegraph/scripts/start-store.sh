@@ -45,7 +45,8 @@ done
 }
 
 export HG_STORE_PD_ADDRESS="$(append_port "${PD_POD_FQDNS}" 8686)"
-attempts=${HG_STORE_HEALTH_ATTEMPTS:-60}
+# Official PD start_period is 120s. 3-PD Raft can exceed a 120s wait.
+attempts=${HG_STORE_HEALTH_ATTEMPTS:-90}
 sleep_secs=${HG_STORE_HEALTH_SLEEP:-2}
 # Official 3-PD compose waits for every PD, not only the first.
 # One healthy PD is not a Raft majority.

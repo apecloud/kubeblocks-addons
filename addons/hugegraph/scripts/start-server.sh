@@ -35,7 +35,8 @@ export HG_SERVER_USE_PD=true
 export HG_SERVER_INIT_STORE_ENABLED=false
 export STORE_REST="${first_store}:8520"
 
-attempts=${HG_SERVER_HEALTH_ATTEMPTS:-60}
+# Official Store start_period is 120s. Waiting every Store needs more than 120s.
+attempts=${HG_SERVER_HEALTH_ATTEMPTS:-90}
 sleep_secs=${HG_SERVER_HEALTH_SLEEP:-2}
 # Official 3-store compose waits for every Store, not only the first.
 # With pd.initial-store-count = store count, one healthy Store is not
