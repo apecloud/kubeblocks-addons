@@ -9,6 +9,13 @@
       "default": "1.7.0",
       "enum": ["1.7.0"]
     },
+    "topology": {
+      "title": "Topology",
+      "description": "standalone is one Server with RocksDB. distributed is PD 3 + Store 3 + Server 1.",
+      "type": "string",
+      "default": "standalone",
+      "enum": ["standalone", "distributed"]
+    },
     "replicas": {
       "title": "Replicas",
       "description": "Standalone HugeGraph requires exactly one replica.",
@@ -16,6 +23,34 @@
       "default": 1,
       "minimum": 1,
       "maximum": 1
+    },
+    "distributed": {
+      "title": "Distributed",
+      "description": "Claimed distributed shape. Horizontal scaling is not supported.",
+      "type": "object",
+      "properties": {
+        "pdReplicas": {
+          "title": "PD Replicas",
+          "type": "integer",
+          "default": 3,
+          "minimum": 3,
+          "maximum": 3
+        },
+        "storeReplicas": {
+          "title": "Store Replicas",
+          "type": "integer",
+          "default": 3,
+          "minimum": 3,
+          "maximum": 3
+        },
+        "serverReplicas": {
+          "title": "Server Replicas",
+          "type": "integer",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 1
+        }
+      }
     },
     "cpu": {
       "title": "CPU",
