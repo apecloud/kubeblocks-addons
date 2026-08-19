@@ -98,4 +98,32 @@ export HG_STORE_DRY_RUN=1
 grep -qx 'pds_healthy=3' "${WORK_ROOT}/out-ok" \
   || fail "all-PD wait did not report pds_healthy=3: $(cat "${WORK_ROOT}/out-ok" "${WORK_ROOT}/err-ok")"
 
+# Empty PD FQDNs must fail closed before any health wait.
+export HG_STORE_DRY_RUN=1
+export STORE_POD_FQDNS=store-0.store-headless
+export POD_NAME=store-0
+export PD_POD_FQDNS=
+set +e
+(
+  cd "$WORK_ROOT"
+  bash "${ADDON_DIR}/scripts/start-store.sh"
+) >"${WORK_ROOT}/out-empty-pd" 2>"${WORK_ROOT}/err-empty-pd"
+empty_pd_rc=$?
+set -e
+[[ "$empty_pd_rc" -ne 0 ]] || fail "start-store.sh continued with empty PD_POD_FQDNS"
+grep -q 'PD_POD_FQDNS is required' "${WORK_ROOT}/err-empty-pd" \
+  || fail "start-store.sh did not refuse empty PD_POD_FQDNS"
+
+export PD_POD_FQDNS=,
+set +e
+(
+  cd "$WORK_ROOT"
+  bash "${ADDON_DIR}/scripts/start-store.sh"
+) >"${WORK_ROOT}/out-blank-pd" 2>"${WORK_ROOT}/err-blank-pd"
+blank_pd_rc=$?
+set -e
+[[ "$blank_pd_rc" -ne 0 ]] || fail "start-store.sh continued with comma-only PD_POD_FQDNS"
+grep -q 'cannot derive PD list' "${WORK_ROOT}/err-blank-pd" \
+  || fail "start-store.sh did not report comma-only PD_POD_FQDNS"
+
 echo "HugeGraph start-store PD wait tests passed"
