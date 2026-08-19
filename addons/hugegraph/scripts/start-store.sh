@@ -35,12 +35,20 @@ done
 
 export HG_STORE_PD_ADDRESS="$(append_port "${PD_POD_FQDNS}" 8686)"
 first_pd=${PD_POD_FQDNS%%,*}
-for _ in $(seq 1 60); do
+attempts=${HG_STORE_HEALTH_ATTEMPTS:-60}
+sleep_secs=${HG_STORE_HEALTH_SLEEP:-2}
+pd_healthy=0
+for _ in $(seq 1 "${attempts}"); do
   if curl -fsS "http://${first_pd}:8620/v1/health" >/dev/null; then
+    pd_healthy=1
     break
   fi
-  sleep 2
+  sleep "${sleep_secs}"
 done
+[[ "${pd_healthy}" -eq 1 ]] || {
+  echo "PD is not healthy at http://${first_pd}:8620/v1/health after ${attempts} attempt(s)" >&2
+  exit 1
+}
 export HG_STORE_GRPC_HOST="${self}"
 export HG_STORE_GRPC_PORT="${HG_STORE_GRPC_PORT:-8500}"
 export HG_STORE_REST_PORT="${HG_STORE_REST_PORT:-8520}"
