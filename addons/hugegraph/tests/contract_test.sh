@@ -60,6 +60,7 @@ required_files=(
   "${ADDON_DIR}/templates/cmpd-server.yaml"
   "${ADDON_DIR}/tests/scripts_test.sh"
   "${ADDON_DIR}/tests/start_store_test.sh"
+  "${ADDON_DIR}/tests/start_server_test.sh"
   "${ADDON_DIR}/exporter/Dockerfile"
   "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml"
   "${ADDON_DIR}/exporter/go.mod"
@@ -203,6 +204,7 @@ assert_contains "${ADDON_DIR}/scripts/start-pd.sh" 'HG_PD_RAFT_ADDRESS'
 assert_contains "${ADDON_DIR}/scripts/start-store.sh" 'HG_STORE_PD_ADDRESS'
 assert_contains "${ADDON_DIR}/scripts/start-store.sh" 'PD is not healthy'
 assert_contains "${ADDON_DIR}/scripts/start-server.sh" 'HG_SERVER_BACKEND=hstore'
+assert_contains "${ADDON_DIR}/scripts/start-server.sh" 'Store is not healthy'
 assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'topology: distributed'
 assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'name: pd'
 assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'name: store'
@@ -246,5 +248,6 @@ package_bytes=$(wc -c < "${package_tgz}" | tr -d ' ')
 
 "${ADDON_DIR}/tests/scripts_test.sh"
 "${ADDON_DIR}/tests/start_store_test.sh"
+"${ADDON_DIR}/tests/start_server_test.sh"
 
 echo "HugeGraph addon offline contracts passed"
