@@ -206,8 +206,18 @@ assert_contains "${ADDON_DIR}/scripts/start-pd.sh" 'HG_PD_INITIAL_STORE_COUNT='
 assert_contains "${ADDON_DIR}/scripts/start-pd.sh" 'count_hosts'
 assert_contains "${ADDON_DIR}/scripts/start-store.sh" 'HG_STORE_PD_ADDRESS'
 assert_contains "${ADDON_DIR}/scripts/start-store.sh" 'PD is not healthy'
+assert_contains "${ADDON_DIR}/scripts/start-store.sh" 'HG_STORE_HEALTH_ATTEMPTS:-90'
 assert_contains "${ADDON_DIR}/scripts/start-server.sh" 'HG_SERVER_BACKEND=hstore'
 assert_contains "${ADDON_DIR}/scripts/start-server.sh" 'Store is not healthy'
+assert_contains "${ADDON_DIR}/scripts/start-server.sh" 'HG_SERVER_HEALTH_ATTEMPTS:-90'
+assert_equal \
+  "$(yq ea '[select(.kind == "ComponentDefinition" and .metadata.name == "hugegraph-store-1.0.0") | .spec.runtime.containers[] | select(.name == "store") | .startupProbe.failureThreshold] | .[0]' "${definition_render}" | tr -d '\n')" \
+  "72" \
+  "store startupProbe covers PD wait plus process start"
+assert_equal \
+  "$(yq ea '[select(.kind == "ComponentDefinition" and .metadata.name == "hugegraph-server-1.0.0") | .spec.runtime.containers[] | select(.name == "server") | .startupProbe.failureThreshold] | .[0]' "${definition_render}" | tr -d '\n')" \
+  "72" \
+  "server startupProbe covers Store wait plus process start"
 assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'topology: distributed'
 assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'name: pd'
 assert_contains "${ROOT_DIR}/examples/hugegraph/cluster-distributed.yaml" 'name: store'

@@ -61,7 +61,7 @@ spec:
           httpGet:
             path: /versions
             port: http
-          failureThreshold: 36
+          failureThreshold: 72
           periodSeconds: 5
           timeoutSeconds: 3
         readinessProbe:
