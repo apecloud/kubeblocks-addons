@@ -246,6 +246,16 @@ assert_equal \
   "pd,store,server" \
   "distributed component names"
 rm -f "${distributed_render}"
+schema="${CLUSTER_DIR}/values.schema.json"
+assert_file "${schema}"
+assert_equal \
+  "$(yq -oy '.properties.topology.enum | join(",")' "${schema}")" \
+  "standalone,distributed" \
+  "cluster schema topology enum"
+assert_equal \
+  "$(yq -oy '[.properties.distributed.properties.pdReplicas.default, .properties.distributed.properties.storeReplicas.default, .properties.distributed.properties.serverReplicas.default] | join("/")' "${schema}")" \
+  "3/3/1" \
+  "cluster schema claimed distributed defaults"
 assert_contains "${ADDON_DIR}/.helmignore" '^exporter/'
 
 package_dir=$(mktemp -d)
