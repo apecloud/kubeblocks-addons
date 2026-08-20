@@ -16,7 +16,7 @@ Describe "dataprotection/backup-info-collector.sh"
     DP_BACKUP_INFO_FILE="${tmpdir}/backup-info"
     export PATH CALL_LOG DP_DB_USER DP_DB_HOST DP_DB_PORT \
       DP_DATASAFED_BIN_PATH DP_BACKUP_BASE_PATH DP_BACKUP_INFO_FILE
-    unset DATASAFED_STAT_OUT 2>/dev/null || true
+    unset DATASAFED_STAT_OUT MV_EXIT 2>/dev/null || true
     write_stubs
     . ../dataprotection/backup-info-collector.sh
   }
@@ -49,11 +49,45 @@ if [ "$1" = "stat" ]; then
   printf '%s\n' "${DATASAFED_STAT_OUT:-TotalSize: 4096}"
 fi
 EOF
-    chmod +x "${bindir}/psql" "${bindir}/date" "${bindir}/datasafed"
+    cat > "${bindir}/mv" <<'EOF'
+#!/bin/sh
+if [ "${MV_EXIT:-0}" -ne 0 ]; then
+  exit "${MV_EXIT}"
+fi
+exec /bin/mv "$@"
+EOF
+    chmod +x "${bindir}/psql" "${bindir}/date" "${bindir}/datasafed" "${bindir}/mv"
   }
 
   call_log() {
     cat "${CALL_LOG}"
+  }
+
+  publish_with_existence_observer() {
+    echo() {
+      case "$1" in
+        '{"totalSize"'*) /bin/sleep 0.2 ;;
+      esac
+      builtin echo "$@"
+    }
+
+    (
+      while [[ ! -e "${DP_BACKUP_INFO_FILE}" ]]; do
+        /bin/sleep 0.01
+      done
+      /usr/bin/wc -c < "${DP_BACKUP_INFO_FILE}" > "${tmpdir}/observed-bytes"
+    ) &
+    observer_pid=$!
+    stat_and_save_backup_info "2026-08-15 15:00:00" "2026-08-15 15:01:00"
+    wait "${observer_pid}"
+  }
+
+  observed_bytes() {
+    tr -d '[:space:]' < "${tmpdir}/observed-bytes"
+  }
+
+  backup_info_temp_count() {
+    find "${tmpdir}" -maxdepth 1 -name 'backup-info.tmp.*' -print | wc -l | tr -d '[:space:]'
   }
 
   It "queries time through the ActionSet-injected database port"
@@ -78,5 +112,22 @@ EOF
     The status should be failure
     The error should include "datasafed stat returned an invalid TotalSize"
     The path "${DP_BACKUP_INFO_FILE}" should not be exist
+  End
+
+  It "publishes a complete backup-info document before it becomes visible"
+    export DATASAFED_STAT_OUT="TotalSize: 4096"
+    When call publish_with_existence_observer
+    The status should eq 0
+    The result of function observed_bytes should not eq 0
+    The contents of file "${DP_BACKUP_INFO_FILE}" should include '"totalSize":"4096"'
+  End
+
+  It "fails without leaving metadata when atomic publication fails"
+    export DATASAFED_STAT_OUT="TotalSize: 4096"
+    export MV_EXIT=7
+    When call stat_and_save_backup_info "2026-08-15 15:00:00" "2026-08-15 15:01:00"
+    The status should be failure
+    The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    The result of function backup_info_temp_count should eq 0
   End
 End
