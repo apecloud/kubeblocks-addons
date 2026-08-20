@@ -122,9 +122,11 @@ function save_backup_status() {
     if [[ ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == ${global_old_size} ]];then
        return
     fi
-    global_old_size=${TOTAL_SIZE}
     local START_TIME=$(get_start_time_for_range)
-    DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${global_stop_time}"
+    if ! DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${global_stop_time}"; then
+       return 1
+    fi
+    global_old_size=${TOTAL_SIZE}
 }
 
 function check_pg_process() {

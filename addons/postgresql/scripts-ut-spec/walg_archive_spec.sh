@@ -28,7 +28,7 @@ Describe "dataprotection/wal-g-archive.sh"
     export PATH CALL_LOG VOLUME_DATA_DIR LOG_DIR KB_BACKUP_WORKDIR \
       DP_BACKUP_INFO_FILE UPLOAD_MISSING_LOGS_RETRY_INTERVAL \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
-    unset DATASAFED_STAT_EXIT DATASAFED_STAT_OUT WALG_EXIT PSQL_EXIT 2>/dev/null || true
+    unset DATASAFED_STAT_EXIT DATASAFED_STAT_OUT MV_EXIT WALG_EXIT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -89,7 +89,15 @@ else
   exec /bin/date "$@"
 fi
 EOF
-    chmod +x "${VOLUME_DATA_DIR}/wal-g/wal-g" "${bindir}/psql" "${bindir}/datasafed" "${bindir}/date"
+    cat > "${bindir}/mv" <<'EOF'
+#!/bin/sh
+printf 'mv %s\n' "$*" >> "${CALL_LOG}"
+if [ "${MV_EXIT:-0}" -ne 0 ]; then
+  exit "${MV_EXIT}"
+fi
+exec /bin/mv "$@"
+EOF
+    chmod +x "${VOLUME_DATA_DIR}/wal-g/wal-g" "${bindir}/psql" "${bindir}/datasafed" "${bindir}/date" "${bindir}/mv"
   }
 
   build_shim() {
@@ -117,6 +125,16 @@ EOF
       in_loop && /uploadDoneHistoryWALs/ { calls++ }
       END { print calls + 0 }
     ' ../dataprotection/wal-g-archive.sh
+  }
+
+  retry_same_size_after_publication_failure() {
+    export DATASAFED_STAT_OUT="TotalSize: 4096"
+    export MV_EXIT=17
+    if save_backup_status; then
+      return 90
+    fi
+    export MV_EXIT=0
+    save_backup_status
   }
 
   Describe "uploadDoneHistoryWALs()"
@@ -222,6 +240,13 @@ EOF
       The status should be failure
       The error should include "invalid TotalSize"
       The path "${DP_BACKUP_INFO_FILE}" should not be exist
+    End
+
+    It "retries the same size after an atomic publication failure"
+      When call retry_same_size_after_publication_failure
+      The status should eq 0
+      The output should include "total size: 4096"
+      The contents of file "${DP_BACKUP_INFO_FILE}" should eq '{"totalSize":"4096"}'
     End
   End
 End
