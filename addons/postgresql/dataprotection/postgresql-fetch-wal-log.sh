@@ -13,20 +13,28 @@ function fetch-wal-log(){
     DP_log "PITR: $pitr"
 
     exit_fetch_wal=0 && mkdir -p $wal_destination_dir
-    for dir_name in $(datasafed list /) ; do
+    if ! dir_names=$(datasafed list /); then
+       DP_error_log "failed to list the WAL archive root"
+       return 1
+    fi
+    for dir_name in $dir_names ; do
       if [[ $exit_fetch_wal -eq 1 ]]; then
          break
       fi
 
+      if ! dir_files=$(datasafed list "${dir_name}"); then
+         DP_error_log "failed to list WAL archive directory ${dir_name}"
+         return 1
+      fi
       # check if the latest_wal_log after the start_wal_log
-      latest_wal=$(datasafed list ${dir_name} | tail -n 1)
+      latest_wal=$(printf '%s\n' "${dir_files}" | tail -n 1)
       latest_wal_name=$(get_wal_name ${latest_wal})
       if [[ ${latest_wal_name} < $start_wal_name ]]; then
          continue
       fi
 
       DP_log "start to fetch wal logs from ${dir_name}"
-      for file in $(datasafed list ${dir_name} | grep ".zst"); do
+      for file in $(printf '%s\n' "${dir_files}" | grep ".zst"); do
          wal_name=$(get_wal_name ${file})
          if [[ $wal_name < $start_wal_name ]]; then
             continue
