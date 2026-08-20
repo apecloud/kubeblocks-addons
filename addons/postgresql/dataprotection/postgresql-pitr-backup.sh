@@ -31,7 +31,10 @@ function purge_expired_files() {
     if [ ! -z "${info}" ]; then
        global_last_purge_time=${currentUnix}
        DP_log "cleanup expired wal-log files: ${info}"
-       local TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+       local TOTAL_SIZE
+       if ! TOTAL_SIZE=$(DP_get_backup_total_size); then
+         return 1
+       fi
        DP_save_backup_status_info "${TOTAL_SIZE}"
     fi
 }
@@ -111,9 +114,12 @@ function get_start_time_for_range() {
 
 # save backup status info to sync file
 function save_backup_status() {
-    local TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+    local TOTAL_SIZE
+    if ! TOTAL_SIZE=$(DP_get_backup_total_size); then
+       return 1
+    fi
     # if no size changes, return
-    if [[ -z ${TOTAL_SIZE} || ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == ${global_old_size} ]];then
+    if [[ ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == ${global_old_size} ]];then
        return
     fi
     global_old_size=${TOTAL_SIZE}

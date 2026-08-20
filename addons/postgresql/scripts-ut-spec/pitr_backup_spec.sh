@@ -25,7 +25,7 @@ Describe "dataprotection/postgresql-pitr-backup.sh"
     mkdir -p "${LOG_DIR}/archive_status"
     export PATH CALL_LOG LOG_DIR KB_BACKUP_WORKDIR DP_BACKUP_INFO_FILE \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
-    unset DATASAFED_PUSH_EXIT PSQL_EXIT 2>/dev/null || true
+    unset DATASAFED_PUSH_EXIT DATASAFED_STAT_EXIT DATASAFED_STAT_OUT PSQL_EXIT 2>/dev/null || true
 
     write_stubs
     build_shim
@@ -53,7 +53,8 @@ case "$1" in
     exit "${DATASAFED_PUSH_EXIT:-0}"
     ;;
   stat)
-    echo "TotalSize 0"
+    printf '%s\n' "${DATASAFED_STAT_OUT:-TotalSize: 0}"
+    exit "${DATASAFED_STAT_EXIT:-0}"
     ;;
 esac
 EOF
@@ -127,6 +128,16 @@ EOF
       The status should be failure
       The output should include "retry detection!"
       The output should include "Before switching to a new instance, back up any remaining WAL logs."
+    End
+  End
+
+  Describe "save_backup_status()"
+    It "fails clearly when datasafed stat fails instead of retaining stale progress silently"
+      export DATASAFED_STAT_EXIT=17
+      When call save_backup_status
+      The status should be failure
+      The error should include "datasafed stat failed"
+      The path "${DP_BACKUP_INFO_FILE}" should not be exist
     End
   End
 End
