@@ -98,6 +98,15 @@ EOF
     cat "${CALL_LOG}"
   }
 
+  missing_wal_reconciliation_calls_inside_loop() {
+    awk '
+      /^while true; do$/ { in_loop = 1; next }
+      in_loop && /^done$/ { in_loop = 0 }
+      in_loop && /uploadMissingLogs/ { calls++ }
+      END { print calls + 0 }
+    ' ../dataprotection/postgresql-pitr-backup.sh
+  }
+
   retry_same_size_after_publication_failure() {
     export DATASAFED_STAT_OUT="TotalSize: 4096"
     export MV_EXIT=17
@@ -151,6 +160,21 @@ EOF
       The status should be failure
       The output should include "retry detection!"
       The output should include "Before switching to a new instance, back up any remaining WAL logs."
+    End
+  End
+
+  Describe "uploadMissingLogs()"
+    It "fails when the remote WAL listing is unavailable"
+      export DATASAFED_LIST_EXIT=17
+      When call uploadMissingLogs
+      The status should be failure
+      The output should include "start to upload the wal log which maybe misses"
+      The error should include "datasafed WAL listing failed"
+    End
+
+    It "keeps a retry path inside the archive loop after a startup failure"
+      When call missing_wal_reconciliation_calls_inside_loop
+      The output should eq 1
     End
   End
 
