@@ -38,6 +38,14 @@ There are two key components in the ClickHouse cluster:
 | 22             | 22.3.18, 22.3.20, 22.6.1, 22.8.21, 22.9.4 |
 | 24             | 24.7.2, 24.8.3, 24.12.2   |
 | 25             | 25.4.4, 25.9.7            |
+| 26             | 26.5.3                     |
+
+> [!NOTE]
+> The ClickHouse cluster chart explicitly defaults both ClickHouse Server and Keeper to 25.9.7.
+>
+> A raw KubeBlocks `Cluster` manifest has different semantics. If `spec.componentSpecs[*].serviceVersion` or `spec.shardings[*].template.serviceVersion` is omitted, KubeBlocks selects the highest compatible version.
+>
+> After the 26.5.3 release is installed, omit the field only when 26.5.3 is intended. Set `serviceVersion: 25.9.7` explicitly to keep a raw cluster on 25.9.7.
 
 ## Prerequisites
 
