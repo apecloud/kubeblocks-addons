@@ -101,10 +101,11 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/mongodb-shard-manage.sh --post-provision >> /tmp/post-provision.log 2>&1
+          - /scripts/mongodb-shard-manage.sh --post-provision >> /tmp/post-provision.log
         targetPodSelector: Role
         matchingKey: primary
       preCondition: RuntimeReady
+      timeoutSeconds: 30
       retryPolicy:
         maxRetries: 10
   runtime:

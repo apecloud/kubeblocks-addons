@@ -44,24 +44,147 @@ check_shard_exists() {
     fi
 }
 
-initialize_or_scale_out_mongodb_shard() {
-    wait_for_mongos
+post_provision_diagnose_not_ready() {
+    local phase=$1
+    local retry_safe=$2
 
-    # Check if the shard exists
-    MAX_RETRIES=300
-    retry_count=0
-    while ! check_shard_exists; do
-        echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, initializing... (attempt $((retry_count+1))/$MAX_RETRIES)"
-        retry_count=$((retry_count+1))
-        if [ $retry_count -ge $MAX_RETRIES ]; then
-            echo "ERROR: Shard $MONGODB_REPLICA_SET_NAME failed to initialize after $MAX_RETRIES attempts." >&2
-            exit 1
-        fi
-        sleep 2
-        pod_endpoints=$(generate_endpoints "$MONGODB_POD_FQDN_LIST" "$KB_SERVICE_PORT")
-        echo "INFO: Adding shard $MONGODB_REPLICA_SET_NAME with endpoints: $pod_endpoints"
-        $CLUSTER_MONGO "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")"
-    done
+    {
+        echo "postProvision diagnosis:"
+        echo "action: postProvision"
+        echo "phase: $phase"
+        echo "component: $MONGODB_REPLICA_SET_NAME"
+        echo "next-retry-safe: $retry_safe"
+    } >&2
+}
+
+post_provision_run_json() {
+    local expression=$1
+    local serialized_expression
+
+    case "$CLIENT" in
+    mongosh | */mongosh)
+        serialized_expression="EJSON.stringify(($expression))"
+        ;;
+    *)
+        serialized_expression="JSON.stringify(($expression))"
+        ;;
+    esac
+
+    POST_PROVISION_RESULT=$(timeout 5s $CLUSTER_MONGO "$serialized_expression" 2>/dev/null)
+}
+
+post_provision_json_has_numeric_ok() {
+    printf '%s\n' "$1" |
+        jq -e 'type == "object" and has("ok") and (.ok | type == "number")' \
+            >/dev/null 2>&1
+}
+
+post_provision_json_ok_is_one() {
+    printf '%s\n' "$1" |
+        jq -e 'type == "object" and has("ok") and (.ok | type == "number") and .ok == 1' \
+            >/dev/null 2>&1
+}
+
+post_provision_probe_mongos() {
+    local command_status
+
+    post_provision_run_json 'db.adminCommand({ ping: 1 })'
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        post_provision_diagnose_not_ready "mongos-probe-failed" "no"
+        return "$command_status"
+    fi
+
+    if ! post_provision_json_has_numeric_ok "$POST_PROVISION_RESULT"; then
+        post_provision_diagnose_not_ready "mongos-probe-malformed" "no"
+        return 1
+    fi
+    if ! post_provision_json_ok_is_one "$POST_PROVISION_RESULT"; then
+        post_provision_diagnose_not_ready "mongos-not-ready" "yes"
+        return 1
+    fi
+}
+
+post_provision_classify_presence() {
+    local result=$1
+
+    if printf '%s\n' "$result" |
+        jq -e 'type == "null"' >/dev/null 2>&1; then
+        POST_PROVISION_PRESENCE=absent
+        return 0
+    fi
+
+    if printf '%s\n' "$result" |
+        jq -e --arg name "$MONGODB_REPLICA_SET_NAME" \
+            'type == "object" and has("_id") and (._id | type == "string") and ._id == $name' \
+            >/dev/null 2>&1; then
+        POST_PROVISION_PRESENCE=present
+        return 0
+    fi
+
+    return 1
+}
+
+post_provision_probe_shard_presence() {
+    local command_status
+
+    post_provision_run_json \
+        "db.getSiblingDB(\"config\").shards.findOne({ _id: \"$MONGODB_REPLICA_SET_NAME\" })"
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        post_provision_diagnose_not_ready "shard-presence-probe-failed" "no"
+        return "$command_status"
+    fi
+
+    if ! post_provision_classify_presence "$POST_PROVISION_RESULT"; then
+        post_provision_diagnose_not_ready "shard-presence-malformed" "no"
+        return 1
+    fi
+}
+
+initialize_or_scale_out_mongodb_shard() {
+    local command_status
+    local pod_endpoints
+
+    post_provision_probe_mongos
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        return "$command_status"
+    fi
+
+    post_provision_probe_shard_presence
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        return "$command_status"
+    fi
+    if [ "$POST_PROVISION_PRESENCE" = "present" ]; then
+        echo "INFO: Shard $MONGODB_REPLICA_SET_NAME is already present."
+        return 0
+    fi
+
+    pod_endpoints=$(generate_endpoints "$MONGODB_POD_FQDN_LIST" "$KB_SERVICE_PORT")
+    post_provision_run_json \
+        "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")"
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        post_provision_diagnose_not_ready "shard-add-failed" "no"
+        return "$command_status"
+    fi
+    if ! post_provision_json_ok_is_one "$POST_PROVISION_RESULT"; then
+        post_provision_diagnose_not_ready "shard-add-rejected" "no"
+        return 1
+    fi
+
+    post_provision_probe_shard_presence
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        return "$command_status"
+    fi
+    if [ "$POST_PROVISION_PRESENCE" != "present" ]; then
+        post_provision_diagnose_not_ready "shard-not-visible-after-add" "yes"
+        return 1
+    fi
+
     echo "INFO: Shard $MONGODB_REPLICA_SET_NAME added."
 }
 
@@ -198,7 +321,7 @@ if [ $# -eq 1 ]; then
     ;;
   --post-provision)
     initialize_or_scale_out_mongodb_shard
-    exit 0
+    exit $?
     ;;
   --pre-terminate)
     delete_or_scale_in_mongodb_shard
