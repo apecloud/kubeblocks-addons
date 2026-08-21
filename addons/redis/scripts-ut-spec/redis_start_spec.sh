@@ -586,36 +586,76 @@ Describe "Redis Start Bash Script Tests"
         # shellcheck disable=SC2034
         retry_delay_second=1
         export REDIS_POD_NAME_LIST="redis-1,redis-0"
+        export REDIS_POD_FQDN_LIST="redis-1.redis-headless.default,redis-0.redis-headless.default"
+        export REDIS_DATA_DIR="./redis-data"
         export SENTINEL_COMPONENT_NAME="redis-sentinel"
         export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless,sentinel-1.redis-sentinel-headless"
+        mkdir -p "$REDIS_DATA_DIR"
+        echo "persisted" > "$REDIS_DATA_DIR/dump.rdb"
       }
       Before "setup"
 
       un_setup() {
         unset SENTINEL_COMPONENT_NAME
         unset SENTINEL_POD_FQDN_LIST
+        unset REDIS_POD_NAME_LIST
+        unset REDIS_POD_FQDN_LIST
+        unset REDIS_DATA_DIR
+        rm -rf ./redis-data
       }
       After "un_setup"
 
-      It "handles empty primary info retrieved from sentinel"
+      It "fails closed instead of falling back to default primary when Redis data exists"
         Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
         build_sentinel_get_master_addr_by_name_command() {
           echo "echo ''"
         }
         get_default_initialize_primary_node() {
-          # shellcheck disable=SC2034
-          primary="fake-primary1"
-          # shellcheck disable=SC2034
-          primary_port="fake-primary-port1"
+          echo "SHOULD_NOT_FALLBACK"
+        }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "Empty primary info retrieved from sentinel"
+        The stdout should include "Failed to retrieve primary info from sentinel: sentinel-1.redis-sentinel-headless"
+        The stdout should include "Error: no primary node found from all redis sentinels and Redis data already exists; refusing to use default primary while sentinel is configured."
+        The stdout should not include "SHOULD_NOT_FALLBACK"
+        The stderr should include "Function 'get_master_addr_by_name_from_sentinel' failed after 1 retries"
+      End
+    End
+
+    Context "when no sentinel returns primary info before first bootstrap"
+      setup() {
+        export REDIS_POD_NAME_LIST="redis-1,redis-0"
+        export REDIS_POD_FQDN_LIST="redis-1.redis-headless.default,redis-0.redis-headless.default"
+        export REDIS_DATA_DIR="./redis-data-empty"
+        export SENTINEL_COMPONENT_NAME="redis-sentinel"
+        export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless"
+        mkdir -p "$REDIS_DATA_DIR"
+        echo "user default on" > "$REDIS_DATA_DIR/users.acl"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset SENTINEL_COMPONENT_NAME
+        unset SENTINEL_POD_FQDN_LIST
+        unset REDIS_POD_NAME_LIST
+        unset REDIS_POD_FQDN_LIST
+        unset REDIS_DATA_DIR
+        rm -rf ./redis-data-empty
+      }
+      After "un_setup"
+
+      It "allows default primary fallback for first bootstrap"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        build_sentinel_get_master_addr_by_name_command() {
+          echo "echo ''"
         }
         When call init_or_get_primary_from_redis_sentinel
         The status should be success
-        The stdout should include "Empty primary info retrieved from sentinel"
-        The stdout should include "Failed to retrieve primary info from sentinel: sentinel-1.redis-sentinel-headless"
-        The stdout should include "no primary node found from all redis sentinels, use default primary node."
-        The stderr should include "Function 'get_master_addr_by_name_from_sentinel' failed after 1 retries"
-        The variable primary should eq "fake-primary1"
-        The variable primary_port should eq "fake-primary-port1"
+        The stdout should include "no primary node found from all redis sentinels and Redis data dir is empty, use default primary node for first bootstrap."
+        The stderr should include "Function 'get_master_addr_by_name_from_sentinel' failed after 3 retries"
+        The variable primary should eq "redis-0.redis-headless.default"
+        The variable primary_port should eq "6379"
       End
     End
   End
