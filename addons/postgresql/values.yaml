@@ -154,6 +154,8 @@ pgbouncer:
     registry: ""
     repository: apecloud/pgbouncer
     tag: 1.19.0
+    ## @param pgbouncer.image.digest PgBouncer image digest in the form sha256:aa.... If set, it overrides the tag.
+    digest: ""
     pullPolicy: IfNotPresent
 
 dataMountPath: /home/postgres/pgdata

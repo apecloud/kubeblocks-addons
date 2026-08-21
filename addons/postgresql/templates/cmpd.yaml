@@ -33,9 +33,6 @@ spec:
           - name: tcp-postgresql
             port: 5432
             targetPort: tcp-postgresql
-          - name: tcp-pgbouncer
-            port: 6432
-            targetPort: tcp-pgbouncer
       roleSelector: primary
   updateStrategy: BestEffortParallel
   podManagementPolicy: Parallel
@@ -63,12 +60,6 @@ spec:
       template: {{ include "postgresql.parameterTemplate" (dict "major" .major "root" $) }}
       namespace: {{ $.Release.Namespace }}
       volumeName: postgresql-config
-      defaultMode: 0777
-      externalManaged: true
-    - name: pgbouncer-configuration
-      template: {{ include "pgbouncer.configurationTemplate" $ }}
-      namespace: {{ $.Release.Namespace }}
-      volumeName: pgbouncer-config
       defaultMode: 0777
       externalManaged: true
     - name: postgresql-custom-metrics
@@ -414,66 +405,6 @@ spec:
             value: $(CURRENT_POD_IP)
           - name: POD_NAMESPACE
             value: $(CLUSTER_NAMESPACE)
-      - name: pgbouncer
-        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
-        securityContext:
-          runAsUser: 0
-        ports:
-          - name: tcp-pgbouncer
-            containerPort: 6432
-        volumeMounts:
-          - name: pgbouncer-config
-            mountPath: /home/pgbouncer/conf
-          - name: scripts
-            mountPath: /kb-scripts
-        command:
-          - /kb-scripts/pgbouncer-setup.sh
-        livenessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 15
-          periodSeconds: 30
-          successThreshold: 1
-          timeoutSeconds: 5
-          tcpSocket:
-            port: tcp-pgbouncer
-        readinessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 15
-          periodSeconds: 30
-          successThreshold: 1
-          timeoutSeconds: 5
-          tcpSocket:
-            port: tcp-pgbouncer
-        env:
-          - name: PGBOUNCER_AUTH_TYPE
-            value: md5
-          - name: POSTGRESQL_USERNAME
-            value: $(POSTGRES_USER)
-          - name: POSTGRESQL_PASSWORD
-            value: $(POSTGRES_PASSWORD)
-          - name: POSTGRESQL_PORT
-            value: "5432"
-          - name: PGBOUNCER_PORT
-            value: "6432"
-          - name: PGBOUNCER_BIND_ADDRESS
-            value: "0.0.0.0"
-          - name: CURRENT_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: CURRENT_POD_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.podIP
-          - name: CURRENT_POD_HOST_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.hostIP
-          - name: POSTGRESQL_HOST
-            value: $(CURRENT_POD_IP)
       - name: exporter
         ports:
           - name: http-metrics

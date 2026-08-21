@@ -1,4 +1,5 @@
 # shellcheck shell=sh
+# shellcheck disable=SC2016 # Ruby snippets are intentionally single-quoted.
 
 Describe "PostgreSQL version matrix contract"
 
@@ -21,6 +22,76 @@ Describe "PostgreSQL version matrix contract"
   render_count() {
     pattern="$1"
     render_chart | grep -c "$pattern" || true
+  }
+
+  independent_pgbouncer_contract() {
+    render_chart | RUBYOPT=-W0 ruby -ryaml -e '
+      documents = YAML.load_stream(ARGF.read).compact
+      cluster_definition = documents.find { |document| document["kind"] == "ClusterDefinition" }
+      topologies = cluster_definition.dig("spec", "topologies")
+      abort unless topologies.map { |topology| topology["name"] } == ["replication"]
+      replication = topologies.first
+      abort unless replication["components"] == [
+        {"name" => "postgresql", "compDef" => "postgresql-"},
+        {"name" => "pgbouncer", "compDef" => "pgbouncer-postgresql-1.0.6"}
+      ]
+
+      definitions = documents.select { |document| document["kind"] == "ComponentDefinition" }
+      postgres = definitions.find { |definition| definition.dig("metadata", "name") == "postgresql-14-1.0.6" }
+      pgbouncer = definitions.find { |definition| definition.dig("metadata", "name") == "pgbouncer-postgresql-1.0.6" }
+      abort unless pgbouncer.dig("spec", "replicasLimit") == {"minReplicas" => 0, "maxReplicas" => 64}
+      abort unless pgbouncer.dig("spec", "services", 0, "spec", "ports", 0, "port") == 6432
+      resources = pgbouncer.dig("spec", "runtime", "containers", 0, "resources")
+      abort unless resources == {
+        "requests" => {"cpu" => "100m", "memory" => "128Mi"},
+        "limits" => {"cpu" => "500m", "memory" => "512Mi"}
+      }
+      refs = pgbouncer.dig("spec", "vars").map do |var|
+        var.dig("valueFrom", "serviceVarRef", "compDef") || var.dig("valueFrom", "credentialVarRef", "compDef")
+      end.compact
+      abort unless refs == Array.new(4, "postgresql-")
+
+      postgres_ports = postgres.dig("spec", "services", 0, "spec", "ports").map { |port| port["port"] }
+      abort unless postgres_ports == [5432]
+      postgres_containers = postgres.dig("spec", "runtime", "containers").map { |container| container["name"] }
+      abort if postgres_containers.include?("pgbouncer")
+      postgres_pcr = documents.find do |document|
+        document["kind"] == "ParamConfigRenderer" && document.dig("metadata", "name") == "postgresql14-pcr-1.0.6"
+      end
+      abort unless postgres_pcr.dig("spec", "configs").map { |config| config["name"] } == ["postgresql.conf"]
+      account_refs = pgbouncer.dig("spec", "vars").map { |var| var.dig("valueFrom", "credentialVarRef", "name") }.compact
+      abort unless account_refs == ["postgres", "postgres"]
+      probe = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe", "exec", "command", -1)
+      abort unless probe.include?("--port=6432") && probe.include?("$POSTGRESQL_USERNAME")
+      pgbouncer_config = documents.find do |document|
+        document["kind"] == "ConfigMap" &&
+          document.dig("metadata", "name") == "pgbouncer-component-configuration-1.0.6"
+      end.dig("data", "pgbouncer.ini")
+      abort if pgbouncer_config.lines.any? { |line| line.match?(/^\s*logfile\s*=\s*\/dev\/stderr\s*$/) }
+      abort if documents.any? do |document|
+        document["kind"] == "ConfigMap" &&
+          document.dig("metadata", "name") == "pgbouncer-configuration-1.0.6"
+      end
+
+      version = documents.find do |document|
+        document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "postgresql-pgbouncer"
+      end
+      abort unless version.dig("spec", "compatibilityRules", 0, "compDefs") == ["pgbouncer-postgresql-"]
+      puts "ok"
+    '
+  }
+
+  pgbouncer_digest_and_pull_policy_contract() {
+    helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system --dependency-update \
+      --set pgbouncer.image.digest=sha256:0123456789abcdef \
+      --set pgbouncer.image.pullPolicy=Always | RUBYOPT=-W0 ruby -ryaml -e '
+        documents = YAML.load_stream(ARGF.read).compact
+        version = documents.find { |document| document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "postgresql-pgbouncer" }
+        abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer@sha256:0123456789abcdef"
+        definition = documents.find { |document| document["kind"] == "ComponentDefinition" && document.dig("metadata", "name") == "pgbouncer-postgresql-1.0.6" }
+        abort unless definition.dig("spec", "runtime", "containers", 0, "imagePullPolicy") == "Always"
+        puts "ok"
+      '
   }
 
   pg13_config_contract() {
@@ -124,16 +195,28 @@ EOF
     fi
   }
 
-  It "advances the definition chart version to 1.0.5"
+  It "advances the definition chart version to 1.0.6"
     When call chart_version "$(chart_dir)"
     The status should eq 0
-    The output should eq "1.0.5"
+    The output should eq "1.0.6"
   End
 
-  It "keeps the cluster chart version aligned at 1.0.5"
+  It "keeps the cluster chart version aligned at 1.0.6"
     When call chart_version "$(cluster_chart_dir)"
     The status should eq 0
-    The output should eq "1.0.5"
+    The output should eq "1.0.6"
+  End
+
+  It "keeps one replication topology and adds a zero-capable PgBouncer component"
+    When call independent_pgbouncer_contract
+    The status should eq 0
+    The output should eq "ok"
+  End
+
+  It "honors the independent PgBouncer digest and pull policy"
+    When call pgbouncer_digest_and_pull_policy_contract
+    The status should eq 0
+    The output should eq "ok"
   End
 
   It "publishes PostgreSQL 13.23 in the ComponentDefinition, ParametersDefinition, and ComponentVersion"
@@ -149,7 +232,7 @@ EOF
   End
 
   It "publishes the PostgreSQL 13 immutable ComponentDefinition identity"
-    When call render_count '^  name: postgresql-13-1.0.5$'
+    When call render_count '^  name: postgresql-13-1.0.6$'
     The status should eq 0
     The output should eq "1"
   End

@@ -104,6 +104,21 @@ Define postgresql component definition name prefix by major version
 {{- end -}}
 
 {{/*
+Define the standalone PgBouncer component names.
+*/}}
+{{- define "pgbouncer.componentDefName" -}}
+{{ include "pgbouncer.componentDefNamePrefix" . }}{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pgbouncer.componentDefNamePrefix" -}}
+pgbouncer-postgresql-
+{{- end -}}
+
+{{- define "pgbouncer.componentVersionName" -}}
+postgresql-pgbouncer
+{{- end -}}
+
+{{/*
 Get PostgreSQL image address by major and minor version
 Parameters: major (string), minor (string), root context
 Usage: {{ include "postgresql.imageByVersion" (dict "major" "14" "minor" "14.8.0" "root" .) }}
@@ -137,6 +152,13 @@ Usage: {{ include "postgresql.imagePullPolicy" . }}
 */}}
 {{- define "postgresql.imagePullPolicy" -}}
 {{- default "IfNotPresent" .Values.image.pullPolicy -}}
+{{- end -}}
+
+{{/*
+Get standalone PgBouncer image pull policy.
+*/}}
+{{- define "pgbouncer.imagePullPolicy" -}}
+{{- default "IfNotPresent" .Values.pgbouncer.image.pullPolicy -}}
 {{- end -}}
 
 {{/*
@@ -219,11 +241,8 @@ Generate reloader scripts configmap
 {{- end }}
 {{- end }}
 
-{{/*
-Define pgbouncer configuration template name
-*/}}
-{{- define "pgbouncer.configurationTemplate" -}}
-pgbouncer-configuration-{{ .Chart.Version }}
+{{- define "pgbouncer.componentConfigurationTemplate" -}}
+pgbouncer-component-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -234,7 +253,12 @@ Define image
 {{- end }}
 
 {{- define "postgresql.pgbouncerImage" -}}
-{{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
+{{- $repository := printf "%s/%s" (.Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io")) .Values.pgbouncer.image.repository -}}
+{{- if .Values.pgbouncer.image.digest -}}
+{{- printf "%s@%s" $repository .Values.pgbouncer.image.digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repository .Values.pgbouncer.image.tag -}}
+{{- end -}}
 {{- end }}
 
 {{- define "postgresql.metricsImage" -}}
