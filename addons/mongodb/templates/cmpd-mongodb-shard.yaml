@@ -99,14 +99,15 @@ spec:
       exec:
         container: mongodb
         command:
-          - /bin/bash
-          - -c
-          - /scripts/mongodb-shard-manage.sh --post-provision >> /tmp/post-provision.log 2>&1
+          - /scripts/mongodb-shard-manage.sh
+          - add-shard
         targetPodSelector: Role
         matchingKey: primary
+        # Syncer's API is asynchronous. Keep polling in this action instead of
+        # relying on KubeBlocks action retries, whose backoff is too coarse for
+        # long-running shard operations.
+        timeoutSeconds: -1
       preCondition: RuntimeReady
-      retryPolicy:
-        maxRetries: 10
   runtime:
     securityContext:
       # percona-server-mongodb needs run as root to have privilege to access to keyfile
