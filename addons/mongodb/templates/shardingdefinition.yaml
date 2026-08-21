@@ -14,9 +14,6 @@ spec:
     maxShards: 128
   provisionStrategy: Parallel
   updateStrategy: Parallel
-  systemAccounts:
-    - name: root
-      shared: true
   lifecycleActions:
     shardRemove:
       exec:
