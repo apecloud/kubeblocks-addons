@@ -56,6 +56,23 @@ valkey-config-template
 {{- end -}}
 
 {{/*
+Cluster-mode config ConfigMap name (cluster-enabled directives; separate
+from the replication/standalone template so the two modes cannot drift
+into each other silently).
+*/}}
+{{- define "valkey.clusterConfigTemplate" -}}
+valkey-cluster-config-template
+{{- end -}}
+
+{{/*
+Regexp pattern used by ShardingDefinition.template.compDef and the cluster
+topology. v1 is Valkey 9 only; widen deliberately when 8 support lands.
+*/}}
+{{- define "valkeyCluster.cmpdRegexpPattern" -}}
+^valkey-cluster-[0-9]+$
+{{- end -}}
+
+{{/*
 Inline helper to build the valkey-cli base command with optional TLS flags.
 Produces a variable assignment: VALKEY_CLI_TLS_ARGS="--tls --cacert <mount>/ca.crt"
 This is used inside shell scripts rather than as a Helm template.
