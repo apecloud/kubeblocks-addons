@@ -115,7 +115,17 @@ Define redis ComponentSpec with ComponentDefinition.
   - name: LOAD_BALANCER_ENABLED
     value: "true"
   {{- end }}
+  {{- if or (eq .Values.mode "replication-syncer") (eq .Values.mode "replication-twemproxy") }}
+  - name: KB_MAX_LAG
+    value: {{ .Values.maxLagOnSwitchover | quote }}
+  {{- end }}
   serviceVersion: {{ .Values.version }}
+  {{- if eq .Values.mode "replication-syncer" }}
+  configs:
+  - name: redis-replication-config
+    configMap:
+      name: {{ include "kblib.clusterName" . }}-redis-redis-replication-config
+  {{- end }}
   {{- if and .Values.customSecretName .Values.customSecretNamespace }}
   systemAccounts:
     - name: default
@@ -209,6 +219,8 @@ replication mode: 2
 {{- if eq .Values.mode "standalone" }}
 replicas: 1
 {{- else if eq .Values.mode "replication" }}
+replicas: {{ max .Values.replicas 2 }}
+{{- else if eq .Values.mode "replication-syncer" }}
 replicas: {{ max .Values.replicas 2 }}
 {{- else if eq .Values.mode "replication-twemproxy" }}
 replicas: {{ max .Values.replicas 2 }}
@@ -313,6 +325,8 @@ metadata:
     apps.kubeblocks.io/mode: {{ .Values.mode }}
   {{- if and .Values.hostNetworkEnabled (eq .Values.mode "cluster") }}
     kubeblocks.io/host-network: "shard"
+  {{- else if and .Values.hostNetworkEnabled (or (eq .Values.mode "replication-syncer") (eq .Values.mode "replication-twemproxy")) }}
+    kubeblocks.io/host-network: "redis"
   {{- else if .Values.hostNetworkEnabled }}
     kubeblocks.io/host-network: "redis,redis-sentinel"
   {{- end }}
