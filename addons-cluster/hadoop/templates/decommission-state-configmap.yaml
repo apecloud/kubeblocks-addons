@@ -1,0 +1,10 @@
+{{- if .Values.decommission.enabled }}
+{{- $stateConfigMapName := .Values.decommission.stateConfigMapName | default (printf "%s-hdfs-decommission-state" (include "kblib.clusterName" .)) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $stateConfigMapName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "kblib.clusterLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,3 @@
+# dfs.exclude - DataNode decommission list (blacklist)
+# Add DN hostnames/IPs here and run `hdfs dfsadmin -refreshNodes` to start decommission.
+# DataNodes listed here will be decommissioned and excluded from the cluster.
