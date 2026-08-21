@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
-  componentDef: {{ printf "^%s(?:-(?:orc|mgr))?-8\\.(?:0|4)-%s$" (include "mysql.cmpdNamePrefix" .) .Chart.Version | quote }}
+  componentDef: {{ printf "^%s(?:-(?:orc|mgr))?-8\\.0-%s$" (include "mysql.cmpdNamePrefix" .) .Chart.Version | quote }}
   templateName: mysql-replication-config
   fileName: my.cnf
   fileFormatConfig:
