@@ -1,0 +1,27 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: yashandb-backup-policy-template
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+spec:
+  serviceKind: yashandb
+  compDefs:
+    - {{ include "yashandb.cmpdRegexpPattern" . }}
+  target:
+    role: primary
+    fallbackRole: secondary
+    useParentSelectedPods: true
+  backupMethods:
+    - name: full
+      snapshotVolumes: false
+      actionSetName: yashandb-full-backup
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /home/yashan/mydb
+  schedules:
+    - backupMethod: full
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 7d

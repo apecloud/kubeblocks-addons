@@ -1,0 +1,22 @@
+# 2026-06-22 Reason: fixed-address HA writer routing needs a reusable install-time values file; Purpose: document the productized reconciler path without storing secrets.
+# Time: 2026-06-22.
+ha:
+  fixedAddress:
+    enabled: true
+  writerReconciler:
+    enabled: true
+    image:
+      registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+      repository: apecloud/kubeblocks-tools
+      tag: 1.0.2
+      pullPolicy: IfNotPresent
+    name: yashandb-writer
+    sqlPort: 2688
+    clusterName: kbh3n3
+    dbUser: sys
+    dbPasswordSecretName: yashandb-writer-reconciler-auth
+    dbPasswordSecretKey: password
+    # 2026-06-22 Reason: upstream examples must not depend on a lab network; Purpose: show the required stable-address-to-Pod mapping with documentation-only addresses.
+    # Time: 2026-06-22.
+    endpointPodMap: "192.0.2.10=yashandb-ha-0,192.0.2.11=yashandb-ha-1,192.0.2.12=yashandb-ha-2"
+    intervalSeconds: 2
