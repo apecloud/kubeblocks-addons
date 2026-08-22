@@ -8,4 +8,4 @@ metadata:
     {{- include "postgresql.annotations" . | nindent 4 }}
 data:
   pgbouncer.ini: |-
-    {{- .Files.Get "config/pgbouncer-component.ini.tpl" | nindent 4 }}
+    {{- .Files.Get "config/pgbouncer-ini.tpl" | nindent 4 }}

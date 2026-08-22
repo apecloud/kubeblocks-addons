@@ -6,7 +6,7 @@ Describe "PostgreSQL PgBouncer auth-file contract"
 
   setup() {
     test_dir=$(mktemp -d -t pgbouncer-authfile-XXXXXX)
-    pgbouncer_template_conf_file="../config/pgbouncer-component.ini.tpl"
+    pgbouncer_template_conf_file="../config/pgbouncer-ini.tpl"
     pgbouncer_conf_dir="$test_dir/conf/"
     pgbouncer_log_dir="$test_dir/logs/"
     pgbouncer_tmp_dir="$test_dir/tmp/"
