@@ -104,26 +104,33 @@ spec:
           tcpSocket:
             port: pgbouncer
         readinessProbe:
-          failureThreshold: 3
+          failureThreshold: 1
           initialDelaySeconds: 5
-          periodSeconds: 10
+          periodSeconds: 5
           timeoutSeconds: 5
           exec:
             command:
               - /bin/sh
               - -ec
               - |
-                PGPASSWORD="$POSTGRESQL_PASSWORD" PGCONNECT_TIMEOUT=3 \
-                  exec psql --no-password --username="$POSTGRESQL_USERNAME" \
-                  --host=127.0.0.1 --port=6432 --dbname=postgres \
-                  --tuples-only --no-align --command='SELECT 1'
+                primary="$(
+                  PGPASSWORD="$POSTGRESQL_PASSWORD" PGCONNECT_TIMEOUT=3 \
+                    psql --no-password --username="$POSTGRESQL_USERNAME" \
+                    --host="$CURRENT_POD_IP" --port=6432 --dbname=postgres \
+                    --tuples-only --no-align --set=ON_ERROR_STOP=1 \
+                    --command='SELECT NOT pg_is_in_recovery()'
+                )"
+                test "$primary" = "t"
         env:
           - name: PGBOUNCER_AUTH_TYPE
             value: md5
           - name: PGBOUNCER_PORT
             value: "6432"
-          - name: PGBOUNCER_BIND_ADDRESS
-            value: "0.0.0.0"
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: POSTGRESQL_HOST
             value: $(POSTGRESQL_HOST)
           - name: POSTGRESQL_PORT

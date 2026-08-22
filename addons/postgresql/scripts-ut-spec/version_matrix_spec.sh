@@ -63,10 +63,18 @@ Describe "PostgreSQL version matrix contract"
       abort unless account_refs == ["postgres", "postgres"]
       probe = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe", "exec", "command", -1)
       abort unless probe.include?("--port=6432") && probe.include?("$POSTGRESQL_USERNAME")
+      abort unless probe.include?("$CURRENT_POD_IP") && probe.include?("NOT pg_is_in_recovery()")
+      readiness = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe")
+      abort unless readiness["failureThreshold"] == 1 && readiness["periodSeconds"] == 5
+      env = pgbouncer.dig("spec", "runtime", "containers", 0, "env")
+      pod_ip = env.find { |entry| entry["name"] == "CURRENT_POD_IP" }
+      abort unless pod_ip.dig("valueFrom", "fieldRef", "fieldPath") == "status.podIP"
+      abort if env.any? { |entry| entry["name"] == "PGBOUNCER_BIND_ADDRESS" }
       pgbouncer_config = documents.find do |document|
         document["kind"] == "ConfigMap" &&
           document.dig("metadata", "name") == "pgbouncer-component-configuration-1.0.6"
       end.dig("data", "pgbouncer.ini")
+      abort unless pgbouncer_config.lines.any? { |line| line.match?(/^\s*listen_addr\s*=\s*\*\s*$/) }
       abort if pgbouncer_config.lines.any? { |line| line.match?(/^\s*logfile\s*=\s*\/dev\/stderr\s*$/) }
       abort if documents.any? do |document|
         document["kind"] == "ConfigMap" &&

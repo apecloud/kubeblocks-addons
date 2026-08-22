@@ -255,6 +255,11 @@ the zero value controls only the new managed standalone pool.
 
 #### Current limitations
 
+- PgBouncer uses session pooling and does not transparently migrate client
+  sessions during a PostgreSQL primary change. During a KubeBlocks-managed
+  Patroni switchover, Patroni terminates the old backend connections, so pooled
+  clients are explicitly disconnected. Applications must reconnect with
+  backoff and retry failed work; in-flight transactions are not replayed.
 - Upgrading the Addon does not enqueue existing Clusters. If an older Cluster
   does not yet contain a `pgbouncer` component spec, the caller must first add
   it with `replicas: 0` and the exact ComponentDefinition selected by the
@@ -262,9 +267,10 @@ the zero value controls only the new managed standalone pool.
 - The standalone pool does not currently configure TLS on either the client or
   PostgreSQL hop. Do not enable it for a Cluster that requires TLS; product APIs
   must reject that combination until both hops are implemented.
-- Downgrading to an Addon version whose `replication` topology does not contain
-  PgBouncer is unsupported while the standalone pool is enabled. Scale it to
-  zero and verify that its Endpoint is empty before attempting a downgrade.
+- Helm rollback from PostgreSQL Addon 1.0.6 to 1.0.5 is unsupported. Scaling
+  the standalone pool to zero prevents new pooled traffic but does not make the
+  chart rollback safe because existing Clusters still depend on retained,
+  versioned 1.0.5 resources.
 
 ### Horizontal scaling
 
