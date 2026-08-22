@@ -15,20 +15,45 @@ load_common_library() {
 }
 
 build_pgbouncer_conf() {
-  if is_empty "$POSTGRESQL_USERNAME" || is_empty "$POSTGRESQL_PASSWORD" || is_empty "$CURRENT_POD_IP"; then
-    echo "POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD or CURRENT_POD_IP is not set. Exiting..."
-    exit 1
+  local backend_host="${POSTGRESQL_HOST:-${CURRENT_POD_IP:-}}"
+  local backend_port="${POSTGRESQL_PORT:-5432}"
+
+  if is_empty "$POSTGRESQL_USERNAME" || is_empty "$POSTGRESQL_PASSWORD" || is_empty "$backend_host"; then
+    echo "POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD or PostgreSQL backend host is not set. Exiting..."
+    return 1
   fi
 
-  mkdir -p $pgbouncer_conf_dir $pgbouncer_log_dir $pgbouncer_tmp_dir
-  cp $pgbouncer_template_conf_file $pgbouncer_conf_dir
-  echo "\"$POSTGRESQL_USERNAME\" \"$POSTGRESQL_PASSWORD\"" > $pgbouncer_user_list_file
+  case "$POSTGRESQL_USERNAME$POSTGRESQL_PASSWORD" in
+    *$'\r'*|*$'\n'*)
+      echo "PostgreSQL credentials contain an unsupported line break. Exiting..."
+      return 1
+      ;;
+  esac
+  case "$backend_host" in
+    *[!A-Za-z0-9.-]*)
+      echo "PostgreSQL backend host contains unsupported characters. Exiting..."
+      return 1
+      ;;
+  esac
+  case "$backend_port" in
+    ''|*[!0-9]*)
+      echo "PostgreSQL backend port is invalid. Exiting..."
+      return 1
+      ;;
+  esac
+
+  local escaped_username="${POSTGRESQL_USERNAME//\"/\"\"}"
+  local escaped_password="${POSTGRESQL_PASSWORD//\"/\"\"}"
+
+  mkdir -p "$pgbouncer_conf_dir" "$pgbouncer_log_dir" "$pgbouncer_tmp_dir" || return $?
+  cp "$pgbouncer_template_conf_file" "$pgbouncer_conf_dir" || return $?
+  printf '"%s" "%s"\n' "$escaped_username" "$escaped_password" > "$pgbouncer_user_list_file" || return $?
   # shellcheck disable=SC2129
-  echo -e "\\n[databases]" >> $pgbouncer_conf_file
-  echo "postgres=host=$CURRENT_POD_IP port=5432 dbname=postgres" >> $pgbouncer_conf_file
-  echo "*=host=$CURRENT_POD_IP port=5432" >> $pgbouncer_conf_file
-  chmod 777 $pgbouncer_conf_file
-  chmod 777 $pgbouncer_user_list_file
+  printf '\n[databases]\n' >> "$pgbouncer_conf_file" || return $?
+  printf 'postgres=host=%s port=%s dbname=postgres\n' "$backend_host" "$backend_port" >> "$pgbouncer_conf_file" || return $?
+  printf '*=host=%s port=%s\n' "$backend_host" "$backend_port" >> "$pgbouncer_conf_file" || return $?
+  chmod 644 "$pgbouncer_conf_file" || return $?
+  chmod 600 "$pgbouncer_user_list_file" || return $?
 
   # Try to add user
   useradd pgbouncer 2>/dev/null || true
@@ -51,7 +76,7 @@ build_pgbouncer_conf() {
       next_uid=$((next_uid + 1))
 
       # Add user to /etc/passwd
-      echo "pgbouncer:x:$next_uid:$next_uid:pgbouncer user:/nonexistent:/bin/false" >> /etc/passwd
+      printf 'pgbouncer:x:%s:%s:pgbouncer user:/nonexistent:/bin/false\n' "$next_uid" "$next_uid" >> /etc/passwd || return $?
       echo "Added pgbouncer user to /etc/passwd"
   fi
 
@@ -62,13 +87,13 @@ build_pgbouncer_conf() {
       # Get the user's GID if user exists
       if id "pgbouncer" >/dev/null 2>&1; then
           user_gid=$(id -g pgbouncer)
-          echo "pgbouncer:x:$user_gid:" >> /etc/group
+          printf 'pgbouncer:x:%s:\n' "$user_gid" >> /etc/group || return $?
           echo "Added pgbouncer group with GID $user_gid to /etc/group"
       else
           # Fallback: use next available GID
           next_gid=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $3}' /etc/group | sort -n | tail -1)
           next_gid=$((next_gid + 1))
-          echo "pgbouncer:x:$next_gid:" >> /etc/group
+          printf 'pgbouncer:x:%s:\n' "$next_gid" >> /etc/group || return $?
           echo "Added pgbouncer group with GID $next_gid to /etc/group"
       fi
   fi
@@ -78,10 +103,10 @@ build_pgbouncer_conf() {
       echo "pgbouncer user and group are ready"
   else
       echo "Failed to create pgbouncer user or group. Exiting..."
-      exit 1
+      return 1
   fi
 
-  chown -R pgbouncer:pgbouncer $pgbouncer_conf_dir $pgbouncer_log_dir $pgbouncer_tmp_dir
+  chown -R pgbouncer:pgbouncer "$pgbouncer_conf_dir" "$pgbouncer_log_dir" "$pgbouncer_tmp_dir"
 }
 
 start_pgbouncer() {
@@ -94,9 +119,12 @@ start_pgbouncer() {
 # You will want to test it. but you do not want to run the script.
 # When included from shellspec, __SOURCED__ variable defined and script
 # end here. The script path is assigned to the __SOURCED__ variable.
+main() {
+  load_common_library || return $?
+  build_pgbouncer_conf || return $?
+  start_pgbouncer
+}
+
 ${__SOURCED__:+false} : || return 0
 
-# main
-load_common_library
-build_pgbouncer_conf
-start_pgbouncer
+main

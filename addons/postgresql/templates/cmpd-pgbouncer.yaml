@@ -1,0 +1,141 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "pgbouncer.componentDefName" . }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A standalone PgBouncer connection pool for PostgreSQL
+  serviceKind: pgbouncer
+  serviceVersion: {{ .Values.pgbouncer.image.tag | quote }}
+  replicasLimit:
+    minReplicas: 0
+    maxReplicas: 64
+  updateStrategy: Serial
+  podManagementPolicy: Parallel
+  services:
+    - name: pgbouncer
+      serviceName: pgbouncer
+      spec:
+        ports:
+          - name: pgbouncer
+            port: 6432
+            targetPort: pgbouncer
+  configs:
+    - name: pgbouncer-configuration
+      template: {{ include "pgbouncer.componentConfigurationTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: pgbouncer-config
+      defaultMode: 0444
+      restartOnFileChange: true
+  scripts:
+    - name: postgresql-scripts
+      template: {{ include "postgresql.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  vars:
+    - name: POSTGRESQL_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+          name: postgresql
+          host: Required
+          optional: false
+    - name: POSTGRESQL_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+          name: postgresql
+          port:
+            name: tcp-postgresql
+            option: Required
+          optional: false
+    - name: POSTGRESQL_USERNAME
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+          name: postgres
+          username: Required
+          optional: false
+    - name: POSTGRESQL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+          name: postgres
+          password: Required
+          optional: false
+  runtime:
+    securityContext:
+      runAsUser: 0
+      runAsGroup: 0
+    containers:
+      - name: pgbouncer
+        imagePullPolicy: {{ include "pgbouncer.imagePullPolicy" . }}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          runAsUser: 0
+          allowPrivilegeEscalation: false
+        command:
+          - /kb-scripts/pgbouncer-setup.sh
+        ports:
+          - name: pgbouncer
+            containerPort: 6432
+            protocol: TCP
+        volumeMounts:
+          - name: pgbouncer-config
+            mountPath: /home/pgbouncer/conf
+          - name: scripts
+            mountPath: /kb-scripts
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 30
+          timeoutSeconds: 5
+          tcpSocket:
+            port: pgbouncer
+        readinessProbe:
+          failureThreshold: 1
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                primary="$(
+                  PGPASSWORD="$POSTGRESQL_PASSWORD" PGCONNECT_TIMEOUT=3 \
+                    psql --no-password --username="$POSTGRESQL_USERNAME" \
+                    --host="$CURRENT_POD_IP" --port=6432 --dbname=postgres \
+                    --tuples-only --no-align --set=ON_ERROR_STOP=1 \
+                    --command='SELECT NOT pg_is_in_recovery()'
+                )"
+                test "$primary" = "t"
+        env:
+          - name: PGBOUNCER_AUTH_TYPE
+            value: md5
+          - name: PGBOUNCER_PORT
+            value: "6432"
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: POSTGRESQL_HOST
+            value: $(POSTGRESQL_HOST)
+          - name: POSTGRESQL_PORT
+            value: $(POSTGRESQL_PORT)
+          - name: POSTGRESQL_USERNAME
+            value: $(POSTGRESQL_USERNAME)
+          - name: POSTGRESQL_PASSWORD
+            value: $(POSTGRESQL_PASSWORD)

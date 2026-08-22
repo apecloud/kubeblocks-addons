@@ -12,4 +12,16 @@ spec:
       components:
         - name: postgresql
           compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+        - name: pgbouncer
+          compDef: {{ include "pgbouncer.componentDefName" . }}
+      orders:
+        provision:
+          - postgresql
+          - pgbouncer
+        terminate:
+          - pgbouncer
+          - postgresql
+        update:
+          - postgresql
+          - pgbouncer
       default: true
