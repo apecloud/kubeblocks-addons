@@ -70,14 +70,12 @@ zookeeper_service_endpoints_are_consumed() {
   grep -Fq -- 'printf "CLICKHOUSE_AUX_ZOOKEEPER_%d_POD_FQDNS"' <<<"$config" || return 1
 }
 
-zk_init_component_definition_is_rendered() {
+clickhouse_22_component_definition_is_rendered() {
   helm dependency build --skip-refresh .. >/dev/null || return
   local cmpd
   cmpd=$(helm template clickhouse .. --show-only templates/cmpd-ch-22.yaml) || return
 
   grep -Fq -- 'name: clickhouse-22-1.0.3' <<<"$cmpd" || return 1
-  grep -Fq -- '- name: zk-init' <<<"$cmpd" || return 1
-  grep -Fq -- 'zk_create_root' <<<"$cmpd" || return 1
   grep -Fq -- '- name: copy-keeper-client' <<<"$cmpd" || return 1
   grep -Fq -- '/shared-tools/clickhouse-keeper-client' <<<"$cmpd" || return 1
   grep -Fq -- '^clickhouse-22-1.*' <<<"$cmpd" || return 1
@@ -142,15 +140,15 @@ modern_with_zookeeper_uses_plain_cmpd() {
   ! grep -Fq -- 'componentDef: clickhouse-22-1' <<<"$rendered"
 }
 
-cluster_mode_uses_plain_cmpd_for_legacy() {
+cluster_mode_uses_22_cmpd_for_legacy() {
   helm dependency build --skip-refresh "$cluster_chart_dir" >/dev/null || return
   local rendered
   rendered=$(render_clickhouse_cluster \
     --set mode=cluster \
     --set version=22.8.21) || return
 
-  grep -Fq -- 'componentDef: clickhouse-1' <<<"$rendered" || return 1
-  ! grep -Fq -- 'componentDef: clickhouse-22-1' <<<"$rendered"
+  grep -Fq -- 'componentDef: clickhouse-22-1' <<<"$rendered" || return 1
+  ! grep -Fq -- 'componentDef: clickhouse-1' <<<"$rendered"
 }
 
 cluster_mode_uses_keeper_22_for_legacy() {
@@ -197,8 +195,8 @@ Describe "ClickHouse external ZooKeeper ServiceRef contract"
     The status should be success
   End
 
-  It "renders the clickhouse-22 ComponentDefinition with zk-init and copy-keeper-client initContainers"
-    When call zk_init_component_definition_is_rendered
+  It "renders the clickhouse-22 ComponentDefinition with a copy-keeper-client initContainer"
+    When call clickhouse_22_component_definition_is_rendered
     The status should be success
   End
 
@@ -222,8 +220,8 @@ Describe "ClickHouse external ZooKeeper ServiceRef contract"
     The status should be success
   End
 
-  It "keeps clickhouse-1 for legacy versions in cluster mode"
-    When call cluster_mode_uses_plain_cmpd_for_legacy
+  It "selects clickhouse-22 for legacy versions in cluster mode"
+    When call cluster_mode_uses_22_cmpd_for_legacy
     The status should be success
   End
 
