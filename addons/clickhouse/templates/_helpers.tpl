@@ -85,6 +85,59 @@ Define clickhouse component definition regex pattern
 {{- end }}
 
 {{/*
+=== CLICKHOUSE-22 COMPONENT DEFINITIONS ===
+A variant of the clickhouse ComponentDefinition used with external ZooKeeper
+coordination on legacy versions (ClickHouse 22.x and earlier). It injects a
+keeper-image initContainer that runs zk_create_root before the server starts,
+and copies clickhouse-keeper-client to the shared-tools volume for images that
+do not ship the binary.
+*/}}
+
+{{/*
+Define clickhouse-22 component definition name
+*/}}
+{{- define "clickhouse-22.cmpdName" -}}
+clickhouse-22-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
+Define clickhouse-22 component definition regex pattern
+*/}}
+{{- define "clickhouse-22.cmpdRegexpPattern" -}}
+^clickhouse-22-1.*
+{{- end }}
+
+{{/*
+Regex pattern matching both the plain clickhouse ComponentDefinition and the
+clickhouse-22 variant (used by BackupPolicyTemplate / ShardingDefinition).
+*/}}
+{{- define "clickhouse.allCmpdRegexpPattern" -}}
+^clickhouse-(1|22-1).*
+{{- end }}
+
+{{/*
+=== CLICKHOUSE-KEEPER-22 COMPONENT DEFINITIONS ===
+A variant of the clickhouse-keeper ComponentDefinition used on legacy versions
+(ClickHouse 22.x and earlier). It copies clickhouse-keeper-client to the
+shared-tools volume so scripts can fall back to it when the image does not
+ship the binary.
+*/}}
+
+{{/*
+Define clickhouse-keeper-22 component definition name
+*/}}
+{{- define "clickhouse-keeper-22.cmpdName" -}}
+clickhouse-keeper-22-{{ .Chart.Version }}
+{{- end }}
+
+{{/*
+Define clickhouse-keeper-22 component definition regex pattern
+*/}}
+{{- define "clickhouse-keeper-22.cmpdRegexpPattern" -}}
+^clickhouse-keeper-22-1.*
+{{- end }}
+
+{{/*
 === CLICKHOUSE-KEEPER COMPONENT DEFINITIONS ===
 */}}
 
