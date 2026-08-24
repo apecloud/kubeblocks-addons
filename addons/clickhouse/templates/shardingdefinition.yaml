@@ -8,7 +8,7 @@ metadata:
     {{- include "clickhouse.apiVersion" . | nindent 4 }}
 spec:
   template:
-    compDef: {{ include "clickhouse.allCmpdRegexpPattern" . }}
+    compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
   shardsLimit:
     minShards: 1
     maxShards: 128

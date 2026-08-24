@@ -81,7 +81,7 @@ clickhouse-{{ .Chart.Version }}
 Define clickhouse component definition regex pattern
 */}}
 {{- define "clickhouse.cmpdRegexpPattern" -}}
-^clickhouse-1.*
+^clickhouse-(1|22-1).*
 {{- end }}
 
 {{/*
@@ -105,14 +105,6 @@ Define clickhouse-22 component definition regex pattern
 */}}
 {{- define "clickhouse-22.cmpdRegexpPattern" -}}
 ^clickhouse-22-1.*
-{{- end }}
-
-{{/*
-Regex pattern matching both the plain clickhouse ComponentDefinition and the
-clickhouse-22 variant (used by BackupPolicyTemplate / ShardingDefinition).
-*/}}
-{{- define "clickhouse.allCmpdRegexpPattern" -}}
-^clickhouse-(1|22-1).*
 {{- end }}
 
 {{/*
@@ -152,7 +144,7 @@ clickhouse-keeper-{{ .Chart.Version }}
 Define clickhouse-keeper component definition regex pattern
 */}}
 {{- define "clickhouse-keeper.cmpdRegexpPattern" -}}
-^clickhouse-keeper-1.*
+^clickhouse-keeper-(1|22-1).*
 {{- end }}
 
 {{/*

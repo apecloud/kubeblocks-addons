@@ -38,7 +38,7 @@ the clickhouse-22 ComponentDefinition, which injects a keeper-image initContaine
 that runs zk_create_root before the server starts.
 */}}
 {{- define "clickhouse-cluster.cmpdName" -}}
-{{- if and (eq .Values.mode "withZookeeper") (semverCompare "<23.0.0" (.Values.version | default "")) -}}
+{{- if semverCompare "<23.0.0" (.Values.version | default "") -}}
 clickhouse-22-1
 {{- else -}}
 clickhouse-1
