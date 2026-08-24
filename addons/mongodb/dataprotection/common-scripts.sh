@@ -321,25 +321,31 @@ function sync_pbm_config_from_storage() {
 function wait_for_backup_completion() {
   describe_result=""
   local retry_interval=5
-  local attempt=1
+  local attempt=0
   local max_retries=12
   set +e
   while true; do
     describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
     if [ $? -eq 0 ] && [ -n "$describe_result" ]; then
       backup_status=$(echo "$describe_result" | jq -r '.status')
-      if [ "$backup_status" = "starting" ] || [ "$backup_status" = "running" ]; then
-        echo "INFO: Backup status is $backup_status, retrying in ${retry_interval}s..."
-      elif [ "$backup_status" = "" ]; then
-        echo "INFO: Backup status is $backup_status, retrying in ${retry_interval}s..."
-        attempt=$((attempt+1))
-      elif [ "$backup_status" = "done" ]; then
-        echo "INFO: Backup status is done."
-        break
-      else
-        echo "ERROR: Backup failed with status: $backup_status"
-        exit 1
-      fi
+      case "$backup_status" in
+        done)
+          echo "INFO: Backup status is done."
+          break
+          ;;
+        error|canceled)
+          echo "ERROR: Backup failed with status: $backup_status"
+          exit 1
+          ;;
+        "")
+          echo "INFO: Backup status is empty, retrying in ${retry_interval}s..."
+          attempt=$((attempt+1))
+          ;;
+        *)
+          # PBM treats every non-empty status except done, canceled, and error as running.
+          echo "INFO: Backup status is $backup_status, retrying in ${retry_interval}s..."
+          ;;
+      esac
     elif echo "$describe_result" | grep -q "not found"; then
       echo "INFO: Backup metadata not found, retrying in ${retry_interval}s..."
       attempt=$((attempt+1))
@@ -347,11 +353,11 @@ function wait_for_backup_completion() {
       echo "ERROR: Unexpected: $describe_result"
       exit 1
     fi
-    sleep $retry_interval
-    if [ $attempt -gt $max_retries ]; then
+    if [ $attempt -ge $max_retries ]; then
       echo "ERROR: Failed to get backup status after $max_retries attempts"
       exit 1
     fi
+    sleep $retry_interval
   done
   set -e
 
@@ -477,8 +483,15 @@ function get_describe_backup_info() {
 }
 
 function wait_for_restoring() {
-  local cnf_file="${MOUNT_DIR}/tmp/pbm_restore.cnf"
-  cat <<EOF > ${MOUNT_DIR}/tmp/pbm_restore.cnf
+  local cnf_file=""
+  local describe_result=""
+  local restore_status=""
+  case "${PBM_BACKUP_TYPE:-}" in
+    logical)
+      ;;
+    physical|continuous)
+      cnf_file="${MOUNT_DIR}/tmp/pbm_restore.cnf"
+      cat <<EOF > "$cnf_file"
 storage:
   type: s3
   s3:
@@ -491,28 +504,64 @@ storage:
       access-key-id: ${S3_ACCESS_KEY}
       secret-access-key: ${S3_SECRET_KEY}
 EOF
+      ;;
+    *)
+      echo "ERROR: Unsupported PBM backup type: ${PBM_BACKUP_TYPE:-<empty>}"
+      exit 1
+      ;;
+  esac
   local attempt=0
   local max_retries=12
   local try_interval=5
   while true; do
-    restore_status=$(pbm describe-restore "$restore_name" -c $cnf_file -o json | jq -r '.status')
-    echo "INFO: Restore $restore_name status: $restore_status, retrying in ${try_interval}s..."
-    if [ "$restore_status" = "done" ]; then
-      rm $cnf_file
-      break
-    elif [ "$restore_status" = "starting" ] || [ "$restore_status" = "running" ]; then
-      sleep $try_interval
-    elif [ "$restore_status" = "" ]; then
-      sleep $try_interval
-      attempt=$((attempt+1))
-      if [ $attempt -gt $max_retries ]; then
-        echo "ERROR: Restore $restore_name status is still empty after $max_retries retries"
-        rm $cnf_file
+    if [ "$PBM_BACKUP_TYPE" = "logical" ]; then
+      if describe_result=$(pbm describe-restore "$restore_name" --mongodb-uri "$PBM_MONGODB_URI" -o json 2>&1); then
+        :
+      elif echo "$describe_result" | grep -Eq "not found|no documents in result|undefined restore meta"; then
+        describe_result="{}"
+      else
+        echo "ERROR: Failed to get restore status: $describe_result"
         exit 1
       fi
     else
-      rm $cnf_file
+      if ! describe_result=$(pbm describe-restore "$restore_name" -c "$cnf_file" -o json 2>&1); then
+        echo "ERROR: Failed to get restore status: $describe_result"
+        rm -f "$cnf_file"
+        exit 1
+      fi
+    fi
+
+    if ! restore_status=$(echo "$describe_result" | jq -r '.status // empty'); then
+      echo "ERROR: Failed to parse restore status: $describe_result"
+      [ -z "$cnf_file" ] || rm -f "$cnf_file"
       exit 1
     fi
+
+    case "$restore_status" in
+      done)
+        echo "INFO: Restore $restore_name status: done."
+        [ -z "$cnf_file" ] || rm -f "$cnf_file"
+        break
+        ;;
+      error|canceled)
+        echo "ERROR: Restore $restore_name failed with status: $restore_status"
+        [ -z "$cnf_file" ] || rm -f "$cnf_file"
+        exit 1
+        ;;
+      "")
+        attempt=$((attempt+1))
+        if [ $attempt -ge $max_retries ]; then
+          echo "ERROR: Restore $restore_name status is still empty after $max_retries attempts"
+          [ -z "$cnf_file" ] || rm -f "$cnf_file"
+          exit 1
+        fi
+        echo "INFO: Restore $restore_name status is empty, retrying in ${try_interval}s..."
+        ;;
+      *)
+        # PBM treats every non-empty status except done, canceled, and error as running.
+        echo "INFO: Restore $restore_name status: $restore_status, retrying in ${try_interval}s..."
+        ;;
+    esac
+    sleep $try_interval
   done
 }
