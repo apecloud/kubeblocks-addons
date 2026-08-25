@@ -42,6 +42,21 @@ function get_srvr() {
 	send_4lw "$host" "srvr"
 }
 
+# Resolve the clickhouse-keeper-client binary path.
+# Prefer the one bundled in the image; fall back to the copy in /shared-tools
+# (injected by the copy-keeper-client initContainer for legacy images that do
+# not ship clickhouse-keeper-client).
+function keeper_client_bin() {
+	if [[ -x /opt/bitnami/clickhouse/bin/clickhouse-keeper-client ]]; then
+		echo "/opt/bitnami/clickhouse/bin/clickhouse-keeper-client"
+	elif [[ -x /shared-tools/clickhouse-keeper-client ]]; then
+		echo "/shared-tools/clickhouse-keeper-client"
+	else
+		echo "ERROR: clickhouse-keeper-client not found" >&2
+		return 1
+	fi
+}
+
 # Low-level keeper client execution with connection retry
 # Handles connection issues, timeouts, and transient network problems
 function keeper_run() {
@@ -52,6 +67,9 @@ function keeper_run() {
 		echo "ERROR: keeper_run requires host and query parameters" >&2
 		return 1
 	}
+
+	local keeper_client
+	keeper_client=$(keeper_client_bin) || return 1
 
 	for attempt in $(seq 1 $RETRY_ATTEMPTS); do
 		local output
@@ -67,7 +85,7 @@ function keeper_run() {
 		if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
 			keeper_args+=(--tls-ca-file "$CLICKHOUSE_TLS_CA" --tls-cert-file "$CLICKHOUSE_TLS_CERT" --tls-key-file "$CLICKHOUSE_TLS_KEY")
 		fi
-		if output=$(/opt/bitnami/clickhouse/bin/clickhouse-keeper-client "${keeper_args[@]}" 2>&1); then
+		if output=$("$keeper_client" "${keeper_args[@]}" 2>&1); then
 			if [[ "$output" != *"Coordination error"* ]] &&
 				[[ "$output" != *"Connection refused"* ]] &&
 				[[ "$output" != *"Timeout"* ]]; then
@@ -201,6 +219,9 @@ function zk_create_root() {
 		return 1
 	}
 
+	local keeper_client
+	keeper_client=$(keeper_client_bin) || return 1
+
 	IFS=',' read -ra endpoint_list <<<"$endpoints"
 	for endpoint in "${endpoint_list[@]}"; do
 		local host="$endpoint"
@@ -210,7 +231,7 @@ function zk_create_root() {
 			port="${endpoint##*:}"
 		fi
 		local output
-		output=$(/opt/bitnami/clickhouse/bin/clickhouse-keeper-client \
+		output=$("$keeper_client" \
 			--connection-timeout=15 \
 			--session-timeout=30 \
 			--operation-timeout=15 \
