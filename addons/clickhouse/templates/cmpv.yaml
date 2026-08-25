@@ -14,12 +14,35 @@ spec:
       {{- end }}
       compDefs:
         - {{ include "clickhouse.cmpdRegexpPattern" . }}
+    # Legacy versions (ClickHouse 22.x and earlier) coordinated by external
+    # ZooKeeper use the clickhouse-22 ComponentDefinition, which injects a
+    # keeper-image initContainer that runs zk_create_root on startup and copies
+    # clickhouse-keeper-client to the shared-tools volume.
+    - releases:
+      {{- range .Values.clickhouseVersions }}
+      {{- if semverCompare "<23.0.0" .version }}
+      - {{ .version }}
+      {{- end }}
+      {{- end }}
+      compDefs:
+        - {{ include "clickhouse-22.cmpdRegexpPattern" . }}
     - releases:
       {{- range .Values.clickhouseVersions }}
         - {{ .version }}
       {{- end }}
       compDefs:
         - {{ include "clickhouse-keeper.cmpdRegexpPattern" . }}
+    # Legacy versions (ClickHouse 22.x and earlier) also use the
+    # clickhouse-keeper-22 ComponentDefinition, which copies
+    # clickhouse-keeper-client to the shared-tools volume.
+    - releases:
+      {{- range .Values.clickhouseVersions }}
+      {{- if semverCompare "<23.0.0" .version }}
+      - {{ .version }}
+      {{- end }}
+      {{- end }}
+      compDefs:
+        - {{ include "clickhouse-keeper-22.cmpdRegexpPattern" . }}
   releases:
   {{- range .Values.clickhouseVersions }}
     - name: {{ .version }}
@@ -27,6 +50,11 @@ spec:
       images:
         copy-tools: {{ include "busybox.image" $ }}
         clickhouse: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
+        {{- if semverCompare "<23.0.0" .version }}
+        {{- $keeperClientTag := .keeperClientTag | default .imageTag }}
+        copy-keeper-client: {{ include "clickhouse.repository" $ }}:{{ $keeperClientTag }}
+        zk-init: {{ include "clickhouse.repository" $ }}:{{ $keeperClientTag }}
+        {{- end }}
         role-probe: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
         switchover: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
         memberJoin: {{ include "clickhouse.repository" $ }}:{{ .imageTag }}
