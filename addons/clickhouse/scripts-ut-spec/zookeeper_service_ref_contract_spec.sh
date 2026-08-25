@@ -3,6 +3,13 @@
 
 cluster_chart_dir="../../../addons-cluster/clickhouse"
 
+# Read the chart version from addons/clickhouse/Chart.yaml so the expected
+# ComponentDefinition names (e.g. clickhouse-22-<chartVersion>) stay correct
+# when the chart version is bumped.
+clickhouse_chart_version() {
+  awk '/^version:/ { print $2; exit }' ../Chart.yaml
+}
+
 render_clickhouse_cluster() {
   helm dependency build --skip-refresh "$cluster_chart_dir" >/dev/null || return
   helm template clickhouse "$cluster_chart_dir" --show-only templates/cluster.yaml "$@"
@@ -60,6 +67,7 @@ default_clickhouse_resources_are_unchanged() {
 
 zookeeper_service_endpoints_are_consumed() {
   local component config
+  helm dependency build --skip-refresh .. >/dev/null || return
   component=$(helm template clickhouse .. --show-only templates/cmpd-ch.yaml) || return
   config=$(helm template clickhouse .. --show-only templates/config-template.yaml) || return
 
@@ -74,7 +82,7 @@ clickhouse_22_component_definition_is_rendered() {
   local cmpd
   cmpd=$(helm template clickhouse .. --show-only templates/cmpd-ch-22.yaml) || return
 
-  grep -Fq -- 'name: clickhouse-22-1.2.0-alpha.1' <<<"$cmpd" || return 1
+  grep -Fq -- "name: clickhouse-22-$(clickhouse_chart_version)" <<<"$cmpd" || return 1
   grep -Fq -- '- name: copy-keeper-client' <<<"$cmpd" || return 1
   grep -Fq -- '/shared-tools/clickhouse-keeper-client' <<<"$cmpd" || return 1
   grep -Fq -- '^clickhouse-22-1.*' <<<"$cmpd" || return 1
@@ -85,7 +93,7 @@ keeper_22_component_definition_is_rendered() {
   local cmpd
   cmpd=$(helm template clickhouse .. --show-only templates/cmpd-keeper-22.yaml) || return
 
-  grep -Fq -- 'name: clickhouse-keeper-22-1.2.0-alpha.1' <<<"$cmpd" || return 1
+  grep -Fq -- "name: clickhouse-keeper-22-$(clickhouse_chart_version)" <<<"$cmpd" || return 1
   grep -Fq -- '- name: copy-keeper-client' <<<"$cmpd" || return 1
   grep -Fq -- '/shared-tools/clickhouse-keeper-client' <<<"$cmpd" || return 1
 }
