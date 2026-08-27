@@ -24,6 +24,15 @@
           "default": ""
         }
       }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "externalManaged": {
+          "type": "boolean",
+          "default": true
+        }
+      }
     }
   }
 }

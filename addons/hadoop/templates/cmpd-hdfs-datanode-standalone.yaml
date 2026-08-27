@@ -240,13 +240,13 @@ spec:
       volumeName: hdfs-common-config
       namespace: {{ .Release.Namespace }}
       defaultMode: {{ .Values.config.defaultMode }}
-      externalManaged: true
+      externalManaged: {{ .Values.config.externalManaged }}
     - name: datanode-config
       template: datanode-standalone-config-template
       volumeName: datanode-config
       namespace: {{ .Release.Namespace }}
       defaultMode: {{ .Values.config.defaultMode }}
-      externalManaged: true
+      externalManaged: {{ .Values.config.externalManaged }}
   scripts:
     - name: hadoop-scripts
       template: hadoop-scripts

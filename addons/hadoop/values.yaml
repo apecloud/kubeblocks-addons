@@ -179,6 +179,7 @@ probes:
 
 config:
   defaultMode: 0755
+  externalManaged: true
 
 scripts:
   defaultMode: 0755

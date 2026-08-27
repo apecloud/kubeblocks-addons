@@ -285,13 +285,13 @@ spec:
       volumeName: hdfs-common-config
       namespace: {{ .Release.Namespace }}
       defaultMode: {{ .Values.config.defaultMode }}
-      externalManaged: true
+      externalManaged: {{ .Values.config.externalManaged }}
     - name: namenode-config
       template: namenode-standalone-config-template
       volumeName: namenode-config
       namespace: {{ .Release.Namespace }}
       defaultMode: {{ .Values.config.defaultMode }}
-      externalManaged: true
+      externalManaged: {{ .Values.config.externalManaged }}
   scripts:
     - name: hadoop-scripts
       template: hadoop-scripts
