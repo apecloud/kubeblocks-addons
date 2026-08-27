@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
-{{- $zkParentPrefix := default .HDFS_HA_ZOOKEEPER_PARENT_ZNODE .HDFS_HA_ZOOKEEPER_PARENT_ZNODE_PREFIX }}
+{{- $zkParentPrefix := .HDFS_HA_ZOOKEEPER_PARENT_ZNODE_PREFIX }}
 {{- $includeClusterUID := eq (lower (printf "%v" (default "false" .HDFS_HA_ZOOKEEPER_PARENT_ZNODE_INCLUDE_CLUSTER_UID))) "true" }}
 {{- $zkParent := $zkParentPrefix }}
 {{- if and $includeClusterUID .CLUSTER_UID }}

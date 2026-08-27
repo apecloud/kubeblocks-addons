@@ -107,6 +107,11 @@
     </property>
 
     <property>
+        <name>hbase.unsafe.stream.capability.enforce</name>
+        <value>false</value>
+    </property>
+
+    <property>
         <name>hbase.procedure.store.wal.use.hsync</name>
         <value>{{ .HBASE_PROCEDURE_STORE_WAL_USE_HSYNC }}</value>
     </property>

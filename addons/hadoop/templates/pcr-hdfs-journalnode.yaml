@@ -13,8 +13,10 @@ spec:
     - journalnode-config-constraints
   configs:
     - name: core-site.xml
+      templateName: hdfs-common-config
       fileFormatConfig:
         format: xml
     - name: hdfs-site.xml
+      templateName: journalnode-config
       fileFormatConfig:
         format: xml
