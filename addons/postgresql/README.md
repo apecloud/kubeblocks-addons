@@ -175,7 +175,8 @@ postgresql   18.4.0,18.1.0,17.10.0,17.5.0,16.14.0,16.9.0,16.4.0,15.18.0,15.13.0,
 
 ### PgBouncer connection pool
 
-For a new Cluster, omit the `pgbouncer` component or set `replicas: 0` to keep
+The managed component runs PgBouncer 1.25.2. For a new Cluster, omit the
+`pgbouncer` component or set `replicas: 0` to keep
 the managed pool disabled. To enable it at creation time, add the component to
 the same `replication` topology. When the Cluster does not override resources,
 the component requests 100m CPU and 128Mi memory and is limited to 500m CPU and

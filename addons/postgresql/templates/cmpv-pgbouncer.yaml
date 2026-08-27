@@ -11,9 +11,9 @@ spec:
     - compDefs:
         - {{ include "pgbouncer.componentDefNamePrefix" . }}
       releases:
-        - {{ .Values.pgbouncer.image.tag | quote }}
+        - {{ .Values.pgbouncer.standaloneImage.tag | quote }}
   releases:
-    - name: {{ .Values.pgbouncer.image.tag | quote }}
-      serviceVersion: {{ .Values.pgbouncer.image.tag | quote }}
+    - name: {{ .Values.pgbouncer.standaloneImage.tag | quote }}
+      serviceVersion: {{ .Values.pgbouncer.standaloneImage.tag | quote }}
       images:
-        pgbouncer: {{ include "postgresql.pgbouncerImage" . }}
+        pgbouncer: {{ include "pgbouncer.image" . }}

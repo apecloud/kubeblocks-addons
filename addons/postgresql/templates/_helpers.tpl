@@ -158,7 +158,7 @@ Usage: {{ include "postgresql.imagePullPolicy" . }}
 Get standalone PgBouncer image pull policy.
 */}}
 {{- define "pgbouncer.imagePullPolicy" -}}
-{{- default "IfNotPresent" .Values.pgbouncer.image.pullPolicy -}}
+{{- default "IfNotPresent" .Values.pgbouncer.standaloneImage.pullPolicy -}}
 {{- end -}}
 
 {{/*
@@ -241,8 +241,8 @@ Generate reloader scripts configmap
 {{- end }}
 {{- end }}
 
-{{- define "pgbouncer.componentConfigurationTemplate" -}}
-pgbouncer-component-configuration-{{ .Chart.Version }}
+{{- define "pgbouncer.configurationTemplate" -}}
+pgbouncer-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -258,6 +258,15 @@ Define image
 {{- printf "%s@%s" $repository .Values.pgbouncer.image.digest -}}
 {{- else -}}
 {{- printf "%s:%s" $repository .Values.pgbouncer.image.tag -}}
+{{- end -}}
+{{- end }}
+
+{{- define "pgbouncer.image" -}}
+{{- $repository := printf "%s/%s" (.Values.pgbouncer.standaloneImage.registry | default (.Values.image.registry | default "docker.io")) .Values.pgbouncer.standaloneImage.repository -}}
+{{- if .Values.pgbouncer.standaloneImage.digest -}}
+{{- printf "%s@%s" $repository .Values.pgbouncer.standaloneImage.digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repository .Values.pgbouncer.standaloneImage.tag -}}
 {{- end -}}
 {{- end }}
 

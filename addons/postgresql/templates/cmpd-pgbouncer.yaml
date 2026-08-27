@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: A standalone PgBouncer connection pool for PostgreSQL
   serviceKind: pgbouncer
-  serviceVersion: {{ .Values.pgbouncer.image.tag | quote }}
+  serviceVersion: {{ .Values.pgbouncer.standaloneImage.tag | quote }}
   replicasLimit:
     minReplicas: 0
     maxReplicas: 64
@@ -26,7 +26,7 @@ spec:
             targetPort: pgbouncer
   configs:
     - name: pgbouncer-configuration
-      template: {{ include "pgbouncer.componentConfigurationTemplate" . }}
+      template: {{ include "pgbouncer.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0444
@@ -70,8 +70,9 @@ spec:
           optional: false
   runtime:
     securityContext:
-      runAsUser: 0
-      runAsGroup: 0
+      runAsNonRoot: true
+      runAsUser: 70
+      runAsGroup: 70
     containers:
       - name: pgbouncer
         imagePullPolicy: {{ include "pgbouncer.imagePullPolicy" . }}
@@ -83,8 +84,13 @@ spec:
             cpu: 500m
             memory: 512Mi
         securityContext:
-          runAsUser: 0
+          runAsNonRoot: true
+          runAsUser: 70
+          runAsGroup: 70
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         command:
           - /kb-scripts/pgbouncer-setup.sh
         ports:
@@ -93,7 +99,7 @@ spec:
             protocol: TCP
         volumeMounts:
           - name: pgbouncer-config
-            mountPath: /home/pgbouncer/conf
+            mountPath: /opt/pgbouncer-template
           - name: scripts
             mountPath: /kb-scripts
         livenessProbe:
@@ -122,10 +128,6 @@ spec:
                 )"
                 test "$primary" = "t"
         env:
-          - name: PGBOUNCER_AUTH_TYPE
-            value: md5
-          - name: PGBOUNCER_PORT
-            value: "6432"
           - name: CURRENT_POD_IP
             valueFrom:
               fieldRef:

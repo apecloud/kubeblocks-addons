@@ -40,6 +40,7 @@ Describe "PostgreSQL version matrix contract"
       postgres = definitions.find { |definition| definition.dig("metadata", "name") == "postgresql-14-1.0.6" }
       pgbouncer = definitions.find { |definition| definition.dig("metadata", "name") == "pgbouncer-postgresql-1.0.6" }
       abort unless pgbouncer.dig("spec", "replicasLimit") == {"minReplicas" => 0, "maxReplicas" => 64}
+      abort unless pgbouncer.dig("spec", "serviceVersion") == "1.25.2"
       abort unless pgbouncer.dig("spec", "services", 0, "spec", "ports", 0, "port") == 6432
       resources = pgbouncer.dig("spec", "runtime", "containers", 0, "resources")
       abort unless resources == {
@@ -66,33 +67,75 @@ Describe "PostgreSQL version matrix contract"
       abort unless probe.include?("$CURRENT_POD_IP") && probe.include?("NOT pg_is_in_recovery()")
       readiness = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe")
       abort unless readiness["failureThreshold"] == 1 && readiness["periodSeconds"] == 5
+      pod_security = pgbouncer.dig("spec", "runtime", "securityContext")
+      abort unless pod_security == {"runAsNonRoot" => true, "runAsUser" => 70, "runAsGroup" => 70}
+      container = pgbouncer.dig("spec", "runtime", "containers", 0)
+      container_security = container["securityContext"]
+      abort unless container_security["runAsNonRoot"] == true
+      abort unless container_security["runAsUser"] == 70 && container_security["runAsGroup"] == 70
+      abort unless container_security["allowPrivilegeEscalation"] == false
+      abort unless container_security.dig("capabilities", "drop") == ["ALL"]
+      config_mount = container["volumeMounts"].find { |mount| mount["name"] == "pgbouncer-config" }
+      abort unless config_mount["mountPath"] == "/opt/pgbouncer-template"
       env = pgbouncer.dig("spec", "runtime", "containers", 0, "env")
       pod_ip = env.find { |entry| entry["name"] == "CURRENT_POD_IP" }
       abort unless pod_ip.dig("valueFrom", "fieldRef", "fieldPath") == "status.podIP"
-      abort if env.any? { |entry| entry["name"] == "PGBOUNCER_BIND_ADDRESS" }
+      abort unless env.map { |entry| entry["name"] } == [
+        "CURRENT_POD_IP", "POSTGRESQL_HOST", "POSTGRESQL_PORT", "POSTGRESQL_USERNAME", "POSTGRESQL_PASSWORD"
+      ]
       pgbouncer_config = documents.find do |document|
         document["kind"] == "ConfigMap" &&
-          document.dig("metadata", "name") == "pgbouncer-component-configuration-1.0.6"
+          document.dig("metadata", "name") == "pgbouncer-configuration-1.0.6"
       end.dig("data", "pgbouncer.ini")
       abort unless pgbouncer_config.lines.any? { |line| line.match?(/^\s*listen_addr\s*=\s*\*\s*$/) }
+      abort unless pgbouncer_config.lines.any? { |line| line.match?(/^\s*client_tls_sslmode\s*=\s*disable\s*$/) }
+      abort unless pgbouncer_config.lines.any? { |line| line.match?(/^\s*server_tls_sslmode\s*=\s*disable\s*$/) }
+      abort unless pgbouncer_config.include?("auth_file = /etc/pgbouncer/userlist.txt")
+      abort unless pgbouncer_config.include?("FROM pg_catalog.pg_authid")
+      abort unless pgbouncer_config.include?("rolvaliduntil") && pgbouncer_config.include?("rolcanlogin")
+      abort unless pgbouncer_config.include?("pidfile = /var/run/pgbouncer/pgbouncer.pid")
       abort if pgbouncer_config.lines.any? { |line| line.match?(/^\s*logfile\s*=\s*\/dev\/stderr\s*$/) }
       abort if documents.any? do |document|
         document["kind"] == "ConfigMap" &&
-          document.dig("metadata", "name") == "pgbouncer-configuration-1.0.6"
+          document.dig("metadata", "name") == "pgbouncer-component-configuration-1.0.6"
       end
 
       version = documents.find do |document|
         document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "postgresql-pgbouncer"
       end
       abort unless version.dig("spec", "compatibilityRules", 0, "compDefs") == ["pgbouncer-postgresql-"]
+      release = version.dig("spec", "releases", 0)
+      abort unless release["name"] == "1.25.2" && release["serviceVersion"] == "1.25.2"
+      abort unless release.dig("images", "pgbouncer") == "docker.io/apecloud/pgbouncer@sha256:7d7a27d9e90985cab5cf42256f5c13a3120baa4b055b69df37beb272b89b2340"
+      postgres_version = documents.find do |document|
+        document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "postgresql"
+      end
+      abort unless postgres_version["spec"]["releases"].all? do |postgres_release|
+        postgres_release.dig("images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.19.0"
+      end
       puts "ok"
     '
   }
 
+  pgbouncer_runtime_script_contract() {
+    script="$(chart_dir)/scripts/pgbouncer-setup.sh"
+
+    test "$(sed -n '1p' "$script")" = '#!/bin/sh' || return 1
+    grep -Fq 'exec /usr/bin/pgbouncer "$pgbouncer_conf_file"' "$script" || return 1
+    grep -Fq 'backend_host="${POSTGRESQL_HOST:-}"' "$script" || return 1
+    grep -Fq 'backend_port="${POSTGRESQL_PORT:-}"' "$script" || return 1
+
+    for legacy in /opt/bitnami /etc/passwd /etc/group useradd 'su pgbouncer' CURRENT_POD_IP; do
+      if grep -Fq "$legacy" "$script"; then
+        return 1
+      fi
+    done
+  }
+
   pgbouncer_digest_and_pull_policy_contract() {
     helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system --dependency-update \
-      --set pgbouncer.image.digest=sha256:0123456789abcdef \
-      --set pgbouncer.image.pullPolicy=Always | RUBYOPT=-W0 ruby -ryaml -e '
+      --set pgbouncer.standaloneImage.digest=sha256:0123456789abcdef \
+      --set pgbouncer.standaloneImage.pullPolicy=Always | RUBYOPT=-W0 ruby -ryaml -e '
         documents = YAML.load_stream(ARGF.read).compact
         version = documents.find { |document| document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "postgresql-pgbouncer" }
         abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer@sha256:0123456789abcdef"
@@ -225,6 +268,11 @@ EOF
     When call pgbouncer_digest_and_pull_policy_contract
     The status should eq 0
     The output should eq "ok"
+  End
+
+  It "uses the standalone image's non-root POSIX runtime contract"
+    When call pgbouncer_runtime_script_contract
+    The status should eq 0
   End
 
   It "publishes PostgreSQL 13.23 in the ComponentDefinition, ParametersDefinition, and ComponentVersion"
