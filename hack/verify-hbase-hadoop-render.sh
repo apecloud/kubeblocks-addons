@@ -130,7 +130,7 @@ EOF
   cat >"${case_dir}/hbase/bin/hbase" <<'EOF'
 #!/usr/bin/env bash
 printf 'call\n' >>"${MOCK_HBASE_COUNTER}"
-printf '1 live servers\n  rs.example,16020,123456\n'
+printf '1 live servers\n  rs.example:16020 123456\n'
 EOF
   chmod +x "${case_dir}/bin/curl" "${case_dir}/hbase/bin/hbase"
 

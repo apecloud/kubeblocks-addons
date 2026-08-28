@@ -11,5 +11,5 @@ curl -sf --max-time 2 -o /dev/null "http://127.0.0.1:${REGIONSERVER_INFO_PORT}/r
 # ponytail: HBase Shell is used only until registration is confirmed; replace the marker with a direct JMX signal if HBase exposes one later.
 [[ -f "${READY_MARKER}" ]] && exit 0
 STATUS_OUTPUT="$(printf "status 'simple'\n" | "${HBASE_HOME}/bin/hbase" shell -n 2>/dev/null)"
-grep -Fq "${REGIONSERVER_HOST},${REGIONSERVER_PORT}," <<< "${STATUS_OUTPUT}"
+grep -Fq "${REGIONSERVER_HOST}:${REGIONSERVER_PORT} " <<< "${STATUS_OUTPUT}"
 touch "${READY_MARKER}"
