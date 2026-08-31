@@ -68,11 +68,30 @@ spec:
           name: postgres
           password: Required
           optional: false
+    - name: PGBOUNCER_POOL_MODE
+      value: "session"
+    - name: PGBOUNCER_MAX_CLIENT_CONN
+      value: "500"
+    - name: PGBOUNCER_DEFAULT_POOL_SIZE
+      value: "20"
+    - name: PGBOUNCER_MIN_POOL_SIZE
+      value: "5"
+    - name: PGBOUNCER_RESERVE_POOL_SIZE
+      value: "5"
+    - name: PGBOUNCER_MAX_DB_CONNECTIONS
+      value: "80"
+    - name: PGBOUNCER_MAX_USER_CONNECTIONS
+      value: "80"
   runtime:
     securityContext:
       runAsNonRoot: true
       runAsUser: 70
       runAsGroup: 70
+      fsGroup: 70
+      fsGroupChangePolicy: OnRootMismatch
+    volumes:
+      - name: pgbouncer-state
+        emptyDir: {}
     containers:
       - name: pgbouncer
         imagePullPolicy: {{ include "pgbouncer.imagePullPolicy" . }}
@@ -102,6 +121,8 @@ spec:
             mountPath: /opt/pgbouncer-template
           - name: scripts
             mountPath: /kb-scripts
+          - name: pgbouncer-state
+            mountPath: /etc/pgbouncer
         livenessProbe:
           failureThreshold: 3
           initialDelaySeconds: 15

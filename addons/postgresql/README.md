@@ -254,13 +254,72 @@ enabled state, and verify ready endpoints before advertising the 6432 address.
 Clusters created by an older Addon keep their legacy in-Pod PgBouncer sidecar;
 the zero value controls only the new managed standalone pool.
 
+PgBouncer uses static, user-configurable pool defaults. The Addon does not
+query PostgreSQL `max_connections`, infer capacity from container memory, or
+divide limits automatically when the PgBouncer component scales. This keeps
+configuration predictable during PostgreSQL startup, failover, and PgBouncer
+scale operations.
+
+The default `pgbouncer.ini` values are:
+
+```ini
+pool_mode = session
+max_client_conn = 500
+default_pool_size = 20
+min_pool_size = 5
+reserve_pool_size = 5
+max_db_connections = 80
+max_user_connections = 80
+```
+
+`pool_mode` accepts `session`, `transaction`, or `statement`.
+`max_client_conn` and `default_pool_size` accept canonical decimal integers in
+`1..999999`; the other four capacity values accept `0..999999`. The Addon
+rejects line breaks, extra tokens, duplicate or unsupported settings before
+they reach PgBouncer. An invalid override does not replace the last rendered
+ConfigMap or restart the running pool. These bounds are syntax guards, not a
+safe-sizing guarantee: operators must still size PgBouncer memory and file
+descriptors and keep backend limits within PostgreSQL capacity.
+
+Change these values through the existing `pgbouncer-configuration` component
+configuration entry. KubeBlocks performs a controlled restart when the
+rendered file changes:
+
+```yaml
+spec:
+  componentSpecs:
+    - name: pgbouncer
+      replicas: 2
+      configs:
+        - name: pgbouncer-configuration
+          variables:
+            PGBOUNCER_MAX_CLIENT_CONN: "1000"
+            PGBOUNCER_DEFAULT_POOL_SIZE: "30"
+            PGBOUNCER_MAX_DB_CONNECTIONS: "60"
+            PGBOUNCER_MAX_USER_CONNECTIONS: "40"
+```
+
+`default_pool_size` applies to every user/database pair,
+`max_db_connections` to every PgBouncer database, and `max_user_connections`
+to every PgBouncer user. They are guardrails rather than a global PostgreSQL
+connection cap. When PostgreSQL `max_connections`, the number of databases,
+the number of users, or the PgBouncer replica count changes, operators must
+review these values. PostgreSQL remains the final global enforcement point.
+
+The normal topology provisions PostgreSQL before PgBouncer. If PostgreSQL later
+restarts or becomes unavailable, an existing PgBouncer process can keep
+listening on 6432 but is not Ready until a connection through PgBouncer reaches
+a writable primary. It becomes Ready automatically after PostgreSQL recovers;
+no pool limits are changed as part of that readiness check.
+
 #### Current limitations
 
-- PgBouncer uses session pooling and does not transparently migrate client
+- The default session pooling mode does not transparently migrate client
   sessions during a PostgreSQL primary change. During a KubeBlocks-managed
   Patroni switchover, Patroni terminates the old backend connections, so pooled
   clients are explicitly disconnected. Applications must reconnect with
   backoff and retry failed work; in-flight transactions are not replayed.
+  Transaction or statement mode also requires application compatibility review.
 - Upgrading the Addon does not enqueue existing Clusters. If an older Cluster
   does not yet contain a `pgbouncer` component spec, the caller must first add
   it with `replicas: 0` and the exact ComponentDefinition selected by the
