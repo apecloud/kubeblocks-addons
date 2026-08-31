@@ -15,11 +15,16 @@ if [ -z "$jobs" ]; then
   jobs=4
 fi
 
-# Build pg_dump parameters
-# Roles are not dumped by pg_dump; the target cluster (e.g. a freshly
-# restored one) usually does not have the roles referenced by ownership and
-# ACL statements, so skip restoring owners and privileges altogether.
-params="-j $jobs -Fd -v -C -d postgres --no-owner --no-privileges"
+# Build pg_restore parameters. Preserve archive ownership and privileges by
+# default; users restoring into a cluster without the referenced roles can
+# explicitly opt out of either behavior.
+params="-j $jobs -Fd -v -C -d postgres"
+if [ "$skip_owner" == "true" ]; then
+  params="$params --no-owner"
+fi
+if [ "$skip_privileges" == "true" ]; then
+  params="$params --no-privileges"
+fi
 if [ -n "$database" ]; then
     $psql_cmd -d postgres -Atc "create database $database" || echo "Failed to create database $database"
 fi
