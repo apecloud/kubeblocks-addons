@@ -31,7 +31,10 @@ if [ -z "$jobs" ]; then
 fi
 
 # Build pg_dump parameters
-params="-j $jobs -Fd -v -C -d postgres"
+# Roles are not dumped by pg_dump; the target cluster (e.g. a freshly
+# restored one) usually does not have the roles referenced by ownership and
+# ACL statements, so skip restoring owners and privileges altogether.
+params="-j $jobs -Fd -v -C -d postgres --no-owner --no-privileges"
 if [ -n "$database" ]; then
     $psql_cmd -d postgres -Atc "create database $database" || echo "Failed to create database $database"
 fi
@@ -44,7 +47,6 @@ if [ -n "$schemas" ]; then
         $psql_cmd -d $database -Atc "create schema if not exists $schema" || echo "Failed to create schema $schema"
      fi
   done
-  params="$params --no-owner --no-privileges"
 fi
 
 # Handle table selection
@@ -64,9 +66,6 @@ if [ -n "$tables" ]; then
       $psql_cmd -d $database -Atc "create schema if not exists $schema" || echo "Failed to create schema $schema"
     fi
   done
-  if [ -z "$schemas" ]; then
-    params="$params --no-owner --no-privileges"
-  fi
 fi
 
 # Handle schema only
@@ -94,10 +93,21 @@ set -e
 exec 3>&-
 # Without --exit-on-error pg_restore continues past per-object errors and
 # exits 1 with "errors ignored on restore". Only the non-FAIL policies may
-# treat that as success; FAIL must propagate the failure.
-if [ $exit_code -ne 0 ] && [ "$conflict_policy" != "FAIL" ] && [ -f /tmp/pg_restore.log ] \
+# treat that as success, and only when every error is a benign conflict with
+# the existing target database: objects already present ("already exists",
+# "multiple primary keys"), or the database in use so its DROP fails. Data
+# conflicts (duplicate key values), missing objects, and permission problems
+# must fail.
+if [ "$exit_code" -ne 0 ] && [ "$conflict_policy" != "FAIL" ] && [ -f /tmp/pg_restore.log ] \
     && grep -q "pg_restore: warning: errors ignored on restore" /tmp/pg_restore.log; then
-  echo "pg_restore reported ignored errors; treating as success under conflict_policy=${conflict_policy:-CONTINUE}"
-  exit_code=0
+  total_errors=$(grep -c "^pg_restore: error:" /tmp/pg_restore.log || true)
+  existing_errors=$(grep "^pg_restore: error:" /tmp/pg_restore.log | grep -cE "already exists|multiple primary keys for table|is being accessed by other users" || true)
+  if [ "$total_errors" -gt 0 ] && [ "$total_errors" = "$existing_errors" ]; then
+    echo "pg_restore reported only pre-existing-object errors; treating as success under conflict_policy=${conflict_policy:-CONTINUE}"
+    exit_code=0
+  else
+    echo "pg_restore reported non-conflict errors; failing restore" >&2
+    grep "^pg_restore: error:" /tmp/pg_restore.log | grep -vE "already exists|multiple primary keys for table|is being accessed by other users" >&2 || true
+  fi
 fi
-exit $exit_code
+exit "$exit_code"
