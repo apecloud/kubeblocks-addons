@@ -33,6 +33,14 @@ spec:
           type: boolean
           description: "Backup only the schema, no data."
           default: false
+        skip_owner:
+          type: boolean
+          description: "Skip restoring object owners. By default, archived owners are restored."
+          default: false
+        skip_privileges:
+          type: boolean
+          description: "Skip restoring object privileges. By default, archived GRANT and REVOKE statements are restored."
+          default: false
         conflict_policy:
           type: string
           description: "Conflict policy for restore. If not specified, the default is 'CONTINUE'."
@@ -69,6 +77,8 @@ spec:
       - schemas
       - tables
       - schema_only
+      - skip_owner
+      - skip_privileges
     postReady:
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
