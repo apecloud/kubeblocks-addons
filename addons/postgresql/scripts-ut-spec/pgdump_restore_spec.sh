@@ -83,6 +83,29 @@ EOF
     awk '/^  restore:/{restore=1} restore && /^    withParameters:/{params=1; next} params && /^    [a-zA-Z]/{exit} params{print}' "$(actionset_path)"
   }
 
+  restore_parameter_contract() {
+    awk -v parameter="$1" '
+      $0 == "        " parameter ":" { found=1; next }
+      found && /^        [a-zA-Z0-9_]+:$/ { exit }
+      found && /^          type:/ {
+        sub(/^          type:[[:space:]]*/, "type=")
+        print
+      }
+      found && /^          default:/ {
+        sub(/^          default:[[:space:]]*/, "default=")
+        print
+      }
+    ' "$(actionset_path)"
+  }
+
+  skip_owner_contract() {
+    restore_parameter_contract skip_owner
+  }
+
+  skip_privileges_contract() {
+    restore_parameter_contract skip_privileges
+  }
+
   It "restores archive owners and privileges by default"
     When run bash "$(script_path)"
     The status should eq 0
@@ -134,5 +157,9 @@ pg_restore: warning: errors ignored on restore: 1'
     The output should include 'description: "Skip restoring object privileges.'
     The result of function restore_parameter_names should include "- skip_owner"
     The result of function restore_parameter_names should include "- skip_privileges"
+    The result of function skip_owner_contract should include "type=boolean"
+    The result of function skip_owner_contract should include "default=false"
+    The result of function skip_privileges_contract should include "type=boolean"
+    The result of function skip_privileges_contract should include "default=false"
   End
 End
