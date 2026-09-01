@@ -42,6 +42,7 @@ Describe "PostgreSQL version matrix contract"
       abort unless pgbouncer.dig("spec", "replicasLimit") == {"minReplicas" => 0, "maxReplicas" => 64}
       abort unless pgbouncer.dig("spec", "serviceVersion") == "1.25.2"
       abort unless pgbouncer.dig("spec", "services", 0, "spec", "ports", 0, "port") == 6432
+      abort if pgbouncer.dig("spec", "services", 0).key?("serviceName")
       resources = pgbouncer.dig("spec", "runtime", "containers", 0, "resources")
       abort unless resources == {
         "requests" => {"cpu" => "100m", "memory" => "128Mi"},
@@ -96,7 +97,6 @@ Describe "PostgreSQL version matrix contract"
       abort unless pgbouncer_schema.include?("max_client_conn?: int & >=1 & <=999999 | *500")
       abort unless pgbouncer_schema.include?("max_db_connections?: int & >=0 & <=999999 | *80")
       abort unless pgbouncer_schema.include?("configuration: {\n\tpgbouncer: #PgBouncerParameter\n\t...\n}")
-      abort unless pgbouncer_schema.include?("\n\t...\n}\n\n// KubeBlocks decodes INI input")
       account_refs = pgbouncer.dig("spec", "vars").map { |var| var.dig("valueFrom", "credentialVarRef", "name") }.compact
       abort unless account_refs == ["postgres", "postgres"]
       probe = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe", "exec", "command", -1)
@@ -148,7 +148,6 @@ Describe "PostgreSQL version matrix contract"
       abort unless pgbouncer_config.include?("reserve_pool_size = 5")
       abort unless pgbouncer_config.include?("max_db_connections = 80")
       abort unless pgbouncer_config.include?("max_user_connections = 80")
-      abort unless pgbouncer_config.include?("configurable guardrails, not a global PostgreSQL cap")
       abort if pgbouncer_config.lines.any? { |line| line.match?(/^\s*logfile\s*=\s*\/dev\/stderr\s*$/) }
       main_config = documents.find do |document|
         document["kind"] == "ConfigMap" && document.dig("metadata", "name") == "pgbouncer-configuration-1.0.6"
@@ -164,7 +163,7 @@ Describe "PostgreSQL version matrix contract"
       abort unless version.dig("spec", "compatibilityRules", 0, "compDefs") == ["pgbouncer-"]
       release = version.dig("spec", "releases", 0)
       abort unless release["name"] == "1.25.2" && release["serviceVersion"] == "1.25.2"
-      abort unless release.dig("images", "pgbouncer") == "docker.io/apecloud/pgbouncer@sha256:7d7a27d9e90985cab5cf42256f5c13a3120baa4b055b69df37beb272b89b2340"
+      abort unless release.dig("images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.25.2"
       postgres_version = documents.find do |document|
         document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "postgresql"
       end
@@ -191,20 +190,20 @@ Describe "PostgreSQL version matrix contract"
       fi
     done
 
-    for legacy in /opt/bitnami /etc/passwd /etc/group useradd 'su pgbouncer' CURRENT_POD_IP; do
-      if grep -Fq "$legacy" "$script"; then
+    for sidecar_artifact in /opt/bitnami /etc/passwd /etc/group useradd 'su pgbouncer' CURRENT_POD_IP; do
+      if grep -Fq "$sidecar_artifact" "$script"; then
         return 1
       fi
     done
   }
 
-  pgbouncer_digest_and_pull_policy_contract() {
+  pgbouncer_image_and_pull_policy_contract() {
     helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system --dependency-update \
-      --set pgbouncer.componentImage.digest=sha256:0123456789abcdef \
+      --set pgbouncer.componentImage.tag=1.25.2-test \
       --set pgbouncer.componentImage.pullPolicy=Always | RUBYOPT=-W0 ruby -ryaml -e '
         documents = YAML.load_stream(ARGF.read).compact
         version = documents.find { |document| document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "pgbouncer" }
-        abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer@sha256:0123456789abcdef"
+        abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.25.2-test"
         definition = documents.find { |document| document["kind"] == "ComponentDefinition" && document.dig("metadata", "name") == "pgbouncer-1.0.6" }
         abort unless definition.dig("spec", "runtime", "containers", 0, "imagePullPolicy") == "Always"
         puts "ok"
@@ -330,8 +329,8 @@ EOF
     The output should eq "ok"
   End
 
-  It "honors the PgBouncer component digest and pull policy"
-    When call pgbouncer_digest_and_pull_policy_contract
+  It "honors the PgBouncer component image tag and pull policy"
+    When call pgbouncer_image_and_pull_policy_contract
     The status should eq 0
     The output should eq "ok"
   End

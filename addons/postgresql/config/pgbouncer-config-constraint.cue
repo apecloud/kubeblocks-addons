@@ -20,14 +20,9 @@
 	// Maximum number of backend connections for one user per PgBouncer instance. Zero means unlimited.
 	max_user_connections?: int & >=0 & <=999999 | *80
 
-	// The rendered file also contains product-managed settings that are not
-	// exposed through the parameter API.
 	...
 }
 
-// KubeBlocks decodes INI input as a map keyed by section name and fills it
-// below "configuration" during runtime validation. Bind only [pgbouncer] to
-// the public contract; other future sections remain outside this parameter API.
 configuration: {
 	pgbouncer: #PgBouncerParameter
 	...

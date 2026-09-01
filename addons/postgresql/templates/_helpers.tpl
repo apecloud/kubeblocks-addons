@@ -260,22 +260,14 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
 
-{{- define "pgbouncer.legacyImage" -}}
+{{- define "pgbouncer.sidecarImage" -}}
 {{- $repository := printf "%s/%s" (.Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io")) .Values.pgbouncer.image.repository -}}
-{{- if .Values.pgbouncer.image.digest -}}
-{{- printf "%s@%s" $repository .Values.pgbouncer.image.digest -}}
-{{- else -}}
 {{- printf "%s:%s" $repository .Values.pgbouncer.image.tag -}}
-{{- end -}}
 {{- end }}
 
 {{- define "pgbouncer.componentImage" -}}
 {{- $repository := printf "%s/%s" (.Values.pgbouncer.componentImage.registry | default (.Values.image.registry | default "docker.io")) .Values.pgbouncer.componentImage.repository -}}
-{{- if .Values.pgbouncer.componentImage.digest -}}
-{{- printf "%s@%s" $repository .Values.pgbouncer.componentImage.digest -}}
-{{- else -}}
 {{- printf "%s:%s" $repository .Values.pgbouncer.componentImage.tag -}}
-{{- end -}}
 {{- end }}
 
 {{- define "postgresql.metricsImage" -}}

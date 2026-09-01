@@ -247,8 +247,6 @@ start_pgbouncer() {
   exec "$pgbouncer_bin" "$pgbouncer_conf_file"
 }
 
-# This is magic for shellspec ut framework. When this file is included from
-# shellspec, __SOURCED__ is set and main must not run.
 main() {
   build_pgbouncer_conf || return 1
   start_pgbouncer

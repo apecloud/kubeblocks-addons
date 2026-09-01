@@ -18,7 +18,6 @@ spec:
   podManagementPolicy: Parallel
   services:
     - name: pgbouncer
-      serviceName: pgbouncer
       spec:
         ports:
           - name: pgbouncer

@@ -148,25 +148,18 @@ versions:
 
 ## @section pgbouncer Parameters
 pgbouncer:
-  # Retained for PostgreSQL ComponentVersions whose 1.0.5 ComponentDefinition
-  # still contains the legacy Bitnami-based PgBouncer sidecar.
+  # PgBouncer sidecar image.
   image:
     # if the value of pgbouncer.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
     repository: apecloud/pgbouncer
     tag: 1.19.0
-    digest: ""
     pullPolicy: IfNotPresent
-  # The managed PgBouncer component uses the Alpine-based 1.25 image and
-  # cannot share the legacy sidecar's Bitnami filesystem contract.
+  # PgBouncer component image.
   componentImage:
-    # Copied from edoburu/pgbouncer:v1.25.2-p0 (same manifest digest) by the
-    # ApeCloud image pipeline.
     registry: ""
     repository: apecloud/pgbouncer
     tag: 1.25.2
-    ## @param pgbouncer.componentImage.digest PgBouncer image digest in the form sha256:aa.... If set, it overrides the tag.
-    digest: "sha256:7d7a27d9e90985cab5cf42256f5c13a3120baa4b055b69df37beb272b89b2340"
     pullPolicy: IfNotPresent
 
 dataMountPath: /home/postgres/pgdata

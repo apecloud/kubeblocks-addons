@@ -26,7 +26,7 @@ spec:
         pg-init-container: {{ include "postgresql.initImage" $ }}
         exporter: {{ include "postgresql.metricsImage" $ }}
         postgresql: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
-        pgbouncer: {{ include "pgbouncer.legacyImage" $ }}
+        pgbouncer: {{ include "pgbouncer.sidecarImage" $ }}
         switchover: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
         accountProvision: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
         dbctl: {{ include "postgresql.dbctlImage" $ }}
