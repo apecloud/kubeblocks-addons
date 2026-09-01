@@ -104,18 +104,18 @@ Define postgresql component definition name prefix by major version
 {{- end -}}
 
 {{/*
-Define the standalone PgBouncer component names.
+Define the PgBouncer component resource names.
 */}}
 {{- define "pgbouncer.componentDefName" -}}
 {{ include "pgbouncer.componentDefNamePrefix" . }}{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "pgbouncer.componentDefNamePrefix" -}}
-pgbouncer-postgresql-
+pgbouncer-
 {{- end -}}
 
 {{- define "pgbouncer.componentVersionName" -}}
-postgresql-pgbouncer
+pgbouncer
 {{- end -}}
 
 {{/*
@@ -155,10 +155,10 @@ Usage: {{ include "postgresql.imagePullPolicy" . }}
 {{- end -}}
 
 {{/*
-Get standalone PgBouncer image pull policy.
+Get the PgBouncer component image pull policy.
 */}}
-{{- define "pgbouncer.imagePullPolicy" -}}
-{{- default "IfNotPresent" .Values.pgbouncer.standaloneImage.pullPolicy -}}
+{{- define "pgbouncer.componentImagePullPolicy" -}}
+{{- default "IfNotPresent" .Values.pgbouncer.componentImage.pullPolicy -}}
 {{- end -}}
 
 {{/*
@@ -260,7 +260,7 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
 
-{{- define "postgresql.pgbouncerImage" -}}
+{{- define "pgbouncer.legacyImage" -}}
 {{- $repository := printf "%s/%s" (.Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io")) .Values.pgbouncer.image.repository -}}
 {{- if .Values.pgbouncer.image.digest -}}
 {{- printf "%s@%s" $repository .Values.pgbouncer.image.digest -}}
@@ -269,12 +269,12 @@ Define image
 {{- end -}}
 {{- end }}
 
-{{- define "pgbouncer.image" -}}
-{{- $repository := printf "%s/%s" (.Values.pgbouncer.standaloneImage.registry | default (.Values.image.registry | default "docker.io")) .Values.pgbouncer.standaloneImage.repository -}}
-{{- if .Values.pgbouncer.standaloneImage.digest -}}
-{{- printf "%s@%s" $repository .Values.pgbouncer.standaloneImage.digest -}}
+{{- define "pgbouncer.componentImage" -}}
+{{- $repository := printf "%s/%s" (.Values.pgbouncer.componentImage.registry | default (.Values.image.registry | default "docker.io")) .Values.pgbouncer.componentImage.repository -}}
+{{- if .Values.pgbouncer.componentImage.digest -}}
+{{- printf "%s@%s" $repository .Values.pgbouncer.componentImage.digest -}}
 {{- else -}}
-{{- printf "%s:%s" $repository .Values.pgbouncer.standaloneImage.tag -}}
+{{- printf "%s:%s" $repository .Values.pgbouncer.componentImage.tag -}}
 {{- end -}}
 {{- end }}
 

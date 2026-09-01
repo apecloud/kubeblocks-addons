@@ -1,11 +1,11 @@
 # shellcheck shell=sh
 # shellcheck disable=SC2034,SC2317,SC2329
 
-Describe "PostgreSQL PgBouncer static configuration contract"
+Describe "PostgreSQL PgBouncer setup contract"
   Include ../scripts/pgbouncer-setup.sh
 
   setup() {
-    test_dir=$(mktemp -d -t pgbouncer-authfile-XXXXXX)
+    test_dir=$(mktemp -d -t pgbouncer-setup-XXXXXX)
     mkdir -p "$test_dir/conf" "$test_dir/tmp"
     sed -n '/^\[pgbouncer\]/,$p' ../config/pgbouncer-ini.tpl > "$test_dir/pgbouncer.ini.tpl"
     pgbouncer_template_conf_file="$test_dir/pgbouncer.ini.tpl"
@@ -129,7 +129,7 @@ auth_type = trust' "$pgbouncer_template_conf_file" > "$test_dir/injected.ini"
     The stderr should include "must be a canonical decimal integer"
   End
 
-  It "routes the independent component through the PostgreSQL Service"
+  It "routes the PgBouncer component through the PostgreSQL Service"
     POSTGRESQL_PORT=5433
     When call build_pgbouncer_conf
     The status should be success

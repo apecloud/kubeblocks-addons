@@ -10,7 +10,7 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 |------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
 | replication     | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
 
-The `replication` topology also contains an independent, stateless PgBouncer
+The `replication` topology also contains a managed, stateless PgBouncer
 component. KubeBlocks creates it with zero replicas when the Cluster request
 does not specify the component, so PostgreSQL remains directly available on
 5432 while the managed connection pool is disabled. Scaling the PgBouncer
@@ -220,7 +220,7 @@ a HorizontalScaling OpsRequest. Scale out from zero to enable two replicas:
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: pg-pool-enable
+  name: pg-pgbouncer-enable
   namespace: demo
 spec:
   clusterName: pg-cluster
@@ -237,7 +237,7 @@ Scale in all replicas to disable it:
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: pg-pool-disable
+  name: pg-pgbouncer-disable
   namespace: demo
 spec:
   clusterName: pg-cluster
@@ -252,7 +252,7 @@ At zero replicas the PgBouncer Service and DNS name still exist but have no
 ready Endpoint. Treat `componentSpecs[name=pgbouncer].replicas > 0` as the
 enabled state, and verify ready endpoints before advertising the 6432 address.
 Clusters created by an older Addon keep their legacy in-Pod PgBouncer sidecar;
-the zero value controls only the new managed standalone pool.
+the zero value controls only the new managed PgBouncer component.
 
 PgBouncer uses static, user-configurable pool defaults. The Addon does not
 query PostgreSQL `max_connections`, infer capacity from container memory, or
@@ -291,7 +291,7 @@ then restarts PgBouncer instances in a controlled sequence:
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: pg-pgbouncer-reconfiguring
+  name: pg-pgbouncer-reconfigure
   namespace: demo
 spec:
   type: Reconfiguring
@@ -339,13 +339,14 @@ no pool limits are changed as part of that readiness check.
   does not yet contain a `pgbouncer` component spec, the caller must first add
   it with `replicas: 0` and the exact ComponentDefinition selected by the
   current ClusterDefinition, then submit the HorizontalScaling OpsRequest.
-- The standalone pool does not currently configure TLS on either the client or
-  PostgreSQL hop. Do not enable it for a Cluster that requires TLS; product APIs
-  must reject that combination until both hops are implemented.
+- The managed PgBouncer component does not currently configure TLS on either
+  the client or PostgreSQL hop. Do not enable it for a Cluster that requires
+  TLS; product APIs must reject that combination until both hops are
+  implemented.
 - Helm rollback from PostgreSQL Addon 1.0.6 to 1.0.5 is unsupported. Scaling
-  the standalone pool to zero prevents new pooled traffic but does not make the
-  chart rollback safe because existing Clusters still depend on retained,
-  versioned 1.0.5 resources.
+  the managed PgBouncer component to zero prevents new pooled traffic but does
+  not make the chart rollback safe because existing Clusters still depend on
+  retained, versioned 1.0.5 resources.
 
 ### Horizontal scaling
 

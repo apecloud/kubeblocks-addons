@@ -8,9 +8,9 @@ metadata:
     {{- include "postgresql.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: A standalone PgBouncer connection pool for PostgreSQL
+  description: A managed PgBouncer connection pool for PostgreSQL
   serviceKind: pgbouncer
-  serviceVersion: {{ .Values.pgbouncer.standaloneImage.tag | quote }}
+  serviceVersion: {{ .Values.pgbouncer.componentImage.tag | quote }}
   replicasLimit:
     minReplicas: 0
     maxReplicas: 64
@@ -80,7 +80,7 @@ spec:
         emptyDir: {}
     containers:
       - name: pgbouncer
-        imagePullPolicy: {{ include "pgbouncer.imagePullPolicy" . }}
+        imagePullPolicy: {{ include "pgbouncer.componentImagePullPolicy" . }}
         resources:
           requests:
             cpu: 100m

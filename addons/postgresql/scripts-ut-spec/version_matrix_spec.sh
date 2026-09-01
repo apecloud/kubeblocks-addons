@@ -24,7 +24,7 @@ Describe "PostgreSQL version matrix contract"
     render_chart | grep -c "$pattern" || true
   }
 
-  independent_pgbouncer_contract() {
+  pgbouncer_component_contract() {
     render_chart | RUBYOPT=-W0 ruby -ryaml -e '
       documents = YAML.load_stream(ARGF.read).compact
       cluster_definition = documents.find { |document| document["kind"] == "ClusterDefinition" }
@@ -33,12 +33,12 @@ Describe "PostgreSQL version matrix contract"
       replication = topologies.first
       abort unless replication["components"] == [
         {"name" => "postgresql", "compDef" => "postgresql-"},
-        {"name" => "pgbouncer", "compDef" => "pgbouncer-postgresql-1.0.6"}
+        {"name" => "pgbouncer", "compDef" => "pgbouncer-1.0.6"}
       ]
 
       definitions = documents.select { |document| document["kind"] == "ComponentDefinition" }
       postgres = definitions.find { |definition| definition.dig("metadata", "name") == "postgresql-14-1.0.6" }
-      pgbouncer = definitions.find { |definition| definition.dig("metadata", "name") == "pgbouncer-postgresql-1.0.6" }
+      pgbouncer = definitions.find { |definition| definition.dig("metadata", "name") == "pgbouncer-1.0.6" }
       abort unless pgbouncer.dig("spec", "replicasLimit") == {"minReplicas" => 0, "maxReplicas" => 64}
       abort unless pgbouncer.dig("spec", "serviceVersion") == "1.25.2"
       abort unless pgbouncer.dig("spec", "services", 0, "spec", "ports", 0, "port") == 6432
@@ -70,7 +70,7 @@ Describe "PostgreSQL version matrix contract"
         document["kind"] == "ParamConfigRenderer" &&
           document.dig("metadata", "name") == "pgbouncer-pcr-1.0.6"
       end
-      abort unless pgbouncer_pcr.dig("spec", "componentDef") == "pgbouncer-postgresql-1.0.6"
+      abort unless pgbouncer_pcr.dig("spec", "componentDef") == "pgbouncer-1.0.6"
       abort unless pgbouncer_pcr.dig("spec", "serviceVersion") == "1.25.2"
       abort unless pgbouncer_pcr.dig("spec", "parametersDefs") == ["pgbouncer-pd-1.0.6"]
       pgbouncer_format = pgbouncer_pcr.dig("spec", "configs", 0)
@@ -159,9 +159,9 @@ Describe "PostgreSQL version matrix contract"
       end
 
       version = documents.find do |document|
-        document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "postgresql-pgbouncer"
+        document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "pgbouncer"
       end
-      abort unless version.dig("spec", "compatibilityRules", 0, "compDefs") == ["pgbouncer-postgresql-"]
+      abort unless version.dig("spec", "compatibilityRules", 0, "compDefs") == ["pgbouncer-"]
       release = version.dig("spec", "releases", 0)
       abort unless release["name"] == "1.25.2" && release["serviceVersion"] == "1.25.2"
       abort unless release.dig("images", "pgbouncer") == "docker.io/apecloud/pgbouncer@sha256:7d7a27d9e90985cab5cf42256f5c13a3120baa4b055b69df37beb272b89b2340"
@@ -200,12 +200,12 @@ Describe "PostgreSQL version matrix contract"
 
   pgbouncer_digest_and_pull_policy_contract() {
     helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system --dependency-update \
-      --set pgbouncer.standaloneImage.digest=sha256:0123456789abcdef \
-      --set pgbouncer.standaloneImage.pullPolicy=Always | RUBYOPT=-W0 ruby -ryaml -e '
+      --set pgbouncer.componentImage.digest=sha256:0123456789abcdef \
+      --set pgbouncer.componentImage.pullPolicy=Always | RUBYOPT=-W0 ruby -ryaml -e '
         documents = YAML.load_stream(ARGF.read).compact
-        version = documents.find { |document| document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "postgresql-pgbouncer" }
+        version = documents.find { |document| document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "pgbouncer" }
         abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer@sha256:0123456789abcdef"
-        definition = documents.find { |document| document["kind"] == "ComponentDefinition" && document.dig("metadata", "name") == "pgbouncer-postgresql-1.0.6" }
+        definition = documents.find { |document| document["kind"] == "ComponentDefinition" && document.dig("metadata", "name") == "pgbouncer-1.0.6" }
         abort unless definition.dig("spec", "runtime", "containers", 0, "imagePullPolicy") == "Always"
         puts "ok"
       '
@@ -325,18 +325,18 @@ EOF
   End
 
   It "keeps one replication topology and adds a zero-capable PgBouncer component"
-    When call independent_pgbouncer_contract
+    When call pgbouncer_component_contract
     The status should eq 0
     The output should eq "ok"
   End
 
-  It "honors the independent PgBouncer digest and pull policy"
+  It "honors the PgBouncer component digest and pull policy"
     When call pgbouncer_digest_and_pull_policy_contract
     The status should eq 0
     The output should eq "ok"
   End
 
-  It "uses the standalone image's non-root POSIX runtime contract"
+  It "uses the PgBouncer component image's non-root POSIX runtime contract"
     When call pgbouncer_runtime_script_contract
     The status should eq 0
   End

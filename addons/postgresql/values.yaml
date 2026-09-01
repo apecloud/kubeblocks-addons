@@ -157,15 +157,15 @@ pgbouncer:
     tag: 1.19.0
     digest: ""
     pullPolicy: IfNotPresent
-  # The standalone PgBouncer component uses the Alpine-based 1.25 image and
+  # The managed PgBouncer component uses the Alpine-based 1.25 image and
   # cannot share the legacy sidecar's Bitnami filesystem contract.
-  standaloneImage:
+  componentImage:
     # Copied from edoburu/pgbouncer:v1.25.2-p0 (same manifest digest) by the
     # ApeCloud image pipeline.
     registry: ""
     repository: apecloud/pgbouncer
     tag: 1.25.2
-    ## @param pgbouncer.standaloneImage.digest PgBouncer image digest in the form sha256:aa.... If set, it overrides the tag.
+    ## @param pgbouncer.componentImage.digest PgBouncer image digest in the form sha256:aa.... If set, it overrides the tag.
     digest: "sha256:7d7a27d9e90985cab5cf42256f5c13a3120baa4b055b69df37beb272b89b2340"
     pullPolicy: IfNotPresent
 
