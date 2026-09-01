@@ -88,15 +88,20 @@ Describe "PostgreSQL version matrix contract"
         reserve_pool_size max_db_connections max_user_connections
       ]
       abort unless pgbouncer_pd.dig("spec", "fileName") == "pgbouncer.ini"
-      abort unless pgbouncer_pd.dig("spec", "staticParameters") == exposed
+      abort unless pgbouncer_pd.dig("spec", "dynamicParameters") == exposed
       abort unless pgbouncer_pd.dig("spec", "parametersSchema", "topLevelKey") == "PgBouncerParameter"
-      abort if pgbouncer_pd.dig("spec").key?("reloadAction")
+      reload_action = pgbouncer_pd.dig("spec", "reloadAction", "unixSignalTrigger")
+      abort unless reload_action == {"signal" => "SIGHUP", "processName" => "pgbouncer"}
+      abort if pgbouncer_pd.dig("spec").key?("staticParameters")
       pgbouncer_schema = pgbouncer_pd.dig("spec", "parametersSchema", "cue")
       exposed.each { |parameter| abort unless pgbouncer_schema.include?(parameter) }
       abort unless pgbouncer_schema.include?(%q{pool_mode?: "session" | "transaction" | "statement" | *"session"})
       abort unless pgbouncer_schema.include?("max_client_conn?: int & >=1 & <=999999 | *500")
       abort unless pgbouncer_schema.include?("max_db_connections?: int & >=0 & <=999999 | *80")
-      abort unless pgbouncer_schema.include?("configuration: {\n\tpgbouncer: #PgBouncerParameter\n\t...\n}")
+      abort unless pgbouncer_schema.include?("#PgBouncerConfiguration: {\n\tpgbouncer: #PgBouncerConfig\n}")
+      abort unless pgbouncer_schema.include?("configuration: #PgBouncerConfiguration")
+      abort unless pgbouncer_schema.include?(%q{auth_type:                 "md5"})
+      abort if pgbouncer_schema.match?(/^\s*\.\.\.\s*$/)
       account_refs = pgbouncer.dig("spec", "vars").map { |var| var.dig("valueFrom", "credentialVarRef", "name") }.compact
       abort unless account_refs == ["postgres", "postgres"]
       probe = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe", "exec", "command", -1)
@@ -107,7 +112,7 @@ Describe "PostgreSQL version matrix contract"
       abort unless readiness["failureThreshold"] == 1 && readiness["periodSeconds"] == 5
       pod_security = pgbouncer.dig("spec", "runtime", "securityContext")
       abort unless pod_security == {
-        "runAsNonRoot" => true, "runAsUser" => 70, "runAsGroup" => 70,
+        "runAsUser" => 70, "runAsGroup" => 70,
         "fsGroup" => 70, "fsGroupChangePolicy" => "OnRootMismatch"
       }
       volumes = pgbouncer.dig("spec", "runtime", "volumes")
@@ -182,6 +187,7 @@ Describe "PostgreSQL version matrix contract"
     grep -Fq 'pgbouncer_backend_host="${POSTGRESQL_HOST:-}"' "$script" || return 1
     grep -Fq 'pgbouncer_backend_port="${POSTGRESQL_PORT:-}"' "$script" || return 1
     grep -Fq 'mktemp "${pgbouncer_conf_dir}/.pgbouncer.ini.XXXXXX"' "$script" || return 1
+    grep -Fq "printf '%%include %s\\n\\n[databases]\\n'" "$script" || return 1
 
     for dynamic in pgbouncer-budget PGBOUNCER_MEMORY_BYTES PGBOUNCER_DESIRED_REPLICAS \
       current_setting sync_backend_budget 'SHOW CONFIG' 'RELOAD;'; do

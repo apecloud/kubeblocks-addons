@@ -289,8 +289,12 @@ PgBouncer settings after changing PostgreSQL capacity, database or user counts,
 or the PgBouncer replica count. Also size memory and file descriptors for the
 selected client limit.
 
-Apply parameter changes with a Reconfiguring OpsRequest. A successful update
-rolls the PgBouncer instances in a controlled sequence:
+Apply parameter changes with a Reconfiguring OpsRequest. A successful
+OpsRequest means that KubeBlocks accepted and rendered the requested
+configuration. The KubeBlocks config manager then makes an asynchronous,
+best-effort SIGHUP attempt for each running PgBouncer instance; the OpsRequest
+status does not confirm that every instance has completed its reload. Pods are
+not restarted by this reload action:
 
 ```yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
@@ -317,11 +321,20 @@ spec:
 KubeBlocks validates values against the documented ranges before applying
 them.
 
+Configuration propagation and reload complete asynchronously across running
+replicas. Confirm that each instance reports the requested values with
+PgBouncer `SHOW CONFIG` before relying on new connection limits.
+
 #### Runtime behavior and requirements
 
 - Readiness requires a successful connection through PgBouncer to the writable
   PostgreSQL primary. The same PgBouncer Pod becomes Ready automatically after
   PostgreSQL recovers.
+- Dynamic parameter reload uses the KubeBlocks 1.0 config-manager sidecar with
+  a shared process namespace and UID 0. The target namespace Pod Security policy
+  must permit this runtime; use a policy less restrictive than the Kubernetes
+  Restricted profile. The PgBouncer container continues to run as UID/GID 70
+  with privilege escalation disabled and all capabilities dropped.
 - Applications reconnect with backoff after a PostgreSQL primary change and
   retry any interrupted transaction. Transaction and statement pooling modes
   also require application compatibility testing.

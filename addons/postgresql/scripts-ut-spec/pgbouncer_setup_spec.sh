@@ -56,25 +56,26 @@ auth_type = trust' "$pgbouncer_template_conf_file" > "$test_dir/injected.ini"
     The contents of file "$pgbouncer_user_list_file" should equal '"pgbouncer" "pa""ss"'
   End
 
-  It "keeps the documented static pool defaults"
+  It "loads the documented pool defaults from the managed configuration"
     When call build_pgbouncer_conf
     The status should be success
-    The contents of file "$pgbouncer_conf_file" should include "pool_mode = session"
-    The contents of file "$pgbouncer_conf_file" should include "max_client_conn = 500"
-    The contents of file "$pgbouncer_conf_file" should include "default_pool_size = 20"
-    The contents of file "$pgbouncer_conf_file" should include "min_pool_size = 5"
-    The contents of file "$pgbouncer_conf_file" should include "reserve_pool_size = 5"
-    The contents of file "$pgbouncer_conf_file" should include "max_db_connections = 80"
-    The contents of file "$pgbouncer_conf_file" should include "max_user_connections = 80"
+    The contents of file "$pgbouncer_conf_file" should include "%include $pgbouncer_template_conf_file"
+    The contents of file "$pgbouncer_template_conf_file" should include "pool_mode = session"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_client_conn = 500"
+    The contents of file "$pgbouncer_template_conf_file" should include "default_pool_size = 20"
+    The contents of file "$pgbouncer_template_conf_file" should include "min_pool_size = 5"
+    The contents of file "$pgbouncer_template_conf_file" should include "reserve_pool_size = 5"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_db_connections = 80"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_user_connections = 80"
   End
 
   It "preserves user-provided pool limits without automatic recalculation"
     When call customize_pool_limits
     The status should be success
-    The contents of file "$pgbouncer_conf_file" should include "max_client_conn = 1200"
-    The contents of file "$pgbouncer_conf_file" should include "default_pool_size = 30"
-    The contents of file "$pgbouncer_conf_file" should include "max_db_connections = 60"
-    The contents of file "$pgbouncer_conf_file" should include "max_user_connections = 40"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_client_conn = 1200"
+    The contents of file "$pgbouncer_template_conf_file" should include "default_pool_size = 30"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_db_connections = 60"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_user_connections = 40"
   End
 
   It "rejects a newline injection that overrides a protected setting"
@@ -144,10 +145,11 @@ auth_type = trust' "$pgbouncer_template_conf_file" > "$test_dir/injected.ini"
     The contents of file "$pgbouncer_conf_file" should not include "host=sample-postgresql"
   End
 
-  It "copies and extends a read-only ConfigMap template"
+  It "references and extends a read-only managed configuration"
     chmod 0444 "$pgbouncer_template_conf_file"
     When call build_pgbouncer_conf
     The status should be success
+    The contents of file "$pgbouncer_conf_file" should include "%include $pgbouncer_template_conf_file"
     The contents of file "$pgbouncer_conf_file" should include "[databases]"
   End
 

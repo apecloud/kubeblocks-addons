@@ -224,7 +224,9 @@ build_pgbouncer_conf() {
     return 1
   }
 
-  if ! cp "$pgbouncer_template_conf_file" "$pgbouncer_generated_file" ||
+  if ! printf '%%include %s\n\n[databases]\n' "$pgbouncer_template_conf_file" > "$pgbouncer_generated_file" ||
+    ! printf 'postgres=host=%s port=%s dbname=postgres\n' "$pgbouncer_backend_host" "$pgbouncer_backend_port" >> "$pgbouncer_generated_file" ||
+    ! printf '*=host=%s port=%s\n' "$pgbouncer_backend_host" "$pgbouncer_backend_port" >> "$pgbouncer_generated_file" ||
     ! chmod 600 "$pgbouncer_generated_file" ||
     ! printf '"%s" "%s"\n' "$pgbouncer_escaped_username" "$pgbouncer_escaped_password" > "$pgbouncer_user_list_tmp" ||
     ! chmod 600 "$pgbouncer_user_list_tmp"; then
@@ -232,11 +234,7 @@ build_pgbouncer_conf() {
     return 1
   fi
 
-  # shellcheck disable=SC2129
-  if ! printf '\n[databases]\n' >> "$pgbouncer_generated_file" ||
-    ! printf 'postgres=host=%s port=%s dbname=postgres\n' "$pgbouncer_backend_host" "$pgbouncer_backend_port" >> "$pgbouncer_generated_file" ||
-    ! printf '*=host=%s port=%s\n' "$pgbouncer_backend_host" "$pgbouncer_backend_port" >> "$pgbouncer_generated_file" ||
-    ! mv -f "$pgbouncer_user_list_tmp" "$pgbouncer_user_list_file" ||
+  if ! mv -f "$pgbouncer_user_list_tmp" "$pgbouncer_user_list_file" ||
     ! mv -f "$pgbouncer_generated_file" "$pgbouncer_conf_file"; then
     rm -f "$pgbouncer_generated_file" "$pgbouncer_user_list_tmp"
     return 1

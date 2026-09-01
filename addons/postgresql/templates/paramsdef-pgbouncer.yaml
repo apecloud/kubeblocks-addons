@@ -8,11 +8,15 @@ metadata:
     {{- include "postgresql.annotations" . | nindent 4 }}
 spec:
   fileName: pgbouncer.ini
+  reloadAction:
+    unixSignalTrigger:
+      signal: SIGHUP
+      processName: pgbouncer
   parametersSchema:
     topLevelKey: PgBouncerParameter
     cue: |-
       {{- .Files.Get "config/pgbouncer-config-constraint.cue" | nindent 6 }}
-  staticParameters:
+  dynamicParameters:
     - pool_mode
     - max_client_conn
     - default_pool_size

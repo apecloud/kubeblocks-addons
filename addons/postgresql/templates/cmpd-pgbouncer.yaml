@@ -69,7 +69,6 @@ spec:
           optional: false
   runtime:
     securityContext:
-      runAsNonRoot: true
       runAsUser: 70
       runAsGroup: 70
       fsGroup: 70
