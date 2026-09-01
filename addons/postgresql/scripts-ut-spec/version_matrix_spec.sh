@@ -51,19 +51,11 @@ Describe "PostgreSQL version matrix contract"
         var.dig("valueFrom", "serviceVarRef", "compDef") || var.dig("valueFrom", "credentialVarRef", "compDef")
       end.compact
       abort unless refs == Array.new(4, "postgresql-")
-      pool_defaults = pgbouncer.dig("spec", "vars").select { |var| var["name"].start_with?("PGBOUNCER_") }
-      abort unless pool_defaults == [
-        {"name" => "PGBOUNCER_POOL_MODE", "value" => "session"},
-        {"name" => "PGBOUNCER_MAX_CLIENT_CONN", "value" => "500"},
-        {"name" => "PGBOUNCER_DEFAULT_POOL_SIZE", "value" => "20"},
-        {"name" => "PGBOUNCER_MIN_POOL_SIZE", "value" => "5"},
-        {"name" => "PGBOUNCER_RESERVE_POOL_SIZE", "value" => "5"},
-        {"name" => "PGBOUNCER_MAX_DB_CONNECTIONS", "value" => "80"},
-        {"name" => "PGBOUNCER_MAX_USER_CONNECTIONS", "value" => "80"}
-      ]
+      abort if pgbouncer.dig("spec", "vars").any? { |var| var["name"].start_with?("PGBOUNCER_") }
       configs = pgbouncer.dig("spec", "configs")
       abort unless configs.map { |config| config["name"] } == ["pgbouncer-configuration"]
-      abort unless configs.all? { |config| config["restartOnFileChange"] == true && config["defaultMode"] == 0444 }
+      abort unless configs.all? { |config| config["externalManaged"] == true && config["defaultMode"] == 0444 }
+      abort if configs.any? { |config| config.key?("restartOnFileChange") }
       abort unless configs.map { |config| config["volumeName"] } == ["pgbouncer-config"]
 
       postgres_ports = postgres.dig("spec", "services", 0, "spec", "ports").map { |port| port["port"] }
@@ -74,6 +66,37 @@ Describe "PostgreSQL version matrix contract"
         document["kind"] == "ParamConfigRenderer" && document.dig("metadata", "name") == "postgresql14-pcr-1.0.6"
       end
       abort unless postgres_pcr.dig("spec", "configs").map { |config| config["name"] } == ["postgresql.conf"]
+      pgbouncer_pcr = documents.find do |document|
+        document["kind"] == "ParamConfigRenderer" &&
+          document.dig("metadata", "name") == "pgbouncer-pcr-1.0.6"
+      end
+      abort unless pgbouncer_pcr.dig("spec", "componentDef") == "pgbouncer-postgresql-1.0.6"
+      abort unless pgbouncer_pcr.dig("spec", "serviceVersion") == "1.25.2"
+      abort unless pgbouncer_pcr.dig("spec", "parametersDefs") == ["pgbouncer-pd-1.0.6"]
+      pgbouncer_format = pgbouncer_pcr.dig("spec", "configs", 0)
+      abort unless pgbouncer_format["name"] == "pgbouncer.ini"
+      abort unless pgbouncer_format.dig("fileFormatConfig", "format") == "ini"
+      abort unless pgbouncer_format.dig("fileFormatConfig", "iniConfig", "sectionName") == "pgbouncer"
+
+      pgbouncer_pd = documents.find do |document|
+        document["kind"] == "ParametersDefinition" &&
+          document.dig("metadata", "name") == "pgbouncer-pd-1.0.6"
+      end
+      exposed = %w[
+        pool_mode max_client_conn default_pool_size min_pool_size
+        reserve_pool_size max_db_connections max_user_connections
+      ]
+      abort unless pgbouncer_pd.dig("spec", "fileName") == "pgbouncer.ini"
+      abort unless pgbouncer_pd.dig("spec", "staticParameters") == exposed
+      abort unless pgbouncer_pd.dig("spec", "parametersSchema", "topLevelKey") == "PgBouncerParameter"
+      abort if pgbouncer_pd.dig("spec").key?("reloadAction")
+      pgbouncer_schema = pgbouncer_pd.dig("spec", "parametersSchema", "cue")
+      exposed.each { |parameter| abort unless pgbouncer_schema.include?(parameter) }
+      abort unless pgbouncer_schema.include?(%q{pool_mode?: "session" | "transaction" | "statement" | *"session"})
+      abort unless pgbouncer_schema.include?("max_client_conn?: int & >=1 & <=999999 | *500")
+      abort unless pgbouncer_schema.include?("max_db_connections?: int & >=0 & <=999999 | *80")
+      abort unless pgbouncer_schema.include?("configuration: {\n\tpgbouncer: #PgBouncerParameter\n\t...\n}")
+      abort unless pgbouncer_schema.include?("\n\t...\n}\n\n// KubeBlocks decodes INI input")
       account_refs = pgbouncer.dig("spec", "vars").map { |var| var.dig("valueFrom", "credentialVarRef", "name") }.compact
       abort unless account_refs == ["postgres", "postgres"]
       probe = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe", "exec", "command", -1)
@@ -117,16 +140,14 @@ Describe "PostgreSQL version matrix contract"
       abort unless pgbouncer_config.include?("FROM pg_catalog.pg_authid")
       abort unless pgbouncer_config.include?("rolvaliduntil") && pgbouncer_config.include?("rolcanlogin")
       abort if pgbouncer_config.match?(/^\s*pidfile\s*=/)
-      abort unless pgbouncer_config.include?(%q{has $.PGBOUNCER_POOL_MODE (list "session" "transaction" "statement")})
-      abort unless pgbouncer_config.include?(%q{regexMatch "^[1-9][0-9]{0,5}$"})
-      abort unless pgbouncer_config.include?(%q{regexMatch "^(0|[1-9][0-9]{0,5})$"})
-      abort unless pgbouncer_config.include?("pool_mode = {{ $.PGBOUNCER_POOL_MODE }}")
-      abort unless pgbouncer_config.include?("max_client_conn = {{ $.PGBOUNCER_MAX_CLIENT_CONN }}")
-      abort unless pgbouncer_config.include?("default_pool_size = {{ $.PGBOUNCER_DEFAULT_POOL_SIZE }}")
-      abort unless pgbouncer_config.include?("min_pool_size = {{ $.PGBOUNCER_MIN_POOL_SIZE }}")
-      abort unless pgbouncer_config.include?("reserve_pool_size = {{ $.PGBOUNCER_RESERVE_POOL_SIZE }}")
-      abort unless pgbouncer_config.include?("max_db_connections = {{ $.PGBOUNCER_MAX_DB_CONNECTIONS }}")
-      abort unless pgbouncer_config.include?("max_user_connections = {{ $.PGBOUNCER_MAX_USER_CONNECTIONS }}")
+      abort if pgbouncer_config.include?("{{")
+      abort unless pgbouncer_config.include?("pool_mode = session")
+      abort unless pgbouncer_config.include?("max_client_conn = 500")
+      abort unless pgbouncer_config.include?("default_pool_size = 20")
+      abort unless pgbouncer_config.include?("min_pool_size = 5")
+      abort unless pgbouncer_config.include?("reserve_pool_size = 5")
+      abort unless pgbouncer_config.include?("max_db_connections = 80")
+      abort unless pgbouncer_config.include?("max_user_connections = 80")
       abort unless pgbouncer_config.include?("configurable guardrails, not a global PostgreSQL cap")
       abort if pgbouncer_config.lines.any? { |line| line.match?(/^\s*logfile\s*=\s*\/dev\/stderr\s*$/) }
       main_config = documents.find do |document|

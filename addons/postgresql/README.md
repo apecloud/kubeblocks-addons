@@ -281,23 +281,38 @@ ConfigMap or restart the running pool. These bounds are syntax guards, not a
 safe-sizing guarantee: operators must still size PgBouncer memory and file
 descriptors and keep backend limits within PostgreSQL capacity.
 
-Change these values through the existing `pgbouncer-configuration` component
-configuration entry. KubeBlocks performs a controlled restart when the
-rendered file changes:
+Change these values through the standard KubeBlocks parameter API. The Addon
+publishes a `ParamConfigRenderer` and `ParametersDefinition` for the
+`pgbouncer.ini` `[pgbouncer]` section. All seven exposed settings are static in
+this release, so a `Reconfiguring` OpsRequest updates the managed ConfigMap and
+then restarts PgBouncer instances in a controlled sequence:
 
 ```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pg-pgbouncer-reconfiguring
+  namespace: demo
 spec:
-  componentSpecs:
-    - name: pgbouncer
-      replicas: 2
-      configs:
-        - name: pgbouncer-configuration
-          variables:
-            PGBOUNCER_MAX_CLIENT_CONN: "1000"
-            PGBOUNCER_DEFAULT_POOL_SIZE: "30"
-            PGBOUNCER_MAX_DB_CONNECTIONS: "60"
-            PGBOUNCER_MAX_USER_CONNECTIONS: "40"
+  type: Reconfiguring
+  clusterName: pg-cluster
+  reconfigures:
+    - componentName: pgbouncer
+      parameters:
+        - key: max_client_conn
+          value: "1000"
+        - key: default_pool_size
+          value: "30"
+        - key: max_db_connections
+          value: "60"
+        - key: max_user_connections
+          value: "40"
 ```
+
+KubeBlocks validates these values against the PgBouncer parameter schema before
+changing the runtime configuration. This is the same PCR/Parameter/OpsRequest
+flow used by the other parameterized database components in this Addon; direct
+`configs.variables` updates are not part of the PgBouncer parameter contract.
 
 `default_pool_size` applies to every user/database pair,
 `max_db_connections` to every PgBouncer database, and `max_user_connections`

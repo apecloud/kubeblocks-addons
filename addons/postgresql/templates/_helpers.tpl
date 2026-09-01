@@ -245,6 +245,14 @@ Generate reloader scripts configmap
 pgbouncer-configuration-{{ .Chart.Version }}
 {{- end -}}
 
+{{- define "pgbouncer.parametersDefinition" -}}
+pgbouncer-pd-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pgbouncer.pcr" -}}
+pgbouncer-pcr-{{ .Chart.Version }}
+{{- end -}}
+
 {{/*
 Define image
 */}}

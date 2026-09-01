@@ -30,7 +30,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0444
-      restartOnFileChange: true
+      externalManaged: true
   scripts:
     - name: postgresql-scripts
       template: {{ include "postgresql.scriptsTemplate" . }}
@@ -68,20 +68,6 @@ spec:
           name: postgres
           password: Required
           optional: false
-    - name: PGBOUNCER_POOL_MODE
-      value: "session"
-    - name: PGBOUNCER_MAX_CLIENT_CONN
-      value: "500"
-    - name: PGBOUNCER_DEFAULT_POOL_SIZE
-      value: "20"
-    - name: PGBOUNCER_MIN_POOL_SIZE
-      value: "5"
-    - name: PGBOUNCER_RESERVE_POOL_SIZE
-      value: "5"
-    - name: PGBOUNCER_MAX_DB_CONNECTIONS
-      value: "80"
-    - name: PGBOUNCER_MAX_USER_CONNECTIONS
-      value: "80"
   runtime:
     securityContext:
       runAsNonRoot: true

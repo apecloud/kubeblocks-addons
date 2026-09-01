@@ -7,15 +7,7 @@ Describe "PostgreSQL PgBouncer static configuration contract"
   setup() {
     test_dir=$(mktemp -d -t pgbouncer-authfile-XXXXXX)
     mkdir -p "$test_dir/conf" "$test_dir/tmp"
-    sed \
-      -e 's/{{ \$.PGBOUNCER_POOL_MODE }}/session/' \
-      -e 's/{{ \$.PGBOUNCER_MAX_CLIENT_CONN }}/500/' \
-      -e 's/{{ \$.PGBOUNCER_DEFAULT_POOL_SIZE }}/20/' \
-      -e 's/{{ \$.PGBOUNCER_MIN_POOL_SIZE }}/5/' \
-      -e 's/{{ \$.PGBOUNCER_RESERVE_POOL_SIZE }}/5/' \
-      -e 's/{{ \$.PGBOUNCER_MAX_DB_CONNECTIONS }}/80/' \
-      -e 's/{{ \$.PGBOUNCER_MAX_USER_CONNECTIONS }}/80/' \
-      ../config/pgbouncer-ini.tpl | sed -n '/^\[pgbouncer\]/,$p' > "$test_dir/pgbouncer.ini.tpl"
+    sed -n '/^\[pgbouncer\]/,$p' ../config/pgbouncer-ini.tpl > "$test_dir/pgbouncer.ini.tpl"
     pgbouncer_template_conf_file="$test_dir/pgbouncer.ini.tpl"
     pgbouncer_conf_dir="$test_dir/conf"
     pgbouncer_conf_file="$test_dir/conf/pgbouncer.ini"

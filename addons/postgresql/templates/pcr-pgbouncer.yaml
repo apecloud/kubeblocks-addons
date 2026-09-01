@@ -1,0 +1,19 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "pgbouncer.pcr" . }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "pgbouncer.componentDefName" . }}
+  serviceVersion: {{ .Values.pgbouncer.standaloneImage.tag | quote }}
+  parametersDefs:
+    - {{ include "pgbouncer.parametersDefinition" . }}
+  configs:
+    - name: pgbouncer.ini
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: pgbouncer
