@@ -93,14 +93,48 @@ EOF
     The result of function call_log should include "pg_restore"
   End
 
-  It "treats ignored per-object errors as success under the default CONTINUE policy"
+  It "fails when the ignored-errors warning has no error details"
     export DATASAFED_LIST_OUT="backup-test.tar"
     export PG_RESTORE_EXIT=1
     export PG_RESTORE_STDERR="pg_restore: warning: errors ignored on restore: 3"
     When run bash "$(script_path)"
+    The status should be failure
+    The output should include "parameters:"
+    The error should include "errors ignored on restore"
+  End
+
+  It "treats existing-object errors as success under the default CONTINUE policy"
+    export DATASAFED_LIST_OUT="backup-test.tar"
+    export PG_RESTORE_EXIT=1
+    export PG_RESTORE_STDERR='pg_restore: error: could not execute query: ERROR: relation "items" already exists
+pg_restore: warning: errors ignored on restore: 1'
+    When run bash "$(script_path)"
     The status should eq 0
     The output should include "treating as success under conflict_policy=CONTINUE"
-    The error should include "errors ignored on restore"
+    The error should include "already exists"
+  End
+
+  It "fails on duplicate-key COPY errors under the default CONTINUE policy"
+    export DATASAFED_LIST_OUT="backup-test.tar"
+    export PG_RESTORE_EXIT=1
+    export PG_RESTORE_STDERR='pg_restore: error: COPY failed for table "items": ERROR: duplicate key value violates unique constraint "items_pkey"
+pg_restore: warning: errors ignored on restore: 1'
+    When run bash "$(script_path)"
+    The status should be failure
+    The output should include "parameters:"
+    The error should include "duplicate key value violates unique constraint"
+  End
+
+  It "cleans and restores the requested database under the DROP policy"
+    export DATASAFED_LIST_OUT="backup-test.tar"
+    export database="app"
+    export conflict_policy="DROP"
+    When run bash "$(script_path)"
+    The status should eq 0
+    The output should include "-d app --clean --if-exists"
+    The output should not include "-C"
+    The result of function call_log should include "pg_restore -h localhost -U postgres -p 5432 -j 4 -Fd -v --no-owner --no-privileges -d app --clean --if-exists"
+    The result of function call_log should not include "pg_restore -h localhost -U postgres -p 5432 -j 4 -Fd -v -d postgres"
   End
 
   It "propagates ignored-error failures when conflict_policy is FAIL"
