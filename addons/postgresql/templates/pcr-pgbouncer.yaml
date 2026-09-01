@@ -8,7 +8,7 @@ metadata:
     {{- include "postgresql.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "pgbouncer.componentDefName" . }}
-  serviceVersion: {{ .Values.pgbouncer.componentImage.tag | quote }}
+  serviceVersion: {{ include "pgbouncer.defaultServiceVersion" . | quote }}
   parametersDefs:
     - {{ include "pgbouncer.parametersDefinition" . }}
   configs:

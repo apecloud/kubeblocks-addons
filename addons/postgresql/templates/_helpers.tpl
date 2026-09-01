@@ -162,6 +162,25 @@ Get the PgBouncer component image pull policy.
 {{- end -}}
 
 {{/*
+Get the default PgBouncer component service version.
+*/}}
+{{- define "pgbouncer.defaultServiceVersion" -}}
+{{- $defaultVersion := "" -}}
+{{- range .Values.pgbouncer.componentImage.versions -}}
+  {{- if .isDefault -}}
+    {{- if $defaultVersion -}}
+      {{- fail "pgbouncer.componentImage.versions must contain exactly one default version" -}}
+    {{- end -}}
+    {{- $defaultVersion = .version -}}
+  {{- end -}}
+{{- end -}}
+{{- if not $defaultVersion -}}
+{{- fail "pgbouncer.componentImage.versions must contain exactly one default version" -}}
+{{- end -}}
+{{- $defaultVersion -}}
+{{- end -}}
+
+{{/*
 Get PostgreSQL componentDef by major version
 Parameters: major (string), root context
 Usage: {{ include "postgresql.componentDefByMajor" (dict "major" "14" "root" .) }}
@@ -265,9 +284,21 @@ Define image
 {{- printf "%s:%s" $repository .Values.pgbouncer.image.tag -}}
 {{- end }}
 
-{{- define "pgbouncer.componentImage" -}}
-{{- $repository := printf "%s/%s" (.Values.pgbouncer.componentImage.registry | default (.Values.image.registry | default "docker.io")) .Values.pgbouncer.componentImage.repository -}}
-{{- printf "%s:%s" $repository .Values.pgbouncer.componentImage.tag -}}
+{{- define "pgbouncer.componentImageByVersion" -}}
+{{- $version := .version -}}
+{{- $root := .root -}}
+{{- $tag := "" -}}
+{{- range $root.Values.pgbouncer.componentImage.versions -}}
+  {{- if eq .version $version -}}
+    {{- $tag = .tag -}}
+    {{- break -}}
+  {{- end -}}
+{{- end -}}
+{{- if not $tag -}}
+{{- fail (printf "PgBouncer component image tag not found for version: %s" $version) -}}
+{{- end -}}
+{{- $repository := printf "%s/%s" ($root.Values.pgbouncer.componentImage.registry | default ($root.Values.image.registry | default "docker.io")) $root.Values.pgbouncer.componentImage.repository -}}
+{{- printf "%s:%s" $repository $tag -}}
 {{- end }}
 
 {{- define "postgresql.metricsImage" -}}

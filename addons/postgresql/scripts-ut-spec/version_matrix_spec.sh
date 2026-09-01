@@ -107,6 +107,7 @@ Describe "PostgreSQL version matrix contract"
       probe = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe", "exec", "command", -1)
       abort unless probe.include?("--port=6432") && probe.include?("$POSTGRESQL_USERNAME")
       abort unless probe.include?("$CURRENT_POD_IP") && probe.include?("NOT pg_is_in_recovery()")
+      abort unless probe.include?("current_setting(\u0027transaction_read_only\u0027) = \u0027off\u0027")
       abort if probe.include?("budget-ready") || probe.include?("budget-sync")
       readiness = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe")
       abort unless readiness["failureThreshold"] == 1 && readiness["periodSeconds"] == 5
@@ -212,12 +213,21 @@ Describe "PostgreSQL version matrix contract"
 
   pgbouncer_image_and_pull_policy_contract() {
     helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system --dependency-update \
-      --set pgbouncer.componentImage.tag=1.25.2-test \
+      --set pgbouncer.componentImage.versions[0].version=1.25.2 \
+      --set pgbouncer.componentImage.versions[0].tag=1.25.2 \
+      --set pgbouncer.componentImage.versions[0].isDefault=false \
+      --set pgbouncer.componentImage.versions[1].version=1.25.2-test \
+      --set pgbouncer.componentImage.versions[1].tag=1.25.2-test \
+      --set pgbouncer.componentImage.versions[1].isDefault=true \
       --set pgbouncer.componentImage.pullPolicy=Always | RUBYOPT=-W0 ruby -ryaml -e '
         documents = YAML.load_stream(ARGF.read).compact
         version = documents.find { |document| document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "pgbouncer" }
-        abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.25.2-test"
+        abort unless version.dig("spec", "compatibilityRules", 0, "releases") == ["1.25.2", "1.25.2-test"]
+        abort unless version.dig("spec", "releases").map { |release| release["name"] } == ["1.25.2", "1.25.2-test"]
+        abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.25.2"
+        abort unless version.dig("spec", "releases", 1, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.25.2-test"
         definition = documents.find { |document| document["kind"] == "ComponentDefinition" && document.dig("metadata", "name") == "pgbouncer-1.0.6" }
+        abort unless definition.dig("spec", "serviceVersion") == "1.25.2-test"
         abort unless definition.dig("spec", "runtime", "containers", 0, "imagePullPolicy") == "Always"
         puts "ok"
       '

@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: A managed PgBouncer connection pool for PostgreSQL
   serviceKind: pgbouncer
-  serviceVersion: {{ .Values.pgbouncer.componentImage.tag | quote }}
+  serviceVersion: {{ include "pgbouncer.defaultServiceVersion" . | quote }}
   replicasLimit:
     minReplicas: 0
     maxReplicas: 64
@@ -129,7 +129,7 @@ spec:
                     psql --no-password --username="$POSTGRESQL_USERNAME" \
                     --host="$CURRENT_POD_IP" --port=6432 --dbname=postgres \
                     --tuples-only --no-align --set=ON_ERROR_STOP=1 \
-                    --command='SELECT NOT pg_is_in_recovery()'
+                    --command="SELECT NOT pg_is_in_recovery() AND current_setting('transaction_read_only') = 'off'"
                 )"
                 test "$primary" = "t"
         env:

@@ -159,8 +159,11 @@ pgbouncer:
   componentImage:
     registry: ""
     repository: apecloud/pgbouncer
-    tag: 1.25.2
     pullPolicy: IfNotPresent
+    versions:
+      - version: 1.25.2
+        tag: 1.25.2
+        isDefault: true
 
 dataMountPath: /home/postgres/pgdata
 

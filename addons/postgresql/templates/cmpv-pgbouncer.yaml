@@ -11,9 +11,13 @@ spec:
     - compDefs:
         - {{ include "pgbouncer.componentDefNamePrefix" . }}
       releases:
-        - {{ .Values.pgbouncer.componentImage.tag | quote }}
+      {{- range .Values.pgbouncer.componentImage.versions }}
+        - {{ .version | quote }}
+      {{- end }}
   releases:
-    - name: {{ .Values.pgbouncer.componentImage.tag | quote }}
-      serviceVersion: {{ .Values.pgbouncer.componentImage.tag | quote }}
+  {{- range .Values.pgbouncer.componentImage.versions }}
+    - name: {{ .version | quote }}
+      serviceVersion: {{ .version | quote }}
       images:
-        pgbouncer: {{ include "pgbouncer.componentImage" . }}
+        pgbouncer: {{ include "pgbouncer.componentImageByVersion" (dict "version" .version "root" $) }}
+  {{- end }}
