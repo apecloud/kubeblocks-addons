@@ -1,0 +1,26 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "pgbouncer.parametersDefinition" . }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" . | nindent 4 }}
+spec:
+  fileName: pgbouncer.ini
+  reloadAction:
+    unixSignalTrigger:
+      signal: SIGHUP
+      processName: pgbouncer
+  parametersSchema:
+    topLevelKey: PgBouncerParameter
+    cue: |-
+      {{- .Files.Get "config/pgbouncer-config-constraint.cue" | nindent 6 }}
+  dynamicParameters:
+    - pool_mode
+    - max_client_conn
+    - default_pool_size
+    - min_pool_size
+    - reserve_pool_size
+    - max_db_connections
+    - max_user_connections

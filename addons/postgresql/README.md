@@ -10,6 +10,11 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 |------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
 | replication     | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
 
+The `replication` topology includes a managed, stateless PgBouncer component.
+An omitted PgBouncer component has zero replicas. At zero replicas, clients
+connect directly to PostgreSQL on 5432. One or more replicas activate the
+pooled endpoint on 6432 while the Cluster keeps the same topology.
+
 ### Backup and Restore
 
 | Feature     | Method | Description |
@@ -165,6 +170,178 @@ And the expected output is like:
 NAME         VERSIONS                                                                                    STATUS      AGE
 postgresql   18.4.0,18.1.0,17.10.0,17.5.0,16.14.0,16.9.0,16.4.0,15.18.0,15.13.0,15.7.0,14.23.0,14.18.0,14.8.0,14.7.2,13.23.0,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
 ```
+
+### PgBouncer connection pool
+
+The managed component runs PgBouncer 1.25.2. Zero replicas keep client traffic
+on the direct PostgreSQL endpoint. One or more replicas activate the managed
+pool. The default PgBouncer resources are 100m CPU and 128Mi memory requests,
+with 500m CPU and 512Mi memory limits.
+
+#### Enable and disable
+
+To activate PgBouncer when creating a Cluster, add it to the `replication`
+topology:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: demo
+spec:
+  clusterDef: postgresql
+  topology: replication
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: postgresql
+      serviceVersion: "14.23.0"
+      replicas: 2
+      resources:
+        requests: {cpu: "500m", memory: 512Mi}
+        limits: {cpu: "500m", memory: 512Mi}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes: [ReadWriteOnce]
+            resources:
+              requests:
+                storage: 20Gi
+    - name: pgbouncer
+      replicas: 2
+      resources:
+        requests: {cpu: "100m", memory: 128Mi}
+        limits: {cpu: "500m", memory: 512Mi}
+```
+
+For a Cluster that already contains the `pgbouncer` component, activate two
+replicas with a HorizontalScaling OpsRequest:
+
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pg-pgbouncer-enable
+  namespace: demo
+spec:
+  clusterName: pg-cluster
+  type: HorizontalScaling
+  horizontalScaling:
+    - componentName: pgbouncer
+      scaleOut:
+        replicaChanges: 2
+```
+
+Return the component to zero replicas with a second HorizontalScaling
+OpsRequest:
+
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pg-pgbouncer-disable
+  namespace: demo
+spec:
+  clusterName: pg-cluster
+  type: HorizontalScaling
+  horizontalScaling:
+    - componentName: pgbouncer
+      scaleIn:
+        replicaChanges: 2
+```
+
+Clusters created with Addon 1.0.5 retain their in-Pod PgBouncer sidecar. After
+upgrading such a Cluster, add the managed `pgbouncer` component at zero replicas
+before using the scaling operations above.
+
+#### Connect
+
+The managed endpoint uses the following in-cluster address:
+
+```text
+<cluster-name>-pgbouncer.<namespace>.svc:6432
+```
+
+For the example Cluster, connect to `pg-cluster-pgbouncer.demo.svc:6432`.
+The Service receives endpoints after at least one PgBouncer replica reaches
+Ready. Check the endpoint before publishing the address:
+
+```bash
+kubectl get endpoints -n demo pg-cluster-pgbouncer
+```
+
+#### Configure
+
+PgBouncer starts with the following per-instance settings:
+
+| Parameter | Default | Allowed values | Scope |
+|-----------|---------|----------------|-------|
+| `pool_mode` | `session` | `session`, `transaction`, `statement` | New client connections |
+| `max_client_conn` | `500` | `1..999999` | Client connections per PgBouncer instance |
+| `default_pool_size` | `20` | `1..999999` | Backend connections per user/database pool |
+| `min_pool_size` | `5` | `0..999999` | Retained backend connections per user/database pool |
+| `reserve_pool_size` | `5` | `0..999999` | Reserve connections per user/database pool |
+| `max_db_connections` | `80` | `0..999999`; `0` means unlimited | Backend connections per database and PgBouncer instance |
+| `max_user_connections` | `80` | `0..999999`; `0` means unlimited | Backend connections per user and PgBouncer instance |
+
+PostgreSQL `max_connections` remains the global connection limit. Review the
+PgBouncer settings after changing PostgreSQL capacity, database or user counts,
+or the PgBouncer replica count. Also size memory and file descriptors for the
+selected client limit.
+
+Apply parameter changes with a Reconfiguring OpsRequest. A successful
+OpsRequest means that KubeBlocks accepted and rendered the requested
+configuration. The KubeBlocks config manager then makes an asynchronous,
+best-effort SIGHUP attempt for each running PgBouncer instance; the OpsRequest
+status does not confirm that every instance has completed its reload. Pods are
+not restarted by this reload action:
+
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pg-pgbouncer-reconfigure
+  namespace: demo
+spec:
+  type: Reconfiguring
+  clusterName: pg-cluster
+  reconfigures:
+    - componentName: pgbouncer
+      parameters:
+        - key: max_client_conn
+          value: "1000"
+        - key: default_pool_size
+          value: "30"
+        - key: max_db_connections
+          value: "60"
+        - key: max_user_connections
+          value: "40"
+```
+
+KubeBlocks validates values against the documented ranges before applying
+them.
+
+Configuration propagation and reload complete asynchronously across running
+replicas. Confirm that each instance reports the requested values with
+PgBouncer `SHOW CONFIG` before relying on new connection limits.
+
+#### Runtime behavior and requirements
+
+- Readiness requires a successful connection through PgBouncer to the writable
+  PostgreSQL primary. The same PgBouncer Pod becomes Ready automatically after
+  PostgreSQL recovers.
+- Dynamic parameter reload uses the KubeBlocks 1.0 config-manager sidecar with
+  a shared process namespace and UID 0. The target namespace Pod Security policy
+  must permit this runtime; use a policy less restrictive than the Kubernetes
+  Restricted profile. The PgBouncer container continues to run as UID/GID 70
+  with privilege escalation disabled and all capabilities dropped.
+- Applications reconnect with backoff after a PostgreSQL primary change and
+  retry any interrupted transaction. Transaction and statement pooling modes
+  also require application compatibility testing.
+- TLS-enforced Clusters use the direct PostgreSQL endpoint on 5432 in this
+  release.
+- Clusters using the managed PgBouncer component stay on PostgreSQL Addon 1.0.6
+  or later.
 
 ### Horizontal scaling
 
