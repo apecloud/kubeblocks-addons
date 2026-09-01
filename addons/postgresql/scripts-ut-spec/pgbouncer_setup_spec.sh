@@ -39,13 +39,6 @@ Describe "PostgreSQL PgBouncer setup contract"
     build_pgbouncer_conf
   }
 
-  inject_protected_setting() {
-    sed '/^max_client_conn = 500$/a\
-auth_type = trust' "$pgbouncer_template_conf_file" > "$test_dir/injected.ini"
-    mv "$test_dir/injected.ini" "$pgbouncer_template_conf_file"
-    build_pgbouncer_conf
-  }
-
   BeforeEach 'setup'
   AfterEach 'cleanup'
 
@@ -76,58 +69,6 @@ auth_type = trust' "$pgbouncer_template_conf_file" > "$test_dir/injected.ini"
     The contents of file "$pgbouncer_template_conf_file" should include "default_pool_size = 30"
     The contents of file "$pgbouncer_template_conf_file" should include "max_db_connections = 60"
     The contents of file "$pgbouncer_template_conf_file" should include "max_user_connections = 40"
-  End
-
-  It "rejects a newline injection that overrides a protected setting"
-    When call inject_protected_setting
-    The status should be failure
-    The stderr should include "duplicate setting: auth_type"
-    The path "$pgbouncer_conf_file" should not be exist
-  End
-
-  It "rejects a custom template that replaces the protected auth type"
-    sed 's/auth_type = md5/auth_type = trust/' \
-      "$pgbouncer_template_conf_file" > "$test_dir/injected.ini"
-    mv "$test_dir/injected.ini" "$pgbouncer_template_conf_file"
-    When call build_pgbouncer_conf
-    The status should be failure
-    The stderr should include "managed setting cannot be overridden: auth_type"
-  End
-
-  It "rejects extra tokens on a managed setting"
-    sed 's/listen_addr = \*/listen_addr = * extra/' \
-      "$pgbouncer_template_conf_file" > "$test_dir/injected.ini"
-    mv "$test_dir/injected.ini" "$pgbouncer_template_conf_file"
-    When call build_pgbouncer_conf
-    The status should be failure
-    The stderr should include "managed setting cannot be overridden: listen_addr"
-  End
-
-  It "rejects non-canonical and out-of-range pool values"
-    sed 's/max_client_conn = 500/max_client_conn = 1000000/' \
-      "$pgbouncer_template_conf_file" > "$test_dir/invalid.ini"
-    mv "$test_dir/invalid.ini" "$pgbouncer_template_conf_file"
-    When call build_pgbouncer_conf
-    The status should be failure
-    The stderr should include "outside the supported range"
-  End
-
-  It "rejects an unsupported pool mode"
-    sed 's/pool_mode = session/pool_mode = unsafe/' \
-      "$pgbouncer_template_conf_file" > "$test_dir/invalid.ini"
-    mv "$test_dir/invalid.ini" "$pgbouncer_template_conf_file"
-    When call build_pgbouncer_conf
-    The status should be failure
-    The stderr should include "pool_mode must be session, transaction, or statement"
-  End
-
-  It "rejects a negative pool value"
-    sed 's/max_db_connections = 80/max_db_connections = -1/' \
-      "$pgbouncer_template_conf_file" > "$test_dir/invalid.ini"
-    mv "$test_dir/invalid.ini" "$pgbouncer_template_conf_file"
-    When call build_pgbouncer_conf
-    The status should be failure
-    The stderr should include "must be a canonical decimal integer"
   End
 
   It "routes the PgBouncer component through the PostgreSQL Service"
@@ -173,5 +114,12 @@ auth_type = trust' "$pgbouncer_template_conf_file" > "$test_dir/injected.ini"
     When call build_pgbouncer_conf
     The status should be failure
     The stderr should include "outside 1..65535"
+  End
+
+  It "fails when the managed configuration is unavailable"
+    rm -f "$pgbouncer_template_conf_file"
+    When call build_pgbouncer_conf
+    The status should be failure
+    The stderr should include "configuration is not readable"
   End
 End

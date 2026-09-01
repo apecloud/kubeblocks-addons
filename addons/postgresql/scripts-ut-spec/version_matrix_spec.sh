@@ -186,8 +186,15 @@ Describe "PostgreSQL version matrix contract"
     grep -Fq 'exec "$pgbouncer_bin" "$pgbouncer_conf_file"' "$script" || return 1
     grep -Fq 'pgbouncer_backend_host="${POSTGRESQL_HOST:-}"' "$script" || return 1
     grep -Fq 'pgbouncer_backend_port="${POSTGRESQL_PORT:-}"' "$script" || return 1
+    grep -Fq 'validate_runtime_inputs()' "$script" || return 1
     grep -Fq 'mktemp "${pgbouncer_conf_dir}/.pgbouncer.ini.XXXXXX"' "$script" || return 1
     grep -Fq "printf '%%include %s\\n\\n[databases]\\n'" "$script" || return 1
+
+    for duplicated_schema in validate_component_inputs validate_pgbouncer_template validate_pool_integer; do
+      if grep -Fq "$duplicated_schema" "$script"; then
+        return 1
+      fi
+    done
 
     for dynamic in pgbouncer-budget PGBOUNCER_MEMORY_BYTES PGBOUNCER_DESIRED_REPLICAS \
       current_setting sync_backend_budget 'SHOW CONFIG' 'RELOAD;'; do
