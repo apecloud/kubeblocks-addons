@@ -145,6 +145,8 @@ pg_restore: warning: errors ignored on restore: 1'
     When run bash "$(script_path)"
     The status should be failure
     The output should include "--exit-on-error"
+    The output should include "-C"
+    The output should include "-d postgres"
     The error should include "errors ignored on restore"
   End
 

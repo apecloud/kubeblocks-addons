@@ -34,7 +34,7 @@ fi
 # Roles are not dumped by pg_dump; the target cluster (e.g. a freshly
 # restored one) usually does not have the roles referenced by ownership and
 # ACL statements, so skip restoring owners and privileges altogether.
-params="-j $jobs -Fd -v -d postgres --no-owner --no-privileges"
+params="-j $jobs -Fd -v --no-owner --no-privileges"
 if [ -n "$database" ]; then
     $psql_cmd -d postgres -Atc "create database $database" || echo "Failed to create database $database"
 fi
@@ -74,12 +74,12 @@ if [ "$schema_only" == "true" ]; then
 fi
 
 if [ "$conflict_policy" == "DROP" ]; then
-  params="$params --clean --if-exists"
+  params="$params -d $database --clean --if-exists"
 elif [ "$conflict_policy" == "FAIL" ]; then
-  params="$params --exit-on-error -C"
+  params="$params -C -d postgres --exit-on-error"
 else
   set +e
-  params="$params -C"
+  params="$params -C -d postgres"
 fi
 
 echo "parameters: $params"
@@ -98,17 +98,12 @@ exec 3>&-
 # exits 1 with "errors ignored on restore". Only the non-FAIL policies may
 # treat that as success, and only when every error is a benign conflict with
 # the existing target database: objects already present ("already exists",
-# "multiple primary keys"), or the database in use so its DROP fails. Under
-# the default CONTINUE policy (conflict_policy unset or CONTINUE) rows that
-# already exist are expected, so duplicate-key COPY errors are tolerated as
-# well; the DROP policy keeps failing on them. Missing objects and permission
-# problems must always fail.
+# "multiple primary keys"), or the database in use so its DROP fails. Data
+# conflicts (duplicate key values), missing objects, and permission problems
+# must always fail.
 if [ "$exit_code" -ne 0 ] && [ "$conflict_policy" != "FAIL" ] && [ -f /tmp/pg_restore.log ] \
     && grep -q "pg_restore: warning: errors ignored on restore" /tmp/pg_restore.log; then
   benign_pattern="already exists|multiple primary keys for table|is being accessed by other users"
-  if [ "$conflict_policy" != "DROP" ]; then
-    benign_pattern="$benign_pattern|duplicate key value violates unique constraint"
-  fi
   total_errors=$(grep -c "^pg_restore: error:" /tmp/pg_restore.log || true)
   existing_errors=$(grep "^pg_restore: error:" /tmp/pg_restore.log | grep -cE "$benign_pattern" || true)
   if [ "$total_errors" -gt 0 ] && [ "$total_errors" = "$existing_errors" ]; then
