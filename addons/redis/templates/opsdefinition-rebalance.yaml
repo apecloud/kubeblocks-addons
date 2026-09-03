@@ -3,6 +3,23 @@ kind: OpsDefinition
 metadata:
   name: redis-cluster-rebalance
 spec:
+  componentInfos:
+    - componentDefinitionName: ^redis-cluster-.*$
+      imageMappings:
+        - serviceVersions:
+            - 8.6.3
+            - 8.4.3
+            - 8.4.0
+            - 8.2.6
+            - 8.2.3
+            - 8.2.1
+            - 8.2.2
+            - 8.0.5
+            - 8.0.4
+            - 8.0.3
+            - 8.0.1
+          images:
+            redis-rebalance: {{ .Values.image.registry | default "docker.io" }}/{{ include "redis.ceRepository" . }}:8.6.3
   podInfoExtractors:
     - name: redisUrl
       podSelector:
@@ -32,6 +49,15 @@ spec:
           valueFrom:
             envRef:
               envName: CLUSTER_NAMESPACE
+        - name: SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SERVICE_PORT
+        - name: REDIS_CLI_TLS_CMD
+          optional: true
+          valueFrom:
+            envRef:
+              envName: REDIS_CLI_TLS_CMD
   actions:
     - name: rebalance
       workload:
@@ -39,35 +65,12 @@ spec:
         podInfoExtractorName: redisUrl
         podSpec:
           containers:
-          - name: busybox-init
-            image: {{ include "busybox.image" . }}
-            command: ["/bin/sh", "-c"]
-            args:
-              - |
-                POD_FQDN=$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN
-                REDIS_URL="redis://${REDIS_DEFAULT_USER}:${REDIS_DEFAULT_PASSWORD}@${POD_FQDN}"
-                echo ${REDIS_URL}
-                cat <<EOF > /tmp/reshard.ini
-                [extractor]
-                db_type=redis
-                extract_type=reshard
-                url=${REDIS_URL}
-                [sinker]
-                sink_type=dummy
-                EOF
-            volumeMounts:
-            - name: reshard-config
-              mountPath: /tmp
-          - name: redis-rebalance
-            image: {{ include "apeDts.reshard.image" . }}
-            imagePullPolicy: IfNotPresent
-            command: ["/ape-dts"]
-            args:
-              - /tmp/reshard.ini
-            volumeMounts:
-            - name: reshard-config
-              mountPath: /tmp
+            - name: redis-rebalance
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.4.0-v8
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "redis-cluster-scripts/redis-rebalance.sh" | nindent 18 }}
           restartPolicy: Never
-          volumes:
-          - name: reshard-config
-            emptyDir: {}
