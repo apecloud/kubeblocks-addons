@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: yashandb-cluster-pod-monitor
+  namespace: demo
+  labels:
+    release: prometheus
+spec:
+  jobLabel: app.kubernetes.io/managed-by
+  podTargetLabels:
+    - app.kubernetes.io/instance
+    - app.kubernetes.io/managed-by
+    - apps.kubeblocks.io/component-name
+    - apps.kubeblocks.io/pod-name
+  podMetricsEndpoints:
+    # 2026-06-24 Reason: the YCM 23.5.13.3 exporter exposes Prometheus metrics at /metrics on the http-metrics port; Purpose: keep PodMonitor aligned with the confirmed exporter contract while leaving metric-label validation to a live scrape.
+    - path: /metrics
+      port: http-metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - demo
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: yashandb-cluster
+      apps.kubeblocks.io/component-name: yashan-comp
