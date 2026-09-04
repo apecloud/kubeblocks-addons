@@ -1,0 +1,25 @@
+apiVersion: v2
+name: doltdb-cluster
+description: DoltDB cluster chart for KubeBlocks.
+version: 0.1.0
+appVersion: "2.1.10"
+type: application
+keywords:
+  - database
+  - mysql
+  - version-control
+  - doltdb
+
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
+
+home: https://www.dolthub.com
+sources:
+  - https://github.com/dolthub/dolt
+
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks-addons

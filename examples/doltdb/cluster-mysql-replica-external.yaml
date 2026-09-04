@@ -1,0 +1,43 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: doltdb-mysql-replica-external
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: doltdb
+  topology: standalone
+  componentSpecs:
+    - name: doltdb
+      serviceVersion: "2.1.10"
+      replicas: 1
+      # Required for MySQL-source replication when authoring a raw standalone Cluster:
+      # bind ServiceRef mysql-source, require that binding at provision time,
+      # and choose a positive server_id unique across the MySQL source and replicas.
+      serviceRefs:
+        - name: mysql-source
+          namespace: demo
+          serviceDescriptor: external-mysql-source
+      env:
+        - name: DOLT_DATABASE
+          value: testdb
+        - name: DOLT_MYSQL_REPLICA_REQUIRED
+          value: "true"
+        - name: DOLT_MYSQL_REPLICA_SERVER_ID
+          value: "124"
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: "1"
+          memory: 1Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
