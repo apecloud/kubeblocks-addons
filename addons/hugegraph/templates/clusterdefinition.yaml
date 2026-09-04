@@ -1,0 +1,33 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: hugegraph
+  labels:
+    {{- include "hugegraph.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hugegraph.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      default: true
+      components:
+        - name: server
+          compDef: {{ include "hugegraph.cmpdPattern" . }}
+    - name: distributed
+      components:
+        - name: pd
+          compDef: {{ include "hugegraph.pdCmpdPattern" . }}
+        - name: store
+          compDef: {{ include "hugegraph.storeCmpdPattern" . }}
+        - name: server
+          compDef: {{ include "hugegraph.serverCmpdPattern" . }}
+      orders:
+        provision:
+          - pd,store
+          - server
+        terminate:
+          - server
+          - store,pd
+        update:
+          - pd,store
+          - server
