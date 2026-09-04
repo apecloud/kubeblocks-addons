@@ -125,8 +125,8 @@ check_redis_server_ready() {
   fi
   logging_check_ready_cmd=${check_ready_cmd/$REDIS_DEFAULT_PASSWORD/********}
   output=$($check_ready_cmd)
-  set_xtrace_when_ut_mode_false
   status=$?
+  set_xtrace_when_ut_mode_false
   if [ $status -ne 0 ] || [ "$output" != "PONG" ] ; then
     echo "Failed to execute the check ready command: $logging_check_ready_cmd" >&2
     return 1
@@ -219,8 +219,8 @@ get_cluster_info() {
     command="redis-cli $REDIS_CLI_TLS_CMD -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD cluster info"
   fi
   cluster_info=$($command)
-  set_xtrace_when_ut_mode_false
   status=$?
+  set_xtrace_when_ut_mode_false
   if [ $status -ne 0 ]; then
     echo "Failed to execute the get cluster info command" >&2
     return 1
@@ -238,8 +238,8 @@ get_cluster_nodes_info() {
     command="redis-cli $REDIS_CLI_TLS_CMD -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD cluster nodes"
   fi
   cluster_nodes_info=$($command)
-  set_xtrace_when_ut_mode_false
   status=$?
+  set_xtrace_when_ut_mode_false
   if [ $status -ne 0 ]; then
     echo "Failed to execute the get cluster nodes info command" >&2
     return 1
