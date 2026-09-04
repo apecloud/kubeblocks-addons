@@ -1,17 +1,22 @@
-{{- range .Values.versions -}}
-{{- $cc := $.Files.Get (printf "config/pg%s-config-effect-scope.yaml" .major) | fromYaml }}
+{{- range $version := .Values.versions -}}
+{{- $cc := $.Files.Get (printf "config/pg%s-config-effect-scope.yaml" $version.major) | fromYaml }}
+{{- $variants := list
+      (dict "name" (include "postgresql.parametersDefinition" (dict "major" $version.major "root" $)) "compDef" (include "postgresql.componentDefByMajor" (dict "major" $version.major "root" $)))
+      (dict "name" (include "postgresql.directParametersDefinition" (dict "major" $version.major "root" $)) "compDef" (include "postgresql.directComponentDefByMajor" (dict "major" $version.major "root" $)))
+      (dict "name" (include "postgresql.poolerParametersDefinition" (dict "major" $version.major "root" $)) "compDef" (include "postgresql.poolerComponentDefByMajor" (dict "major" $version.major "root" $))) }}
+{{- range $variant := $variants }}
 ---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ printf "postgresql%s-pd-%s" .major $.Chart.Version }}
+  name: {{ $variant.name }}
   labels:
     {{- include "postgresql.labels" $ | nindent 4 }}
   annotations:
     {{- include "postgresql.annotations" $ | nindent 4 }}
 spec:
-  componentDef: {{ include "postgresql.componentDefByMajor" (dict "major" .major "root" $) }}
-  serviceVersion: {{ .serviceVersion }}
+  componentDef: {{ $variant.compDef }}
+  serviceVersion: {{ $version.serviceVersion }}
   templateName: postgresql-configuration
   fileName: postgresql.conf
   fileFormatConfig:
@@ -27,7 +32,7 @@ spec:
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- $.Files.Get (printf "config/pg%s-config-constraint.cue" .major) | nindent 6 }}
+      {{- $.Files.Get (printf "config/pg%s-config-constraint.cue" $version.major) | nindent 6 }}
 
   ##  require db instance restart
   ## staticParameters
@@ -47,4 +52,5 @@ spec:
     - {{ . }}
    {{- end }}
   {{- end}}
+{{- end }}
 {{- end }}
