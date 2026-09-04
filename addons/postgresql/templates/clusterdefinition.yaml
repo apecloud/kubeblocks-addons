@@ -14,6 +14,7 @@ spec:
           compDef: {{ include "postgresql.componentDefNamePrefix" . }}
         - name: pgbouncer
           compDef: {{ include "pgbouncer.componentDefName" . }}
+          template: true
       orders:
         provision:
           - postgresql
