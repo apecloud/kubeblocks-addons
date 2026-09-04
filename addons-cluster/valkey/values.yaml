@@ -6,19 +6,21 @@ version: 9.0.0
 ## @param mode Valkey topology mode: standalone or replication.
 ## standalone: a single Valkey data pod.
 ## replication: Valkey data pods monitored by Valkey Sentinel.
+## cluster: Valkey Cluster (sharding). v1: Valkey 9 only, in-cluster
+## networking only (no NodePort/LB direct-to-shard access), 3..32 shards.
 mode: replication
 
 ## @param replicas data component replicas. Replication mode uses at least 2, at most 5 (CMPD replicasLimit).
 replicas: 3
 
 ## @param cpu data component CPU limit/request.
-cpu: 0.5
+cpu: 500m
 
-## @param memory data component memory in Gi.
-memory: 0.5
+## @param memory data component memory quantity.
+memory: 512Mi
 
-## @param storage data component storage in Gi.
-storage: 20
+## @param storage data component storage quantity.
+storage: 20Gi
 
 ## @param storageClassName data volume StorageClass.
 storageClassName: ""
@@ -46,11 +48,11 @@ sentinel:
   ## @param sentinel.replicas Sentinel replicas: 3 or 5. Odd counts recommended; even counts add no quorum value.
   replicas: 3
   ## @param sentinel.cpu Sentinel CPU limit/request.
-  cpu: 0.5
-  ## @param sentinel.memory Sentinel memory in Gi.
-  memory: 0.5
-  ## @param sentinel.storage Sentinel storage in Gi.
-  storage: 5
+  cpu: 500m
+  ## @param sentinel.memory Sentinel memory quantity.
+  memory: 512Mi
+  ## @param sentinel.storage Sentinel storage quantity.
+  storage: 5Gi
   ## @param sentinel.storageClassName Sentinel volume StorageClass.
   storageClassName: ""
   ## @param sentinel.customSecretName Sentinel default account secret name.
@@ -64,3 +66,10 @@ prometheus:
 extra:
   disableExporter: true
   terminationPolicy: Delete
+
+## @param cluster Valkey Cluster (sharding) mode settings; required when mode=cluster.
+cluster:
+  ## @param cluster.shards number of shards (3..32; each shard = 1 primary + (replicas-1) replicas)
+  shards: 3
+  ## @param cluster.replicas pods per shard (1..5)
+  replicas: 2

@@ -233,23 +233,40 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
   if [ -n "${SENTINEL_PASSWORD:-}" ]; then
     sentinel_auth_args=(-a "${SENTINEL_PASSWORD}")
   fi
-  # Configured total: count non-empty entries. Empty entries from a
-  # trailing comma or runtime mis-render must not lower the quorum bar.
+  # Configured total is an exact set of non-empty endpoints. A duplicate
+  # endpoint must not become multiple votes in the quorum.
   IFS=',' read -ra sentinel_fqdns_raw <<< "${SENTINEL_POD_FQDN_LIST}"
   sentinel_fqdns=()
+  duplicate_sentinel_fqdn=0
   for s in "${sentinel_fqdns_raw[@]}"; do
-    [ -n "${s}" ] && sentinel_fqdns+=("${s}")
+    [ -z "${s}" ] && continue
+    sentinel_seen=0
+    for configured_s in "${sentinel_fqdns[@]}"; do
+      if [ "${configured_s}" = "${s}" ]; then
+        sentinel_seen=1
+        break
+      fi
+    done
+    if [ "${sentinel_seen}" -eq 1 ]; then
+      duplicate_sentinel_fqdn=1
+      continue
+    fi
+    sentinel_fqdns+=("${s}")
   done
   configured_count=${#sentinel_fqdns[@]}
-  if [ "${configured_count}" -ge 1 ]; then
+  if [ "${duplicate_sentinel_fqdn}" -eq 1 ]; then
+    __quorum_decision_reason="duplicate_sentinel_config"
+  elif [ "${configured_count}" -ge 1 ]; then
     min_valid=$((configured_count / 2 + 1))
     quorum_keys=()
     sentinel_query_success_count=0
-    sentinel_master_config_count=0
+    sentinel_any_master_config_count=0
     for s in "${sentinel_fqdns[@]}"; do
       sentinel_out=$(timeout 1 valkey-cli --no-auth-warning -h "${s}" -p "${sentinel_port}" "${sentinel_auth_args[@]}" ${sentinel_tls_args} sentinel masters 2>/dev/null) || continue
       sentinel_query_success_count=$((sentinel_query_success_count + 1))
-      sentinel_has_master_config=0
+      sentinel_has_any_master_config=0
+      record_name=""
+      name_marker=""
       ce_marker=""
       runid_marker=""
       flags_marker=""
@@ -258,7 +275,11 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
       flags=""
       while IFS= read -r sline; do
         sline="${sline%$'\r'}"
-        if [ -n "${ce_marker}" ]; then
+        if [ -n "${name_marker}" ]; then
+          record_name="${sline}"
+          [ -n "${record_name}" ] && sentinel_has_any_master_config=1
+          name_marker=""
+        elif [ -n "${ce_marker}" ]; then
           epoch="${sline}"
           ce_marker=""
         elif [ -n "${runid_marker}" ]; then
@@ -269,16 +290,29 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
           flags_marker=""
         else
           case "${sline}" in
-            "name")         sentinel_has_master_config=1 ;;
-            "config-epoch") sentinel_has_master_config=1; ce_marker="1" ;;
-            "runid")        sentinel_has_master_config=1; runid_marker="1" ;;
-            "flags")        sentinel_has_master_config=1; flags_marker="1" ;;
+            "name")
+              if [ "${record_name}" = "${VALKEY_COMPONENT_NAME}" ]; then
+                break
+              fi
+              record_name=""
+              epoch=""
+              runid=""
+              flags=""
+              name_marker="1"
+              ;;
+            "config-epoch") [ "${record_name}" = "${VALKEY_COMPONENT_NAME}" ] && ce_marker="1" ;;
+            "runid")        [ "${record_name}" = "${VALKEY_COMPONENT_NAME}" ] && runid_marker="1" ;;
+            "flags")        [ "${record_name}" = "${VALKEY_COMPONENT_NAME}" ] && flags_marker="1" ;;
           esac
         fi
-        [ -n "${epoch}" ] && [ -n "${runid}" ] && [ -n "${flags}" ] && break
       done <<<"${sentinel_out}"
-      if [ "${sentinel_has_master_config}" -eq 1 ] || [ -n "${epoch}" ] || [ -n "${runid}" ] || [ -n "${flags}" ]; then
-        sentinel_master_config_count=$((sentinel_master_config_count + 1))
+      if [ "${record_name}" != "${VALKEY_COMPONENT_NAME}" ]; then
+        epoch=""
+        runid=""
+        flags=""
+      fi
+      if [ "${sentinel_has_any_master_config}" -eq 1 ]; then
+        sentinel_any_master_config_count=$((sentinel_any_master_config_count + 1))
       fi
       __drop_reason=""
       # Validate: epoch must be uint64.
@@ -312,7 +346,7 @@ if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
     done
     valid_count=${#quorum_keys[@]}
     if [ "${valid_count}" -lt "${min_valid}" ]; then
-      if [ "${sentinel_query_success_count}" -gt 0 ] && [ "${sentinel_master_config_count}" -eq 0 ]; then
+      if [ "${sentinel_query_success_count}" -gt 0 ] && [ "${sentinel_any_master_config_count}" -eq 0 ]; then
         __quorum_decision_reason="bootstrap_no_sentinel_master"
       else
         __quorum_decision_reason="insufficient_valid"
