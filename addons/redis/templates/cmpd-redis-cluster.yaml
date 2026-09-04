@@ -467,13 +467,19 @@ spec:
           - redis
           - getrole
     postProvision:
-      timeoutSeconds: 600
+      # kbagent clamps action calls at 60s; keep 10s for cancellation and cleanup.
+      timeoutSeconds: 50
       exec:
         container: redis-cluster
         command:
           - /bin/bash
           - -c
-          - /scripts/{{ $redisClusterManageScripts }} --post-provision  > /tmp/post-provision.log 2>&1
+          - |
+            log=/tmp/post-provision.log
+            /scripts/{{ $redisClusterManageScripts }} --post-provision >"$log" 2>&1
+            rc=$?
+            cat "$log" >&2
+            exit "$rc"
         ## all lifecycle actions share the same env
         env:
           - name: CURRENT_POD_NAME
