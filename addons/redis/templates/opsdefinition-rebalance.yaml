@@ -7,6 +7,11 @@ spec:
     - componentDefinitionName: ^redis-cluster-.*$
       imageMappings:
         - serviceVersions:
+            - 8.6.6
+            - 8.4.6
+            - 8.10.1
+            - 8.8.2
+            - 8.2.9
             - 8.6.3
             - 8.4.3
             - 8.4.0
@@ -19,7 +24,7 @@ spec:
             - 8.0.3
             - 8.0.1
           images:
-            redis-rebalance: {{ .Values.image.registry | default "docker.io" }}/{{ include "redis.ceRepository" . }}:8.6.3
+            redis-rebalance: {{ .Values.image.registry | default "docker.io" }}/{{ include "redis.ceRepository" . }}:8.10.1
   podInfoExtractors:
     - name: redisUrl
       podSelector:
