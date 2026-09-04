@@ -72,6 +72,19 @@ rustfs-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Render the RustFS logical backup S3 client image.
+*/}}
+{{- define "rustfs.mcImage" -}}
+{{- $registry := .Values.image.registry | default "docker.io" -}}
+{{- $repository := .Values.image.mc.repository -}}
+{{- if .Values.image.mc.digest -}}
+{{- printf "%s/%s@%s" $registry $repository .Values.image.mc.digest -}}
+{{- else -}}
+{{- printf "%s/%s:%s" $registry $repository (.Values.image.mc.tag | default "latest") -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Define rustfs component definition regular expression name prefix
 */}}
 {{- define "rustfs.cmpdRegexpPattern" -}}
