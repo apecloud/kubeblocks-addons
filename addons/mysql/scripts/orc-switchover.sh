@@ -21,10 +21,14 @@ if [[ "$KB_SWITCHOVER_ROLE" != "primary" ]]; then
   exit 0
 fi
 
-# Skip if KB_SWITCHOVER_CURRENT_NAME is not the master
-master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1)
-if [ -z "$master_from_orc" ]; then
-  mysql_error "Could not determine current master from Orchestrator"
+# Skip if KB_SWITCHOVER_CURRENT_NAME is not the master.
+# Keep stderr out of the command substitution: on an Orchestrator outage the
+# client's error text must not be mistaken for a master name (it previously
+# made this guard exit 0 and the switchover was silently skipped as success).
+master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_SWITCHOVER_CURRENT_NAME}")
+rc=$?
+if [ $rc -ne 0 ] || [ -z "$master_from_orc" ]; then
+  mysql_error "Could not determine current master from Orchestrator (rc=${rc})"
 fi
 
 if [ "${KB_SWITCHOVER_CURRENT_NAME}" != "${master_from_orc%%:*}" ]; then
@@ -33,8 +37,13 @@ if [ "${KB_SWITCHOVER_CURRENT_NAME}" != "${master_from_orc%%:*}" ]; then
 fi
 
 # Skip switch if there is only one instance
-instance_count=$(/kubeblocks/orchestrator-client -c which-cluster-instances -i "${KB_SWITCHOVER_CURRENT_NAME}" 2>&1 | wc -l)
-if [ "$instance_count" -eq 1 ]; then
+instances=$(/kubeblocks/orchestrator-client -c which-cluster-instances -i "${KB_SWITCHOVER_CURRENT_NAME}")
+rc=$?
+if [ $rc -ne 0 ]; then
+  mysql_error "Could not list cluster instances from Orchestrator (rc=${rc})"
+fi
+instance_count=$(printf '%s\n' "$instances" | sed '/^$/d' | wc -l)
+if [ "$instance_count" -le 1 ]; then
   mysql_note "Only one instance in cluster, cannot switchover."
   exit 0
 fi
@@ -55,5 +64,5 @@ else
 fi
 
 if [ $exit_code -ne 0 ]; then
-  mysql_error "Switchover command failed with exit code: ${result}"
+  mysql_error "Switchover command failed with exit code ${exit_code}: ${result}"
 fi
