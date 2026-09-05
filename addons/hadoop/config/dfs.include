@@ -1,0 +1,3 @@
+# dfs.include - DataNode include list (whitelist)
+# Initially empty; add DN hostnames/IPs to explicitly allow them to register.
+# When non-empty, only DataNodes listed here can connect to the NameNode.
