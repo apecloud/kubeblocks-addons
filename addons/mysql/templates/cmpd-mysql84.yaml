@@ -41,7 +41,7 @@ spec:
       {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         command:
           - syncer
           - --port
