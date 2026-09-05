@@ -223,7 +223,7 @@ spec:
   runtime:
     containers:
     - name: redis-sentinel
-      imagePullPolicy: IfNotPresent
+      imagePullPolicy: {{ include "redis.imagePullPolicy" $ }}
       ports:
         - containerPort: 26379
           name: redis-sentinel
