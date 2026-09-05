@@ -46,7 +46,7 @@ spec:
             {{- range .Values.redisVersions }}
             {{- $defaultRepository := .repository -}}
             {{- range .mirrorVersions }}
-            {{- $redisRepository := printf "%s/%s" ( $.Values.image.registry | default "docker.io" ) ( .repository | default $defaultRepository ) }}
+            {{- $redisRepository := include "redis.qualifiedRepository" (dict "registry" ($.Values.image.registry | default "docker.io") "repository" (.repository | default $defaultRepository)) | trim }}
              - serviceVersions:
                - {{ .version }}
                mappedValue: {{ $redisRepository }}:{{ .imageTag }}

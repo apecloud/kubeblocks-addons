@@ -406,13 +406,13 @@ spec:
           - -r
           - /bin/dbctl
           - /tools/
-        imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
+        imagePullPolicy: {{ include "redis.dbctlImagePullPolicy" $ }}
         volumeMounts:
           - mountPath: /tools
             name: tools
     containers:
       - name: redis
-        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
+        imagePullPolicy: {{ include "redis.imagePullPolicy" $ }}
         command: [ "/scripts/{{ $redisStartScripts }}" ]
         ports:
           - name: redis
@@ -466,7 +466,7 @@ spec:
                 - /scripts/redis-pre-stop.sh
   {{- if $.Values.enableMetrics }}
       - name: metrics
-        imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
+        imagePullPolicy: {{ include "redis.metricsImagePullPolicy" $ }}
         securityContext:
           runAsNonRoot: true
           runAsUser: 1001

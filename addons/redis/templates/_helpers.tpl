@@ -129,6 +129,50 @@ Define redis cluster component script template name
 redis-cluster-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
+{{- define "redis.officialRegistry" -}}
+apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+{{- end }}
+
+{{- define "redis.officialRepository" -}}
+{{- $registry := .registry | default "docker.io" -}}
+{{- $repository := .repository -}}
+{{- if ne $registry (include "redis.officialRegistry" .) -}}
+{{- $repository -}}
+{{- else if hasPrefix "apecloud/" $repository -}}
+{{- $repository -}}
+{{- else if eq $repository "redis" -}}
+apecloud/redis
+{{- else if eq $repository "redis/redis-stack-server" -}}
+apecloud/redis-stack-server
+{{- else if eq $repository "malexer/twemproxy" -}}
+apecloud/twemproxy
+{{- else if eq $repository "oliver006/redis_exporter" -}}
+apecloud/redis_exporter
+{{- else if eq $repository "busybox" -}}
+apecloud/busybox
+{{- else -}}
+{{- $repository -}}
+{{- end -}}
+{{- end }}
+
+{{- define "redis.qualifiedRepository" -}}
+{{- $registry := .registry | default "docker.io" -}}
+{{- $repository := include "redis.officialRepository" . | trim -}}
+{{- printf "%s/%s" $registry $repository -}}
+{{- end }}
+
+{{- define "redis.imagePullPolicy" -}}
+{{ default "IfNotPresent" .Values.image.pullPolicy }}
+{{- end }}
+
+{{- define "redis.dbctlImagePullPolicy" -}}
+{{ default "IfNotPresent" .Values.dbctlImage.pullPolicy }}
+{{- end }}
+
+{{- define "redis.metricsImagePullPolicy" -}}
+{{ default "IfNotPresent" .Values.metrics.image.pullPolicy }}
+{{- end }}
+
 {{- define "redis7.image" -}}
 {{- $registry := .Values.image.registry | default "docker.io" -}}
 {{- $repository := .Values.image.repository -}}
@@ -139,32 +183,34 @@ redis-cluster-scripts-template-{{ .Chart.Version }}
 {{- $tag = .defaultImageTag | default $tag -}}
 {{- end -}}
 {{- end -}}
-{{ $registry }}/{{ $repository }}:{{ $tag }}
+{{ include "redis.qualifiedRepository" (dict "registry" $registry "repository" $repository) | trim }}:{{ $tag }}
 {{- end }}
 
 {{- define "redisTwemproxy.repository" -}}
-{{ .Values.redisTwemproxyImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.redisTwemproxyImage.repository }}
+{{- $registry := .Values.redisTwemproxyImage.registry | default ( .Values.image.registry | default "docker.io" ) -}}
+{{- include "redis.qualifiedRepository" (dict "registry" $registry "repository" .Values.redisTwemproxyImage.repository) | trim -}}
 {{- end }}
 
 {{- define "redisTwemproxy05.image" -}}
-{{ .Values.redisTwemproxyImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.redisTwemproxyImage.repository }}:{{ .Values.redisTwemproxyImage.tag }}
+{{ include "redisTwemproxy.repository" . }}:{{ .Values.redisTwemproxyImage.tag }}
 {{- end }}
 
 {{- define "busybox.image" -}}
 {{ $registry := .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" )}}
-{{- if eq $registry "docker.io" -}}
-{{ $registry }}/busybox:{{ .Values.busyboxImage.tag }}
-{{- else -}}
+{{- if eq $registry (include "redis.officialRegistry" .) -}}
 {{ $registry }}/apecloud/busybox:{{ .Values.busyboxImage.tag }}
+{{- else -}}
+{{ $registry }}/{{ .Values.busyboxImage.repository | default "busybox" }}:{{ .Values.busyboxImage.tag }}
 {{- end -}}
 {{- end }}
 
 {{- define "metrics.repository" -}}
-{{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository}}
+{{- $registry := .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) -}}
+{{- include "redis.qualifiedRepository" (dict "registry" $registry "repository" .Values.metrics.image.repository) | trim -}}
 {{- end }}
 
 {{- define "metrics.image" -}}
-{{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository}}:{{ .Values.metrics.image.tag }}
+{{ include "metrics.repository" . }}:{{ .Values.metrics.image.tag }}
 {{- end }}
 
 {{- define "apeDts.image" -}}
@@ -201,9 +247,9 @@ redis-account.sh: |-
 
 {{- define "redis.ceRepository" -}}
 {{ $registry := .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" )}}
-{{- if eq $registry "docker.io" -}}
-{{- .Values.ceImage.repository -}}
-{{- else -}}
+{{- if eq $registry (include "redis.officialRegistry" .) -}}
 apecloud/redis
+{{- else -}}
+{{- .Values.ceImage.repository -}}
 {{- end -}}
 {{- end -}}

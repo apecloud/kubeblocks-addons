@@ -115,7 +115,7 @@ spec:
     - name: LOG_ARCHIVE_SECONDS
       value: "3"
     - name: IMAGE
-      value: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+      value: {{ include "redis.qualifiedRepository" (dict "registry" (.Values.image.registry | default "docker.io") "repository" .Values.image.repository) | trim }}:{{ .Values.image.tag.major7.minor72 }}
   backup:
     preBackup: []
     postBackup: []
