@@ -44,31 +44,39 @@ class RedisPullPolicyTest(unittest.TestCase):
         command = ["helm", "template", "redis", str(self.chart), *extra]
         return subprocess.check_output(command, env=self.env, text=True)
 
-    def assert_policy(self, value, expected, extra=()):
-        command = list(extra)
-        if value is not None:
-            command.extend(["--set-string", "image.pullPolicy=" + value])
-        rendered = self.render(command)
-        counts = {"redis": 0, "sentinel": 0, "twemproxy": 0, "init": 0, "metrics": 0}
+    def iter_runtime_containers(self, rendered):
         for document in yaml.safe_load_all(rendered):
             if not document or document.get("kind") != "ComponentDefinition":
                 continue
             runtime = document["spec"]["runtime"]
             for group in ("containers", "initContainers"):
                 for container in runtime.get(group, []):
-                    name = container["name"]
-                    with self.subTest(component=document["metadata"]["name"], container=name):
-                        self.assertEqual(container.get("imagePullPolicy"), expected)
-                    if group == "initContainers":
-                        counts["init"] += 1
-                    elif name in {"redis", "redis-cluster"}:
-                        counts["redis"] += 1
-                    elif name == "redis-sentinel":
-                        counts["sentinel"] += 1
-                    elif name == "redis-twemproxy":
-                        counts["twemproxy"] += 1
-                    elif name == "metrics":
-                        counts["metrics"] += 1
+                    yield document["metadata"]["name"], group, container
+
+    def assert_policy(self, value, expected, extra=(), skip_names=("metrics", "init-dbctl")):
+        command = list(extra)
+        if value is not None:
+            command.extend(["--set-string", "image.pullPolicy=" + value])
+        rendered = self.render(command)
+        skip = set(skip_names)
+        counts = {"redis": 0, "sentinel": 0, "twemproxy": 0, "init": 0, "metrics": 0, "init-dbctl": 0}
+        for component, group, container in self.iter_runtime_containers(rendered):
+            name = container["name"]
+            if name not in skip:
+                with self.subTest(component=component, container=name):
+                    self.assertEqual(container.get("imagePullPolicy"), expected)
+            if group == "initContainers":
+                counts["init"] += 1
+                if name == "init-dbctl":
+                    counts["init-dbctl"] += 1
+            elif name in {"redis", "redis-cluster"}:
+                counts["redis"] += 1
+            elif name == "redis-sentinel":
+                counts["sentinel"] += 1
+            elif name == "redis-twemproxy":
+                counts["twemproxy"] += 1
+            elif name == "metrics":
+                counts["metrics"] += 1
         for group, count in counts.items():
             self.assertGreater(count, 0, "missing rendered " + group)
 
@@ -109,6 +117,54 @@ class RedisPullPolicyTest(unittest.TestCase):
         self.assertIn("docker.io/redis/redis-stack-server:7.2.0-v19", rendered)
         self.assertIn("docker.io/malexer/twemproxy:0.5.0", rendered)
         self.assertIn("docker.io/oliver006/redis_exporter:v1.80.1", rendered)
+
+    def test_metrics_and_dbctl_keep_own_pull_policy(self):
+        rendered = self.render(
+            (
+                "--set-string",
+                "image.pullPolicy=Always",
+                "--set-string",
+                "metrics.image.pullPolicy=Never",
+                "--set-string",
+                "dbctlImage.pullPolicy=Never",
+            )
+        )
+        metrics = 0
+        dbctl = 0
+        redis = 0
+        for component, _group, container in self.iter_runtime_containers(rendered):
+            name = container["name"]
+            policy = container.get("imagePullPolicy")
+            if name == "metrics":
+                metrics += 1
+                with self.subTest(component=component, container=name):
+                    self.assertEqual(policy, "Never")
+            elif name == "init-dbctl":
+                dbctl += 1
+                with self.subTest(component=component, container=name):
+                    self.assertEqual(policy, "Never")
+            elif name in {"redis", "redis-cluster", "redis-sentinel"}:
+                redis += 1
+                with self.subTest(component=component, container=name):
+                    self.assertEqual(policy, "Always")
+        self.assertEqual(metrics, 8)
+        self.assertEqual(dbctl, 8)
+        self.assertGreater(redis, 0)
+
+    def test_custom_registry_keeps_repository_path(self):
+        custom = "registry.example.test"
+        rendered = self.render(
+            (
+                "--set",
+                "image.registry=" + custom,
+                "--set",
+                "image.repository=redis",
+            )
+        )
+        self.assertIn(custom + "/redis:", rendered)
+        self.assertNotIn(custom + "/apecloud/redis:", rendered)
+        self.assertIn(custom + "/busybox:", rendered)
+        self.assertNotIn(custom + "/apecloud/busybox:", rendered)
 
 
 if __name__ == "__main__":

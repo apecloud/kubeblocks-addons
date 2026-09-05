@@ -129,10 +129,14 @@ Define redis cluster component script template name
 redis-cluster-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
+{{- define "redis.officialRegistry" -}}
+apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+{{- end }}
+
 {{- define "redis.officialRepository" -}}
 {{- $registry := .registry | default "docker.io" -}}
 {{- $repository := .repository -}}
-{{- if eq $registry "docker.io" -}}
+{{- if ne $registry (include "redis.officialRegistry" .) -}}
 {{- $repository -}}
 {{- else if hasPrefix "apecloud/" $repository -}}
 {{- $repository -}}
@@ -161,6 +165,14 @@ apecloud/busybox
 {{ default "IfNotPresent" .Values.image.pullPolicy }}
 {{- end }}
 
+{{- define "redis.dbctlImagePullPolicy" -}}
+{{ default "IfNotPresent" .Values.dbctlImage.pullPolicy }}
+{{- end }}
+
+{{- define "redis.metricsImagePullPolicy" -}}
+{{ default "IfNotPresent" .Values.metrics.image.pullPolicy }}
+{{- end }}
+
 {{- define "redis7.image" -}}
 {{- $registry := .Values.image.registry | default "docker.io" -}}
 {{- $repository := .Values.image.repository -}}
@@ -185,10 +197,10 @@ apecloud/busybox
 
 {{- define "busybox.image" -}}
 {{ $registry := .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" )}}
-{{- if eq $registry "docker.io" -}}
-{{ $registry }}/busybox:{{ .Values.busyboxImage.tag }}
-{{- else -}}
+{{- if eq $registry (include "redis.officialRegistry" .) -}}
 {{ $registry }}/apecloud/busybox:{{ .Values.busyboxImage.tag }}
+{{- else -}}
+{{ $registry }}/{{ .Values.busyboxImage.repository | default "busybox" }}:{{ .Values.busyboxImage.tag }}
 {{- end -}}
 {{- end }}
 
@@ -235,9 +247,9 @@ redis-account.sh: |-
 
 {{- define "redis.ceRepository" -}}
 {{ $registry := .Values.ceImage.registry | default ( .Values.image.registry | default "docker.io" )}}
-{{- if eq $registry "docker.io" -}}
-{{- .Values.ceImage.repository -}}
-{{- else -}}
+{{- if eq $registry (include "redis.officialRegistry" .) -}}
 apecloud/redis
+{{- else -}}
+{{- .Values.ceImage.repository -}}
 {{- end -}}
 {{- end -}}

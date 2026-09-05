@@ -525,7 +525,7 @@ spec:
           - -r
           - /bin/dbctl
           - /tools/
-        imagePullPolicy: {{ include "redis.imagePullPolicy" $ }}
+        imagePullPolicy: {{ include "redis.dbctlImagePullPolicy" $ }}
         volumeMounts:
           - mountPath: /tools
             name: tools
@@ -587,7 +587,7 @@ spec:
                 - /scripts/redis-cluster-replica-pre-stop.sh
   {{- if $.Values.enableMetrics }}
       - name: metrics
-        imagePullPolicy: {{ include "redis.imagePullPolicy" $ }}
+        imagePullPolicy: {{ include "redis.metricsImagePullPolicy" $ }}
         securityContext:
           runAsNonRoot: true
           runAsUser: 1001
