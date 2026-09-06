@@ -281,7 +281,7 @@ lifecycleActions:
 runtime:
   initContainers:
     - name: prepare-plugins
-      imagePullPolicy: IfNotPresent
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
         - sh
         - -c
