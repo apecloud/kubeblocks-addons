@@ -470,6 +470,7 @@ runtime:
           readOnly: true
 {{- end }}
     - name: exporter
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
         - /bin/elasticsearch_exporter
         - "--es.uri=http://localhost:9200"
