@@ -67,7 +67,7 @@ spec:
           - -c
           - |
             cp /usr/local/bin/agent /usr/local/nebula/console/agent
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{ .Values.images.pullPolicy | default "IfNotPresent" }}
         volumeMounts:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
@@ -78,7 +78,7 @@ spec:
           - -c
           - |
             /scripts/start-metad.sh
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{ .Values.images.pullPolicy | default "IfNotPresent" }}
         ports:
           - containerPort: 9559
             name: thrift

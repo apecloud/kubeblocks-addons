@@ -129,7 +129,7 @@ spec:
           - -c
           - |
             cp /usr/local/bin/nebula-console /usr/local/nebula/console/nebula-console
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{ .Values.images.pullPolicy | default "IfNotPresent" }}
         volumeMounts:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
@@ -139,7 +139,7 @@ spec:
         - -c
         - |
           cp /usr/local/bin/agent /usr/local/nebula/console/agent
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{ .Values.images.pullPolicy | default "IfNotPresent" }}
         volumeMounts:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
@@ -150,7 +150,7 @@ spec:
           - -c
           - |
             /scripts/start-graphd.sh
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{ .Values.images.pullPolicy | default "IfNotPresent" }}
         ports:
           - containerPort: 9669
             name: thrift

@@ -34,7 +34,7 @@ spec:
           containers:
             - name: balance-data
               image: {{ $.Values.images.registry | default "docker.io"  }}/{{ $.Values.images.nebula.tool }}
-              imagePullPolicy: IfNotPresent
+              imagePullPolicy: {{ $.Values.images.pullPolicy | default "IfNotPresent" }}
               command:
                 - bash
                 - -c
