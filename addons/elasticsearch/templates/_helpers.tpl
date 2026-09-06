@@ -281,7 +281,7 @@ lifecycleActions:
 runtime:
   initContainers:
     - name: prepare-plugins
-      imagePullPolicy: IfNotPresent
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
         - sh
         - -c
@@ -470,6 +470,7 @@ runtime:
           readOnly: true
 {{- end }}
     - name: exporter
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
         - /bin/elasticsearch_exporter
         - "--es.uri=http://localhost:9200"
