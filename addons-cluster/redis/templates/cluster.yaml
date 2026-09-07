@@ -17,8 +17,10 @@
   {{- include "redis-cluster.shardingSpec" . | indent 2 }}
 {{- else }}
   {{- include "redis-cluster.clusterCommon" . }}
+  {{- if ne .Values.mode "standalone" }}
   clusterDef: redis
   topology: {{ .Values.mode }}
+  {{- end }}
   componentSpecs:
   {{- if eq .Values.mode "replication" }}
     {{- include "redis-cluster.componentSpec" . | indent 2 }}

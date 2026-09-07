@@ -84,6 +84,7 @@ Define redis ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.componentSpec" }}
 - name: redis
+  componentDef: redis-{{ (split "." .Values.version)._0 }}
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
   {{- include "redis-cluster.exporter" . | indent 2 }}
   {{- if .Values.podAntiAffinityEnabled }}
@@ -143,6 +144,7 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.sentinelComponentSpec" }}
 - name: redis-sentinel
+  componentDef: redis-sentinel
   {{- include "redis-cluster.tls" . | indent 2 }}
   replicas: {{ .Values.sentinel.replicas }}
   {{- if .Values.podAntiAffinityEnabled }}
