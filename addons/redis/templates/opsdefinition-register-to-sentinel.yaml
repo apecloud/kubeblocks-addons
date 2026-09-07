@@ -1,0 +1,155 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: redis-register-to-sentinel
+spec:
+  ## this ops targets the redis component (standalone/replication), e.g. the redis
+  ## component whose redis primary needs to be registered into redis sentinel
+  ## after the topology is switched from standalone to replication
+  componentInfos:
+    - componentDefinitionName: ^redis-\d+
+  podInfoExtractors:
+    - name: register-to-sentinel
+      podSelector:
+        ## select the redis primary pod, so that CURRENT_POD_IP/CURRENT_POD_HOST_IP
+        ## point to the primary pod (required by fixed pod ip / host network modes)
+        role: primary
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+        - name: REDIS_COMPONENT_NAME
+          valueFrom:
+            envRef:
+              envName: REDIS_COMPONENT_NAME
+        - name: REDIS_POD_NAME_LIST
+          valueFrom:
+            envRef:
+              envName: REDIS_POD_NAME_LIST
+        - name: REDIS_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: REDIS_POD_FQDN_LIST
+        - name: REDIS_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_PASSWORD
+        - name: REDIS_SENTINEL_USER
+          valueFrom:
+            envRef:
+              envName: REDIS_SENTINEL_USER
+        - name: REDIS_SENTINEL_PASSWORD
+          valueFrom:
+            envRef:
+              envName: REDIS_SENTINEL_PASSWORD
+        - name: SENTINEL_COMPONENT_NAME
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_COMPONENT_NAME
+        - name: SENTINEL_POD_NAME_LIST
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_POD_NAME_LIST
+        - name: SENTINEL_POD_FQDN_LIST
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_POD_FQDN_LIST
+        - name: SENTINEL_PASSWORD
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_PASSWORD
+        - name: SENTINEL_SERVICE_PORT
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_SERVICE_PORT
+        - name: SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SERVICE_PORT
+        - name: REDIS_CLI_TLS_CMD
+          optional: true
+          valueFrom:
+            envRef:
+              envName: REDIS_CLI_TLS_CMD
+        - name: REDIS_ADVERTISED_PORT
+          optional: true
+          valueFrom:
+            envRef:
+              envName: REDIS_ADVERTISED_PORT
+        - name: REDIS_LB_ADVERTISED_PORT
+          optional: true
+          valueFrom:
+            envRef:
+              envName: REDIS_LB_ADVERTISED_PORT
+        - name: REDIS_LB_ADVERTISED_HOST
+          optional: true
+          valueFrom:
+            envRef:
+              envName: REDIS_LB_ADVERTISED_HOST
+        - name: REDIS_HOST_NETWORK_PORT
+          optional: true
+          valueFrom:
+            envRef:
+              envName: REDIS_HOST_NETWORK_PORT
+        - name: CURRENT_POD_IP
+          valueFrom:
+            envRef:
+              envName: CURRENT_POD_IP
+        - name: CURRENT_POD_HOST_IP
+          valueFrom:
+            envRef:
+              envName: CURRENT_POD_HOST_IP
+        - name: IS_REDIS5
+          optional: true
+          valueFrom:
+            envRef:
+              envName: IS_REDIS5
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        CUSTOM_SENTINEL_MASTER_NAME:
+          description: |
+            CUSTOM_SENTINEL_MASTER_NAME is the master name to be registered in redis sentinel.
+            If not set, the redis component name will be used as the master name.
+          type: string
+  actions:
+    - name: register-to-sentinel
+      parameters: ["CUSTOM_SENTINEL_MASTER_NAME"]
+      workload:
+        type: Pod
+        podInfoExtractorName: register-to-sentinel
+        backoffLimit: 1
+        podSpec:
+          containers:
+            - name: register-to-sentinel
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  # the register script sources the common library at runtime, write it first (same functions as redis-scripts-template)
+                  mkdir -p /scripts
+                  cat > /scripts/common.sh <<'COMMON_SH_EOF'
+                  {{- include "kblib.commons.call_func_with_retry" $ | nindent 18 }}
+                  {{- include "kblib.commons.extract_obj_ordinal" $ | nindent 18 }}
+                  {{- include "kblib.compvars.get_target_pod_fqdn_from_pod_fqdn_vars" $ | nindent 18 }}
+                  {{- include "kblib.pods.min_lexicographical_order_pod" $ | nindent 18 }}
+                  {{- include "kblib.ututils.set_xtrace_when_ut_mode_false" $ | nindent 18 }}
+                  {{- include "kblib.ututils.unset_xtrace_when_ut_mode_false" $ | nindent 18 }}
+                  {{- include "kblib.ututils.sleep_when_ut_mode_false" $ | nindent 18 }}
+                  {{- include "kblib.strings.contains" $ | nindent 18 }}
+                  {{- include "kblib.strings.is_empty" $ | nindent 18 }}
+                  {{- include "kblib.strings.equals" $ | nindent 18 }}
+                  {{- include "kblib.strings.split" $ | nindent 18 }}
+                  {{- include "kblib.envs.env_exist" $ | nindent 18 }}
+                  {{- include "kblib.envs.env_exists" $ | nindent 18 }}
+                  COMMON_SH_EOF
+                  {{- .Files.Get "scripts/redis-register-to-sentinel.sh" | nindent 18 }}
