@@ -9,6 +9,7 @@ metadata:
 spec:
   provider: kubeblocks.io
   serviceKind: mongodb
+  {{- include "mongodb.tls" . | nindent 2 }}
   services:
     - name: everypod
       serviceName: mongos
@@ -129,7 +130,8 @@ spec:
               - -c
               - |
                 client=$(mongosh --version 1>/dev/null&&echo mongosh||echo mongo)
-                $client --port $SERVICE_PORT -u $MONGOS_USER -p $MONGOS_PASSWORD --authenticationDatabase admin --eval "db.adminCommand('ping')"
+                . /scripts/mongodb-common.sh
+                $client $(mongodb_tls_client_options "$client") --port $SERVICE_PORT -u $MONGOS_USER -p $MONGOS_PASSWORD --authenticationDatabase admin --eval "db.adminCommand('ping')"
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
@@ -150,7 +152,7 @@ spec:
           - name: MONGODB_PASSWORD
             value: $(MONGOS_PASSWORD)
           - name: MONGODB_URI
-            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)
+            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)/?authSource=admin$(MONGODB_TLS_URI_OPTIONS)
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data
@@ -162,6 +164,7 @@ spec:
       - name: data
         emptyDir: {}
   vars:
+    {{- include "mongodb.tlsVars" . | nindent 4 }}
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:

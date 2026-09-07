@@ -192,3 +192,27 @@ Define config server component definition name prefix
 {{- define "cfgServer.componentDefNamePrefix" -}}
 {{- printf "mongo-config-server-" -}}
 {{- end -}}
+
+{{/* TLS certificate projection shared by mongod and mongos components. */}}
+{{- define "mongodb.tls" -}}
+tls:
+  volumeName: tls
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
+{{- end -}}
+
+{{- define "mongodb.tlsVars" -}}
+- name: MONGODB_SERVICE_VERSION
+  valueFrom:
+    componentVarRef:
+      serviceVersion: Required
+- name: TLS_ENABLED
+  valueFrom:
+    tlsVarRef:
+      enabled: Optional
+- name: MONGODB_TLS_URI_OPTIONS
+  value: ""
+  expression: {{ `{{ if eq (get . "TLS_ENABLED") "true" }}&tls=true&tlsInsecure=true{{ end }}` | toYaml }}
+{{- end -}}

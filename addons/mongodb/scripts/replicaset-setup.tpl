@@ -11,6 +11,7 @@ export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 # Allow the test framework to pass in a mock path to override the default /scripts.
 SCRIPTS_BASE_PATH=${SCRIPTS_BASE_PATH:-/scripts}
 . "$SCRIPTS_BASE_PATH/mongodb-common.sh"
+prepare_mongodb_tls || exit 1
 
 # Restore from datafile
 BACKUPFILE=$MONGODB_ROOT/db/mongodb.backup
@@ -35,7 +36,7 @@ fi
 
 # Restore from pbm
 PBM_BACKUPFILE=$MONGODB_ROOT/tmp/mongodb_pbm.backup
-process="mongod --bind_ip_all --port $PORT --replSet $RPL_SET_NAME --config /etc/mongodb/mongodb.conf"
+process="mongod --bind_ip_all --port $PORT --replSet $RPL_SET_NAME --config /etc/mongodb/mongodb.conf $(mongodb_tls_server_options)"
 if [ ! -f $PBM_BACKUPFILE ]
 then
   exec $process

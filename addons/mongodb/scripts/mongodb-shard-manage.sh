@@ -5,7 +5,7 @@
 
 MONGODB_REPLICA_SET_NAME=$CLUSTER_COMPONENT_NAME
 CLIENT=$(get_mongodb_client_name)
-CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_ADMIN_USER -p $MONGODB_ADMIN_PASSWORD --quiet --eval"
+CLUSTER_MONGO="$CLIENT $(mongodb_tls_client_options "$CLIENT") --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_ADMIN_USER -p $MONGODB_ADMIN_PASSWORD --quiet --eval"
 
 wait_for_mongos() {
     # Wait for the mongos service to be ready

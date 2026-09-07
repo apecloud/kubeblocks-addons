@@ -10,6 +10,7 @@ spec:
   provider: kubeblocks.io
   description: MongoDB is a document database designed for ease of application development and scaling.
   serviceKind: mongodb
+  {{- include "mongodb.tls" . | nindent 2 }}
   volumes:
     - name: data
       needSnapshot: true
@@ -197,7 +198,7 @@ spec:
           - name: PBM_AGENT_SIDECAR_SLEEP
             value: "5"
           - name: PBM_MONGODB_URI
-            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin$(MONGODB_TLS_URI_OPTIONS)
           # syncer uses the env to wait dns ready
           - name: KB_POD_FQDN
             value: "$(POD_NAME).$(CLUSTER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc"
@@ -240,7 +241,7 @@ spec:
           - name: PBM_AGENT_SIDECAR_SLEEP
             value: "5"
           - name: PBM_MONGODB_URI
-            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin$(MONGODB_TLS_URI_OPTIONS)
           - name: PBM_DATA_MOUNT_POINT
             value: {{ .Values.dataMountPath }}
         volumeMounts:
@@ -264,7 +265,7 @@ spec:
             containerPort: 9216
         env:
           - name: MONGODB_URI
-            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)
+            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)/?authSource=admin$(MONGODB_TLS_URI_OPTIONS)
     {{- if .Values.logCollector.enabled }}
     volumes:
       - name: log-data
@@ -273,6 +274,10 @@ spec:
           type: DirectoryOrCreate
     {{- end }}
   vars:
+    {{- include "mongodb.tlsVars" . | nindent 4 }}
+    - name: KUBERNETES_CLUSTER_DOMAIN
+      # Match the member DNS names covered by KubeBlocks-issued TLS certificates.
+      value: "{{ .Values.clusterDomain }}"
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
