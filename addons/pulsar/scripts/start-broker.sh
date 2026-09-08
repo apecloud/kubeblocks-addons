@@ -80,6 +80,7 @@ initialize_nodeport_config() {
 }
 
 initialize_loadbalancer_config() {
+  echo "init loadbalancer config:"
   local entry svc_name host
   local -a advertised_hosts
   IFS=',' read -ra advertised_hosts <<< "${ADVERTISED_HOST}"
@@ -96,6 +97,7 @@ initialize_loadbalancer_config() {
       fi
       # LB listeners use the Service ports, not the allocated NodePorts.
       export PULSAR_PREFIX_advertisedListeners="cluster:pulsar://${host}:6650"
+      echo "[cfg] set PULSAR_PREFIX_advertisedListeners=${PULSAR_PREFIX_advertisedListeners}"
       return 0
     fi
   done
