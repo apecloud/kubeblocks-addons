@@ -14,6 +14,7 @@ spec:
   systemAccounts:
     - name: admin
       initAccount: true
+      passwordConfig: {}
   vars:
     - name: MINIO_ACCESS_KEY
       valueFrom:
