@@ -129,6 +129,10 @@ spec:
           optional: true
     - name: TLS_MOUNT_PATH
       value: {{ $.Values.tlsMountPath }}
+    - name: SERVICE_VERSION
+      valueFrom:
+        componentVarRef:
+          serviceVersion: Required
     ## the name of current cluster instance
     - name: CLUSTER_NAME
       valueFrom:
