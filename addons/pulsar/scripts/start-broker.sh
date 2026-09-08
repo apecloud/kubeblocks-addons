@@ -79,6 +79,30 @@ initialize_nodeport_config() {
   echo "[cfg] set PULSAR_PREFIX_kafkaAdvertisedListeners=${PULSAR_PREFIX_kafkaAdvertisedListeners}"
 }
 
+initialize_loadbalancer_config() {
+  local entry svc_name host
+  local -a advertised_hosts
+  IFS=',' read -ra advertised_hosts <<< "${ADVERTISED_HOST}"
+  for entry in "${advertised_hosts[@]}"; do
+    svc_name="${entry%%:*}"
+    host="${entry#*:}"
+    if [[ "$entry" != *:* || -z "$host" ]]; then
+      continue
+    fi
+    if [[ "$(extract_ordinal_from_object_name "$svc_name")" == "$(extract_ordinal_from_object_name "$POD_NAME")" ]]; then
+      # Bracket IPv6 addresses when constructing listener URLs.
+      if [[ "$host" == *:* && "$host" != \[*\] ]]; then
+        host="[$host]"
+      fi
+      # LB listeners use the Service ports, not the allocated NodePorts.
+      export PULSAR_PREFIX_advertisedListeners="cluster:pulsar://${host}:6650"
+      return 0
+    fi
+  done
+  echo "Error: No LoadBalancer address found for pod '$POD_NAME'. Exiting."
+  exit 1
+}
+
 merge_configuration_files() {
   /kb-scripts/merge_pulsar_config.py conf/client.conf /opt/pulsar/conf/client.conf
   /kb-scripts/merge_pulsar_config.py conf/broker.conf /opt/pulsar/conf/broker.conf
@@ -95,9 +119,10 @@ load_env_file() {
 }
 
 start_broker() {
-  ## TODO: $KB_PULSAR_BROKER_NODEPORT define in cluster annotation extra-envs, which need to be refactored
   if [[ "$KB_PULSAR_BROKER_NODEPORT" == "true" ]]; then
     initialize_nodeport_config
+  elif [[ "$KB_PULSAR_BROKER_LOADBALANCER" == "true" ]]; then
+    initialize_loadbalancer_config
   fi
 
   load_env_file

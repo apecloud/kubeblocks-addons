@@ -177,3 +177,7 @@ serviceReference:
 
 ## @param nodePortEnabled
 nodePortEnabled: false
+
+# If enabled, a LoadBalancer service will be created for each broker pod.
+# nodePortEnabled takes precedence when both options are enabled.
+loadBalancerEnabled: false

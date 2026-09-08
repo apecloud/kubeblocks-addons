@@ -112,16 +112,23 @@ spec:
       componentDef: pulsar-broker
       serviceVersion: {{ .Values.version }}
       {{- end }}
-      {{- if eq .Values.version "3.0.2" }}
+      {{- if or (eq .Values.version "3.0.2") (hasPrefix "4." .Values.version) }}
       env:
         - name: KB_PULSAR_BROKER_NODEPORT
           value: "{{ $.Values.nodePortEnabled }}"
+        - name: KB_PULSAR_BROKER_LOADBALANCER
+          value: "{{ $.Values.loadBalancerEnabled }}"
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       {{- if .Values.nodePortEnabled }}
       services:
         - name: advertised-listener
           serviceType: NodePort
+          podService: true
+      {{- else if .Values.loadBalancerEnabled }}
+      services:
+        - name: advertised-listener
+          serviceType: LoadBalancer
           podService: true
       {{- end }}
       replicas: {{ .Values.broker.replicaCount | default 3 }}
