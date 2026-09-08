@@ -1,0 +1,17 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: milvus-standalone-pcr-{{ .Chart.Version }}
+  labels:
+    {{- include "milvus.labels" . | nindent 4 }}
+  annotations:
+    {{- include "milvus.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "milvus-standalone.cmpdRegexpPattern" . }}
+  parametersDefs:
+    - milvus-standalone-pd-{{ .Chart.Version }}
+  configs:
+    - name: user.yaml
+      templateName: config
+      fileFormatConfig:
+        format: yaml
