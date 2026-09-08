@@ -110,6 +110,7 @@ Describe "Redis Start Bash Script Tests"
         export REDIS_REPL_PASSWORD="repl_password"
         export REDIS_SENTINEL_PASSWORD="sentinel_password"
         export REDIS_DEFAULT_PASSWORD="default_password"
+        export SERVICE_VERSION="7.2.4"
       }
       Before 'setup'
 
@@ -117,6 +118,7 @@ Describe "Redis Start Bash Script Tests"
         unset REDIS_REPL_PASSWORD
         unset REDIS_SENTINEL_PASSWORD
         unset REDIS_DEFAULT_PASSWORD
+        unset SERVICE_VERSION
       }
       After 'un_setup'
 
@@ -137,16 +139,51 @@ Describe "Redis Start Bash Script Tests"
       End
     End
 
+    Context 'on redis 6.0'
+      setup() {
+        echo "" > $redis_real_conf
+        echo "" > $redis_acl_file
+        export REDIS_REPL_PASSWORD="repl_password"
+        export REDIS_SENTINEL_PASSWORD="sentinel_password"
+        export REDIS_DEFAULT_PASSWORD="default_password"
+        export SERVICE_VERSION="6.0.20"
+      }
+      Before 'setup'
+
+      un_setup() {
+        unset REDIS_REPL_PASSWORD
+        unset REDIS_SENTINEL_PASSWORD
+        unset REDIS_DEFAULT_PASSWORD
+        unset SERVICE_VERSION
+      }
+      After 'un_setup'
+
+      It "builds default accounts on redis 6.0 (skip allchannels and &*)"
+        When call build_redis_default_accounts
+        The status should be success
+        The stdout should include "build default accounts succeeded!"
+        redis_repl_sha256=$(echo -n "$REDIS_REPL_PASSWORD" | sha256sum | cut -d' ' -f1)
+        redis_password_sha256=$(echo -n "$REDIS_DEFAULT_PASSWORD" | sha256sum | cut -d' ' -f1)
+        redis_sentinel_password_sha256=$(echo -n "$REDIS_SENTINEL_PASSWORD" | sha256sum | cut -d' ' -f1)
+        The contents of file "$redis_acl_file" should include "user $REDIS_SENTINEL_USER on +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill #$redis_sentinel_password_sha256"
+        The contents of file "$redis_acl_file" should include "user default on #$redis_password_sha256 ~* +@all"
+        The contents of file "$redis_acl_file" should not include "allchannels"
+        The contents of file "$redis_acl_file" should not include "&*"
+      End
+    End
+
     Context 'when default password environment variables exist'
       setup() {
         echo "" > $redis_real_conf
         echo "" > $redis_acl_file
         export REDIS_DEFAULT_PASSWORD="default_password"
+        export SERVICE_VERSION="7.2.4"
       }
       Before 'setup'
 
       un_setup() {
         unset REDIS_DEFAULT_PASSWORD
+        unset SERVICE_VERSION
       }
       After 'un_setup'
 
