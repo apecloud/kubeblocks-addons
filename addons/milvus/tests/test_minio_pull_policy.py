@@ -29,6 +29,29 @@ class MinioPullPolicyTest(unittest.TestCase):
             check=True, capture_output=True, text=True,
         )
 
+    def test_minio_password_generation(self):
+        for mode, flags in [("install", []), ("upgrade", ["--is-upgrade"])]:
+            with self.subTest(mode=mode):
+                result = subprocess.run(
+                    [self.helm, "template", "milvus-test", str(self.chart),
+                     "--namespace", "default", *flags],
+                    check=True, capture_output=True, text=True,
+                )
+                documents = [doc for doc in yaml.safe_load_all(result.stdout) if doc]
+                definition, = [doc for doc in documents
+                               if doc.get("kind") == "ComponentDefinition"
+                               and doc.get("spec", {}).get("serviceKind") == "milvus-minio"]
+                account, = definition["spec"]["systemAccounts"]
+                self.assertEqual(account["name"], "admin")
+                self.assertIs(account["initAccount"], True)
+                self.assertIn("passwordConfig", account)
+                self.assertEqual(account["passwordConfig"], {})
+                password, = [var for var in definition["spec"]["vars"]
+                             if var["name"] == "MINIO_SECRET_KEY"]
+                self.assertEqual(password["valueFrom"]["credentialVarRef"], {
+                    "name": "admin", "optional": False, "password": "Required",
+                })
+
     def test_pull_policy(self):
         cases = [
             ("default", [], "IfNotPresent"),
