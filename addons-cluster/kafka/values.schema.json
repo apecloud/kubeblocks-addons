@@ -197,8 +197,13 @@
       "default": false,
       "title": "fixedPodIPEnabled",
       "description":"Whether to enable fixed Pod IP mode in Kafka's `advertised.listeners`"
-    }
-    ,
+    },
+    "loadBalancerEnabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "loadBalancerEnabled",
+      "description":"Whether to enable LoadBalance mode in Kafka's `advertised.listeners`"
+    },
     "sasl": {
       "title": "Sasl",
       "description": "Advanced SASL authentication options.",
