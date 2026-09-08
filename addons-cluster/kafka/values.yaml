@@ -123,6 +123,10 @@ nodePortEnabled: false
 ## If set to true, Kafka's `advertised.listeners` will use the Pod IP address, suitable for scenarios where clients can directly communicate with the Kafka Pod's network.
 fixedPodIPEnabled: false
 
+## @param loadBalancerEnabled if true, Kafka's `advertised.listeners` will use loadBalancer ip/hostname
+## This option is mutually exclusive with fixedPodIPEnabled, and nodePortEnabled. When all fixedPodIPEnabled, nodePortEnabled, loadBalancerEnabled are false, the default announce IP will be a headless service.
+loadBalancerEnabled: false
+
 # zookeeper config, valid only if mode is withZookeeper-10
 zookeeper:
   mode: serviceRef

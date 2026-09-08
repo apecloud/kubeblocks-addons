@@ -83,7 +83,21 @@ spec:
         componentVarRef:
           optional: false
           replicas: Required
-    ## Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
+    - name: BROKER_ADVERTISED_SERVICE_TYPE
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
+          name: advertised-listener
+          optional: true
+          serviceType: Required
+    - name: BROKER_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
+          name: advertised-listener
+          optional: true
+          host: Required
+          loadBalancer: Required
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:

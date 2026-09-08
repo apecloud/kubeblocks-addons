@@ -22,6 +22,9 @@ spec:
         - name: advertised-listener
         {{- if .Values.nodePortEnabled }}
           serviceType: NodePort
+        {{- else if .Values.loadBalancerEnabled }}
+          serviceType: LoadBalancer
+          {{- include "kblib.loadBalancerAnnotations" . | indent 10 }}
         {{- else }}
           serviceType: ClusterIP
         {{- end }}
@@ -44,6 +47,9 @@ spec:
         - name: advertised-listener
         {{- if .Values.nodePortEnabled }}
           serviceType: NodePort
+        {{- else if .Values.loadBalancerEnabled }}
+          serviceType: LoadBalancer
+          {{- include "kblib.loadBalancerAnnotations" . | indent 10 }}
         {{- else }}
           serviceType: ClusterIP
         {{- end }}
