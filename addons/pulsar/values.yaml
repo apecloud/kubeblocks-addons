@@ -95,6 +95,22 @@ images:
       pullPolicy: IfNotPresent
       tag: 4.0.6
 
+  v4_0_12:
+    bookie:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 4.0.12
+
+    broker:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 4.0.12
+
+    proxy:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 4.0.12
+
 metrics:
   service:
     port: 1234
