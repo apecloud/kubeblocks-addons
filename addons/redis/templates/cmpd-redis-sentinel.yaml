@@ -84,6 +84,10 @@ spec:
     certFile: tls.crt
     keyFile: tls.key
   vars:
+    - name: SERVICE_VERSION
+      valueFrom:
+        componentVarRef:
+          serviceVersion: Required
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:
