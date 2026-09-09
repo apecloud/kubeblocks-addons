@@ -30,6 +30,8 @@
 
 	"cluster-require-full-coverage"?: string & "yes" | "no"
 
+	"cluster-migration-barrier": int | *99999
+
 	"cluster-allow-reads-when-down"?: string & "yes" | "no"
 
 	"cluster-node-timeout": int | *0
