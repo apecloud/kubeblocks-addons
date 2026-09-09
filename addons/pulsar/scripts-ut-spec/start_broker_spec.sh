@@ -81,6 +81,7 @@ Describe "Pulsar Start Broker Bash Script Tests"
 
       When call initialize_loadbalancer_config
       The variable PULSAR_PREFIX_advertisedListeners should equal "cluster:pulsar://192.0.2.11:6650"
+      The output should include "set PULSAR_PREFIX_advertisedListeners=cluster:pulsar://192.0.2.11:6650"
       The status should be success
     End
 
@@ -90,6 +91,7 @@ Describe "Pulsar Start Broker Bash Script Tests"
 
       When call initialize_loadbalancer_config
       The variable PULSAR_PREFIX_advertisedListeners should equal "cluster:pulsar://broker.example.com:6650"
+      The output should include "set PULSAR_PREFIX_advertisedListeners=cluster:pulsar://broker.example.com:6650"
       The status should be success
     End
 
@@ -99,6 +101,7 @@ Describe "Pulsar Start Broker Bash Script Tests"
 
       When call initialize_loadbalancer_config
       The variable PULSAR_PREFIX_advertisedListeners should equal "cluster:pulsar://[2001:db8::1]:6650"
+      The output should include "set PULSAR_PREFIX_advertisedListeners=cluster:pulsar://[2001:db8::1]:6650"
       The status should be success
     End
 
