@@ -97,16 +97,6 @@ spec:
             value: "8080"
           - name: clusterName
             value: $(CLUSTER_NAMESPACE)-$(PROXY_COMPONENT_NAME)
-          - name: webServicePort
-            value: "8080"
-            ## in order to avoid the kb complex service association logic involved when using brokers,
-            ## zk-based service discovery is used here to build the proxy.
-            ## but this is not secure to use service discovery(https://pulsar.apache.org/docs/3.0.x/administration-proxy/#use-service-discovery).
-            ## Todo: it needs to be iterated into the broker address in subsequent versions.
-{{/*          - name: brokerWebServiceURL*/}}
-{{/*            value: http://$(brokerSVC):80*/}}
-{{/*          - name: brokerServiceURL*/}}
-{{/*            value: pulsar://$(brokerSVC):6650*/}}
         ports:
           - name: pulsar
             containerPort: 6650
