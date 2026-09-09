@@ -23,6 +23,14 @@ spec:
           clusterName: Required
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
+    - name: ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar4.brokerCmpdRegexPattern" . }}
+          name: advertised-listener
+          optional: true
+          host: Required
+          loadBalancer: Required
     - name: ADVERTISED_PORT_PULSAR
       valueFrom:
         serviceVarRef:
@@ -59,10 +67,15 @@ spec:
       disableAutoProvision: true
       spec:
         type: NodePort
+        # Broker health checks connect to the advertised listener before the Pod is ready.
+        publishNotReadyAddresses: true
         ports:
           - name: pulsar
             port: 6650
             targetPort: pulsar
+          - name: http
+            port: 8080
+            targetPort: http
           # - name: kafka-client
           #   port: 9092
           #   targetPort: kafka-client
@@ -194,9 +207,9 @@ spec:
           - name: SERVICE_PORT
             value: "8080"
           - name: brokerServiceUrl
-            value: pulsar://$(CLUSTER_NAME)-broker-bootstrap.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):6650
+            value: pulsar://$(CLUSTER_NAME)-broker-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):6650
           - name: webServiceUrl
-            value: http://$(CLUSTER_NAME)-broker-bootstrap.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):80
+            value: http://$(CLUSTER_NAME)-broker-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):80
           - name: POD_NAME
             valueFrom:
               fieldRef:
