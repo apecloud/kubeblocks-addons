@@ -1,6 +1,5 @@
 {{- if not (hasPrefix "6.0" $.SERVICE_VERSION) }}
 bind * -::*
-bind * -::*
 set-proc-title yes
 proc-title-template "{title} {listen-addr} {server-mode}"
 ignore-warnings ARM64-COW-BUG
