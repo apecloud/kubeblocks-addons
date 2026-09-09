@@ -1,0 +1,13 @@
+staticParameters:
+  - pool_mode
+  - max_client_conn
+  - default_pool_size
+  - min_pool_size
+  - reserve_pool_size
+  - reserve_pool_timeout
+  - max_db_connections
+  - max_user_connections
+  - server_idle_timeout
+  - server_lifetime
+  - query_wait_timeout
+  - client_idle_timeout

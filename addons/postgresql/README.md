@@ -9,6 +9,17 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 |   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
 | replication     | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+| replication-direct | Yes                | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+| replication-pgbouncer | Yes             | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+
+`replication` retains the historical in-pod PgBouncer sidecar for upgrade
+compatibility. New product integrations should use `replication-direct` when
+connection pooling is disabled and `replication-pgbouncer` when it is enabled.
+The latter creates an independent, stateless `pgbouncer` component and Service
+on port 6432; PostgreSQL remains available through its direct Service on 5432.
+The first productized pool mode is `session`. TLS across the client-to-pooler
+and pooler-to-PostgreSQL hops, live enable/disable, and automatic PgBouncer
+reload after system-account password rotation are not supported by this MVP.
 
 ### Backup and Restore
 
@@ -119,6 +130,45 @@ spec:
 ```bash
 kubectl apply -f examples/postgresql/cluster.yaml
 ```
+
+To create PostgreSQL with an independent PgBouncer component, use the
+`replication-pgbouncer` topology and provide both component specs:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-with-pooler
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: postgresql
+  topology: replication-pgbouncer
+  componentSpecs:
+    - name: postgresql
+      serviceVersion: "17.10.0"
+      replicas: 2
+      resources:
+        requests: {cpu: "1", memory: 2Gi}
+        limits: {cpu: "1", memory: 2Gi}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes: [ReadWriteOnce]
+            resources:
+              requests:
+                storage: 20Gi
+    - name: pgbouncer
+      serviceVersion: "1.19.0"
+      replicas: 2
+      resources:
+        requests: {cpu: "500m", memory: 512Mi}
+        limits: {cpu: "1", memory: 1Gi}
+```
+
+The PgBouncer image version in this example is the currently published
+ApeCloud image, not the GA security baseline. A newer scanned image and exact
+digest are required before releasing this topology.
 
 And you will see the PostgreSQL cluster status goes `Running` after a while:
 
