@@ -122,6 +122,10 @@ spec:
     ## the name of current cluster instance
     - name: REDIS_DIAL_TIMEOUT
       value: "2"
+    - name: SERVICE_VERSION
+      valueFrom:
+        componentVarRef:
+          serviceVersion: Required
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:

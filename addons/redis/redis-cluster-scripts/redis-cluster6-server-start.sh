@@ -534,7 +534,12 @@ build_redis_default_accounts() {
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     echo "protected-mode yes" >> $redis_real_conf
     redis_password_sha256=$(echo -n "$REDIS_DEFAULT_PASSWORD" | sha256sum | cut -d' ' -f1)
-    echo "user default on #$redis_password_sha256 ~* &* +@all " >> $redis_acl_file
+    if [[ "$SERVICE_VERSION" == 6.0* ]]; then
+      # Redis 6.0 does not support the &* channel pattern (added in Redis 6.2)
+      echo "user default on #$redis_password_sha256 ~* +@all " >> $redis_acl_file
+    else
+      echo "user default on #$redis_password_sha256 ~* &* +@all " >> $redis_acl_file
+    fi
   else
     echo "protected-mode no" >> $redis_real_conf
   fi
