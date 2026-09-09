@@ -93,14 +93,25 @@ EOF
     The result of function call_log should include "pg_restore"
   End
 
-  It "treats ignored per-object errors as success under the default CONTINUE policy"
+  It "fails when the ignored-errors warning has no error details"
     export DATASAFED_LIST_OUT="backup-test.tar"
     export PG_RESTORE_EXIT=1
     export PG_RESTORE_STDERR="pg_restore: warning: errors ignored on restore: 3"
     When run bash "$(script_path)"
+    The status should be failure
+    The output should include "parameters:"
+    The error should include "errors ignored on restore"
+  End
+
+  It "treats existing-object errors as success under the default CONTINUE policy"
+    export DATASAFED_LIST_OUT="backup-test.tar"
+    export PG_RESTORE_EXIT=1
+    export PG_RESTORE_STDERR='pg_restore: error: could not execute query: ERROR: relation "items" already exists
+pg_restore: warning: errors ignored on restore: 1'
+    When run bash "$(script_path)"
     The status should eq 0
     The output should include "treating as success under conflict_policy=CONTINUE"
-    The error should include "errors ignored on restore"
+    The error should include "already exists"
   End
 
   It "propagates ignored-error failures when conflict_policy is FAIL"
