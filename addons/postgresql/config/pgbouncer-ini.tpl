@@ -13,6 +13,7 @@ stats_users = postgres
 pool_mode = session
 client_tls_sslmode = disable
 server_tls_sslmode = disable
+server_tls_ca_file = /etc/pgbouncer/tls/ca.pem
 ignore_startup_parameters = extra_float_digits
 max_client_conn = 500
 default_pool_size = 20

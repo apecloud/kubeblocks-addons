@@ -86,6 +86,7 @@ Describe "PostgreSQL version matrix contract"
       exposed = %w[
         pool_mode max_client_conn default_pool_size min_pool_size
         reserve_pool_size max_db_connections max_user_connections
+        server_tls_sslmode
       ]
       abort unless pgbouncer_pd.dig("spec", "fileName") == "pgbouncer.ini"
       abort unless pgbouncer_pd.dig("spec", "dynamicParameters") == exposed
@@ -98,6 +99,7 @@ Describe "PostgreSQL version matrix contract"
       abort unless pgbouncer_schema.include?(%q{pool_mode?: "session" | "transaction" | "statement" | *"session"})
       abort unless pgbouncer_schema.include?("max_client_conn?: int & >=1 & <=999999 | *500")
       abort unless pgbouncer_schema.include?("max_db_connections?: int & >=0 & <=999999 | *80")
+      abort unless pgbouncer_schema.include?(%q{server_tls_sslmode?: "disable" | "require" | "verify-ca" | "verify-full" | *"disable"})
       abort unless pgbouncer_schema.include?("#PgBouncerConfiguration: {\n\tpgbouncer: #PgBouncerConfig\n}")
       abort unless pgbouncer_schema.include?("configuration: #PgBouncerConfiguration")
       abort unless pgbouncer_schema.include?(%q{auth_type:                 "md5"})
@@ -128,6 +130,10 @@ Describe "PostgreSQL version matrix contract"
       abort unless config_mount["mountPath"] == "/opt/pgbouncer-template"
       state_mount = container["volumeMounts"].find { |mount| mount["name"] == "pgbouncer-state" }
       abort unless state_mount["mountPath"] == "/etc/pgbouncer"
+      tls_mount = container["volumeMounts"].find { |mount| mount["name"] == "pgbouncer-tls" }
+      abort unless tls_mount == {
+        "name" => "pgbouncer-tls", "mountPath" => "/etc/pgbouncer/tls", "readOnly" => true
+      }
       abort if container["volumeMounts"].any? { |mount| mount["mountPath"] == "/var/run/pgbouncer" }
       env = pgbouncer.dig("spec", "runtime", "containers", 0, "env")
       pod_ip = env.find { |entry| entry["name"] == "CURRENT_POD_IP" }
@@ -142,6 +148,7 @@ Describe "PostgreSQL version matrix contract"
       abort unless pgbouncer_config.lines.any? { |line| line.match?(/^\s*listen_addr\s*=\s*\*\s*$/) }
       abort unless pgbouncer_config.lines.any? { |line| line.match?(/^\s*client_tls_sslmode\s*=\s*disable\s*$/) }
       abort unless pgbouncer_config.lines.any? { |line| line.match?(/^\s*server_tls_sslmode\s*=\s*disable\s*$/) }
+      abort unless pgbouncer_config.include?("server_tls_ca_file = /etc/pgbouncer/tls/ca.pem")
       abort unless pgbouncer_config.include?("auth_file = /etc/pgbouncer/userlist.txt")
       abort unless pgbouncer_config.include?("FROM pg_catalog.pg_authid")
       abort unless pgbouncer_config.include?("rolvaliduntil") && pgbouncer_config.include?("rolcanlogin")

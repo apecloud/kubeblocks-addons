@@ -19,6 +19,9 @@
 
 	// Maximum number of backend connections for one user per PgBouncer instance. Zero means unlimited.
 	max_user_connections?: int & >=0 & <=999999 | *80
+
+	// TLS policy for connections from PgBouncer to PostgreSQL.
+	server_tls_sslmode?: "disable" | "require" | "verify-ca" | "verify-full" | *"disable"
 }
 
 #PgBouncerConfig: {
@@ -36,7 +39,7 @@
 	admin_users:               "postgres"
 	stats_users:               "postgres"
 	client_tls_sslmode:        "disable"
-	server_tls_sslmode:        "disable"
+	server_tls_ca_file:        "/etc/pgbouncer/tls/ca.pem"
 	ignore_startup_parameters: "extra_float_digits"
 	reserve_pool_timeout:      5
 	server_idle_timeout:       600
