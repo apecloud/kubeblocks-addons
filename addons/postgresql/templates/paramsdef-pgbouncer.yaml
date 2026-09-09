@@ -24,3 +24,4 @@ spec:
     - reserve_pool_size
     - max_db_connections
     - max_user_connections
+    - server_tls_sslmode

@@ -107,6 +107,9 @@ spec:
             mountPath: /kb-scripts
           - name: pgbouncer-state
             mountPath: /etc/pgbouncer
+          - name: pgbouncer-tls
+            mountPath: /etc/pgbouncer/tls
+            readOnly: true
         livenessProbe:
           failureThreshold: 3
           initialDelaySeconds: 15

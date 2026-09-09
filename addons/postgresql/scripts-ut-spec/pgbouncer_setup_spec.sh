@@ -39,6 +39,13 @@ Describe "PostgreSQL PgBouncer setup contract"
     build_pgbouncer_conf
   }
 
+  enable_backend_tls() {
+    sed 's/server_tls_sslmode = disable/server_tls_sslmode = verify-full/' \
+      "$pgbouncer_template_conf_file" > "$test_dir/tls.ini"
+    mv "$test_dir/tls.ini" "$pgbouncer_template_conf_file"
+    build_pgbouncer_conf
+  }
+
   BeforeEach 'setup'
   AfterEach 'cleanup'
 
@@ -69,6 +76,22 @@ Describe "PostgreSQL PgBouncer setup contract"
     The contents of file "$pgbouncer_template_conf_file" should include "default_pool_size = 30"
     The contents of file "$pgbouncer_template_conf_file" should include "max_db_connections = 60"
     The contents of file "$pgbouncer_template_conf_file" should include "max_user_connections = 40"
+  End
+
+  It "keeps backend TLS disabled by default"
+    When call build_pgbouncer_conf
+    The status should be success
+    The contents of file "$pgbouncer_template_conf_file" should include "server_tls_sslmode = disable"
+    The contents of file "$pgbouncer_template_conf_file" should include "server_tls_ca_file = /etc/pgbouncer/tls/ca.pem"
+  End
+
+  It "preserves managed backend TLS settings and PostgreSQL Service routing"
+    When call enable_backend_tls
+    The status should be success
+    The contents of file "$pgbouncer_template_conf_file" should include "server_tls_sslmode = verify-full"
+    The contents of file "$pgbouncer_template_conf_file" should include "client_tls_sslmode = disable"
+    The contents of file "$pgbouncer_conf_file" should include "%include $pgbouncer_template_conf_file"
+    The contents of file "$pgbouncer_conf_file" should include "host=sample-postgresql"
   End
 
   It "routes the PgBouncer component through the PostgreSQL Service"

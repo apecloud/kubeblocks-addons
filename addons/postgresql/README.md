@@ -283,6 +283,7 @@ PgBouncer starts with the following per-instance settings:
 | `reserve_pool_size` | `5` | `0..999999` | Reserve connections per user/database pool |
 | `max_db_connections` | `80` | `0..999999`; `0` means unlimited | Backend connections per database and PgBouncer instance |
 | `max_user_connections` | `80` | `0..999999`; `0` means unlimited | Backend connections per user and PgBouncer instance |
+| `server_tls_sslmode` | `disable` | `disable`, `require`, `verify-ca`, `verify-full` | TLS for connections from PgBouncer to PostgreSQL |
 
 PostgreSQL `max_connections` remains the global connection limit. Review the
 PgBouncer settings after changing PostgreSQL capacity, database or user counts,
@@ -325,6 +326,58 @@ Configuration propagation and reload complete asynchronously across running
 replicas. Confirm that each instance reports the requested values with
 PgBouncer `SHOW CONFIG` before relying on new connection limits.
 
+#### PostgreSQL backend TLS
+
+Use `server_tls_sslmode=verify-full` to encrypt connections from PgBouncer to
+PostgreSQL and validate the server certificate's CA and Service hostname.
+The application-facing PgBouncer connection remains plain PostgreSQL protocol.
+
+Mount PostgreSQL's CA into the `pgbouncer-tls` volume of the PgBouncer component.
+Use the same Secret referenced by the PostgreSQL component's
+`issuer.secretRef`. For example, when the KBE APIServer specifies
+`pg-cluster-postgresql-ape-tls-certs` with CA key `ca.crt`, project that CA into
+PgBouncer:
+
+```yaml
+# PgBouncer component in Cluster.spec.componentSpecs
+- name: pgbouncer
+  replicas: 2
+  volumes:
+    - name: pgbouncer-tls
+      secret:
+        secretName: pg-cluster-postgresql-ape-tls-certs
+        items:
+          - key: ca.crt
+            path: ca.pem
+```
+
+The CA is mounted read-only at `/etc/pgbouncer/tls/ca.pem`; the PostgreSQL private
+key stays in the PostgreSQL component. Use a Secret in the same namespace and
+prepare the mount before enabling the pool. Changing the mount updates the Pod
+specification.
+
+For `verify-full`, the PostgreSQL certificate's SAN must include the hostname
+resolved into the PgBouncer Pod's `POSTGRESQL_HOST` environment variable.
+Select the PostgreSQL primary Service when the KBE APIServer creates the
+certificate; user-supplied certificates must cover the same hostname.
+`verify-ca` checks the CA alone; `require` enforces encryption only.
+
+Set `server_tls_sslmode` through a `Reconfiguring` OpsRequest as shown above.
+KubeBlocks sends SIGHUP through the same reload action as the pooling parameters.
+PgBouncer reconnects backend connections when TLS settings change; active
+session-pooled connections drain when their client sessions end.
+Verify `SHOW CONFIG` on each PgBouncer instance, then use a new application
+connection to query `SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()`.
+The result should be `true`.
+
+For CA rotation, publish a bundle containing both the current and replacement
+CAs first. After the Secret projection reaches every PgBouncer Pod, run
+`RELOAD;` followed by `RECONNECT;` on each instance's PgBouncer admin console.
+Rotate the PostgreSQL certificate, verify new backend connections, then remove
+the old CA and repeat the reload. A Secret-only update requires this explicit
+reload. The PgBouncer process stays running while session-pooled connections
+drain normally.
+
 #### Runtime behavior and requirements
 
 - Readiness requires a successful connection through PgBouncer to the writable
@@ -338,8 +391,7 @@ PgBouncer `SHOW CONFIG` before relying on new connection limits.
 - Applications reconnect with backoff after a PostgreSQL primary change and
   retry any interrupted transaction. Transaction and statement pooling modes
   also require application compatibility testing.
-- TLS-enforced Clusters use the direct PostgreSQL endpoint on 5432 in this
-  release.
+- TLS-enforced PostgreSQL backends use the policy and CA configured above.
 - Clusters using the managed PgBouncer component stay on PostgreSQL Addon 1.0.6
   or later.
 
