@@ -16,6 +16,7 @@
       "enum": [
         "standalone",
         "replication",
+        "replication-syncer",
         "cluster",
         "replication-twemproxy"
       ]
