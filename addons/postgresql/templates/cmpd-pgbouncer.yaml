@@ -16,6 +16,11 @@ spec:
     maxReplicas: 64
   updateStrategy: Serial
   podManagementPolicy: Parallel
+  tls:
+    volumeName: pgbouncer-tls
+    mountPath: /etc/pgbouncer/tls
+    defaultMode: 0444
+    caFile: ca.pem
   services:
     - name: pgbouncer
       spec:
@@ -107,9 +112,6 @@ spec:
             mountPath: /kb-scripts
           - name: pgbouncer-state
             mountPath: /etc/pgbouncer
-          - name: pgbouncer-tls
-            mountPath: /etc/pgbouncer/tls
-            readOnly: true
         livenessProbe:
           failureThreshold: 3
           initialDelaySeconds: 15

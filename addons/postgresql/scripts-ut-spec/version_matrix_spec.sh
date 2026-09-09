@@ -131,8 +131,10 @@ Describe "PostgreSQL version matrix contract"
       state_mount = container["volumeMounts"].find { |mount| mount["name"] == "pgbouncer-state" }
       abort unless state_mount["mountPath"] == "/etc/pgbouncer"
       tls_mount = container["volumeMounts"].find { |mount| mount["name"] == "pgbouncer-tls" }
-      abort unless tls_mount == {
-        "name" => "pgbouncer-tls", "mountPath" => "/etc/pgbouncer/tls", "readOnly" => true
+      abort if tls_mount
+      abort unless pgbouncer.dig("spec", "tls") == {
+        "volumeName" => "pgbouncer-tls", "mountPath" => "/etc/pgbouncer/tls",
+        "defaultMode" => 0444, "caFile" => "ca.pem"
       }
       abort if container["volumeMounts"].any? { |mount| mount["mountPath"] == "/var/run/pgbouncer" }
       env = pgbouncer.dig("spec", "runtime", "containers", 0, "env")
