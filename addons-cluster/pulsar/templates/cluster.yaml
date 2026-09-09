@@ -130,6 +130,7 @@ spec:
         - name: advertised-listener
           serviceType: LoadBalancer
           podService: true
+          {{- include "kblib.loadBalancerAnnotations" . | nindent 10 }}
       {{- end }}
       replicas: {{ .Values.broker.replicaCount | default 3 }}
       {{- with  .Values.broker.resources }}
