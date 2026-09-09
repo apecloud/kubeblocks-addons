@@ -332,29 +332,38 @@ Use `server_tls_sslmode=verify-full` to encrypt connections from PgBouncer to
 PostgreSQL and validate the server certificate's CA and Service hostname.
 The application-facing PgBouncer connection remains plain PostgreSQL protocol.
 
-Mount PostgreSQL's CA into the `pgbouncer-tls` volume of the PgBouncer component.
-Use the same Secret referenced by the PostgreSQL component's
-`issuer.secretRef`. For example, when the KBE APIServer specifies
-`pg-cluster-postgresql-ape-tls-certs` with CA key `ca.crt`, project that CA into
-PgBouncer:
+Enable the PgBouncer component's TLS configuration with the same
+`issuer.secretRef` as PostgreSQL. KubeBlocks creates and mounts the component's
+CA file according to its ComponentDefinition. For a PostgreSQL issuer Secret
+named `pg-tls` with keys `ca.crt`, `tls.crt` and `tls.key`:
 
 ```yaml
 # PgBouncer component in Cluster.spec.componentSpecs
 - name: pgbouncer
   replicas: 2
-  volumes:
-    - name: pgbouncer-tls
-      secret:
-        secretName: pg-cluster-postgresql-ape-tls-certs
-        items:
-          - key: ca.crt
-            path: ca.pem
+  tls: true
+  issuer:
+    name: UserProvided
+    secretRef:
+      name: pg-tls
+      ca: ca.crt
+      cert: tls.crt
+      key: tls.key
 ```
 
-The CA is mounted read-only at `/etc/pgbouncer/tls/ca.pem`; the PostgreSQL private
-key stays in the PostgreSQL component. Use a Secret in the same namespace and
-prepare the mount before enabling the pool. Changing the mount updates the Pod
-specification.
+The source Secret contains PostgreSQL's CA, certificate and private key.
+PgBouncer's ComponentDefinition selects only the CA for its derived Secret,
+mounted read-only at `/etc/pgbouncer/tls/ca.pem`. Enabling component TLS prepares
+this trust material; `server_tls_sslmode` stays `disable` until explicitly
+configured. Adding or removing the TLS mount changes the Pod specification.
+
+For a Cluster configured with an explicit `pgbouncer-tls` volume, replace that
+volume entry with the TLS and issuer configuration above in the same Cluster
+update.
+
+To return to a plaintext backend, reload `server_tls_sslmode=disable` before
+disabling component TLS. KubeBlocks removes the derived CA Secret when component
+TLS is disabled.
 
 For `verify-full`, the PostgreSQL certificate's SAN must include the hostname
 resolved into the PgBouncer Pod's `POSTGRESQL_HOST` environment variable.
