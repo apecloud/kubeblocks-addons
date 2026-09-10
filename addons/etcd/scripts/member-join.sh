@@ -1,26 +1,91 @@
 #!/bin/bash
-set -exo pipefail
 
-# shellcheck disable=SC1091
-. "/scripts/common.sh"
+# Return 0 for the intended voter, 1 if absent, and 2 for an identity conflict
+# or unreadable membership. Newly added members may not have a name yet.
+check_join_member() {
+  local endpoint="$1" peer_url="$2" members
+  if ! members=$(exec_etcdctl "$endpoint" --dial-timeout=3s --command-timeout=5s member list -w simple); then
+    log "Failed to query membership via $endpoint"
+    return 2
+  fi
+  printf '%s\n' "$members" | awk -F ', ' -v name="$KB_JOIN_MEMBER_POD_NAME" -v peer="$peer_url" '
+    NF != 6 || $1 !~ /^[0-9a-f]+$/ || ($2 != "started" && $2 != "unstarted") { invalid=1; next }
+    $4 == peer {
+      found++
+      if (($3 != "" && $3 != name) || $6 != "false") conflict=1
+    }
+    $3 == name && $4 != peer { conflict=1 }
+    END {
+      if (invalid || conflict || found > 1) exit 2
+      if (found == 1) exit 0
+      exit 1
+    }'
+}
 
+# Reconcile engine registration, including add committed but reply/state lost.
 add_member() {
-  local leader_endpoint join_member_endpoint peer_protocol
-
+  local leader_pod_name leader_endpoint join_member_endpoint peer_protocol peer_url status
   leader_pod_name="${LEADER_POD_FQDN%%.*}"
   leader_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$leader_pod_name" "$LEADER_POD_FQDN")
   join_member_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$KB_JOIN_MEMBER_POD_NAME" "$KB_JOIN_MEMBER_POD_FQDN")
   peer_protocol=$(get_protocol "initial-advertise-peer-urls")
+  peer_url="$peer_protocol://$join_member_endpoint:2380"
 
-  log "Adding member $KB_JOIN_MEMBER_POD_NAME to cluster via leader $leader_endpoint"
-  log "Join member peer URL: $peer_protocol://$join_member_endpoint:2380"
-  exec_etcdctl "$leader_endpoint:2379" member add "$KB_JOIN_MEMBER_POD_NAME" --peer-urls="$peer_protocol://$join_member_endpoint:2380" || error_exit "Failed to join member"
-  log "Member $KB_JOIN_MEMBER_POD_NAME joined cluster via leader $leader_endpoint"
+  log "memberJoin runner=${HOSTNAME:-unknown} target=$KB_JOIN_MEMBER_POD_NAME peer=$peer_url leader=$leader_endpoint"
+  if check_join_member "$leader_endpoint:2379" "$peer_url"; then
+    log "Member $KB_JOIN_MEMBER_POD_NAME already registered; skipping add"
+    return 0
+  else
+    status=$?
+    if [ "$status" -ne 1 ]; then
+      error_exit "Cannot safely join member: membership unavailable or identity conflict"
+      return 1
+    fi
+  fi
+
+  if exec_etcdctl "$leader_endpoint:2379" --dial-timeout=3s --command-timeout=5s member add "$KB_JOIN_MEMBER_POD_NAME" --peer-urls="$peer_url"; then
+    log "Member $KB_JOIN_MEMBER_POD_NAME joined cluster via leader $leader_endpoint"
+    return 0
+  fi
+
+  # The server may have committed the add despite an error reaching this runner.
+  log "Member add failed; checking whether the target was registered"
+  if check_join_member "$leader_endpoint:2379" "$peer_url"; then
+    log "Member $KB_JOIN_MEMBER_POD_NAME registration confirmed after add error"
+    return 0
+  fi
+  error_exit "Failed to join member: registration could not be confirmed"
+  return 1
 }
 
-# Shellspec magic
-setup_shellspec
+# Keep attempt history bounded and expose a failure tail in the action response.
+finish_member_join() {
+  local status=$?
+  trap - EXIT
+  log "memberJoin finished status=$status"
+  if [ "$status" -ne 0 ]; then
+    tail -n 40 "$join_log" >&3 || true
+  fi
+  echo "memberJoin status=$status log=$join_log" >&3
+  exit "$status"
+}
 
-# main
-load_common_library
-add_member
+main() {
+  set -eo pipefail
+  # shellcheck disable=SC1091
+  . /scripts/common.sh
+  load_common_library
+  join_log=/tmp/kb-member-join.log
+  exec 3>&2
+  if [ -f "$join_log" ] && [ "$(wc -c < "$join_log")" -ge 1048576 ]; then
+    mv -f "$join_log" "$join_log.1"
+  fi
+  echo "memberJoin log=$join_log" >&3
+  exec >>"$join_log" 2>&1
+  trap finish_member_join EXIT
+  add_member
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

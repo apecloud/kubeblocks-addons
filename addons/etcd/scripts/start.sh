@@ -1,5 +1,5 @@
 #!/bin/bash
-set -exo pipefail
+set -eo pipefail
 
 default_template_conf="$CONFIG_TEMPLATE_PATH"
 default_conf="$CONFIG_FILE_PATH"
@@ -148,6 +148,12 @@ main() {
   cat "$default_conf"
 
   [ -d "$BACKUP_DIR" ] && restore
+
+  # Restore creates WAL before this check; ordinary restarts must not wait
+  # for peers that may also be restarting. kbagent joins independently.
+  # shellcheck disable=SC1091
+  . /scripts/startup-membership.sh
+  wait_for_member_registration
 
   log "Starting etcd with updated configuration..."
   exec etcd --config-file "$default_conf"
