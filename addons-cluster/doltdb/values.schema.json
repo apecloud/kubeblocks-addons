@@ -1,0 +1,325 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "mysqlSource"
+        ],
+        "properties": {
+          "mysqlSource": {
+            "required": [
+              "enabled"
+            ],
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "mysqlSource": {
+            "required": [
+              "replicaServerId",
+              "serviceRef"
+            ],
+            "properties": {
+              "replicaServerId": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "serviceRef": {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "clusterServiceSelector": {
+                        "properties": {
+                          "cluster": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "cluster"
+                        ]
+                      },
+                      "serviceDescriptor": {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "clusterServiceSelector": {
+                        "properties": {
+                          "cluster": {
+                            "type": "string",
+                            "enum": [
+                              ""
+                            ]
+                          }
+                        }
+                      },
+                      "serviceDescriptor": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "serviceDescriptor"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "topology"
+        ],
+        "properties": {
+          "topology": {
+            "const": "replication"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "mysqlSource": {
+            "properties": {
+              "enabled": {
+                "enum": [
+                  false
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": [
+        "2.1.10"
+      ],
+      "default": "2.1.10"
+    },
+    "topology": {
+      "type": "string",
+      "enum": [
+        "standalone",
+        "replication"
+      ],
+      "default": "standalone"
+    },
+    "replication": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "standbyReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 1
+        }
+      }
+    },
+    "database": {
+      "type": "string",
+      "default": ""
+    },
+    "tlsEnable": {
+      "type": "boolean",
+      "default": false
+    },
+    "mysqlSource": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "replicaServerId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "default": 0
+        },
+        "replicationFilter": {
+          "type": "string",
+          "default": ""
+        },
+        "serviceRef": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "namespace": {
+              "type": "string",
+              "default": ""
+            },
+            "clusterServiceSelector": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "cluster": {
+                  "type": "string",
+                  "default": ""
+                },
+                "service": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "component": {
+                      "type": "string",
+                      "default": "mysql"
+                    },
+                    "service": {
+                      "type": "string",
+                      "default": ""
+                    },
+                    "port": {
+                      "type": "string",
+                      "default": "mysql"
+                    }
+                  }
+                },
+                "credential": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "component": {
+                      "type": "string",
+                      "default": "mysql"
+                    },
+                    "name": {
+                      "type": "string",
+                      "default": "kbreplicator"
+                    }
+                  }
+                }
+              }
+            },
+            "serviceDescriptor": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        }
+      }
+    },
+    "restore": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "apiGroup": {
+              "type": "string",
+              "default": "dataprotection.kubeblocks.io"
+            },
+            "kind": {
+              "type": "string",
+              "default": "Backup"
+            },
+            "name": {
+              "type": "string",
+              "default": ""
+            },
+            "namespace": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "cpu": {
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 64
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ],
+      "default": 1
+    },
+    "memory": {
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1000
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ],
+      "default": 1
+    },
+    "storageClassName": {
+      "type": "string",
+      "default": ""
+    },
+    "storage": {
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ],
+      "default": 20
+    },
+    "extra": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "terminationPolicy": {
+          "type": "string",
+          "enum": [
+            "DoNotTerminate",
+            "Delete",
+            "WipeOut"
+          ],
+          "default": "Delete"
+        }
+      }
+    }
+  }
+}

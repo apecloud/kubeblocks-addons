@@ -1,0 +1,14 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: doltdb-replication-backup
+  namespace: demo
+spec:
+  # Supported methods from the cluster BackupPolicy:
+  # - dolt-backup
+  backupMethod: dolt-backup
+  # For both standalone and replication, KubeBlocks creates:
+  #   <cluster-name>-doltdb-backup-policy
+  # The replication BackupPolicy targets the current primary role.
+  backupPolicyName: doltdb-replication-doltdb-backup-policy
+  deletionPolicy: Delete

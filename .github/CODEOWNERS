@@ -13,6 +13,9 @@ addons-cluster/apecloud-mysql/ @xuriwuyun @leon-ape @apecloud/kb-reviewers @apec
 addons/clickhouse/ @loomt @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/clickhouse/ @loomt @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/doltdb/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/doltdb/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/elasticsearch/ @kizuna-lek @vipshop @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/elasticsearch/ @kizuna-lek @vipshop @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 

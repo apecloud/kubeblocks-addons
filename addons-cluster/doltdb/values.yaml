@@ -1,0 +1,88 @@
+# Default values for DoltDB cluster.
+
+## @param version DoltDB service version.
+version: "2.1.10"
+
+## @param topology DoltDB topology. Supported values: standalone, replication.
+topology: standalone
+
+## @param replication creation-time replication topology settings.
+replication:
+  ## @param replication.standbyReplicas number of standby replicas. Valid when topology=replication. Range: 1..5.
+  standbyReplicas: 1
+
+## @param database optional initial database name created by the Dolt server image.
+database: ""
+
+## @param tlsEnable enable KubeBlocks-managed TLS for the SQL listener.
+tlsEnable: false
+
+## MySQL source used by a standalone DoltDB cluster.
+## The source server must already satisfy Dolt's binlog replication requirements:
+## ROW binlog format, GTID auto-positioning, and non-zero server_id.
+mysqlSource:
+  ## @param mysqlSource.enabled bind a MySQL source ServiceRef and configure Dolt MySQL-source replication on a standalone cluster.
+  enabled: false
+  ## @param mysqlSource.replicaServerId positive server_id used by the Dolt replica.
+  replicaServerId: 0
+  ## @param mysqlSource.replicationFilter optional CHANGE REPLICATION FILTER clause without the leading command. Dolt currently supports REPLICATE_DO_TABLE and REPLICATE_IGNORE_TABLE. Applied by one-time postProvision only; filter durability after Pod restart is not claimed.
+  replicationFilter: ""
+  serviceRef:
+    ## @param mysqlSource.serviceRef.namespace namespace of the referenced source Cluster or ServiceDescriptor. Must be empty or match the Helm release namespace.
+    namespace: ""
+    ## Bind to another KubeBlocks MySQL Cluster.
+    clusterServiceSelector:
+      ## @param mysqlSource.serviceRef.clusterServiceSelector.cluster source Cluster name.
+      cluster: ""
+      service:
+        ## @param mysqlSource.serviceRef.clusterServiceSelector.service.component source component name.
+        component: mysql
+        ## @param mysqlSource.serviceRef.clusterServiceSelector.service.service source service name; empty means default service.
+        service: ""
+        ## @param mysqlSource.serviceRef.clusterServiceSelector.service.port source service port name.
+        port: mysql
+      credential:
+        ## @param mysqlSource.serviceRef.clusterServiceSelector.credential.component source credential component name.
+        component: mysql
+        ## @param mysqlSource.serviceRef.clusterServiceSelector.credential.name source SystemAccount name.
+        name: kbreplicator
+    ## @param mysqlSource.serviceRef.serviceDescriptor external ServiceDescriptor name. Mutually exclusive with clusterServiceSelector.cluster.
+    serviceDescriptor: ""
+
+## Restore this cluster from a KubeBlocks Backup through Cluster.spec.restore.
+## KubeBlocks creates the DataProtection Restore CR automatically during restore.
+restore:
+  enabled: false
+  source:
+    apiGroup: dataprotection.kubeblocks.io
+    kind: Backup
+    name: ""
+    namespace: ""
+  parameters:
+    dataprotection.kubeblocks.io/volume-restore-policy: Parallel
+    dataprotection.kubeblocks.io/source-target-name: doltdb
+
+## Dolt SQL server configuration variables. Changes require a component restart.
+config:
+  enabled: true
+  logLevel: info
+  logFormat: text
+  readOnly: "false"
+  autocommit: "true"
+  transactionCommit: "false"
+  autoGcEnabled: "true"
+  maxConnections: "1000"
+  backLog: "50"
+  maxConnectionsTimeoutMillis: "60000"
+  readTimeoutMillis: "28800000"
+  writeTimeoutMillis: "28800000"
+
+## Resources.
+cpu: 1
+memory: 1
+storageClassName: ""
+storage: 20
+
+## Customized default values to override kblib chart's values.
+extra:
+  terminationPolicy: Delete

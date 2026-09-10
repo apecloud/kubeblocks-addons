@@ -1,0 +1,51 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: {{ include "doltdb.backupActionSet" . }}
+  labels:
+    {{- include "doltdb.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath | quote }}
+    - name: IMAGE
+      value: {{ include "doltdb.defaultImage" . }}
+  backup:
+    backupData:
+      image: $(IMAGE)
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/backup-pre.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
+  restore:
+    prepareData:
+      image: $(IMAGE)
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}
+    postReady:
+      - job:
+          image: $(IMAGE)
+          runOnTargetPodNode: true
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/restore-stage.sh" | nindent 14 }}
+      - job:
+          image: $(IMAGE)
+          runOnTargetPodNode: true
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/restore-post.sh" | nindent 14 }}
