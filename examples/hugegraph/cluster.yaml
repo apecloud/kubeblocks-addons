@@ -1,0 +1,29 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: hugegraph-cluster
+  namespace: demo
+spec:
+  clusterDef: hugegraph
+  topology: standalone
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: server
+      serviceVersion: "1.7.0"
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: 2Gi
+        requests:
+          cpu: "500m"
+          memory: 1Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

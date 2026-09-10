@@ -1,0 +1,16 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: hugegraph-verticalscale
+  namespace: demo
+spec:
+  clusterName: hugegraph-cluster
+  type: VerticalScaling
+  verticalScaling:
+    - componentName: server
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
