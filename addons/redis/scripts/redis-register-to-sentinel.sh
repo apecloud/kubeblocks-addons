@@ -231,8 +231,18 @@ register_to_sentinel() {
   fi
   if is_empty "$master_addr"; then
     echo "Sentinel is not monitoring $master_name. Registering it..."
+    local monitor_host="$redis_primary_host"
+    # Redis 6.0 Sentinel accepts numeric addresses only; 6.2+ supports DNS.
+    if [[ "$SERVICE_VERSION" == 6.0.* ]] &&
+       [[ ! "$monitor_host" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ && "$monitor_host" != *:* ]]; then
+      monitor_host=$(getent hosts "$redis_primary_host" | awk 'NR == 1 { print $1 }')
+      if is_empty "$monitor_host"; then
+        echo "Error: Failed to resolve primary address for $redis_primary_host." >&2
+        exit 1
+      fi
+    fi
     # Register the Redis primary with Sentinel
-    sentinel_monitor_cmd="SENTINEL monitor $master_name $redis_primary_host $redis_primary_port 2"
+    sentinel_monitor_cmd="SENTINEL monitor $master_name $monitor_host $redis_primary_port 2"
     call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_monitor_cmd" || exit 1
   else
     echo "Sentinel is already monitoring $master_name at $master_addr. Skipping monitor registration."
@@ -345,4 +355,3 @@ ${__SOURCED__:+false} : || return 0
 # main
 load_common_library
 register_to_sentinel_if_needed
-
