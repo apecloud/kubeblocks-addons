@@ -1,0 +1,16 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-expose-disable
+  namespace: demo
+spec:
+  type: Expose
+  clusterName: yashandb-cluster
+  # 2026-06-02 Reason: add paired expose-disable example for Stage 1 Ops parity; Purpose: remove the standalone exposed service without relying on HA role selectors.
+  expose:
+  - componentName: yashan-comp
+    services:
+    - name: internet
+      serviceType: LoadBalancer
+    switch: Disable
+  preConditionDeadlineSeconds: 0

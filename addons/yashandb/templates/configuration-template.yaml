@@ -2,6 +2,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "yashandb.configTplName" . }}
+  # 2026-06-23 Reason: KubeBlocks resolves ComponentDefinition config templates in the release namespace; Purpose: keep direct Helm-render apply aligned with controller lookup.
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "yashandb.labels" . | nindent 4 }}
 data:

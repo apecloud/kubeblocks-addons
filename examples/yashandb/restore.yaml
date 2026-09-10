@@ -1,0 +1,38 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: yashandb-cluster-restore
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  # 2026-07-06 Reason: current KubeBlocks restore API reads Cluster.spec.restore.source instead of the legacy restore annotation; Purpose: keep the example aligned with controller reconciliation.
+  # Time: 2026-07-06.
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: yashandb-cluster-backup
+      namespace: demo
+  componentSpecs:
+    - name: yashan-comp
+      # 2026-06-22 Reason: native Configure is delivered through a new immutable ComponentDefinition revision; Purpose: keep restore examples aligned with fresh addon installs.
+      # 2026-06-23 Reason: restored example clusters must use the same current ComponentDefinition as fresh examples; Purpose: keep restore validation aligned with the PR-facing addon revision.
+      # 2026-07-06 Reason: upstream main advanced the chart version to 1.2.0-alpha.2 during PR review; Purpose: keep restore examples aligned with the rendered ComponentDefinition name.
+      # Time: 2026-07-06.
+      componentDef: yashandb-1.2.0-alpha.2
+      replicas: 1
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      resources:
+        limits:
+          cpu: "1"
+          memory: "4Gi"
+        requests:
+          cpu: "1"
+          memory: "4Gi"

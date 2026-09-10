@@ -1,0 +1,14 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-scale-out
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: yashandb-cluster
+  type: HorizontalScaling
+  # 2026-06-02 Reason: add MySQL-parity basic Ops example without introducing HA behavior; Purpose: show the standard KubeBlocks scale-out request shape for the YashanDB component.
+  horizontalScaling:
+  - componentName: yashan-comp
+    scaleOut:
+      replicaChanges: 1

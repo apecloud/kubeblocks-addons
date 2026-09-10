@@ -1,0 +1,35 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: yashandb-full-backup
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: YASDB_BACKUP_ROOT
+      # 2026-06-18 Reason: the database process creates backup files while the backup job uploads them; Purpose: keep full backup output on the shared data volume visible to both runtimes.
+      value: /home/yashan/mydb/backup
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}

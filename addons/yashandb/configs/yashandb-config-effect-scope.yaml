@@ -1,0 +1,20 @@
+## staticParameters, list of StaticParameter, modifications of them trigger a process restart.
+## dynamicParameters are intentionally empty in Stage 5A because ALTER SYSTEM reload is not wired yet.
+staticParameters:
+  - REDO_FILE_SIZE
+  - REDO_FILE_NUM
+  - INSTALL_SIMPLE_SCHEMA_SALES
+  - NLS_CHARACTERSET
+  - LISTEN_ADDR
+  - DB_BLOCK_SIZE
+  - DATA_BUFFER_SIZE
+  - SHARE_POOL_SIZE
+  - WORK_AREA_POOL_SIZE
+  - LARGE_POOL_SIZE
+  - REDO_BUFFER_SIZE
+  - UNDO_RETENTION
+  - OPEN_CURSORS
+  - MAX_SESSIONS
+  - RUN_LOG_LEVEL
+  - NODE_ID
+dynamicParameters: []
