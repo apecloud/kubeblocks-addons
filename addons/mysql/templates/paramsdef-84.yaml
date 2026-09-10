@@ -1,0 +1,53 @@
+{{- $pd := .Files.Get "config/mysql8-config-effect-scope.yaml" | fromYaml }}
+{{- /* MySQL 8.4 removed several system variables. They are NOT rejected at the
+       PD schema layer: explicit CUE bottom (_|_) cannot be marshaled into the
+       OpenAPI schema by KB 1.2.0-alpha.2 (PD becomes unavailable), and closing
+       the open CUE struct strict-types every ini value and conflicts on fields
+       like [client].port ("3306" string vs port?: int). Instead the removed
+       variables keep their 8.0 classification so that the six DYNAMIC ones route
+       to the reconfigure action (scripts/update-parameter.sh), which fail-closes
+       on MySQL 8.4 (explicit by-name reject, and the SET GLOBAL unknown-variable
+       error as backstop). The two STATIC removed variables
+       (default_authentication_plugin, log_bin_use_v1_row_events) take the config
+       file path and have no reconfigure action to intercept them; strict schema
+       rejection for those is a documented follow-up gap pending a KB
+       forbidden-parameter mechanism. */}}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "mysql.paramsDefName84" . }}
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ printf "^%s(?:-mgr)?-8\\.4-%s$" (include "mysql.cmpdNamePrefix" .) .Chart.Version | quote }}
+  templateName: mysql-replication-config
+  fileName: my.cnf
+  fileFormatConfig:
+    format: ini
+    iniConfig:
+      sectionName: mysqld
+  parametersSchema:
+    topLevelKey: MysqlParameter
+    cue: |-
+      {{- .Files.Get "config/mysql8-config-constraint.cue" | nindent 6 }}
+
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- range get $pd "staticParameters" }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+    {{- range get $pd "dynamicParameters" }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  {{- if hasKey $pd "immutableParameters" }}
+  immutableParameters:
+    {{- range get $pd "immutableParameters" }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
