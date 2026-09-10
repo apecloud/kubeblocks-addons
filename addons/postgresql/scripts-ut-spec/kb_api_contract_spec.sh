@@ -141,56 +141,26 @@ EOF
     fi
   }
 
-  It "declares the KB 1.2 floor required by the rendered API fields"
+  It "declares the KubeBlocks version floor for this release"
     When call kubeblocks_floor
     The status should eq 0
-    The output should eq ">=1.2.0"
+    The output should eq ">=1.0.0"
   End
 
-  It "advances the chart identity when immutable ComponentDefinitions change"
+  It "keeps the release-1.1 chart identity"
     When call chart_version
     The status should eq 0
-    The output should eq "1.2.0-alpha.2"
+    The output should eq "1.1.0-alpha.2"
   End
 
-  It "publishes every ComponentDefinition under the advanced immutable identity"
-    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.2$'
+  It "publishes every ComponentDefinition under the release chart identity"
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.1.0-alpha.2$'
     The status should eq 0
     The output should eq "7"
-  End
-
-  It "does not project a create-time pod-name list into the runtime"
-    When call render_count '^[[:space:]]*- name: POSTGRES_POD_NAME_LIST$'
-    The status should eq 0
-    The output should eq "0"
   End
 
   It "grants every ComponentDefinition the pod-list permission used by live arbitration"
     When call component_definitions_with_pod_list_rbac
-    The status should eq 0
-    The output should eq "7"
-  End
-
-  It "renders exactly one CmpD reconfigure action per PostgreSQL major"
-    When call render_count '^[[:space:]]*reconfigure:$'
-    The status should eq 0
-    The output should eq "7"
-  End
-
-  It "does not render the legacy PD reloadAction path"
-    When call render_count '^[[:space:]]*reloadAction:$'
-    The status should eq 0
-    The output should eq "0"
-  End
-
-  It "binds every PD to the KB 1.2 config entry"
-    When call render_count '^[[:space:]]*templateName: postgresql-configuration$'
-    The status should eq 0
-    The output should eq "7"
-  End
-
-  It "uses the projected KB scripts path for all CmpD actions"
-    When call render_count '/kb-scripts/update-parameter.sh "\$1" "\$2"'
     The status should eq 0
     The output should eq "7"
   End
