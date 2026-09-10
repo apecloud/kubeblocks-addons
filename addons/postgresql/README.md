@@ -180,6 +180,23 @@ with 500m CPU and 512Mi memory limits.
 
 #### Enable and disable
 
+The PostgreSQL cluster chart includes PgBouncer when `pgbouncer.enabled=true`.
+Use a PostgreSQL Addon whose `replication` topology contains `pgbouncer`
+(1.0.6 or later on the release-1.0 line):
+
+```bash
+helm template pg-cluster ./addons-cluster/postgresql --dependency-update \
+  --set pgbouncer.enabled=true --set pgbouncer.replicas=2
+```
+
+The chart defaults to `pgbouncer.enabled=false`. Set `pgbouncer.enabled=true`
+and `pgbouncer.replicas=0` to render an inactive component for later scaling.
+PgBouncer has independent `pgbouncer.cpu` and `pgbouncer.memory` values, both
+defaulting to `0.5` (cores and Gi). Requests default to these limits and can be
+lowered with `pgbouncer.requests.cpu` and `pgbouncer.requests.memory`.
+Set `pgbouncer.version` to select a service version, or leave it empty for
+KubeBlocks to select it from the installed Addon.
+
 To activate PgBouncer when creating a Cluster, add it to the `replication`
 topology:
 

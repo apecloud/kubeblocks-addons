@@ -12,11 +12,55 @@ Describe "PostgreSQL version matrix contract"
   }
 
   render_chart() {
-    helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system --dependency-update
+    helm dependency build "$(chart_dir)" --skip-refresh >/dev/null || return
+    helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system
   }
 
   chart_version() {
     awk '$1 == "version:" { print $2; exit }' "$1/Chart.yaml"
+  }
+
+  pgbouncer_cluster_chart_contract() {
+    helm dependency build "$(cluster_chart_dir)" --skip-refresh >/dev/null || return
+    RUBYOPT=-W0 ruby -ryaml -ropen3 -e '
+      chart = ARGV.fetch(0)
+      render = lambda do |values|
+        command = ["helm", "template", "pg-test", chart, "--namespace", "demo"]
+        values.each { |value| command.concat(["--set", value]) }
+        output, error, status = Open3.capture3(*command)
+        abort error unless status.success?
+        YAML.load_stream(output).compact.find { |doc| doc["kind"] == "Cluster" }.fetch("spec")
+      end
+      defaults = render.call([])
+      abort unless defaults["componentSpecs"].map { |c| c["name"] } == ["postgresql"]
+      abort unless render.call(["pgbouncer.replicas=2"]) == defaults
+
+      [[], ["mode=standalone"], ["remoteSetting.isStandby=true", "remoteSetting.primaryHost=primary", "remoteSetting.primaryPort=5432"],
+       ["etcd.enabled=true", "systemAccountSecret.postgres.name=pg-account", "systemAccountSecret.postgres.namespace=demo"]].each do |values|
+        baseline = render.call(values)
+        enabled = render.call(values + ["pgbouncer.enabled=true"])
+        pool = enabled.fetch("componentSpecs").pop
+        abort unless enabled == baseline
+        abort unless pool == {"name" => "pgbouncer", "replicas" => 0, "resources" => {
+          "limits" => {"cpu" => "0.5", "memory" => "0.5Gi"},
+          "requests" => {"cpu" => "0.5", "memory" => "0.5Gi"}}}
+      end
+
+      custom = render.call(["pgbouncer.enabled=true", "pgbouncer.replicas=3", "pgbouncer.version=1.25.2",
+        "pgbouncer.cpu=1", "pgbouncer.memory=2", "pgbouncer.requests.cpu=0.1", "pgbouncer.requests.memory=0.25"])
+      pool = custom.fetch("componentSpecs").pop
+      abort unless custom == defaults
+      abort unless pool == {"name" => "pgbouncer", "replicas" => 3, "serviceVersion" => "1.25.2", "resources" => {
+        "limits" => {"cpu" => "1", "memory" => "2Gi"},
+        "requests" => {"cpu" => "0.1", "memory" => "0.25Gi"}}}
+
+      %w[replicas=-1 replicas=65 replicas=1.5 enabled=yes cpu=invalid cpu=0 memory=-1 requests.cpu=0 requests.memory=invalid].each do |invalid|
+        _, error, status = Open3.capture3("helm", "template", "pg-test", chart, "--set", "pgbouncer.#{invalid}")
+        abort "accepted #{invalid}" if status.success?
+        abort error unless error.include?("pgbouncer") && error.include?("schema")
+      end
+      puts "ok"
+    ' "$(cluster_chart_dir)"
   }
 
   render_count() {
@@ -357,6 +401,12 @@ EOF
 
   It "keeps one replication topology and adds a zero-capable PgBouncer component"
     When call pgbouncer_component_contract
+    The status should eq 0
+    The output should eq "ok"
+  End
+
+  It "renders optional PgBouncer with independent resources and preserves PostgreSQL settings"
+    When call pgbouncer_cluster_chart_contract
     The status should eq 0
     The output should eq "ok"
   End
