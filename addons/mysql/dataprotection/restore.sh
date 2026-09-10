@@ -3,6 +3,28 @@ set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+
+restore_preflight() {
+  local residue
+
+  mkdir -p "${DATA_DIR}"
+  if [ -f "${DATA_DIR}/.xtrabackup_restore" ]; then
+    echo "Restore already completed; keeping existing data"
+    return 10
+  fi
+  residue=$(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 ! -name lost+found -print -quit)
+  if [ -n "$residue" ]; then
+    echo "Restore target is non-empty without completion marker: ${residue}" >&2
+    return 1
+  fi
+}
+
+${__SOURCED__:+false} : || return 0
+restore_preflight_rc=0
+restore_preflight || restore_preflight_rc=$?
+[ "$restore_preflight_rc" -eq 10 ] && exit 0
+[ "$restore_preflight_rc" -ne 0 ] && exit "$restore_preflight_rc"
+
 mkdir -p ${DATA_DIR}
 TMP_DIR=${MYSQL_DIR}/temp
 mkdir -p ${TMP_DIR} && cd ${TMP_DIR}
