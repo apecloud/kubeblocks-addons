@@ -26,6 +26,12 @@ spec:
     - {{ . }}
     {{- end }}
   {{- end }}
+  {{- if hasKey $pd "immutableParameters" }}
+  immutableParameters:
+    {{- range (get $pd "immutableParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
 
 ---
 # ParametersDefinition for replication MariaDB
@@ -117,6 +123,12 @@ spec:
     - {{ . }}
     {{- end }}
   {{- end }}
+  {{- if hasKey $pd "immutableParameters" }}
+  immutableParameters:
+    {{- range (get $pd "immutableParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
 
 ---
 # ParametersDefinition for Galera MariaDB
@@ -149,6 +161,12 @@ spec:
   {{- if hasKey $pd "dynamicParameters" }}
   dynamicParameters:
     {{- range (get $pd "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if hasKey $pd "immutableParameters" }}
+  immutableParameters:
+    {{- range (get $pd "immutableParameters") }}
     - {{ . }}
     {{- end }}
   {{- end }}
