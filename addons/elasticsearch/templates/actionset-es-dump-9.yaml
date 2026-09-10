@@ -1,0 +1,34 @@
+{{- if .Values.es9.enabled }}
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: elasticsearch-9-es-dump
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: $(ES_DUMP_IMAGE)
+      runOnTargetPodNode: false
+      command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/es-dump-backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    postReady:
+      - job:
+          image: $(ES_DUMP_IMAGE)
+          runOnTargetPodNode: false
+          command:
+            - sh
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/es-dump-restore.sh" | nindent 14 }}
+{{- end }}

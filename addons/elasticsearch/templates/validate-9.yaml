@@ -1,0 +1,11 @@
+{{- if .Values.es9.enabled }}
+{{- range $name := list "elasticsearch" "kibana" "plugin" "exporter" "tools" "agent" "esDump" }}
+{{- $image := index $.Values.es9.images $name }}
+{{- if not (regexMatch "^[^[:space:]]+@sha256:[0-9a-f]{64}$" $image) }}
+{{- fail (printf "es9.images.%s must be an immutable image reference ending in @sha256:<64 lowercase hex>" $name) }}
+{{- end }}
+{{- end }}
+{{- if ne .Values.es9.serviceVersion "9.3.2" }}
+{{- fail "es9.serviceVersion must be 9.3.2 for the first supported 9.x slice" }}
+{{- end }}
+{{- end }}

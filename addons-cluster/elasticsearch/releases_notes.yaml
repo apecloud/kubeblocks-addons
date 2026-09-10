@@ -1,4 +1,8 @@
 releases:
+  - version: "1.2.0-alpha.1"
+    status: "alpha"
+    notes:
+      - "Allow the Elasticsearch 9.3.2 single-node and multi-node create-only entries"
   - version: "1.0.1"
     released_at: "2025-09-11"
     status: "stable"

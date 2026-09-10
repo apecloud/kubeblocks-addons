@@ -1,0 +1,32 @@
+{{- if .Values.es9.enabled }}
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: elasticsearch-9-physical-br
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  backup:
+    backupData:
+      image: $(IMAGE)
+      runOnTargetPodNode: true
+      command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    postReady:
+      - job:
+          image: $(IMAGE)
+          runOnTargetPodNode: false
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/restore.sh" | nindent 14 }}
+{{- end }}
