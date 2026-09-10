@@ -34,6 +34,22 @@ spec:
             port: 2888
           - name: admin
             port: 8080
+    - name: lb-advertised
+      serviceName: lb-advertised
+      spec:
+        ## the type can override in cluster componentSpec services, type can loadBalancer
+        type: LoadBalancer
+        # allocateLoadBalancerNodePorts: false
+        externalTrafficPolicy: Cluster
+        ports:
+          - name: client
+            port: 2181
+            targetPort: client
+          - name: admin
+            port: 8080
+            targetPort: admin
+      podService: true
+      disableAutoProvision: true
   roles:
     - name: leader
       updatePriority: 3

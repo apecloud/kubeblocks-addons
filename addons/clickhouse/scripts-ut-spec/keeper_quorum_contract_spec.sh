@@ -113,7 +113,7 @@ Describe "ClickHouse Keeper quorum role contract"
   It "keeps topology and ComponentVersion selectors compatible with the new Keeper name"
     When call rendered_keeper_selector_contract
     The status should be success
-    The output should eq "^clickhouse-keeper-1.*|^clickhouse-keeper-1.*"
+    The output should eq "^clickhouse-keeper-(1|22-1).*|^clickhouse-keeper-(1|22-1).*"
   End
 
   It "does not retain the immutable-check bypass on the new Keeper definition"

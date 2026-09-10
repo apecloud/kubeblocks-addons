@@ -1,7 +1,18 @@
+{{- if not (hasPrefix "6.0" $.SERVICE_VERSION) }}
 bind * -::*
+set-proc-title yes
+proc-title-template "{title} {listen-addr} {server-mode}"
+ignore-warnings ARM64-COW-BUG
+lazyfree-lazy-user-del no
+lazyfree-lazy-user-flush no
+oom-score-adj no
+oom-score-adj-values 0 200 800
+disable-thp yes
+{{- else }}
+bind 0.0.0.0
+{{- end }}
 tcp-backlog 511
 timeout 0
-ignore-warnings ARM64-COW-BUG
 tcp-keepalive 300
 daemonize no
 pidfile /var/run/redis_6379.pid
@@ -11,8 +22,6 @@ logfile "/data/running.log"
 {{ end }}
 databases 16
 always-show-logo no
-set-proc-title yes
-proc-title-template "{title} {listen-addr} {server-mode}"
 stop-writes-on-bgsave-error yes
 rdbcompression yes
 rdbchecksum yes
@@ -31,11 +40,6 @@ lazyfree-lazy-eviction no
 lazyfree-lazy-expire no
 lazyfree-lazy-server-del no
 replica-lazy-flush no
-lazyfree-lazy-user-del no
-lazyfree-lazy-user-flush no
-oom-score-adj no
-oom-score-adj-values 0 200 800
-disable-thp yes
 appendonly yes
 appendfilename "appendonly.aof"
 appendfsync everysec

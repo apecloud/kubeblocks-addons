@@ -114,7 +114,7 @@ abort-on-panic = false
 ## So how can `memory-usage-limit` influence TiKV? When a TiKV's memory usage almost reaches
 ## this threshold, it can squeeze some internal components (e.g. evicting cached Raft entries)
 ## to release memory.
-memory-usage-limit = "0B"
+## memory-usage-limit = "0B"
 
 [quota]
 ## Quota is use to add some limitation for the read write flow and then

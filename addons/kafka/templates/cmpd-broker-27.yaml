@@ -105,7 +105,21 @@ spec:
             option: Required
     - name: KB_KAFKA_ZOOKEEPER_CONN
       expression: {{ `{{if index . "KB_KAFKA_ZOOKEEPER_CONN_SERVICE_REF"}}{{.KB_KAFKA_ZOOKEEPER_CONN_SERVICE_REF}}{{else}}{{.KB_KAFKA_ZOOKEEPER_CONN_COMPONENT_HOST}}:{{.KB_KAFKA_ZOOKEEPER_CONN_COMPONENT_PORT}}{{end}}` | toYaml }}
-    ## Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
+    - name: BROKER_ADVERTISED_SERVICE_TYPE
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "kafka2-broker.cmpdRegexpPattern" . }}
+          name: advertised-listener
+          optional: true
+          serviceType: Required
+    - name: BROKER_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "kafka2-broker.cmpdRegexpPattern" . }}
+          name: advertised-listener
+          optional: true
+          host: Required
+          loadBalancer: Required
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:

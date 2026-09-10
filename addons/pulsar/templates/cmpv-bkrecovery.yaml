@@ -22,6 +22,7 @@ spec:
         - {{ include "pulsar4.bkRecoveryCmpdRegexPattern" . }}
       releases:
         - 4.0.6
+        - 4.0.12
   releases:
     - name: 2.11.2
       serviceVersion: 2.11.2
@@ -38,3 +39,8 @@ spec:
       images:
         bookies-recovery: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6
         check-bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6
+    - name: 4.0.12
+      serviceVersion: 4.0.12
+      images:
+        bookies-recovery: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_12.bookie.repository }}:4.0.12
+        check-bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_12.bookie.repository }}:4.0.12

@@ -39,6 +39,7 @@ Describe "Redis Start Sentinel Bash Script Tests"
         SENTINEL_POD_FQDN_LIST="redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local,redis-redis-sentinel-1.redis-redis-sentinel-headless.default.svc.cluster.local"
         SENTINEL_USER="default"
         SENTINEL_PASSWORD="sentinel_password"
+        SERVICE_VERSION="7.2.4"
       }
       Before 'setup'
 
@@ -47,6 +48,7 @@ Describe "Redis Start Sentinel Bash Script Tests"
         unset CURRENT_POD_NAME
         unset SENTINEL_USER
         unset SENTINEL_PASSWOR
+        unset SERVICE_VERSION
       }
       After 'un_setup'
 
@@ -60,6 +62,20 @@ Describe "Redis Start Sentinel Bash Script Tests"
       The contents of file "$redis_sentinel_real_conf" should include "announce-hostnames yes"
       The contents of file "$redis_sentinel_real_conf" should include "sentinel sentinel-user $SENTINEL_USER"
       The contents of file "$redis_sentinel_real_conf" should include "sentinel sentinel-pass $SENTINEL_PASSWORD"
+    End
+
+    It "build redis sentinel conf on redis 6.0 (skip sentinel sentinel-user/pass and ignore-warnings)"
+      export SERVICE_VERSION="6.0.20"
+      When call build_redis_sentinel_conf
+      The status should be success
+      The stdout should include "build redis sentinel conf succeeded!"
+      The contents of file "$redis_sentinel_real_conf" should include "port $sentinel_port"
+      The contents of file "$redis_sentinel_real_conf" should include "sentinel announce-ip $CURRENT_POD_NAME.redis-redis-sentinel-headless.default.svc.cluster.local"
+      The contents of file "$redis_sentinel_real_conf" should not include "sentinel sentinel-user"
+      The contents of file "$redis_sentinel_real_conf" should not include "sentinel sentinel-pass"
+      The contents of file "$redis_sentinel_real_conf" should not include "ignore-warnings"
+      The contents of file "$redis_sentinel_real_conf" should not include "resolve-hostnames"
+      The contents of file "$redis_sentinel_real_conf" should not include "announce-hostnames"
     End
   End
 End

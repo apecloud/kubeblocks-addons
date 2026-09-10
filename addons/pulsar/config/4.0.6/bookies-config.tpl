@@ -63,7 +63,12 @@ httpServerEnabled=true
 httpServerPort=8000
 ledgerDirectories=/pulsar/data/bookkeeper/ledgers
 # statsProviderClass ref: https://bookkeeper.apache.org/docs/admin/metrics#stats-providers
+# 4.0.10 breaking change: https://pulsar.apache.org/release-notes/versioned/pulsar-4.0.10/
+{{- if semverCompare ">=4.0.10" $.SERVICE_VERSION }}
+statsProviderClass=org.apache.pulsar.metrics.prometheus.bookkeeper.PrometheusMetricsProvider
+{{- else }}
 statsProviderClass=org.apache.bookkeeper.stats.prometheus.PrometheusMetricsProvider
+{{- end }}
 enableStatistics=true
 useHostNameAsBookieID=true
 

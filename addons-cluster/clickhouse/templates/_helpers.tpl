@@ -32,17 +32,31 @@ Create chart name and version as used by the chart label.
 
 
 {{/*
-Dynamic component definition name for clickhouse
+Dynamic component definition name for clickhouse.
+In withZookeeper mode with a legacy version (ClickHouse 22.x and earlier), use
+the clickhouse-22 ComponentDefinition, which injects a keeper-image initContainer
+that runs zk_create_root before the server starts.
 */}}
 {{- define "clickhouse-cluster.cmpdName" -}}
+{{- if semverCompare "<23.0.0" (.Values.version | default "") -}}
+clickhouse-22-1
+{{- else -}}
 clickhouse-1
+{{- end -}}
 {{- end }}
 
 {{/*
-Dynamic component definition name for clickhouse-keeper
+Dynamic component definition name for clickhouse-keeper.
+For a legacy version (ClickHouse 22.x and earlier), use the
+clickhouse-keeper-22 ComponentDefinition, which copies clickhouse-keeper-client
+to the shared-tools volume.
 */}}
 {{- define "clickhouse-cluster.keeperCmpdName" -}}
+{{- if semverCompare "<23.0.0" (.Values.version | default "") -}}
+clickhouse-keeper-22-1
+{{- else -}}
 clickhouse-keeper-1
+{{- end -}}
 {{- end }}
 
 {{/*
