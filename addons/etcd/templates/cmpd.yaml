@@ -171,7 +171,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/member-join.sh > /tmp/member-join.log 2>&1
+          - /scripts/member-join.sh
     memberLeave:
       exec:
         command:
