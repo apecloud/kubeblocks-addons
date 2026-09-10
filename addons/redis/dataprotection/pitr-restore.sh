@@ -1,3 +1,6 @@
+# shellcheck shell=bash
+set -e -o pipefail
+
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
@@ -31,8 +34,8 @@ function get_files_to_restore() {
 
   local filename=$(datasafed list / | sort -Vr | awk -v rt="$restore_time" -F '.' '$1 <= rt {print; exit}')
   if [ -z "$filename" ]; then
-    DP_log "No backup found for the given restore time: $DP_RESTORE_TIME"
-    exit 0
+    DP_error_log "No backup found for the given restore time: $DP_RESTORE_TIME"
+    exit 1
   fi
 
   case "$filename" in
@@ -45,7 +48,8 @@ function get_files_to_restore() {
     datasafed pull -d zstd-fastest "${filename}" - | tar -xvf - -C "${DATA_DIR}/"
     ;;
   *)
-    DP_log "Unknown aof_file type: $filename"
+    DP_error_log "Unknown aof_file type: $filename"
+    exit 1
     ;;
   esac
 }
