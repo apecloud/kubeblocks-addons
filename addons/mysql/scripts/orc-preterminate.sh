@@ -16,27 +16,30 @@ mysql_error() {
   exit 1
 }
 
-# Forget cluster
-if /kubeblocks/orchestrator-client -c forget-cluster -i "${KB_AGENT_POD_NAME}" 2>&1; then
-  mysql_note "Forget cluster command executed"
-else
-  mysql_note "Forget cluster command failed, continuing anyway"
-fi
+run_orchestrator_client() {
+  local budget="${ORC_PRETERMINATE_CLIENT_TIMEOUT_SECONDS:-8}"
+  timeout "${budget}s" /kubeblocks/orchestrator-client "$@"
+}
 
-if /kubeblocks/orchestrator-client -c forget-cluster -alias "${CLUSTER_NAME}" 2>&1; then
-  mysql_note "Forget cluster command executed"
-else
-  mysql_note "Forget cluster command failed, continuing anyway"
-fi
+forget_cluster() {
+  local clusters
 
+  if ! run_orchestrator_client -c clusters-alias >/dev/null; then
+    mysql_error "Orchestrator unreachable; refusing to report cluster removal"
+  fi
+  if ! run_orchestrator_client -c forget-cluster -alias "${CLUSTER_NAME}"; then
+    mysql_error "Failed to forget cluster alias ${CLUSTER_NAME}"
+  fi
 
-sleep 3
+  sleep 3
+  if ! clusters=$(run_orchestrator_client -c clusters-alias); then
+    mysql_error "Orchestrator unreachable; cannot verify removal of ${CLUSTER_NAME}"
+  fi
+  if printf '%s\n' "$clusters" | awk -F, -v name="$CLUSTER_NAME" '$1 == name || $2 == name { found=1 } END { exit !found }'; then
+    mysql_error "Cluster ${CLUSTER_NAME} still exists in Orchestrator"
+  fi
+  mysql_note "Cluster ${CLUSTER_NAME} successfully removed from Orchestrator"
+}
 
-# Check if cluster still exists
-cluster_name=$(/kubeblocks/orchestrator-client -c which-cluster -i "${KB_AGENT_POD_NAME}" 2>/dev/null || echo "")
-if [ -z "$cluster_name" ]; then
-  mysql_note "Cluster successfully forgotten from Orchestrator"
-  exit 0
-fi
-
-mysql_error "Cluster still exists in Orchestrator: ${cluster_name}"
+${__SOURCED__:+false} : || return 0
+forget_cluster

@@ -145,7 +145,7 @@ function universal_sed {
 }
 
 function fail {
-  message="$myname[$$]: $1"
+  message="${myname}[$$]: $1"
   >&2 echo "$message"
   exit 1
 }
@@ -237,7 +237,7 @@ function detect_leader_api {
     leader_api="$(normalize_orchestrator_api $orchestrator_api)"
     return
   fi
-  for api in ${apis[@]} ; do
+  for api in "${apis[@]}" ; do
     api=$(normalize_orchestrator_api $api)
     leader_check=$(curl ${curl_auth_params} -m 1 -s -o /dev/null -w "%{http_code}" "${api}/leader-check")
     if [ "$leader_check" == "200" ] ; then
@@ -246,7 +246,7 @@ function detect_leader_api {
     fi
   done
   # Cannot find leader directly. Maybe our config is wrong. But, perhaps one of the nodes can route us?
-  for api in ${apis[@]} ; do
+  for api in "${apis[@]}" ; do
     api=$(normalize_orchestrator_api $api)
     leader_check=$(curl ${curl_auth_params} -m 1 -s -o /dev/null -w "%{http_code}" "${api}/routed-leader-check")
     if [ "$leader_check" == "200" ] ; then
@@ -275,7 +275,7 @@ function api {
   api_call_result=0
   if [[ ${curl_auth_params} != "401 Unauthorized" ]]; then
     for sleep_time in 0.1 0.2 0.5 1 2 2.5 5 0 ; do
-      api_response=$(curl ${curl_auth_params} -s "$uri" | jq '.')
+      api_response=$(curl ${curl_auth_params} -fsS "$uri" | jq -ce 'select(. != null)')
       api_call_result=$?
       [ $api_call_result -eq 0 ] && break
       sleep $sleep_time
@@ -1048,4 +1048,5 @@ function main {
   run_command
 }
 
+${__SOURCED__:+false} : || return 0
 main
