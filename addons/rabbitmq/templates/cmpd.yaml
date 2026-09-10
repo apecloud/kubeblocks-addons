@@ -52,13 +52,38 @@ spec:
       defaultMode: 0555
   systemAccounts:
     - name: root
-      initAccount: true
+      initAccount: false
+      statement:
+        create: rabbitmqctl change_password ${KB_ACCOUNT_NAME} ${KB_ACCOUNT_PASSWORD}
+        update: rabbitmqctl change_password ${KB_ACCOUNT_NAME} ${KB_ACCOUNT_PASSWORD}
       passwordGenerationPolicy:
         length: 16
         numDigits: 8
         numSymbols: 0
         letterCase: MixedCases
   lifecycleActions:
+    accountProvision:
+      exec:
+        container: rabbitmq
+        command:
+          - /bin/sh
+          - /scripts/account-provision.sh
+        targetPodSelector: Any
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: K8S_SERVICE_NAME
+            value: $(CLUSTER_COMPONENT_NAME)-headless
+          - name: RABBITMQ_NODENAME
+            value: rabbit@$(POD_NAME).$(K8S_SERVICE_NAME).$(POD_NAMESPACE)
     memberLeave:
       exec:
         container: rabbitmq
@@ -191,6 +216,9 @@ spec:
           - mountPath: /scripts/startup.sh
             name: scripts
             subPath: startup.sh
+          - mountPath: /scripts/account-provision.sh
+            name: scripts
+            subPath: account-provision.sh
           - name: timezone
             mountPath: /etc/localtime
             readOnly: true
