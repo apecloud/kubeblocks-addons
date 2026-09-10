@@ -1,6 +1,11 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034
 
+if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
+  echo "member_join_spec.sh skip cases because dependency bash version 4 or higher is not installed."
+  exit 0
+fi
+
 Describe 'Etcd memberJoin registration reconciliation'
   Include ../scripts/member-join.sh
 
@@ -26,9 +31,10 @@ Describe 'Etcd memberJoin registration reconciliation'
         'member list -w simple')
           if [ "$added" = true ]; then
             case "$scenario" in
-              lost_reply) echo "2, unstarted, , $peer, , false"; return;;
-              add_failure) echo '1, started, etcd-0, http://etcd-0.headless:2380, http://etcd-0.headless:2379, false'; return;;
-              post_query_failure) return 1;;
+              absent|lost_reply) echo "2, unstarted, , $peer, , false"; return;;
+              add_failure|post_success_absent) echo '1, started, etcd-0, http://etcd-0.headless:2380, http://etcd-0.headless:2379, false'; return;;
+              post_query_failure|post_success_query_failure) return 1;;
+              post_success_conflict) echo "2, started, wrong, $peer, , false"; return;;
             esac
           fi
           case "$scenario" in
@@ -61,7 +67,7 @@ Describe 'Etcd memberJoin registration reconciliation'
     When call add_member
     The status should be success
     The output should include 'ADD'
-    The output should include 'joined cluster'
+    The output should include 'registration confirmed after successful add'
   End
 
   Context "already registered"
@@ -94,6 +100,7 @@ Describe 'Etcd memberJoin registration reconciliation'
       When call add_member
       The status should be failure
       The output should include 'Cannot safely join member'
+      The output should include 'Last observed membership'
       The output should not include 'ADD'
     End
 
@@ -110,12 +117,40 @@ Describe 'Etcd memberJoin registration reconciliation'
     Parameters
       add_failure
       post_query_failure
+      post_success_absent
+      post_success_conflict
+      post_success_query_failure
     End
     It 'does not hide an unconfirmed add failure'
       scenario="$1"
       When call add_member
       The status should be failure
       The output should include 'registration could not be confirmed'
+      The output should include 'Last observed membership'
     End
   End
+  Context "failure diagnostics"
+    Parameters
+      wrong_name '2, started, other, http://etcd-1.headless:2380'
+      post_success_absent '1, started, etcd-0, http://etcd-0.headless:2380'
+      post_success_query_failure '(query failed)'
+      empty '<(empty)>'
+    End
+    It 'includes the observed membership or an explicit failure marker'
+      scenario="$1"
+      When call add_member
+      The status should be failure
+      The output should include "$2"
+    End
+  End
+
+  It 'bounds membership diagnostics to 20 lines'
+    join_membership_snapshot=$(for i in {1..25}; do echo "member-line-$i"; done)
+    join_membership_query_error=''
+    When call log_join_membership
+    The status should be success
+    The output should include 'member-line-20'
+    The output should not include 'member-line-21'
+  End
+
 End
