@@ -1,9 +1,16 @@
+# shellcheck shell=bash
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 trap handle_exit EXIT
-cd ${DATA_DIR}
-START_TIME=$(get_current_time)
+# shellcheck disable=SC2164
+cd "$DATA_DIR"
+if START_TIME=$(get_current_time); then
+  :
+else
+  status=$?
+  exit "$status"
+fi
 # TODO: flush data and locked write, otherwise data maybe inconsistent
 # NOTE: if files changed during taring, the exit code will be 1 when it ends.
 tar -cvf - ./ | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst"
