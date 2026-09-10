@@ -67,10 +67,14 @@ spec:
     switchover:
       exec:
         container: mongodb
+        env:
+          - name: MONGODB_KUBECTL_BIN
+            value: {{ .Values.dataMountPath }}/tmp/bin/kubectl
         command:
           - /bin/sh
           - -c
-          - /scripts/mongodb-switchover.sh > /tmp/switchover.log 2>&1
+          - /scripts/mongodb-switchover.sh > /tmp/switchover.log
+      timeoutSeconds: 50
   runtime:
     securityContext:
       # percona-server-mongodb needs run as root to have privilege to access to keyfile
