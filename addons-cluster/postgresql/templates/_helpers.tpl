@@ -41,6 +41,14 @@ Define postgresql ComponentSpec with ComponentDefinition.
             namespace: {{ $secretRef.namespace }}
         {{- end }}
       {{- end }}
+    {{- if .Values.pgbouncer.enabled }}
+    - name: pgbouncer
+      replicas: {{ .Values.pgbouncer.replicas }}
+      {{- with .Values.pgbouncer.version }}
+      serviceVersion: {{ . | quote }}
+      {{- end }}
+      {{- include "kblib.componentResources" (dict "Values" .Values.pgbouncer) | indent 6 }}
+    {{- end }}
 {{- end }}
 
 {{- define "postgresql-cluster.serviceRef" }}

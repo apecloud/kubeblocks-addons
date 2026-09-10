@@ -1,7 +1,31 @@
 {
-  "$schema": "http://json-schema.org/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "definitions": {
+    "positiveResource": {
+      "type": ["number", "string"],
+      "exclusiveMinimum": 0,
+      "pattern": "^(0*[1-9][0-9]*(\\.[0-9]+)?|0+\\.[0-9]*[1-9][0-9]*)$"
+    }
+  },
   "properties": {
+    "pgbouncer": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "replicas": {"type": "integer", "minimum": 0, "maximum": 64},
+        "version": {"type": "string"},
+        "cpu": {"$ref": "#/definitions/positiveResource"},
+        "memory": {"$ref": "#/definitions/positiveResource"},
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": {"$ref": "#/definitions/positiveResource"},
+            "memory": {"$ref": "#/definitions/positiveResource"}
+          }
+        }
+      }
+    },
     "version": {
       "title": "Version",
       "description": "service version.",
