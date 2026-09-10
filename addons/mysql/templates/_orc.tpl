@@ -184,36 +184,19 @@ accountProvision:
     targetPodSelector: Role
     matchingKey: primary
 roleProbe:
-  periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-  timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+  periodSeconds: {{ .Values.roleProbe.orc.periodSeconds }}
+  timeoutSeconds: {{ .Values.roleProbe.orc.timeoutSeconds }}
   exec:
     env:
       - name: PATH
         value: /kubeblocks/:/kubeblocks-tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - name: ORC_ROLE_PROBE_CLIENT_TIMEOUT_SECONDS
+        value: "{{ .Values.roleProbe.orc.clientTimeoutSeconds }}"
     command:
       - /bin/bash
       - -c
       - |
-        master_info=$(/kubeblocks/orchestrator-client -c which-cluster-master -i "${KB_AGENT_POD_NAME}") || true
-        if [[ -z "$master_info" ]]; then
-          echo -n ""
-          exit 0
-        fi
-        master_from_orc="${master_info%%:*}"
-        if [ "$master_from_orc" == "${KB_AGENT_POD_NAME}" ]; then
-          echo -n "primary"
-        else
-          # get list of replicas
-          replicas=$(/kubeblocks/orchestrator-client -c which-cluster-instances -i "${master_from_orc}")
-          # for each replica, check if it is a secondary
-          for replica in $replicas; do
-            if [ "${replica%%:*}" == "${KB_AGENT_POD_NAME}" ]; then
-              echo -n "secondary"
-            else
-              echo -n ""
-            fi
-          done
-        fi
+        exec /orc-scripts/role-probe.sh
 memberLeave:
   exec:
     command:
@@ -226,15 +209,36 @@ memberLeave:
           exit 1
         fi
 switchover:
+  timeoutSeconds: {{ .Values.switchover.timeoutSeconds }}
   exec:
+    env:
+      - name: MYSQL_ORC_SWITCHOVER_PRECHECK_TIMEOUT_SECONDS
+        value: "{{ .Values.switchover.precheckTimeoutSeconds }}"
+      - name: MYSQL_ORC_SWITCHOVER_CLIENT_TIMEOUT_SECONDS
+        value: "{{ .Values.switchover.clientTimeoutSeconds }}"
+      - name: MYSQL_ORC_SWITCHOVER_MYSQL_TIMEOUT_SECONDS
+        value: "{{ .Values.switchover.mysqlTimeoutSeconds }}"
+      - name: MYSQL_ORC_SWITCHOVER_MYSQL_CONNECT_TIMEOUT_SECONDS
+        value: "{{ .Values.switchover.mysqlConnectTimeoutSeconds }}"
+      - name: MYSQL_ORC_SWITCHOVER_VERIFY_ATTEMPTS
+        value: "{{ .Values.switchover.verifyAttempts }}"
+      - name: MYSQL_ORC_SWITCHOVER_VERIFY_INTERVAL_SECONDS
+        value: "{{ .Values.switchover.verifyIntervalSeconds }}"
     command:
-      - /bin/sh
+      - /bin/bash
       - -c
       - |
-        /orc-scripts/switchover.sh 2>> /tmp/switchover.log
-        if [ $? -ne 0 ]; then
-          echo "ERROR: Failed to switchover"
-          exit 1
+        /orc-scripts/switchover.sh 2> >(tee -a /tmp/switchover.log >&2)
+        rc=$?
+        if [ $rc -ne 0 ]; then
+          {
+            echo "ERROR: Failed to switchover (rc=${rc}); diagnostics mirrored to /tmp/switchover.log"
+            if [ -s /tmp/switchover.log ]; then
+              echo "ERROR: switchover diagnostic tail:"
+              tail -n 200 /tmp/switchover.log || true
+            fi
+          } | tee /dev/stderr
+          exit $rc
         fi
 
 {{- end }}
