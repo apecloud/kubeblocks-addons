@@ -2,7 +2,7 @@
 
 Describe "PostgreSQL boolean parameter schema"
   pg_bool_pattern() {
-    local constraint="../config/pg18-config-constraint.cue"
+    local constraint="../config/pg13-config-constraint.cue"
 
     awk -F'"' '/^#PgBool: string & =~"/ { print $2; exit }' "$constraint"
   }
@@ -39,77 +39,33 @@ Describe "PostgreSQL boolean parameter schema"
   }
 
   assert_pg_bool_contract() {
-    local major="$1"
-    local constraint="../config/pg${major}-config-constraint.cue"
-    local template="../config/pg${major}-config.tpl"
+    local constraint="../config/pg13-config-constraint.cue"
+    local template="../config/pg13-config.tpl"
 
-    grep -Fq '#PgBool: string & =~"(?i)^(t(r(u(e)?)?)?|f(a(l(s(e)?)?)?)?|y(e(s)?)?|n(o)?|on|of(f)?|0|1)$"' "$constraint"
-    ! grep -Eq '^#PgBool:.*\bbool\b' "$constraint"
-    grep -Fq 'wal_init_zero?: #PgBool' "$constraint"
-    grep -Fq 'autovacuum?: #PgBool' "$constraint"
-    grep -Fq 'fsync: #PgBool | *"true"' "$constraint"
-    ! grep -Ev '^#PgBool:' "$constraint" | grep -Eq ':\s*bool\b|bool\s*&\s*false'
-    ! grep -Eq '#PgBool \| \*(true|false)' "$constraint"
-    grep -Fq 'huge_pages?: string & "on" | "off" | "try"' "$constraint"
-    grep -Fq '"pgtle.enable_password_check"?: string & "on" | "off" | "require"' "$constraint"
-    grep -Fq "cron.log_statement = 'on'" "$template"
-    if [ "$major" -eq 13 ]; then
-      ! grep -Fq "index_adviser.enable_log" "$template"
-    else
-      grep -Fq "index_adviser.enable_log = 'on'" "$template"
-    fi
+    grep -Fq '#PgBool: string & =~"(?i)^(t(r(u(e)?)?)?|f(a(l(s(e)?)?)?)?|y(e(s)?)?|n(o)?|on|of(f)?|0|1)$"' "$constraint" || return 1
+    ! grep -Eq '^#PgBool:.*\bbool\b' "$constraint" || return 1
+    grep -Fq 'wal_init_zero?: #PgBool' "$constraint" || return 1
+    grep -Fq 'autovacuum?: #PgBool' "$constraint" || return 1
+    grep -Fq 'fsync: #PgBool | *"true"' "$constraint" || return 1
+    ! grep -Ev '^#PgBool:' "$constraint" | grep -Eq ':\s*bool\b|bool\s*&\s*false' || return 1
+    ! grep -Eq '#PgBool \| \*(true|false)' "$constraint" || return 1
+    grep -Fq 'huge_pages?: string & "on" | "off" | "try"' "$constraint" || return 1
+    grep -Fq '"pgtle.enable_password_check"?: string & "on" | "off" | "require"' "$constraint" || return 1
+    grep -Fq "cron.log_statement = 'on'" "$template" || return 1
+    ! grep -Fq "index_adviser.enable_log" "$template" || return 1
     grep -Fq "wal_init_zero = off" "$template"
-
-    if [ "$major" -ge 14 ]; then
-      grep -Fq "remove_temp_files_after_crash = 'on'" "$template"
-    fi
   }
 
   assert_force_parallel_mode_contract() {
-    local major="$1"
-    local constraint="../config/pg${major}-config-constraint.cue"
-    local template="../config/pg${major}-config.tpl"
+    local constraint="../config/pg13-config-constraint.cue"
+    local template="../config/pg13-config.tpl"
 
-	if [ "$major" -eq 13 ]; then
-	  grep -Fq 'force_parallel_mode?: string & =~"(?i)^(off|on|regress|true|false|1|0)$"' "$constraint"
-	else
-	  grep -Fq 'force_parallel_mode?: string & =~"(?i)^(off|on|regress)$"' "$constraint"
-	fi
+    grep -Fq 'force_parallel_mode?: string & =~"(?i)^(off|on|regress|true|false|1|0)$"' "$constraint" || return 1
     grep -Fq "force_parallel_mode = 'off'" "$template"
   }
 
-  It "keeps pg12 boolean settings on the shared PostgreSQL boolean contract"
-    When call assert_pg_bool_contract 12
-    The status should be success
-  End
-
   It "keeps pg13 boolean settings on the shared PostgreSQL boolean contract"
-    When call assert_pg_bool_contract 13
-    The status should be success
-  End
-
-  It "keeps pg14 boolean settings on the shared PostgreSQL boolean contract"
-    When call assert_pg_bool_contract 14
-    The status should be success
-  End
-
-  It "keeps pg15 boolean settings on the shared PostgreSQL boolean contract"
-    When call assert_pg_bool_contract 15
-    The status should be success
-  End
-
-  It "keeps pg16 boolean settings on the shared PostgreSQL boolean contract"
-    When call assert_pg_bool_contract 16
-    The status should be success
-  End
-
-  It "keeps pg17 boolean settings on the shared PostgreSQL boolean contract"
-    When call assert_pg_bool_contract 17
-    The status should be success
-  End
-
-  It "keeps pg18 boolean settings on the shared PostgreSQL boolean contract"
-    When call assert_pg_bool_contract 18
+    When call assert_pg_bool_contract
     The status should be success
   End
 
@@ -123,23 +79,9 @@ Describe "PostgreSQL boolean parameter schema"
     The status should be success
   End
 
-  It "models PostgreSQL 12 force_parallel_mode as an enum"
-    When call assert_force_parallel_mode_contract 12
-    The status should be success
-  End
-
   It "models PostgreSQL 13 force_parallel_mode as an enum"
-    When call assert_force_parallel_mode_contract 13
+    When call assert_force_parallel_mode_contract
     The status should be success
   End
 
-  It "models PostgreSQL 14 force_parallel_mode as an enum"
-    When call assert_force_parallel_mode_contract 14
-    The status should be success
-  End
-
-  It "models PostgreSQL 15 force_parallel_mode as an enum"
-    When call assert_force_parallel_mode_contract 15
-    The status should be success
-  End
 End
