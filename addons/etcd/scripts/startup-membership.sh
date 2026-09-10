@@ -33,6 +33,7 @@ registered_initial_cluster() {
 wait_for_member_registration() {
   local state endpoints="" fqdn pod endpoint own_peer members initial_cluster
   local deadline remaining request_timeout
+  local last_members="<not observed>" query_error=""
   state=$(parse_config_value initial-cluster-state "$default_conf")
   [ "$state" = existing ] || return 0
   if etcd_has_wal; then
@@ -50,6 +51,7 @@ wait_for_member_registration() {
     endpoints="${endpoints:+$endpoints,}$(get_protocol advertise-client-urls)://$endpoint:2379"
   done
   if [ -z "$endpoints" ]; then
+    log "Last observed membership: <query not attempted: no remote peer>"
     error_exit "No existing peer available for startup registration check"
     return 1
   fi
@@ -60,16 +62,22 @@ wait_for_member_registration() {
     remaining=$((deadline - SECONDS))
     request_timeout=5
     [ "$remaining" -lt 5 ] && request_timeout="$remaining"
-    if members=$(exec_etcdctl "$endpoints" --dial-timeout=3s --command-timeout="${request_timeout}s" member list -w simple) &&
-      initial_cluster=$(registered_initial_cluster "$members" "$own_peer"); then
-      sed -i.bak "s|^initial-cluster:.*|initial-cluster: $initial_cluster|" "$default_conf"
-      rm -f "$default_conf.bak"
-      log "Startup registration confirmed; initial-cluster=$initial_cluster"
-      return 0
+    if members=$(exec_etcdctl "$endpoints" --dial-timeout=3s --command-timeout="${request_timeout}s" member list -w simple); then
+      last_members="${members:-<(empty)>}"
+      query_error=""
+      if initial_cluster=$(registered_initial_cluster "$members" "$own_peer"); then
+        sed -i.bak "s|^initial-cluster:.*|initial-cluster: $initial_cluster|" "$default_conf"
+        rm -f "$default_conf.bak"
+        log "Startup registration confirmed; initial-cluster=$initial_cluster"
+        return 0
+      fi
+    else
+      query_error=" (query failed)"
     fi
     log "Startup registration not ready; waiting for a consistent member list"
     [ "$SECONDS" -ge "$deadline" ] || sleep 1
   done
+  log "Last observed membership$query_error: $(printf '%s\n' "$last_members" | awk 'NR <= 20 { print substr($0, 1, 512) }')"
   error_exit "Timed out waiting for startup registration of $CURRENT_POD_NAME ($own_peer)"
   return 1
 }

@@ -1,5 +1,10 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034,SC2286
+if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
+  echo "startup_membership_spec.sh skip cases because dependency bash version 4 or higher is not installed."
+  exit 0
+fi
+
 Describe 'Etcd startup registration barrier'
   Include ../scripts/startup-membership.sh
   setup() {
@@ -22,6 +27,7 @@ Describe 'Etcd startup registration barrier'
       [ "$2" = --dial-timeout=3s ] || return 2
       [ "$3" = --command-timeout=5s ] || return 2
       [ "$scenario" = unavailable ] && return 1
+      [ "$scenario" = empty ] && return 0
       echo '1, started, etcd-0, http://etcd-0.headless:2380, http://etcd-0.headless:2379, false'
       if [ "$scenario" = present ]; then
         echo '3, unstarted, , http://etcd-3.headless:2380, , false'
@@ -76,7 +82,22 @@ Describe 'Etcd startup registration barrier'
     When call wait_for_member_registration
     The status should be failure
     The output should include 'Timed out waiting'
+    The output should include 'Last observed membership (query failed): <not observed>'
     The contents of file "$default_conf" should include 'stale=from-pod-list'
+  End
+
+  Context 'startup timeout diagnostics'
+    Parameters
+      missing '1, started, etcd-0, http://etcd-0.headless:2380'
+      empty '<(empty)>'
+    End
+    It 'includes the last successful query even when registration is missing'
+      scenario="$1"
+      When call wait_for_member_registration
+      The status should be failure
+      The output should include 'Timed out waiting'
+      The output should include "$2"
+    End
   End
 
   It 'rejects an existing-mode join with no remote peer'

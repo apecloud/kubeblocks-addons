@@ -5,9 +5,12 @@
 check_join_member() {
   local endpoint="$1" peer_url="$2" members
   if ! members=$(exec_etcdctl "$endpoint" --dial-timeout=3s --command-timeout=5s member list -w simple); then
+    join_membership_query_error=" (query failed)"
     log "Failed to query membership via $endpoint"
     return 2
   fi
+  join_membership_query_error=""
+  join_membership_snapshot="${members:-<(empty)>}"
   printf '%s\n' "$members" | awk -F ', ' -v name="$KB_JOIN_MEMBER_POD_NAME" -v peer="$peer_url" '
     NF != 6 || $1 !~ /^[0-9a-f]+$/ || ($2 != "started" && $2 != "unstarted") { invalid=1; next }
     $4 == peer {
@@ -22,9 +25,15 @@ check_join_member() {
     }'
 }
 
+# Bound diagnostics so the snapshot fits in the action failure tail.
+log_join_membership() {
+  log "Last observed membership${join_membership_query_error}: $(printf '%s\n' "$join_membership_snapshot" | awk 'NR <= 20 { print substr($0, 1, 512) }')"
+}
+
 # Reconcile engine registration, including add committed but reply/state lost.
 add_member() {
   local leader_pod_name leader_endpoint join_member_endpoint peer_protocol peer_url status
+  local join_membership_snapshot="<not observed>" join_membership_query_error="" add_result
   leader_pod_name="${LEADER_POD_FQDN%%.*}"
   leader_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$leader_pod_name" "$LEADER_POD_FQDN")
   join_member_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$KB_JOIN_MEMBER_POD_NAME" "$KB_JOIN_MEMBER_POD_FQDN")
@@ -38,22 +47,26 @@ add_member() {
   else
     status=$?
     if [ "$status" -ne 1 ]; then
+      log_join_membership
       error_exit "Cannot safely join member: membership unavailable or identity conflict"
       return 1
     fi
   fi
 
   if exec_etcdctl "$leader_endpoint:2379" --dial-timeout=3s --command-timeout=5s member add "$KB_JOIN_MEMBER_POD_NAME" --peer-urls="$peer_url"; then
-    log "Member $KB_JOIN_MEMBER_POD_NAME joined cluster via leader $leader_endpoint"
-    return 0
+    add_result="successful add"
+  else
+    # The server may have committed the add despite an error reaching this runner.
+    add_result="add error"
+    log "Member add failed; checking whether the target was registered"
   fi
 
-  # The server may have committed the add despite an error reaching this runner.
-  log "Member add failed; checking whether the target was registered"
+  # Even a successful command must be followed by an authoritative identity check.
   if check_join_member "$leader_endpoint:2379" "$peer_url"; then
-    log "Member $KB_JOIN_MEMBER_POD_NAME registration confirmed after add error"
+    log "Member $KB_JOIN_MEMBER_POD_NAME registration confirmed after $add_result"
     return 0
   fi
+  log_join_membership
   error_exit "Failed to join member: registration could not be confirmed"
   return 1
 }
