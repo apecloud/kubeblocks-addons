@@ -26,12 +26,18 @@ Describe 'Etcd startup registration barrier'
       [ "$1" = http://etcd-0.headless:2379 ] || return 2
       [ "$2" = --dial-timeout=3s ] || return 2
       [ "$3" = --command-timeout=5s ] || return 2
-      [ "$scenario" = unavailable ] && return 1
-      [ "$scenario" = empty ] && return 0
-      echo '1, started, etcd-0, http://etcd-0.headless:2380, http://etcd-0.headless:2379, false'
-      if [ "$scenario" = present ]; then
-        echo '3, unstarted, , http://etcd-3.headless:2380, , false'
-      fi
+      case "$scenario" in
+        unavailable) return 1;;
+        empty) return 0;;
+        present|absent|registered_peer_missing)
+          echo '1, started, etcd-0, http://etcd-0.headless:2380, http://etcd-0.headless:2379, false'
+          if [ "$scenario" = present ]; then
+            echo '3, unstarted, , http://etcd-3.headless:2380, , false'
+          fi
+          return 0
+          ;;
+        *) echo "Unknown membership mock scenario: $scenario" >&2; return 2;;
+      esac
     }
     sleep() {
       case "$scenario" in
@@ -88,7 +94,7 @@ Describe 'Etcd startup registration barrier'
 
   Context 'startup timeout diagnostics'
     Parameters
-      missing '1, started, etcd-0, http://etcd-0.headless:2380'
+      registered_peer_missing '1, started, etcd-0, http://etcd-0.headless:2380'
       empty '<(empty)>'
     End
     It 'includes the last successful query even when registration is missing'
