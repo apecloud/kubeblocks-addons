@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034
+# shellcheck disable=SC2034,SC2154
 
 if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
   echo "check_role_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
@@ -524,7 +524,7 @@ Describe "Valkey Check-Role Bash Script Tests"
         local entry epoch runid flags
         local -a keys=()
         local query_success_count=0
-        local master_config_count=0
+        local any_master_config_count=0
         for entry in "$@"; do
           # skip = unreachable sentinel / NOAUTH / client failure
           if [ "${entry}" = "skip" ]; then
@@ -534,7 +534,10 @@ Describe "Valkey Check-Role Bash Script Tests"
           if [ "${entry}" = "empty" ]; then
             continue
           fi
-          master_config_count=$((master_config_count + 1))
+          any_master_config_count=$((any_master_config_count + 1))
+          if [ "${entry}" = "foreign" ]; then
+            continue
+          fi
           IFS='|' read -r epoch runid flags <<< "${entry}"
           case "${epoch}" in
             ''|*[!0-9]*) continue ;;
@@ -549,7 +552,7 @@ Describe "Valkey Check-Role Bash Script Tests"
         done
         local valid_count=${#keys[@]}
         if [ "${valid_count}" -lt "${min_valid}" ]; then
-          if [ "${query_success_count}" -gt 0 ] && [ "${master_config_count}" -eq 0 ]; then
+          if [ "${query_success_count}" -gt 0 ] && [ "${any_master_config_count}" -eq 0 ]; then
             printf "BOOTSTRAP"
             return 0
           fi
@@ -630,6 +633,12 @@ Describe "Valkey Check-Role Bash Script Tests"
         The stdout should eq "BOOTSTRAP"
       End
 
+      It "foreign-only monitor records are unsafe, not bootstrap"
+        When call quorum_decide 3 "foreign" "foreign" "foreign"
+        The status should be success
+        The stdout should eq "LEGACY"
+      End
+
       It "all 3 sentinels unreachable or NOAUTH-failed → legacy unsafe path, not bootstrap"
         When call quorum_decide 3 "skip" "skip" "skip"
         The status should be success
@@ -704,6 +713,18 @@ Describe "Valkey Check-Role Bash Script Tests"
         When call grep -F 'flags_marker' "${check_role_script}"
         The status should be success
         The stdout should include "flags_marker"
+      End
+
+      It "rejects duplicate configured Sentinel endpoints before quorum"
+        When call grep -F '__quorum_decision_reason="duplicate_sentinel_config"' "${check_role_script}"
+        The status should be success
+        The stdout should include "duplicate_sentinel_config"
+      End
+
+      It "selects only the monitor record named for this component"
+        When call grep -F '[ "${record_name}" = "${VALKEY_COMPONENT_NAME}" ]' "${check_role_script}"
+        The status should be success
+        The stdout should include "VALKEY_COMPONENT_NAME"
       End
 
       It "decides primary token from quorum runid match, not local INFO=master"
@@ -844,7 +865,7 @@ Describe "Valkey Check-Role Bash Script Tests"
       End
 
       It "detects bootstrap only after at least one successful sentinel query"
-        When call grep -F '[ "${sentinel_query_success_count}" -gt 0 ] && [ "${sentinel_master_config_count}" -eq 0 ]' "${check_role_script}"
+        When call grep -F '[ "${sentinel_query_success_count}" -gt 0 ] && [ "${sentinel_any_master_config_count}" -eq 0 ]' "${check_role_script}"
         The status should be success
         The stdout should include 'sentinel_query_success_count'
       End

@@ -225,13 +225,8 @@ spec:
           - /bin/bash
           - -c
           - /scripts/valkey-sentinel-start.sh
-        livenessProbe:
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 5
-          failureThreshold: 5
-          exec:
-            command: [sh, -c, /scripts/valkey-sentinel-ping.sh]
+        # Sentinel is PID 1, so kubelet already restarts an exited process.
+        # Keep channel failures in readiness to avoid restart cascades.
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5

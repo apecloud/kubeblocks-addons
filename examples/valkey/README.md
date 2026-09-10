@@ -25,6 +25,23 @@ Valkey is an open source, in-memory data store compatible with the Redis protoco
 | 8.x | 8.0.0, 8.0.1, 8.0.9, 8.1.0, 8.1.3, 8.1.8 |
 | 9.x | 9.0.0, 9.0.4, 9.1.0 |
 
+### Cluster (sharding) topology — v1 boundary
+
+`topology: cluster` deploys Valkey Cluster: N shards (each one master plus
+replicas) with the 16384 hash slots evenly distributed. See
+[cluster-sharding.yaml](cluster-sharding.yaml).
+
+| Boundary | v1 support |
+|---|---|
+| Valkey version | 9 only |
+| Shards | 3..32 |
+| Replicas per shard | 1..5 |
+| Networking | in-cluster only — clients must be cluster-aware (MOVED/ASK); NodePort/LB direct-to-shard is rejected at render time |
+| TLS | not yet supported in cluster mode (rejected at render time) |
+| Custom account secret | not yet wired in cluster mode (rejected at render time) |
+| Backup | per-shard datafile on the shard primary (BGSAVE snapshot + ACL; nodes.conf is never archived). The backup fails if the primary is unhealthy, has migrating/importing slots, or its topology changes during BGSAVE. Each archive records source shard count, primary identity, slot ranges, and RDB digest. This is a per-shard stability fence, not a cross-shard atomic snapshot. |
+| Restore | same-shard-count slot-aware restore is supported. Each archive's slot ranges are restored to its shard and the complete archive set must cover all 16384 slots without overlap or gaps. Different shard counts and cluster-to-replication/standalone restore are rejected. |
+
 ## Prerequisites
 
 - Kubernetes cluster with KubeBlocks installed.
@@ -81,7 +98,9 @@ kubectl apply -f examples/valkey/backuprepo.yaml
 kubectl apply -f examples/valkey/backup.yaml
 ```
 
-After the backup is completed, update the backup name in `restore.yaml`, then run:
+After a replication backup is completed, update the backup name in
+`restore.yaml`, then run. This manifest is for replication topology; cluster
+restore uses a cluster topology with the same shard count as the source:
 
 ```bash
 kubectl apply -f examples/valkey/restore.yaml

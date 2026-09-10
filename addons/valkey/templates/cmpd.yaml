@@ -21,10 +21,12 @@ spec:
   serviceKind: redis
   serviceVersion: {{ .serviceVersion }}
 
-  # OrderedReady ensures pod-0 is Running before pod-1 starts.
-  # This matters for replication: the first pod becomes primary and
-  # later pods replicate from it.
-  podManagementPolicy: OrderedReady
+  # Parallel lets every peer start after a full Stop/Start. Startup still
+  # elects only the lowest ordinal for a fresh bootstrap and requires
+  # Sentinel or peer authority before existing data may become primary.
+  # OrderedReady would deadlock that fail-closed recovery: pod-0 waits for
+  # authority while KubeBlocks withholds pod-1 and later until pod-0 is Ready.
+  podManagementPolicy: Parallel
 
   # BestEffortParallel: update secondaries in parallel, primary last.
   # This minimises downtime while still guaranteeing the primary is the
@@ -461,13 +463,11 @@ spec:
     # switchover: supported only when Sentinel is present. Without Sentinel
     # there is no authoritative HA coordinator, so the action fails closed
     # instead of attempting a manual best-effort promotion.
-    # timeoutSeconds: -1 disables the kbagent-layer exec timeout so that the
-    # Sentinel priority-cache polling (up to 30s) and the wait_for_new_master
-    # confirmation (up to 300s) are not cut short.
-    # The OpsRequest-layer 5-minute hard deadline in switchover.go provides the
-    # outer safety net — no action can hang indefinitely.
+    # The script keeps its priority-cache and topology confirmation windows
+    # inside the kbagent 60s clamp. A retryable non-convergence returns non-zero
+    # so a later invocation can re-read authoritative Sentinel state.
     switchover:
-      timeoutSeconds: -1
+      timeoutSeconds: 50
       exec:
         container: valkey
         command:
@@ -478,6 +478,9 @@ spec:
     # memberJoin: KB injects KB_JOIN_MEMBER_POD_FQDN and KB_JOIN_MEMBER_POD_NAME.
     # For standalone replication we use this to sync the ACL file to new replicas.
     memberJoin:
+      # CLI calls are internally capped at 3s; keep the whole action below the
+      # kbagent 60s cap and retry transient topology/transport convergence.
+      timeoutSeconds: 50
       exec:
         container: valkey
         command:
@@ -485,12 +488,18 @@ spec:
           - -c
           - /scripts/sync-acl.sh
         targetPodSelector: Any
+      retryPolicy:
+        maxRetries: 10
+        retryInterval: 3
 
     # memberLeave: called when a pod is being removed (scale-in / eviction).
     # Triggers a Sentinel failover if the leaving pod is the primary.
     # Sentinel naturally marks the removed pod as s_down after
     # down-after-milliseconds (SENTINEL RESET is intentionally NOT called).
     memberLeave:
+      # Each invocation only observes or starts one failover step. This budget
+      # stays below the kbagent 60s cap; retry observes the next topology state.
+      timeoutSeconds: 50
       exec:
         container: valkey
         command:
@@ -503,6 +512,9 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+      retryPolicy:
+        maxRetries: 10
+        retryInterval: 3
 
   # ── Runtime (PodSpec) ──────────────────────────────────────────────────
   runtime:
@@ -544,16 +556,8 @@ spec:
           # KB_POD_FQDN lets scripts refer to the FQDN of this specific pod.
           - name: POD_FQDN
             value: "$(CURRENT_POD_NAME).$(VALKEY_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ $.Values.clusterDomain }}"
-        livenessProbe:
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
-          exec:
-            command:
-              - sh
-              - -c
-              - /scripts/valkey-ping.sh
+        # valkey-server is PID 1, so kubelet already restarts an exited process.
+        # Keep channel failures in readiness to avoid restart cascades.
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5
@@ -565,14 +569,6 @@ spec:
               - sh
               - -c
               - /scripts/valkey-ping.sh
-        lifecycle:
-          preStop:
-            exec:
-              command:
-                - /bin/bash
-                - -c
-                - /scripts/pre-stop.sh
-
       {{- if $.Values.metrics.enabled }}
       - name: metrics
         imagePullPolicy: IfNotPresent
