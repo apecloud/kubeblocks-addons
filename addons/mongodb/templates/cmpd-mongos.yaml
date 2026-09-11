@@ -129,8 +129,8 @@ spec:
               - bash
               - -c
               - |
-                client=$(mongosh --version 1>/dev/null&&echo mongosh||echo mongo)
                 . /scripts/mongodb-common.sh
+                client=$(get_mongodb_client_name)
                 $client $(mongodb_tls_client_options "$client") --port $SERVICE_PORT -u $MONGOS_USER -p $MONGOS_PASSWORD --authenticationDatabase admin --eval "db.adminCommand('ping')"
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}

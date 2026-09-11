@@ -23,6 +23,7 @@ spec:
       - bash
       - -c
       - |
+        {{- .Files.Get "scripts/mongodb-client.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/backup-info-collector.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/datafile-backup.sh" | nindent 8 }}
 

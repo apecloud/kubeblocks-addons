@@ -48,6 +48,7 @@ spec:
         - bash
         - -c
         - |
+          {{- .Files.Get "scripts/mongodb-client.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/rs-pbm-pitr-backup.sh" | nindent 10 }}
     preDelete:
@@ -74,5 +75,6 @@ spec:
           - bash
           - -c
           - |
+            {{- .Files.Get "scripts/mongodb-client.sh" | nindent 12 }}
             {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
             {{- .Files.Get "dataprotection/rs-pbm-pitr-restore.sh" | nindent 12 }}

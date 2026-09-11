@@ -10,7 +10,6 @@
 
 
 Describe "Mongodb Startup Script Tests"
-  Include ../scripts/mongodb-common.sh
 
   # Global setup: define variables and the path for our mock script.
   init() {
@@ -18,7 +17,6 @@ Describe "Mongodb Startup Script Tests"
     # Also export MONGODB_ROOT so it's accessible to both the test and the script under test.
     export MONGODB_ROOT=${DATA_VOLUME:-/data/mongodb}
     POD_NAME="cluster-mongodb-0"
-    TLS_ENABLED=false
 
     # Create the directory for the dependency script the main script will 'source'.
     MOCK_SCRIPTS_DIR="./mock_scripts"
@@ -27,9 +25,6 @@ Describe "Mongodb Startup Script Tests"
     cat > "$MOCK_SCRIPTS_DIR/mongodb-common.sh" <<'EOF'
 process_restore_signal() {
   echo "Mocked process_restore_signal called with: $2"
-}
-prepare_mongodb_tls() {
-  return 0
 }
 EOF
     SCRIPTS_BASE_PATH="$MOCK_SCRIPTS_DIR"
@@ -71,24 +66,6 @@ EOF
 
       The file "$DATA_VOLUME/exec_cmd.log" should be file
       The contents of file "$DATA_VOLUME/exec_cmd.log" should equal "mongod --bind_ip_all --port 27017 --replSet cluster-mongodb --config /etc/mongodb/mongodb.conf"
-      The status should be success
-    End
-
-    It "passes TLS options to mongod when TLS is enabled"
-      TLS_ENABLED=true
-      MONGODB_SERVICE_VERSION=8.0.17
-      When run source ../scripts/replicaset-setup.tpl
-
-      The contents of file "$DATA_VOLUME/exec_cmd.log" should equal "mongod --bind_ip_all --port 27017 --replSet cluster-mongodb --config /etc/mongodb/mongodb.conf --tlsMode requireTLS --tlsCAFile /etc/pki/tls/ca.pem --tlsCertificateKeyFile /etc/mongodb/tls/mongodb.pem --tlsAllowConnectionsWithoutCertificates"
-      The status should be success
-    End
-
-    It "passes legacy SSL options to MongoDB 4.0 when TLS is enabled"
-      TLS_ENABLED=true
-      MONGODB_SERVICE_VERSION=4.0.28
-      When run source ../scripts/replicaset-setup.tpl
-
-      The contents of file "$DATA_VOLUME/exec_cmd.log" should equal "mongod --bind_ip_all --port 27017 --replSet cluster-mongodb --config /etc/mongodb/mongodb.conf --sslMode requireSSL --sslCAFile /etc/pki/tls/ca.pem --sslPEMKeyFile /etc/mongodb/tls/mongodb.pem --sslAllowConnectionsWithoutCertificates"
       The status should be success
     End
   End

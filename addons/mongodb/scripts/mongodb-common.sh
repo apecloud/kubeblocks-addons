@@ -15,27 +15,14 @@ prepare_mongodb_tls() {
 
 mongodb_tls_server_options() {
     if [ "${TLS_ENABLED:-false}" = "true" ]; then
+        # Internal mongod/mongos connections also use encryption without peer verification.
         # MongoDB 4.0 is the only supported series predating the 4.2 TLS option names.
         case "${MONGODB_SERVICE_VERSION:-}" in
             4.0|4.0.*)
-                echo "--sslMode requireSSL --sslCAFile /etc/pki/tls/ca.pem --sslPEMKeyFile /etc/mongodb/tls/mongodb.pem --sslAllowConnectionsWithoutCertificates"
+                echo "--sslMode requireSSL --sslCAFile /etc/pki/tls/ca.pem --sslPEMKeyFile /etc/mongodb/tls/mongodb.pem --sslAllowConnectionsWithoutCertificates --sslAllowInvalidCertificates --sslAllowInvalidHostnames"
                 ;;
             *)
-                echo "--tlsMode requireTLS --tlsCAFile /etc/pki/tls/ca.pem --tlsCertificateKeyFile /etc/mongodb/tls/mongodb.pem --tlsAllowConnectionsWithoutCertificates"
-                ;;
-        esac
-    fi
-}
-
-mongodb_tls_client_options() {
-    if [ "${TLS_ENABLED:-false}" = "true" ]; then
-        # The bundled mongo shell follows the server version; mongosh always uses TLS options.
-        case "${MONGODB_SERVICE_VERSION:-}:${1:-mongo}" in
-            4.0:mongo|4.0.*:mongo)
-                echo "--ssl --sslAllowInvalidCertificates --sslAllowInvalidHostnames"
-                ;;
-            *)
-                echo "--tls --tlsAllowInvalidCertificates --tlsAllowInvalidHostnames"
+                echo "--tlsMode requireTLS --tlsCAFile /etc/pki/tls/ca.pem --tlsCertificateKeyFile /etc/mongodb/tls/mongodb.pem --tlsAllowConnectionsWithoutCertificates --tlsAllowInvalidCertificates --tlsAllowInvalidHostnames"
                 ;;
         esac
     fi
@@ -211,9 +198,4 @@ generate_endpoints() {
     done
 
     IFS=','; echo "${endpoints[*]}"
-}
-
-function get_mongodb_client_name() {
-    local client_name=$(mongosh --version 1>/dev/null&&echo mongosh||echo mongo)
-    echo $client_name
 }

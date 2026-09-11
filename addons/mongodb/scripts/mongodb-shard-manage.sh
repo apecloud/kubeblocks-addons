@@ -5,6 +5,8 @@
 
 MONGODB_REPLICA_SET_NAME=$CLUSTER_COMPONENT_NAME
 CLIENT=$(get_mongodb_client_name)
+# Used by the query helpers included in mongodb-common.sh.
+# shellcheck disable=SC2034
 CLUSTER_MONGO="$CLIENT $(mongodb_tls_client_options "$CLIENT") --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_ADMIN_USER -p $MONGODB_ADMIN_PASSWORD --quiet --eval"
 
 wait_for_mongos() {
@@ -12,8 +14,7 @@ wait_for_mongos() {
     MAX_RETRIES=300
     retry_count=0
     while [ $retry_count -lt $MAX_RETRIES ]; do
-        result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })" 2>/dev/null)
-        if [[ "$result" == *"ok"* ]]; then
+        if mongodb_command_json "db.adminCommand({ ping: 1 })" >/dev/null; then
             echo "INFO: Mongos is ready."
             break
         fi
@@ -31,16 +32,19 @@ wait_for_mongos() {
 check_shard_exists() {
     # check if the shard exists in the config database
     local shard_exists
-    if ! shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$MONGODB_REPLICA_SET_NAME\" })" 2>/dev/null); then
+    if ! shard_exists=$(mongodb_query_json "db.getSiblingDB(\"config\").shards.findOne({ _id: \"$MONGODB_REPLICA_SET_NAME\" }) !== null"); then
         echo "ERROR: Failed to check if shard $MONGODB_REPLICA_SET_NAME exists." >&2
         exit 1
     fi
     echo "INFO: Check if shard $MONGODB_REPLICA_SET_NAME exists: $shard_exists"
-    if [ -n "$shard_exists" ]; then
-        return 0 # true
-    else
-        return 1
-    fi
+    case "$shard_exists" in
+        true) return 0 ;;
+        false) return 1 ;;
+        *)
+            echo "ERROR: Invalid shard existence result: $shard_exists" >&2
+            exit 1
+            ;;
+    esac
 }
 
 initialize_or_scale_out_mongodb_shard() {
@@ -59,27 +63,20 @@ initialize_or_scale_out_mongodb_shard() {
         sleep 2
         pod_endpoints=$(generate_endpoints "$MONGODB_POD_FQDN_LIST" "$KB_SERVICE_PORT")
         echo "INFO: Adding shard $MONGODB_REPLICA_SET_NAME with endpoints: $pod_endpoints"
-        $CLUSTER_MONGO "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")"
+        mongodb_command_json "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")" || exit 1
     done
     echo "INFO: Shard $MONGODB_REPLICA_SET_NAME added."
 }
 
 get_remove_shard_status() {
-    # Execute the removeShard command and capture its JSON output
-    local result
-    if [ "$CLIENT" = "mongosh" ]; then
-        result=$($CLUSTER_MONGO "EJSON.stringify(db.adminCommand( { removeShard: \"$MONGODB_REPLICA_SET_NAME\" } ))") || return 1
-    else
-        result=$($CLUSTER_MONGO "JSON.stringify(db.adminCommand( { removeShard: \"$MONGODB_REPLICA_SET_NAME\" } ))") || return 1
-    fi
-    echo "$result"
+    mongodb_command_json "db.adminCommand({ removeShard: \"$MONGODB_REPLICA_SET_NAME\" })"
 }
 
 get_remove_shard_state() {
     local result=$1
     # Parse and log the state using jq
     local state
-    state=$(echo "$result" | jq -er '.state // empty') || return 1
+    state=$(echo "$result" | jq -er '.state | select(. == "started" or . == "ongoing" or . == "completed")') || return 1
     # Return the state as the function output
     echo "$state"
 }
@@ -88,11 +85,7 @@ get_remaining_jumbo_chunks() {
     local result=$1
     # Parse and log the jumboChunks count using jq
     local jumbo_chunks
-    if [ "$CLIENT" = "mongosh" ]; then
-        jumbo_chunks=$(echo "$result" | jq -er '(.remaining.jumboChunks // 0) | tonumber') || return 1
-    else
-        jumbo_chunks=$(echo "$result" | jq -er '(.remaining.jumboChunks."$numberLong" // 0) | tonumber') || return 1
-    fi
+    jumbo_chunks=$(echo "$result" | jq -er '(.remaining.jumboChunks // 0) | if type == "object" then (."$numberLong" // .numberLong) else . end | tonumber') || return 1
     # Return the jumboChunks count as the function output
     echo "$jumbo_chunks"
 }
@@ -101,11 +94,7 @@ get_remaining_chunks() {
     local result=$1
     # Parse and log the chunks count using jq
     local chunks
-    if [ "$CLIENT" = "mongosh" ]; then
-        chunks=$(echo "$result" | jq -er '(.remaining.chunks // 0) | tonumber') || return 1
-    else
-        chunks=$(echo "$result" | jq -er '(.remaining.chunks."$numberLong" // 0) | tonumber') || return 1
-    fi
+    chunks=$(echo "$result" | jq -er '(.remaining.chunks // 0) | if type == "object" then (."$numberLong" // .numberLong) else . end | tonumber') || return 1
     # Return the chunks count as the function output
     echo "$chunks"
 }
@@ -113,18 +102,18 @@ get_remaining_chunks() {
 get_database_primary() {
     local database=$1
     local result
-    result=$($CLUSTER_MONGO "JSON.stringify(db.getSiblingDB('config').databases.findOne({ _id: \"$database\" }))") || return 1
+    result=$(mongodb_query_json "db.getSiblingDB('config').databases.findOne({ _id: \"$database\" })") || return 1
     echo "$result" | jq -r '.primary // empty'
 }
 
 get_destination_shard() {
     local result
     local shards
-    result=$($CLUSTER_MONGO "JSON.stringify(
+    result=$(mongodb_query_json "
         db.getSiblingDB('config').shards.find({
             _id: { \$ne: '$MONGODB_REPLICA_SET_NAME' }
         }).toArray()
-    )") || return 1
+    ") || return 1
     shards=$(echo "$result" | jq -r '.[]._id') || return 1
     echo "$shards" | shuf -n 1
 }
@@ -137,13 +126,13 @@ delete_or_scale_in_mongodb_shard() {
         return 0
     fi
 
-    balancer_status=$($CLUSTER_MONGO "sh.getBalancerState()") || {
+    balancer_status=$(mongodb_query_json "sh.getBalancerState()") || {
         echo "ERROR: Failed to get the balancer state." >&2
         return 1
     }
     case "$balancer_status" in
     false)
-        if ! $CLUSTER_MONGO "sh.startBalancer()"; then
+        if ! mongodb_command_json "db.adminCommand({ balancerStart: 1 })"; then
             echo "ERROR: Failed to start the balancer." >&2
             return 1
         fi
@@ -222,7 +211,7 @@ delete_or_scale_in_mongodb_shard() {
                 fi
 
                 echo "INFO: Moving primary for database '$db' to shard '$DESTINATION_SHARD'..."
-                if ! $CLUSTER_MONGO "db.adminCommand({ movePrimary: \"$db\", to: \"$DESTINATION_SHARD\" })"; then
+                if ! mongodb_command_json "db.adminCommand({ movePrimary: \"$db\", to: \"$DESTINATION_SHARD\" })"; then
                     echo "ERROR: Failed to move primary for database '$db'." >&2
                     return 1
                 fi
