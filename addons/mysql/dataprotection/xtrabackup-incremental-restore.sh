@@ -34,6 +34,7 @@ fi
 # prepare base data
 mkdir -p ${DATA_DIR}
 BASE_DIR=${MYSQL_DIR}/xtrabackup-base
+rm -rf ${BASE_DIR}
 download_backup_file "${DP_BASE_BACKUP_NAME}" "${BASE_DIR}"
 xtrabackup --prepare --apply-log-only --target-dir=${BASE_DIR}
 
@@ -42,6 +43,7 @@ if [ -n "${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES}" ]; then
   read -r -a ANCESTOR_INCREMENTAL_BACKUP_NAMES <<< "${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES//,/ }"
 fi
 INCS_DIR=${MYSQL_DIR}/xtrabackup-incs
+rm -rf ${INCS_DIR}
 mkdir -p ${INCS_DIR}
 # prepare incremental data
 for parent_name in "${ANCESTOR_INCREMENTAL_BACKUP_NAMES[@]}"; do
@@ -57,11 +59,11 @@ rm -rf ${INCS_DIR}/${DP_BACKUP_NAME}
 
 # 4. restore
 xtrabackup --move-back --target-dir=${BASE_DIR} --datadir=${DATA_DIR}
+rm -rf ${BASE_DIR}
+rm -rf ${INCS_DIR}
+chmod -R 0777 ${DATA_DIR}
 touch ${DATA_DIR}/.xtrabackup_restore
 if [ "${BACKUP_FOR_STANDBY}" != "true" ]; then
    touch ${DATA_DIR}/.restore_new_cluster
 fi
-rm -rf ${BASE_DIR}
-rm -rf ${INCS_DIR}
-chmod -R 0777 ${DATA_DIR}
 echo "Restore completed!"

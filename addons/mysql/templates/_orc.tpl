@@ -150,6 +150,7 @@ exporter:
 {{- define "mysql-orc.spec.lifecycle.common" }}
 preTerminate:
   exec:
+    container: mysql
     command:
       - bash
       - -c
@@ -187,6 +188,7 @@ roleProbe:
   periodSeconds: {{ .Values.roleProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   exec:
+    container: mysql
     env:
       - name: PATH
         value: /kubeblocks/:/kubeblocks-tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -216,6 +218,7 @@ roleProbe:
         fi
 memberLeave:
   exec:
+    container: mysql
     command:
       - /bin/bash
       - -c
@@ -227,6 +230,7 @@ memberLeave:
         fi
 switchover:
   exec:
+    container: mysql
     command:
       - /bin/sh
       - -c
@@ -248,7 +252,7 @@ switchover:
       cp -r /usr/bin/jq /kubeblocks/jq
       cp -r /scripts/orchestrator-client /kubeblocks/orchestrator-client
       cp -r /usr/local/bin/curl /kubeblocks/curl
-  imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+  imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   name: init-jq
   volumeMounts:
     - mountPath: /kubeblocks
@@ -256,7 +260,7 @@ switchover:
 {{- end }}
 
 {{- define "mysql-orc.spec.runtime.mysql" -}}
-imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
 command:
   - bash
   - -c

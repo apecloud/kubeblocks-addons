@@ -162,7 +162,7 @@ if [ "${__SOURCED__:+x}" ]; then
 fi
 
 
-log "$MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT"
+log "INFO" "Connecting to MySQL backend $BACKEND_SERVER:$MYSQL_PORT as $MYSQL_ROOT_USER"
 wait_for_mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT
 
 writable_mysql_server=$(get_writable_mysql_server)
@@ -177,7 +177,7 @@ mysql_version=$(mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $writable_mysql
 #     log "Unsupported mysql version"
 # fi
 
-log "connecting to mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $writable_mysql_server $MYSQL_PORT"
+log "INFO" "Using writable MySQL backend $writable_mysql_server:$MYSQL_PORT as $MYSQL_ROOT_USER"
 if is_group_replication_backend "$writable_mysql_server"; then
     init_group_replication_monitor_view "$writable_mysql_server"
 fi
