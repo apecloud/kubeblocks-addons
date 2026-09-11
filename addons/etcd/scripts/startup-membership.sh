@@ -8,13 +8,23 @@ etcd_has_wal() {
 }
 
 # Emit the engine's complete initial-cluster mapping only after this exact peer
-# is registered. Another unnamed member cannot safely be named from Pod order.
+# is registered. Resolve unnamed peers only through the exact URL mapping
+# already generated from Pod FQDNs / configured LoadBalancer endpoints.
 registered_initial_cluster() {
-  local members="$1" own_peer="$2"
-  printf '%s\n' "$members" | awk -F ', ' -v name="$CURRENT_POD_NAME" -v peer="$own_peer" '
+  local members="$1" own_peer="$2" expected_cluster="${3:-}"
+  printf '%s\n' "$members" | awk -F ', ' -v name="$CURRENT_POD_NAME" -v peer="$own_peer" -v expected="$expected_cluster" '
+    BEGIN {
+      count=split(expected, entries, ",")
+      for (i=1; i<=count; i++) {
+        if (entries[i] == "") continue
+        if (split(entries[i], pair, "=") != 2 || pair[1] == "" || pair[2] == "" || mapping[pair[2]] != "" || expected_names[pair[1]]++) invalid=1
+        mapping[pair[2]]=pair[1]
+      }
+    }
     NF != 6 || $1 !~ /^[0-9a-f]+$/ || ($2 != "started" && $2 != "unstarted") { invalid=1; next }
     {
       n=$3
+      if (n == "") n=mapping[$4]
       if ($4 == peer) {
         found++
         if ((n != "" && n != name) || $6 != "false") invalid=1
@@ -32,7 +42,7 @@ registered_initial_cluster() {
 
 wait_for_member_registration() {
   local state endpoints="" fqdn pod endpoint own_peer members initial_cluster
-  local deadline remaining request_timeout
+  local deadline remaining request_timeout expected_cluster
   local last_members="<not observed>" query_error=""
   state=$(parse_config_value initial-cluster-state "$default_conf")
   [ "$state" = existing ] || return 0
@@ -42,13 +52,14 @@ wait_for_member_registration() {
   fi
 
   own_peer=$(parse_config_value initial-advertise-peer-urls "$default_conf")
+  expected_cluster=$(parse_config_value initial-cluster "$default_conf")
   local peers
   IFS=',' read -ra peers <<< "$PEER_FQDNS"
   for fqdn in "${peers[@]}"; do
     pod="${fqdn%%.*}"
     [ "$pod" = "$CURRENT_POD_NAME" ] && continue
     endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$pod" "$fqdn")
-    endpoints="${endpoints:+$endpoints,}$(get_protocol advertise-client-urls)://$endpoint:2379"
+    endpoints="${endpoints:+$endpoints,}$(get_protocol initial-advertise-peer-urls)://$endpoint:2380"
   done
   if [ -z "$endpoints" ]; then
     log "Last observed membership: <query not attempted: no remote peer>"
@@ -62,10 +73,10 @@ wait_for_member_registration() {
     remaining=$((deadline - SECONDS))
     request_timeout=5
     [ "$remaining" -lt 5 ] && request_timeout="$remaining"
-    if members=$(exec_etcdctl "$endpoints" --dial-timeout=3s --command-timeout="${request_timeout}s" member list -w simple); then
+    if members=$(read_peer_members "$endpoints" "$request_timeout"); then
       last_members="${members:-<(empty)>}"
       query_error=""
-      if initial_cluster=$(registered_initial_cluster "$members" "$own_peer"); then
+      if initial_cluster=$(registered_initial_cluster "$members" "$own_peer" "$expected_cluster"); then
         sed -i.bak "s|^initial-cluster:.*|initial-cluster: $initial_cluster|" "$default_conf"
         rm -f "$default_conf.bak"
         log "Startup registration confirmed; initial-cluster=$initial_cluster"
