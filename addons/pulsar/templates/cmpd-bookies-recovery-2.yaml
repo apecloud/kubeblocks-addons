@@ -80,6 +80,8 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
+          - name: bkrecovery-config
+            mountPath: /opt/pulsar/conf
         securityContext:
           privileged: true
           runAsNonRoot: false
