@@ -1,12 +1,11 @@
 # shellcheck disable=SC2148
 function get_current_time() {
-  if [ -n "$(whereis mongosh | awk '{print $2}')" ]; then
-    CLIENT="mongosh"
-  else
-    CLIENT="mongo"
-  fi
-  curr_time=$(${CLIENT} -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} --port ${DP_DB_PORT} --host ${DP_DB_HOST} --authenticationDatabase admin --eval 'db.isMaster().lastWrite.lastWriteDate.getTime()/1000' --quiet)
-  curr_time=$(date -d "@${curr_time}" -u '+%Y-%m-%dT%H:%M:%SZ')
+  local CLUSTER_MONGO curr_time
+  CLIENT=$(get_mongodb_client_name)
+  # shellcheck disable=SC2034
+  CLUSTER_MONGO="$CLIENT $(mongodb_tls_client_options "$CLIENT") -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} --port ${DP_DB_PORT} --host ${DP_DB_HOST} --authenticationDatabase admin --quiet --eval"
+  curr_time=$(mongodb_query_json 'db.isMaster().lastWrite.lastWriteDate.getTime()/1000') || return $?
+  curr_time=$(date -d "@${curr_time}" -u '+%Y-%m-%dT%H:%M:%SZ') || return $?
   echo $curr_time
 }
 

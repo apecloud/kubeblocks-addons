@@ -11,14 +11,16 @@ export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 # Allow the test framework to pass in a mock path to override the default /scripts.
 SCRIPTS_BASE_PATH=${SCRIPTS_BASE_PATH:-/scripts}
 . "$SCRIPTS_BASE_PATH/mongodb-common.sh"
+prepare_mongodb_tls || exit 1
 
 # Restore from datafile
 BACKUPFILE=$MONGODB_ROOT/db/mongodb.backup
 PORT_FOR_RESTORE=27027
 if [ -f $BACKUPFILE ]
 then
-  CLIENT=`mongosh --version >/dev/null&&echo mongosh||echo mongo`
-  mongod --bind_ip_all --port $PORT_FOR_RESTORE --dbpath $MONGODB_ROOT/db --directoryperdb --logpath $MONGODB_ROOT/logs/mongodb.log  --logappend --pidfilepath $MONGODB_ROOT/tmp/mongodb.pid&
+  CLIENT=$(get_mongodb_client_name)
+  CLIENT="$CLIENT $(mongodb_tls_client_options "$CLIENT")"
+  mongod --bind_ip_all --port $PORT_FOR_RESTORE --dbpath $MONGODB_ROOT/db --directoryperdb --logpath $MONGODB_ROOT/logs/mongodb.log  --logappend --pidfilepath $MONGODB_ROOT/tmp/mongodb.pid $(mongodb_tls_server_options)&
   until $CLIENT --quiet --port $PORT_FOR_RESTORE --eval "print('restore process is ready')"; do sleep 1; done
   PID=`cat $MONGODB_ROOT/tmp/mongodb.pid`
 
@@ -35,7 +37,7 @@ fi
 
 # Restore from pbm
 PBM_BACKUPFILE=$MONGODB_ROOT/tmp/mongodb_pbm.backup
-process="mongod --bind_ip_all --port $PORT --replSet $RPL_SET_NAME --config /etc/mongodb/mongodb.conf"
+process="mongod --bind_ip_all --port $PORT --replSet $RPL_SET_NAME --config /etc/mongodb/mongodb.conf $(mongodb_tls_server_options)"
 if [ ! -f $PBM_BACKUPFILE ]
 then
   exec $process

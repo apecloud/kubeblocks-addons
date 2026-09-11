@@ -9,6 +9,7 @@ metadata:
 spec:
   provider: kubeblocks.io
   serviceKind: mongodb
+  {{- include "mongodb.tls" . | nindent 2 }}
   configs:
     - name: mongodb-config
       template: {{ include "mongodbShard.configTplName" . }}
@@ -174,7 +175,7 @@ spec:
           - name: PBM_AGENT_MONGODB_PASSWORD
             value: $(MONGODB_PASSWORD)
           - name: PBM_MONGODB_URI
-            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin$(MONGODB_TLS_URI_OPTIONS)
           # syncer uses the env to wait dns ready
           - name: KB_POD_FQDN
             value: "$(POD_NAME).$(CLUSTER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
@@ -214,7 +215,7 @@ spec:
           - name: PBM_AGENT_MONGODB_PASSWORD
             value: $(MONGODB_PASSWORD)
           - name: PBM_MONGODB_URI
-            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin$(MONGODB_TLS_URI_OPTIONS)
           - name: PBM_DATA_MOUNT_POINT
             value: {{ .Values.dataMountPath }}
         volumeMounts:
@@ -240,7 +241,7 @@ spec:
             containerPort: 9216
         env:
           - name: MONGODB_URI
-            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)
+            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)/?authSource=admin$(MONGODB_TLS_URI_OPTIONS)
     {{- if .Values.logCollector.enabled }}
     volumes:
       - name: log-data
@@ -257,6 +258,7 @@ spec:
             targetPort: mongodb
       roleSelector: primary
   vars:
+    {{- include "mongodb.tlsVars" . | nindent 4 }}
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:

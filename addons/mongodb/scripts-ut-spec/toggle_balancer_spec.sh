@@ -74,6 +74,7 @@ echo "mongosh: ${MOCK_BIN_DIR}/mongosh"
 MOCK
     cat > "$temp_dir/bin/mongosh" <<'MOCK'
 #!/usr/bin/env bash
+[ "$1" != --version ] || exit 0
 query=""
 for argument in "$@"; do
   query="$argument"
@@ -101,7 +102,7 @@ case "$query" in
     ;;
   *sh.getBalancerState*)
     echo 'STATE' >> "$MOCK_CALL_LOG"
-    echo "$MOCK_BALANCER_STATE"
+    echo "__KB_MONGODB_RESULT__$MOCK_BALANCER_STATE"
     exit "$MOCK_STATE_RC"
     ;;
   *)
