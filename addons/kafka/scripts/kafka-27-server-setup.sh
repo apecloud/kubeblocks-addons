@@ -137,6 +137,8 @@ set_jvm_configuration() {
     export KAFKA_HEAP_OPTS=${KB_KAFKA_BROKER_HEAP}
     echo "[jvm][KB_KAFKA_BROKER_HEAP]export KAFKA_HEAP_OPTS=${KB_KAFKA_BROKER_HEAP}"
   fi
+  export JMX_PORT=5555
+  echo "[jvm][JMX_PORT]export JMX_PORT=5555"
 }
 
 extract_ordinal_from_object_name() {
