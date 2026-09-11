@@ -89,7 +89,8 @@ main() {
   . /scripts/common.sh
   load_common_library
   join_log=/tmp/kb-member-join.log
-  exec 3>&2
+  # Keep the immutable legacy command redirection while exposing action errors.
+  { exec 3>/proc/1/fd/2; } 2>/dev/null || exec 3>&2
   if [ -f "$join_log" ] && [ "$(wc -c < "$join_log")" -ge 1048576 ]; then
     mv -f "$join_log" "$join_log.1"
   fi

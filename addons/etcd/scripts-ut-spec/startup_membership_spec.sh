@@ -21,11 +21,10 @@ Describe 'Etcd startup registration barrier'
     error_exit() { echo "$1"; return 1; }
     get_endpoint_adapt_lb() { echo "$3"; }
     get_protocol() { echo http; }
-    exec_etcdctl() {
+    read_peer_members() {
       echo QUERY >> "$test_dir/queries"
-      [ "$1" = http://etcd-0.headless:2379 ] || return 2
-      [ "$2" = --dial-timeout=3s ] || return 2
-      [ "$3" = --command-timeout=5s ] || return 2
+      [ "$1" = http://etcd-0.headless:2380 ] || return 2
+      [ "$2" = 5 ] || return 2
       case "$scenario" in
         unavailable) return 1;;
         empty) return 0;;
@@ -111,6 +110,24 @@ Describe 'Etcd startup registration barrier'
     When call wait_for_member_registration
     The status should be failure
     The output should include 'No existing peer'
+  End
+
+  It 'resolves multiple unnamed members by their exact expected peer URLs'
+    members='1, started, etcd-0, http://etcd-0.headless:2380, , false
+3, unstarted, , http://etcd-3.headless:2380, , false
+4, unstarted, , http://etcd-4.headless:2380, , false'
+    mapping='etcd-0=http://etcd-0.headless:2380,etcd-3=http://etcd-3.headless:2380,etcd-4=http://etcd-4.headless:2380'
+    When call registered_initial_cluster "$members" http://etcd-3.headless:2380 "$mapping"
+    The status should be success
+    The output should include 'etcd-3=http://etcd-3.headless:2380,etcd-4=http://etcd-4.headless:2380'
+  End
+
+  It 'rejects ambiguous expected peer mappings'
+    members='3, unstarted, , http://etcd-3.headless:2380, , false'
+    mapping='etcd-3=http://etcd-3.headless:2380,other=http://etcd-3.headless:2380'
+    When call registered_initial_cluster "$members" http://etcd-3.headless:2380 "$mapping"
+    The status should be failure
+    The output should be blank
   End
 
   Context 'unsafe membership snapshots'
