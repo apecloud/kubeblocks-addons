@@ -25,7 +25,7 @@ subscriptionKeySharedUseConsistentHashing=true
 transactionCoordinatorEnabled=true
 systemTopicEnabled=true
 acknowledgmentAtBatchIndexLevelEnabled=true
-statusFilePath=/pulsar/status
+statusFilePath=/pulsar/data/status
 
 # @deprecated since 2.8.0 subscriptionTypesEnabled is preferred over subscriptionKeySharedEnable.
 subscriptionKeySharedEnable=true
