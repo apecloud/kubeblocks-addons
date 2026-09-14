@@ -119,6 +119,10 @@ spec:
             CUSTOM_SENTINEL_MASTER_NAME is the master name to be registered in redis sentinel.
             If not set, the redis component name will be used as the master name.
           type: string
+        REBUILD_SENTINEL_POD_NAME:
+          description: |
+            REBUILD_SENTINEL_POD_NAME is the sentinel pod name to be rebuilt.
+          type: string
   actions:
     - name: register-to-sentinel
       parameters: ["CUSTOM_SENTINEL_MASTER_NAME"]

@@ -23,7 +23,7 @@ test || __() {
   # when running in non-unit test mode, set the options "set -ex".
   set -ex;
 }
-
+REBUILD_SENTINEL_POD_NAME=${REBUILD_SENTINEL_POD_NAME:-""}
 redis_announce_host_value=""
 redis_announce_port_value=""
 redis_default_service_port=${SERVICE_PORT:-6379}
@@ -313,6 +313,9 @@ register_to_sentinel_wrapper() {
   fi
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
+    if [[ -n $REBUILD_SENTINEL_POD_NAME && "$sentinel_pod_fqdn" != "$REBUILD_SENTINEL_POD_NAME."* ]]; then
+      continue
+    fi
     if [ "$IS_REDIS5" == "true" ]; then
        register_to_sentinel_for_redis5 "${sentinel_pod_fqdn}"
     else
