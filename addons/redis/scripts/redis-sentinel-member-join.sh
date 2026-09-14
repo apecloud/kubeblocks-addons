@@ -26,206 +26,158 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-redis_sentinel_conf_dir="/data/sentinel"
-redis_sentinel_real_conf="/data/sentinel/redis-sentinel.conf"
-redis_sentinel_real_conf_bak="/data/sentinel/redis-sentinel.conf.bak"
-redis_sentinel_init_conf="/data/sentinel/init_done.conf"
+redis_announce_host_value=""
+redis_announce_port_value=""
 
-recover_registered_redis_servers_if_needed() {
-  if [ -f $redis_sentinel_init_conf ]; then
-    echo "normal start"
-  else
-    echo "horizontal scaling"
-    if recover_registered_redis_servers; then
-      touch "$redis_sentinel_init_conf"
+
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$REDIS_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
     else
-      echo "recover_registered_redis_servers failed"
-      exit 1
-    fi
-  fi
-}
-
-reset_redis_sentinel_monitor_conf() {
-  echo "reset sentinel monitor configuration file if there are any residual configurations "
-  if [ -f $redis_sentinel_real_conf ]; then
-    sed "/sentinel monitor/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-    sed "/sentinel down-after-milliseconds/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-    sed "/sentinel failover-timeout/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-    sed "/sentinel parallel-syncs/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-    unset_xtrace_when_ut_mode_false
-    if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
-      sed "/sentinel auth-user/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-      sed "/sentinel auth-pass/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
-    fi
-    set_xtrace_when_ut_mode_false
-  fi
-}
-
-temp_output=""
-redis_sentinel_get_masters() {
-  local host=$1
-  local port=$2
-  if [ -n "$SENTINEL_PASSWORD" ]; then
-    temp_output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null || true)
-  else
-    temp_output=$(redis-cli $REDIS_CLI_TLS_CMD -h "$host" -p "$port" sentinel masters 2>/dev/null || true)
-  fi
-}
-
-recover_registered_redis_servers() {
-  if ! env_exist SENTINEL_POD_FQDN_LIST; then
-    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
-    return 1
-  fi
-
-  output=""
-  local max_retries=5
-  local retry_count=0
-  local success=false
-  # shellcheck disable=SC2207
-  sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
-  for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
-    while [ $retry_count -lt $max_retries ]; do
-      redis_sentinel_get_masters "$sentinel_pod_fqdn" "$SENTINEL_SERVICE_PORT"
-      if [ -n "$temp_output" ]; then
-        disconnected=false
-        while read -r line; do
-          case "$line" in
-            flags)
-              read -r master_flags
-              if [[ "$master_flags" == *"disconnected"* ]]; then
-                  disconnected=true
-              fi
-              ;;
-          esac
-          master_flags=""
-        done <<< "$temp_output"
-        if [ "$disconnected" = true ]; then
-          retry_count=$((retry_count + 1))
-          echo "one or more masters are disconnected. $retry_count/$max_retries failed. retrying..."
-        else
-          echo "all masters are reachable."
-          success=true
-          break
-        fi
-      else
-        retry_count=$((retry_count + 1))
-        echo "timeout waiting for $host to become available $retry_count/$max_retries failed. retrying..."
-      fi
-      sleep_when_ut_mode_false 1
-    done
-    if [ "$success" = true ]; then
-      echo "connected to the sentinel successfully after $retry_count retries"
-    else
-      echo "sentinel is either starting up or encountering an issue."
-    fi
-
-    if [[ -n "$temp_output" ]]; then
-      while read -r line; do
-        case "$line" in
-          name)
-            read -r pre_master_name
-            ;;
-          ip)
-            read -r pre_master_ip
-            ;;
-          port)
-            read -r pre_master_port
-            ;;
-        esac
-      done <<< "$temp_output"
-
-      if [[ -z "$reference_master_name" && -z "$reference_master_ip" && -z "$reference_master_port" ]]; then
-        reference_master_name="$master_name"
-        reference_master_ip="$master_ip"
-        reference_master_port="$master_port"
-      else
-        if [[ "$pre_master_name" != "$reference_master_name" || "$pre_master_ip" != "$reference_master_ip" || "$pre_master_port" != "$reference_master_port" ]]; then
-          echo "the masters of the sentinels are different, configuration error."
-          return 1
-        fi
-      fi
-      output="$temp_output"
+       break
     fi
   done
+}
 
-  if is_empty "$output"; then
-    echo "initialization in progress, or unable to connect to redis sentinel, or no master nodes found."
+# TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
+parse_redis_primary_announce_addr() {
+  if is_empty "$REDIS_ADVERTISED_PORT"; then
+     REDIS_ADVERTISED_PORT="$REDIS_LB_ADVERTISED_PORT"
+  fi
+  if is_empty "$REDIS_ADVERTISED_PORT"; then
+    echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     return 0
   fi
 
-  reset_redis_sentinel_monitor_conf
-  local master_name master_ip master_port
-  local master_down_after_milliseconds master_quorum master_failover_timeout master_parallel_syncs
-  while read -r line; do
-    case "$line" in
-      name)
-        read -r master_name
-        ;;
-      ip)
-        read -r master_ip
-        ;;
-      port)
-        read -r master_port
-        ;;
-      down-after-milliseconds)
-        read -r master_down_after_milliseconds
-        ;;
-      quorum)
-        read -r master_quorum
-        ;;
-      failover-timeout)
-        read -r master_failover_timeout
-        ;;
-      parallel-syncs)
-        read -r master_parallel_syncs
-        ;;
-    esac
-
-    if [[ -n "$master_name" && -n "$master_ip" && -n "$master_port" && \
-          -n "$master_down_after_milliseconds" && -n "$master_failover_timeout" && \
-          -n "$master_parallel_syncs" && -n "$master_quorum" ]]; then
-      echo "master-name: $master_name, master-ip: $master_ip, master-port: $master_port, \
-      down-after-milliseconds: $master_down_after_milliseconds, \
-      failover-timeout: $master_failover_timeout, \
-      parallel-syncs: $master_parallel_syncs, quorum: $master_quorum"
-      if ! env_exist CLUSTER_NAME; then
-        echo "CLUSTER_NAME environment variable is not set"
-        return 1
-      fi
-      # shellcheck disable=SC2153
-      cluster_name="$CLUSTER_NAME"
-      comp_name="${master_name#"$cluster_name"-}"
-      comp_name_upper=$(echo "$comp_name" | tr '[:lower:]' '[:upper:]')
-      unset_xtrace_when_ut_mode_false
-      if ! env_exist REDIS_SENTINEL_PASSWORD; then
-        echo "REDIS_SENTINEL_PASSWORD environment variable is not set"
-        return 1
-      fi
-      var_name="REDIS_SENTINEL_PASSWORD_${comp_name_upper}"
-      if [[ -n "${!var_name}" ]]; then
-        auth_pass="${!var_name}"
+  local pod_name="$1"
+  local found=false
+  pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
+  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  # shellcheck disable=SC2207
+  advertised_ports=($(split "$REDIS_ADVERTISED_PORT" ","))
+  for advertised_port in "${advertised_ports[@]}"; do
+    # shellcheck disable=SC2207
+    parts=($(split "$advertised_port" ":"))
+    local svc_name="${parts[0]}"
+    local port="${parts[1]}"
+    svc_name_ordinal=$(extract_obj_ordinal "$svc_name")
+    if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
+      echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
+      redis_announce_port_value="$port"
+      # TODO: get the host ip from env defined in the action context.
+      lb_host=$(extract_lb_host_by_svc_name "$svc_name")
+      if [ -n "$lb_host" ]; then
+        echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+        redis_announce_host_value="$lb_host"
+        redis_announce_port_value="6379"
       else
-        auth_pass="$REDIS_SENTINEL_PASSWORD"
+        redis_announce_host_value="$CURRENT_POD_HOST_IP"
       fi
-      {
-        echo "sentinel monitor $master_name $master_ip $master_port $master_quorum"
-        echo "sentinel down-after-milliseconds $master_name $master_down_after_milliseconds"
-        echo "sentinel failover-timeout $master_name $master_failover_timeout"
-        echo "sentinel parallel-syncs $master_name $master_parallel_syncs"
-        echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER"
-      } >> $redis_sentinel_real_conf
-      if ! is_empty "$auth_pass"; then
-        echo "sentinel auth-pass $master_name $auth_pass" >> $redis_sentinel_real_conf
-      fi
-      set_xtrace_when_ut_mode_false
-      sleep_when_ut_mode_false 30
-      master_name="" master_ip="" master_port="" master_down_after_milliseconds=""
-      master_quorum="" master_failover_timeout="" master_parallel_syncs=""
+      found=true
+      break
     fi
-  done <<< "$output"
+  done
+
+  if equals "$found" false; then
+    echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. Exiting." >&2
+    exit 1
+  fi
 }
 
+# Register the master to the local sentinel with dynamic commands.
+# Sentinel does not reload the configuration file at runtime and CONFIG REWRITE
+# would overwrite manual file changes, so the master must be registered via
+# SENTINEL MONITOR/SET commands which take effect immediately.
+register_master_to_sentinel() {
+  local master_name="$1"
+  local master_ip="$2"
+  local master_port="$3"
+  local master_quorum="$4"
+  local master_down_after_milliseconds="$5"
+  local master_failover_timeout="$6"
+  local master_parallel_syncs="$7"
+
+  local redis_cli_cmd="redis-cli $REDIS_CLI_TLS_CMD -h $KB_JOIN_MEMBER_POD_FQDN -p ${SENTINEL_SERVICE_PORT:-26379}"
+  if ! is_empty "$SENTINEL_PASSWORD"; then
+    redis_cli_cmd="$redis_cli_cmd -a $SENTINEL_PASSWORD"
+  fi
+
+  unset_xtrace_when_ut_mode_false
+  local master_addr
+  master_addr=$($redis_cli_cmd SENTINEL get-master-addr-by-name "$master_name" 2>/dev/null)
+  if is_empty "$master_addr"; then
+    if ! $redis_cli_cmd SENTINEL MONITOR "$master_name" "$master_ip" "$master_port" "$master_quorum"; then
+      echo "failed to register master $master_name to local sentinel" >&2
+      return 1
+    fi
+  else
+    echo "master $master_name is already monitored, skip SENTINEL MONITOR"
+  fi
+  $redis_cli_cmd SENTINEL SET "$master_name" down-after-milliseconds "$master_down_after_milliseconds" || return 1
+  $redis_cli_cmd SENTINEL SET "$master_name" failover-timeout "$master_failover_timeout" || return 1
+  $redis_cli_cmd SENTINEL SET "$master_name" parallel-syncs "$master_parallel_syncs" || return 1
+  if [[ "$SERVICE_VERSION" != 5.* ]]; then
+    $redis_cli_cmd SENTINEL SET "$master_name" auth-user "$REDIS_SENTINEL_USER" || return 1
+  fi
+  if ! is_empty "$REDIS_SENTINEL_PASSWORD"; then
+    $redis_cli_cmd SENTINEL SET "$master_name" auth-pass "$REDIS_SENTINEL_PASSWORD" || return 1
+  fi
+  set_xtrace_when_ut_mode_false
+  echo "register master $master_name to local sentinel succeeded!"
+}
+
+recover_registered_redis_servers() {
+  # check required environment variables, we use REDIS_COMPONENT_NAME as the master name registered to sentinel
+  if is_empty "$REDIS_COMPONENT_NAME" || is_empty "$REDIS_POD_NAME_LIST" || is_empty "$REDIS_POD_FQDN_LIST"; then
+    echo "Error: Required environment variable REDIS_COMPONENT_NAME, REDIS_POD_NAME_LIST and REDIS_POD_FQDN_LIST is not set." >&2
+    return 1
+  fi
+
+  # get minimum lexicographical order pod name as default primary node (the same logic as redis-register-to-sentinel.sh)
+  local redis_default_primary_pod_name
+  redis_default_primary_pod_name=$(min_lexicographical_order_pod "$REDIS_POD_NAME_LIST")
+  local redis_default_primary_pod_fqdn
+  redis_default_primary_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$redis_default_primary_pod_name")
+  if is_empty "$redis_default_primary_pod_fqdn"; then
+    echo "Error: Failed to get the default primary pod fqdn from redis pod fqdn list: $REDIS_POD_FQDN_LIST." >&2
+    return 1
+  fi
+
+  parse_redis_primary_announce_addr "$redis_default_primary_pod_name"
+
+  local master_name
+  if is_empty "$CUSTOM_SENTINEL_MASTER_NAME"; then
+    master_name=$REDIS_COMPONENT_NAME
+  else
+    master_name="$CUSTOM_SENTINEL_MASTER_NAME"
+  fi
+
+  local master_ip="$redis_default_primary_pod_fqdn"
+  local master_port="${SERVICE_PORT:-6379}"
+  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
+    master_ip="$redis_announce_host_value"
+    master_port="$redis_announce_port_value"
+  fi
+
+  if ! register_master_to_sentinel "$master_name" "$master_ip" "$master_port" "2" "20000" "60000" "1"; then
+    echo "register master $master_name failed" >&2
+    return 1
+  fi
+}
+
+
+recover_registered_redis_servers_if_needed() {
+  echo "horizontal scaling"
+  if ! recover_registered_redis_servers; then
+    echo "recover_registered_redis_servers failed"
+    exit 1
+  fi
+}
 
 # This is magic for shellspec ut framework.
 # Sometime, functions are defined in a single shell script.
@@ -237,7 +189,4 @@ ${__SOURCED__:+false} : || return 0
 # main
 load_common_library
 
-## TODO: The recover_registered_redis_servers_if_needed function depends on obtaining the passwords of each Redis instance.
-## This can cause a circular dependency issue during startup, leading to potential problems.
-## One viable solution is when memberJoin action is available, dynamically obtain the passwords of each Redis instance at that moment.
-# recover_registered_redis_servers_if_needed
+recover_registered_redis_servers_if_needed

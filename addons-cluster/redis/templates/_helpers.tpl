@@ -160,6 +160,10 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   env:
   - name: FIXED_POD_IP_ENABLED
     value: "true"
+  {{- if .Values.sentinel.customMasterName }}
+  - name: CUSTOM_SENTINEL_MASTER_NAME
+    value: {{ .Values.sentinel.customMasterName }}
+  {{- end }}
   {{- end }}
   {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) (hasPrefix "5." .Values.version) }}
   services:
@@ -170,6 +174,10 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   env:
   - name: LOAD_BALANCER_ENABLED
     value: "true"
+  {{- if .Values.sentinel.customMasterName }}
+  - name: CUSTOM_SENTINEL_MASTER_NAME
+    value: {{ .Values.sentinel.customMasterName }}
+  {{- end }}
   {{- end }}
   serviceVersion: {{ .Values.version }}
   {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
