@@ -182,15 +182,86 @@ spec:
       value: "kbreplicator-sentinel"
     ## the password of redis for redis sentinel connection, which is only used to recover redis servers when scale-out redis sentinel.
     ## TODO: Obtaining the redis password here will cause a circular dependency issue, which will lead to the abnormal restart of the Redis Sentinel pod, details refer to redis-sentinel-member-join.sh
-{{/*    - name: REDIS_SENTINEL_PASSWORD*/}}
-{{/*      valueFrom:*/}}
-{{/*        credentialVarRef:*/}}
-{{/*          compDef: {{ include "redis7.cmpdName" . }}*/}}
-{{/*          name: default*/}}
-{{/*          optional: true*/}}
-{{/*          password: Required*/}}
-{{/*          multipleClusterObjectOption:*/}}
-{{/*            strategy: individual*/}}
+    - name: REDIS_SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "redis.cmpdRegexpPattern" $ }}
+          name: default
+          optional: true
+          password: Required
+          multipleClusterObjectOption:
+            strategy: individual
+            optional: true
+    ## the component name of redis, used as the sentinel master name when scale-out redis sentinel
+    - name: REDIS_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis.cmpdRegexpPattern" $ }}
+          optional: true
+          componentName: Required
+          multipleClusterObjectOption:
+            strategy: individual
+            optional: true
+    ## the redis pod name list for each pod, used to determine the default primary node when scale-out redis sentinel
+    - name: REDIS_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis.cmpdRegexpPattern" $ }}
+          optional: true
+          podNames: Required
+          multipleClusterObjectOption:
+            strategy: individual
+            optional: true
+    ## the redis pod fqdn list for each pod, used to determine the default primary node when scale-out redis sentinel
+    - name: REDIS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis.cmpdRegexpPattern" $ }}
+          optional: true
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            strategy: individual
+            optional: true
+    ## the redis advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis.cmpdRegexpPattern" $ }}
+          name: redis-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: individual
+            optional: true
+          port:
+            name: redis-advertised
+            option: Required
+    - name: REDIS_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis.cmpdRegexpPattern" $ }}
+          name: redis-lb-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: individual
+            optional: true
+          port:
+            name: redis-advertised
+            option: Required
+    ## the redis advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis.cmpdRegexpPattern" $ }}
+          name: redis-lb-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: individual
+            optional: true
+          loadBalancer: Required
+          host: Required
+    ## the redis server port
+    - name: SERVICE_PORT
+      value: "6379"
   lifecycleActions:
     accountProvision:
       exec:
@@ -199,6 +270,14 @@ spec:
           - /bin/bash
           - -c
           - /scripts/redis-sentinel-account-provision.sh
+    memberJoin:
+      exec:
+        container: redis-sentinel
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-sentinel-member-join.sh
+        targetPodSelector: Any
     memberLeave:
       exec:
         container: redis-sentinel

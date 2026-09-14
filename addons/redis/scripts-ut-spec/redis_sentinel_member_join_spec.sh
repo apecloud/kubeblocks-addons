@@ -34,149 +34,138 @@ Describe "Redis Sentinel Member Join Script Tests"
   AfterAll 'cleanup'
 
   Describe "recover_registered_redis_servers()"
-    setup() {
-        REDIS_SENTINEL_PASSWORD="redis_sentinel_password"
-    }
-    Before 'setup'
-
-    un_setup() {
-      unset REDIS_SENTINEL_PASSWORD
-    }
-    After 'un_setup'
-    Context "one redis master monitor"
+    Context "register master with pod fqdn"
       setup() {
-          SENTINEL_POD_FQDN_LIST="redis-redis-sentinel-0.redis-redis-sentinel-headless.test.svc,\
-          redis-redis-sentinel-1.redis-redis-sentinel-headless.test.svc,\
-          redis-redis-sentinel-2.redis-redis-sentinel-headless.test.svc"
+          REDIS_COMPONENT_NAME="redis-redis"
+          REDIS_POD_NAME_LIST="redis-redis-0,redis-redis-1"
+          REDIS_POD_FQDN_LIST="redis-redis-0.redis-redis-headless.test.svc,redis-redis-1.redis-redis-headless.test.svc"
           REDIS_SENTINEL_USER="sentinel_user"
           REDIS_SENTINEL_PASSWORD="redis_sentinel_password"
           SENTINEL_PASSWORD="sentinel_password"
-          CLUSTER_NAME="redis"
+          SERVICE_VERSION="7.2.4"
       }
       Before 'setup'
 
       un_setup() {
-        unset SENTINEL_POD_FQDN_LIST
+        unset REDIS_COMPONENT_NAME
+        unset REDIS_POD_NAME_LIST
+        unset REDIS_POD_FQDN_LIST
         unset REDIS_SENTINEL_USER
         unset REDIS_SENTINEL_PASSWORD
         unset SENTINEL_PASSWORD
+        unset SERVICE_VERSION
+        unset REDIS_ADVERTISED_PORT
+        unset REDIS_LB_ADVERTISED_PORT
+        unset REDIS_LB_ADVERTISED_HOST
+        unset CURRENT_POD_HOST_IP
+        redis_announce_host_value=""
+        redis_announce_port_value=""
       }
       After 'un_setup'
 
-
-      It "when one redis master monitor and is reachable"
-        redis_sentinel_get_masters() {
-          temp_output="name
-          mymaster
-          ip
-          172.20.0.1
-          port
-          30746
-          flags
-          master
-          down-after-milliseconds
-          20000
-          quorum
-          2
-          failover-timeout
-          60000
-          parallel-syncs
-          1"
+      It "registers the default primary pod fqdn as master to local sentinel"
+        redis-cli() {
+          if [[ "$*" == *"get-master-addr-by-name"* ]]; then
+            return 0
+          fi
+          echo "CMD: $*"
+          return 0
         }
         When call recover_registered_redis_servers
         The status should be success
-        The stdout should include "all masters are reachable"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel monitor mymaster 172.20.0.1 30746 2"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel down-after-milliseconds mymaster 20000"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel failover-timeout mymaster 60000"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel parallel-syncs mymaster 1"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-user mymaster $REDIS_SENTINEL_USER"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-pass mymaster $REDIS_SENTINEL_PASSWORD"
+        The stdout should include "SENTINEL MONITOR redis-redis redis-redis-0.redis-redis-headless.test.svc 6379 2"
+        The stdout should include "SENTINEL SET redis-redis down-after-milliseconds 20000"
+        The stdout should include "SENTINEL SET redis-redis failover-timeout 60000"
+        The stdout should include "SENTINEL SET redis-redis parallel-syncs 1"
+        The stdout should include "SENTINEL SET redis-redis auth-user sentinel_user"
+        The stdout should include "SENTINEL SET redis-redis auth-pass redis_sentinel_password"
+        The stdout should include "register master redis-redis to local sentinel succeeded!"
       End
 
-      It "when one master are disconnected"
-        redis_sentinel_get_masters() {
-          temp_output="flags
-          master,disconnected"
+      It "registers master with the advertised address when REDIS_ADVERTISED_PORT is set"
+        REDIS_ADVERTISED_PORT="redis-redis-advertised-0:32024,redis-redis-advertised-1:31318"
+        CURRENT_POD_HOST_IP="10.13.25.17"
+        redis-cli() {
+          if [[ "$*" == *"get-master-addr-by-name"* ]]; then
+            return 0
+          fi
+          echo "CMD: $*"
+          return 0
         }
         When call recover_registered_redis_servers
-        The stdout should include "one or more masters are disconnected"
+        The status should be success
+        The stdout should include "SENTINEL MONITOR redis-redis 10.13.25.17 32024 2"
+      End
+
+      It "skips SENTINEL MONITOR when the master is already monitored"
+        redis-cli() {
+          if [[ "$*" == *"get-master-addr-by-name"* ]]; then
+            echo "redis-redis-0.redis-redis-headless.test.svc 6379"
+            return 0
+          fi
+          echo "CMD: $*"
+          return 0
+        }
+        When call recover_registered_redis_servers
+        The status should be success
+        The stdout should include "master redis-redis is already monitored, skip SENTINEL MONITOR"
+        The stdout should include "SENTINEL SET redis-redis down-after-milliseconds 20000"
+        The stdout should not include "SENTINEL MONITOR redis-redis redis-redis-0.redis-redis-headless.test.svc 6379 2"
       End
     End
-    Context "mutil redis matser monitor"
+
+    Context "on redis 5"
       setup() {
-          SENTINEL_POD_FQDN_LIST="redis-redis-sentinel-0.redis-redis-sentinel-headless.test.svc,\
-          redis-redis-sentinel-1.redis-redis-sentinel-headless.test.svc,\
-          redis-redis-sentinel-2.redis-redis-sentinel-headless.test.svc"
+          REDIS_COMPONENT_NAME="redis-redis"
+          REDIS_POD_NAME_LIST="redis-redis-0,redis-redis-1"
+          REDIS_POD_FQDN_LIST="redis-redis-0.redis-redis-headless.test.svc,redis-redis-1.redis-redis-headless.test.svc"
           REDIS_SENTINEL_USER="sentinel_user"
           REDIS_SENTINEL_PASSWORD="redis_sentinel_password"
           SENTINEL_PASSWORD="sentinel_password"
-          REDIS_SENTINEL_PASSWORD_REDIS0="redis0_sentinel_password"
-          REDIS_SENTINEL_PASSWORD_REDIS1="redis1_sentinel_password"
-          CLUSTER_NAME="redis"
+          SERVICE_VERSION="5.0.12"
       }
       Before 'setup'
 
       un_setup() {
-        unset SENTINEL_POD_FQDN_LIST
+        unset REDIS_COMPONENT_NAME
+        unset REDIS_POD_NAME_LIST
+        unset REDIS_POD_FQDN_LIST
         unset REDIS_SENTINEL_USER
         unset REDIS_SENTINEL_PASSWORD
         unset SENTINEL_PASSWORD
-        unset REDIS_SENTINEL_PASSWORD_REDIS0
-        unset REDIS_SENTINEL_PASSWORD_REDIS1
-        unset CLUSTER_NAME
+        unset SERVICE_VERSION
+        unset REDIS_ADVERTISED_PORT
+        unset REDIS_LB_ADVERTISED_PORT
+        unset REDIS_LB_ADVERTISED_HOST
+        unset CURRENT_POD_HOST_IP
+        redis_announce_host_value=""
+        redis_announce_port_value=""
       }
       After 'un_setup'
-      It "when mutil redis master monitor and is reachable"
-        redis_sentinel_get_masters() {
-          temp_output="name
-          redis-redis0
-          ip
-          172.20.0.1
-          port
-          30746
-          flags
-          master
-          down-after-milliseconds
-          20000
-          quorum
-          2
-          failover-timeout
-          60000
-          parallel-syncs
-          1
-          name
-          redis-redis1
-          ip
-          172.20.0.2
-          port
-          30747
-          flags
-          master
-          down-after-milliseconds
-          20000
-          quorum
-          2
-          failover-timeout
-          60000
-          parallel-syncs
-          1"
+      It "skips sentinel auth-user for redis 5"
+        redis-cli() {
+          if [[ "$*" == *"get-master-addr-by-name"* ]]; then
+            return 0
+          fi
+          echo "CMD: $*"
+          return 0
         }
         When call recover_registered_redis_servers
         The status should be success
-        The stdout should include "all masters are reachable"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel monitor redis-redis0 172.20.0.1 30746 2"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel down-after-milliseconds redis-redis0 20000"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel failover-timeout redis-redis0 60000"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel parallel-syncs redis-redis0 1"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-user redis-redis0 $REDIS_SENTINEL_USER"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-pass redis-redis0 $REDIS_SENTINEL_PASSWORD_REDIS0"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel monitor redis-redis1 172.20.0.2 30747 2"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel down-after-milliseconds redis-redis1 20000"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel failover-timeout redis-redis1 60000"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel parallel-syncs redis-redis1 1"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-user redis-redis1 $REDIS_SENTINEL_USER"
-        The contents of file "$redis_sentinel_real_conf" should include "sentinel auth-pass redis-redis1 $REDIS_SENTINEL_PASSWORD_REDIS1"
+        The stdout should include "SENTINEL MONITOR redis-redis redis-redis-0.redis-redis-headless.test.svc 6379 2"
+        The stdout should include "SENTINEL SET redis-redis auth-pass redis_sentinel_password"
+        The stdout should not include "auth-user"
+      End
+    End
+
+    Context "when required environment variables are missing"
+      It "fails when REDIS_COMPONENT_NAME is not set"
+        unset REDIS_COMPONENT_NAME
+        unset REDIS_POD_NAME_LIST
+        unset REDIS_POD_FQDN_LIST
+        When call recover_registered_redis_servers
+        The status should be failure
+        The stderr should include "REDIS_COMPONENT_NAME, REDIS_POD_NAME_LIST and REDIS_POD_FQDN_LIST is not set"
       End
     End
   End
