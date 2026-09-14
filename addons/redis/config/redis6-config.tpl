@@ -73,6 +73,7 @@ aof-rewrite-incremental-fsync yes
 rdb-save-incremental-fsync yes
 jemalloc-bg-thread yes
 aclfile /etc/redis/users.acl
+save 3600 1 300 100 60 10000
 
 # TODO: dynamic config for io-threads
 io-threads 4
