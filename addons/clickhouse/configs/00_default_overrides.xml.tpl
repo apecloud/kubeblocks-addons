@@ -214,17 +214,10 @@
       <!-- Local static user directory (local path) -->
       <path>/bitnami/clickhouse/etc/users.d/default/user.xml</path>
     </users_xml>
-    {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
     <replicated>
       <!-- Keeper-based replicated user directory (keeper path) -->
       <zookeeper_path>/clickhouse/access</zookeeper_path>
     </replicated>
-    {{- else if (index . "CLICKHOUSE_ZOOKEEPER_POD_FQDNS") }}
-    <replicated>
-      <!-- Keeper-based replicated user directory (keeper path) -->
-      <zookeeper_path>/clickhouse_{{ $.KB_CLUSTER_NAME }}/access</zookeeper_path>
-    </replicated>
-    {{- end }}
     <local_directory>
       <!-- Local dynamic user directory (local path, for standalone mode) -->
       <path>/bitnami/clickhouse/data/access/</path>
