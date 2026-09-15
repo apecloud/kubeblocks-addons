@@ -6,6 +6,7 @@ metadata:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
     {{- include "clickhouse.apiVersion" . | nindent 4 }}
+    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   template:
     compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
