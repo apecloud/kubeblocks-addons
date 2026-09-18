@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hdfs-common-standalone-config-template
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+data:
+  core-site.xml: |-
+    {{- .Files.Get "config/core-site-standalone.tpl" | nindent 4 }}
+  hadoop-env.sh: |-
+    {{- .Files.Get "config/hadoop-env.sh.tpl" | nindent 4 }}
+  hdfs-jmx-exporter.yaml: |-
+    {{- .Files.Get "config/hdfs-jmx-exporter.yaml.tpl" | nindent 4 }}
+  dfs.include: |
+    {{- .Files.Get "config/dfs.include" | nindent 4 }}
+  dfs.exclude: |
+    {{- .Files.Get "config/dfs.exclude" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
