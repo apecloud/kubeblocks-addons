@@ -38,6 +38,20 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
   kubectl create ns demo
   ```
 
+## Root account schema upgrade
+
+Chart `1.2.0-alpha.2` uses the served-v1 `passwordConfig` field and creates a
+new `ComponentDefinition`, `rabbitmq-1.2.0-alpha.2`. The matching Cluster chart
+selects this definition. Install the addon first and verify that the new
+ComponentDefinition is `Available` before creating a Cluster with that chart.
+
+The earlier `rabbitmq-1.2.0-alpha.1` definition has an immutable account spec.
+Do not replace its account fields in place or bypass the immutable check.
+Keep the default `extra.keepResource: true` while existing Clusters reference
+older definitions. Installing the new addon does not automatically upgrade
+those Clusters or rotate their account Secrets; an existing Cluster upgrade
+must be planned and validated separately using the supported KubeBlocks flow.
+
 ## Examples
 
 ### Create
