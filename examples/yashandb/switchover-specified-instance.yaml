@@ -1,0 +1,13 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-switchover-secondary
+  namespace: demo
+spec:
+  clusterName: yashandb-cluster
+  type: Switchover
+  # 2026-06-02 Reason: keep the YashanDB example explicit about standby-side execution; Purpose: avoid copying MySQL's primary-to-candidate switchover semantics.
+  switchover:
+  - componentName: yashan-comp
+    # This pod must currently report role "secondary" from roleProbe.
+    instanceName: yashandb-cluster-yashan-1
