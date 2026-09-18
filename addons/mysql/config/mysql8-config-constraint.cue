@@ -580,6 +580,9 @@
 	// Controls encryption of redo log data for tables encrypted using the InnoDB tablespace encryption feature.
 	innodb_redo_log_encrypt: string & "OFF" | "ON" | *"OFF"
 
+	// Optional because the template only derives it when a memory limit is available.
+	innodb_redo_log_capacity?: int & >= 8388608
+
 	// The replication thread delay (in ms) on a slave server if innodb_thread_concurrency is reached.
 	innodb_replication_delay?: int & >=0 & <=4294967295
 
