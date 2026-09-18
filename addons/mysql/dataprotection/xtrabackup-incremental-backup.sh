@@ -8,11 +8,13 @@ function handle_exit() {
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
     echo "failed with exit code $exit_code"
-    touch "${DP_BACKUP_INFO_FILE}.exit"
-    exit 1
+    rm -f "${DP_BACKUP_INFO_FILE}.tmp" || true
+    touch "${DP_BACKUP_INFO_FILE}.exit" || true
+    exit "${exit_code}"
   fi
 }
 trap handle_exit EXIT
+rm -f "${DP_BACKUP_INFO_FILE}" "${DP_BACKUP_INFO_FILE}.exit" "${DP_BACKUP_INFO_FILE}.tmp"
 
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 
@@ -75,12 +77,13 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 # compatible with version 2.4
 lock_per_table_ddl=""
-if [ "${IMAGE_TAG}" == "2.4" ]; then
+if [ "${IMAGE_TAG:?xtrabackup tool version is required}" == "2.4" ]; then
   lock_per_table_ddl="--lock-ddl-per-table"
 fi
 
 # 3. do incremental xtrabackup
 TMP_DIR=${MYSQL_DIR}/xtrabackup-temp
+rm -rf ${TMP_DIR}
 mkdir -p ${TMP_DIR}
 xtrabackup --backup --safe-slave-backup --slave-info ${lock_per_table_ddl} --stream=xbstream \
   --host=${DP_DB_HOST} --port=${DP_DB_PORT} \
@@ -96,6 +99,7 @@ cat "${TMP_DIR}/xtrabackup.log" \
 # record server uuid
 echo "${server_uuid}" | datasafed push - "${DP_BACKUP_NAME}.server-uuid"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
 rm -rf ${PARENT_DIR}
 rm -rf ${TMP_DIR}
+printf '{"totalSize":"%s"}\n' "${TOTAL_SIZE}" >"${DP_BACKUP_INFO_FILE}.tmp"
+mv "${DP_BACKUP_INFO_FILE}.tmp" "${DP_BACKUP_INFO_FILE}"
