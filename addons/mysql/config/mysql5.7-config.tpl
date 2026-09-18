@@ -89,7 +89,7 @@ log_error_verbosity=2
 log_output=FILE
 slow_query_log=ON
 long_query_time=5
-general_log=ON
+general_log=OFF
 
 #innodb
 innodb_flush_method=O_DIRECT
