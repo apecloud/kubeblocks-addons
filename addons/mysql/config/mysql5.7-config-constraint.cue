@@ -647,8 +647,9 @@
 	// Whether mysqld was locked in memory with --memlock.log_error
 	locked_in_memory?: string & "OFF" | "ON" | *"OFF"
 
-	// Whether the binary log is enabled.
-	log_bin?: string & "OFF" | "ON"
+	// Binary log basename/path (--log-bin). SHOW VARIABLES reports ON/OFF,
+	// but my.cnf uses a file path like /var/lib/mysql/binlog/mysql-bin.
+	log_bin?: string
 
 	// Holds the base name and path for the binary log files, which can be set with the --log-bin server option.
 	log_bin_basename?: string
