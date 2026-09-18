@@ -94,6 +94,13 @@ Define parametersdefinition name
 mysql-8.0-pd
 {{- end -}}
 
+{{/*
+Define parametersdefinition name
+*/}}
+{{- define "mysql.paramsDefName84" -}}
+mysql-8.4-pd
+{{- end -}}
+
 
 {{/*
 Define parameterconfigrenderer name
