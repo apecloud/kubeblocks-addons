@@ -28,7 +28,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: filer-config
       defaultMode: 0444
-      externalManaged: true
   services:
     - name: default
       spec:

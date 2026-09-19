@@ -109,6 +109,12 @@ class ChartsTest(unittest.TestCase):
                     for cm in self.maps.values():
                         self.assertNotIn("fixture-secret", str(cm))
 
+    def test_filer_static_config_uses_component_template(self):
+        filer = next(d for d in self.cmpds.values() if d["metadata"]["name"].endswith("-filer-1.0.0"))
+        config = next(item for item in filer["spec"]["configs"] if item["name"] == "filer-config")
+        self.assertNotIn("externalManaged", config)
+        self.assertIn("filer.toml", self.maps[config["template"]]["data"])
+
     def test_cross_component_refs_resolve_once_in_each_topology(self):
         for topology in self.definition["spec"]["topologies"]:
             definitions = [self.cmpds[c["compDef"]] for c in topology["components"]]
