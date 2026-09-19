@@ -8,7 +8,8 @@ body=$(curl --silent --fail --connect-timeout 1 --max-time 2 \
 body=$(printf '%s' "$body" | tr -d '\n\r')
 case "$body" in \{*\}) ;; *) unknown ;; esac
 leader=$(printf '%s' "$body" | sed -n 's/.*"Leader"[[:space:]]*:[[:space:]]*"\([a-zA-Z0-9.:-]*\)".*/\1/p')
-case "$leader" in *:9333) ;; *) unknown ;; esac
+# ServerAddress JSON retains the optional gRPC port: host:9333[.grpcPort].
+printf '%s\n' "$leader" | grep -Eq '^[a-zA-Z0-9.:-]+:9333(\.[0-9]+)?$' || unknown
 if printf '%s' "$body" | grep -Eq '"IsLeader"[[:space:]]*:[[:space:]]*true[[:space:]]*[,}]'; then
   printf 'leader\n'
 elif printf '%s' "$body" | grep -q '"IsLeader"'; then
