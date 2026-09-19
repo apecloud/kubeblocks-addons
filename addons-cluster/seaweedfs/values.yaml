@@ -1,0 +1,34 @@
+# standalone: one master and one volume; distributed: three masters and
+# at least two volumes. The filer remains a single persistent metadata store.
+topology: standalone
+serviceVersion: "4.47.0"
+storageClassName: ""
+
+master:
+  storage: 1Gi
+  resources:
+    requests: {cpu: "100m", memory: "256Mi"}
+    limits: {cpu: "1", memory: "1Gi"}
+
+volume:
+  # Used only for distributed; standalone is always one volume server.
+  replicas: 3
+  storage: 20Gi
+  resources:
+    requests: {cpu: "100m", memory: "256Mi"}
+    limits: {cpu: "1", memory: "1Gi"}
+
+filer:
+  storage: 5Gi
+  resources:
+    requests: {cpu: "100m", memory: "256Mi"}
+    limits: {cpu: "1", memory: "1Gi"}
+
+s3:
+  replicas: 1
+  resources:
+    requests: {cpu: "100m", memory: "256Mi"}
+    limits: {cpu: "1", memory: "1Gi"}
+
+extra:
+  terminationPolicy: DoNotTerminate

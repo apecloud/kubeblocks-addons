@@ -1,0 +1,12 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: seaweedfs-volume-scale-out
+  namespace: demo
+spec:
+  clusterName: seaweedfs-dist
+  type: HorizontalScaling
+  horizontalScaling:
+  - componentName: volume
+    scaleOut:
+      replicaChanges: 1
