@@ -1,0 +1,103 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: SeaweedFS s3 component.
+  serviceKind: seaweedfs
+  serviceVersion: {{ .Values.serviceVersion | quote }}
+  podManagementPolicy: Parallel
+  updateStrategy: Serial
+  podUpdatePolicy: ReCreate
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 32
+  {{- include "seaweedfs.scripts" . | nindent 2 }}
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 32
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: http
+            port: 8333
+            targetPort: http
+  vars:
+    - name: SEAWEEDFS_FILER_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: ^seaweedfs-filer-
+          name: default
+          optional: false
+          host: Required
+    - name: SEAWEEDFS_FILER_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: ^seaweedfs-filer-
+          name: default
+          optional: false
+          port:
+            name: http
+            option: Required
+    - name: AWS_ACCESS_KEY_ID
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: AWS_SECRET_ACCESS_KEY
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+  runtime:
+    {{- include "seaweedfs.podSecurityContext" . | nindent 4 }}
+    terminationGracePeriodSeconds: 60
+    containers:
+      - name: s3
+        image: {{ include "seaweedfs.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/sh", "/scripts/start-s3.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        ports:
+          - name: http
+            containerPort: 8333
+        startupProbe:
+          tcpSocket:
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 90
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 6
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: http
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 6
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+            readOnly: true

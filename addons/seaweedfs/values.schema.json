@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "image",
+    "serviceVersion",
+    "volumeSizeLimitMB"
+  ],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": [
+        "registry",
+        "repository",
+        "tag",
+        "pullPolicy"
+      ],
+      "properties": {
+        "registry": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "enum": [
+            "4.47"
+          ]
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "serviceVersion": {
+      "type": "string",
+      "enum": [
+        "4.47.0"
+      ]
+    },
+    "volumeSizeLimitMB": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000
+    }
+  }
+}

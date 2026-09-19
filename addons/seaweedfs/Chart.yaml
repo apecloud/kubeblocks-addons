@@ -1,0 +1,21 @@
+apiVersion: v2
+name: seaweedfs
+description: SeaweedFS distributed object storage with an S3-compatible gateway
+version: 1.0.0
+appVersion: "4.47"
+keywords: [storage, object-storage, S3, seaweedfs]
+home: https://seaweedfs.com
+sources:
+  - https://github.com/seaweedfs/seaweedfs
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks-addons
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0 <1.1.0"
+  addon.kubeblocks.io/model: "object-storage"
+  addon.kubeblocks.io/provider: "community"
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra

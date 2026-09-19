@@ -1,0 +1,13 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: seaweedfs-volume-expand
+  namespace: demo
+spec:
+  clusterName: seaweedfs
+  type: VolumeExpansion
+  volumeExpansion:
+  - componentName: volume
+    volumeClaimTemplates:
+    - name: data
+      storage: 30Gi

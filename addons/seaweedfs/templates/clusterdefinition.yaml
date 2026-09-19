@@ -1,0 +1,39 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: seaweedfs
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      default: true
+      components:
+        - name: master
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-standalone") }}
+        - name: volume
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-standalone") }}
+        - name: filer
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "filer") }}
+        - name: s3
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
+      orders:
+        provision: [master, volume, filer, s3]
+        update: [master, volume, filer, s3]
+        terminate: [s3, filer, volume, master]
+    - name: distributed
+      components:
+        - name: master
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-distributed") }}
+        - name: volume
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-distributed") }}
+        - name: filer
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "filer") }}
+        - name: s3
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
+      orders:
+        provision: [master, volume, filer, s3]
+        update: [master, volume, filer, s3]
+        terminate: [s3, filer, volume, master]
