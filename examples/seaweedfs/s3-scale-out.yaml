@@ -1,0 +1,12 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: seaweedfs-s3-scale-out
+  namespace: demo
+spec:
+  clusterName: seaweedfs
+  type: HorizontalScaling
+  horizontalScaling:
+  - componentName: s3
+    scaleOut:
+      replicaChanges: 1

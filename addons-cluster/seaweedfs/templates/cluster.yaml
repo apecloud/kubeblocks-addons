@@ -1,0 +1,52 @@
+{{- $clusterName := include "kblib.clusterName" . -}}
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ $clusterName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  clusterDef: seaweedfs
+  topology: {{ .Values.topology }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  componentSpecs:
+  {{- range $kind := list "master" "volume" "filer" "s3" }}
+  {{- $settings := index $.Values $kind }}
+    - name: {{ $kind }}
+      serviceVersion: {{ $.Values.serviceVersion | quote }}
+      {{- if eq $kind "master" }}
+      replicas: {{ ternary 3 1 (eq $.Values.topology "distributed") }}
+      {{- else if eq $kind "volume" }}
+      replicas: {{ ternary (int $settings.replicas) 1 (eq $.Values.topology "distributed") }}
+      {{- else if eq $kind "filer" }}
+      replicas: 1
+      {{- else }}
+      replicas: {{ $settings.replicas }}
+      {{- end }}
+      resources:
+        {{- toYaml $settings.resources | nindent 8 }}
+      {{- if and (eq $.Values.topology "distributed") (or (eq $kind "master") (eq $kind "volume")) }}
+      schedulingPolicy:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: {{ $clusterName }}
+                    apps.kubeblocks.io/component-name: {{ $kind }}
+      {{- end }}
+      {{- if ne $kind "s3" }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes: [ReadWriteOnce]
+            {{- if $.Values.storageClassName }}
+            storageClassName: {{ $.Values.storageClassName | quote }}
+            {{- end }}
+            resources:
+              requests:
+                storage: {{ $settings.storage | quote }}
+      {{- end }}
+  {{- end }}

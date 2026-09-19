@@ -1,0 +1,107 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-distributed") }}
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: SeaweedFS master-distributed component.
+  serviceKind: seaweedfs
+  serviceVersion: {{ .Values.serviceVersion | quote }}
+  podManagementPolicy: Parallel
+  updateStrategy: Serial
+  podUpdatePolicy: ReCreate
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 3
+    maxReplicas: 3
+  {{- include "seaweedfs.scripts" . | nindent 2 }}
+  volumes:
+    - name: data
+      needSnapshot: false
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: http
+            port: 9333
+            targetPort: http
+          - name: grpc
+            port: 19333
+            targetPort: grpc
+  vars:
+    {{- include "seaweedfs.identityVars" . | nindent 4 }}
+    - name: SEAWEEDFS_MASTER_REPLICAS
+      value: "3"
+    - name: SEAWEEDFS_REPLICATION
+      value: "001"
+    - name: SEAWEEDFS_VOLUME_SIZE_MB
+      value: {{ .Values.volumeSizeLimitMB | quote }}
+  roles:
+    - name: leader
+      updatePriority: 2
+      participatesInQuorum: true
+    - name: follower
+      updatePriority: 1
+      participatesInQuorum: true
+    - name: unknown
+      updatePriority: 0
+      participatesInQuorum: false
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: 5
+      timeoutSeconds: 5
+      exec:
+        image: {{ include "seaweedfs.image" . }}
+        container: master
+        command: ["/bin/sh", "/scripts/role-probe-master.sh"]
+  runtime:
+    {{- include "seaweedfs.podSecurityContext" . | nindent 4 }}
+    terminationGracePeriodSeconds: 60
+    containers:
+      - name: master
+        image: {{ include "seaweedfs.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/sh", "/scripts/start-master.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        ports:
+          - name: http
+            containerPort: 9333
+          - name: grpc
+            containerPort: 19333
+        startupProbe:
+          tcpSocket:
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 90
+        readinessProbe:
+          httpGet:
+            path: /cluster/healthz
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 6
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: http
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 6
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+            readOnly: true
+          - name: data
+            mountPath: /data
