@@ -1,4 +1,5 @@
 """Offline process-contract tests: no database or Kubernetes is started."""
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -117,6 +118,35 @@ class ScriptsTest(unittest.TestCase):
                 self.assertEqual(result.stdout.strip(), role)
         result = self.run_script("role-probe-master.sh", PROBE_RESPONSE=samples[0][0], PROBE_EXIT="28")
         self.assertEqual(result.stdout.strip(), "unknown")
+
+    def test_master_role_accepts_optional_grpc_port(self):
+        # SeaweedFS 4.47 serializes ServerAddress as host:httpPort[.grpcPort].
+        self.stub("curl", '#!/bin/sh\nprintf "%s" "$PROBE_RESPONSE"\n')
+        for address in ["master-0.m.ns.svc.corp:9333",
+                        "master-0.m.ns.svc.corp:9333.19333",
+                        "10.0.0.7:9333.19333", "master-0:9333.29333"]:
+            for is_leader, role in [(True, "leader"), (False, "follower"),
+                                    (None, "follower")]:
+                with self.subTest(address=address, is_leader=is_leader):
+                    body = {"Leader": address, "Peers": ["master-1:9333.19333"]}
+                    if is_leader is not None:
+                        body["IsLeader"] = is_leader
+                    result = self.run_script("role-probe-master.sh",
+                                             PROBE_RESPONSE=json.dumps(body))
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, role + "\n")
+
+    def test_master_role_rejects_invalid_leader_addresses(self):
+        self.stub("curl", '#!/bin/sh\nprintf "%s" "$PROBE_RESPONSE"\n')
+        for address in ["", ":9333", ":9333.19333", "master-0:19333",
+                        "master-0:9333.", "master-0:9333.grpc",
+                        "master-0:9333.19333extra", "master-0:9333.19333.1"]:
+            with self.subTest(address=address):
+                body = {"IsLeader": True, "Leader": address}
+                result = self.run_script("role-probe-master.sh",
+                                         PROBE_RESPONSE=json.dumps(body))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "unknown\n")
 
 
 if __name__ == "__main__":
