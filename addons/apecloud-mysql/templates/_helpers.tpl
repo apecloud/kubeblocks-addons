@@ -345,11 +345,11 @@ env:
   - name: CLUSTER_START_INDEX
     value: {{ .Values.cluster.clusterStartIndex | default "1" | quote }}
   - name: MYSQL_TEMPLATE_CONFIG
-    value: {{ if .Values.cluster.templateConfig }}{{ .Values.cluster.templateConfig }}{{ else }}""{{ end }}
+    value: {{ if .Values.cluster.templateConfig }}{{ .Values.cluster.templateConfig }}{{ end }}
   - name: MYSQL_CUSTOM_CONFIG
-    value: {{ if .Values.cluster.customConfig }}{{ .Values.cluster.customConfig }}{{ else }}""{{ end }}
+    value: {{ if .Values.cluster.customConfig }}{{ .Values.cluster.customConfig }}{{ end }}
   - name: MYSQL_DYNAMIC_CONFIG
-    value: {{ if .Values.cluster.dynamicConfig }}{{ .Values.cluster.dynamicConfig }}{{ else }}""{{ end }}
+    value: {{ if .Values.cluster.dynamicConfig }}{{ .Values.cluster.dynamicConfig }}{{ end }}
   - name: KB_EMBEDDED_WESQL
     value: {{ .Values.cluster.kbWeSQLImage | default "1" | quote }}
   - name: KB_MYSQL_VOLUME_DIR
@@ -420,7 +420,6 @@ env:
   - name: VTTABLET_PORT
     value: "15100"
   - name: VTTABLET_GRPC_PORT
-    value: "16100"
   - name: VTCTLD_HOST
     value: "$(CLUSTER_NAME)-wescale-ctrl-headless"
   - name: VTCTLD_WEB_PORT

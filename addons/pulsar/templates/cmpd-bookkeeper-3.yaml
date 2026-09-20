@@ -96,6 +96,11 @@ spec:
           - name: PULSAR_LOG_LEVEL
             value: DEBUG
         {{- end }}
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
@@ -103,12 +108,6 @@ spec:
             mountPath: /kb-scripts
           - name: pulsar-bookies-config
             mountPath: /opt/pulsar/conf
-        env:
-          - name: CURRENT_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
     containers:
       - name: bookies
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}

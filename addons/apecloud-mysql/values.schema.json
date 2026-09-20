@@ -54,9 +54,9 @@
         "clusterId": "1",
         "clusterStartIndex": "1",
         "replicaSetCount": 3,
-        "templateConfig": "",
-        "customConfig": "",
-        "dynamicConfig": "",
+        "templateConfig": null,
+        "customConfig": null,
+        "dynamicConfig": null,
         "kbWeSQLImage": "1"
       },
       "properties": {
@@ -81,20 +81,29 @@
         "templateConfig": {
           "title": "TemplateConfig",
           "description": "MYSQL_TEMPLATE_CONFIG.",
-          "type": "string",
-          "default": ""
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         },
         "customConfig": {
           "title": "CustomConfig",
           "description": "MYSQL_CUSTOM_CONFIG.",
-          "type": "string",
-          "default": ""
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         },
         "dynamicConfig": {
           "title": "DynamicConfig",
           "description": "MYSQL_DYNAMIC_CONFIG.",
-          "type": "string",
-          "default": ""
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         },
         "kbWeSQLImage": {
           "title": "KbWeSQLImage",
