@@ -19,6 +19,20 @@ load_common_library() {
   source /scripts/common.sh
 }
 
+
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$VALKEY_SENTINEL_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
 rebuild_sentinel_acl() {
   local acl_tmp="${SENTINEL_ACL}.tmp"
   # Preserve non-default-user lines, then atomically replace the file.
@@ -73,15 +87,21 @@ reset_dynamic_conf() {
 append_dynamic_conf() {
   # Announce address — prefer NodePort, fall back to FQDN.
   local announce_host="" announce_port=""
-  if ! is_empty "${REDIS_SENTINEL_ADVERTISED_PORT}"; then
+  if ! is_empty "${VALKEY_SENTINEL_ADVERTISED_PORT}"; then
     local pod_ordinal
     pod_ordinal=$(extract_obj_ordinal "${CURRENT_POD_NAME}")
-    for entry in $(echo "${REDIS_SENTINEL_ADVERTISED_PORT}" | tr ',' '\n'); do
+    for entry in $(echo "${VALKEY_SENTINEL_ADVERTISED_PORT}" | tr ',' '\n'); do
       local svc_name svc_port
       svc_name="${entry%%:*}"; svc_port="${entry##*:}"
       if [ "$(extract_obj_ordinal "${svc_name}")" = "${pod_ordinal}" ]; then
-        announce_host="${CURRENT_POD_HOST_IP}"
         announce_port="${svc_port}"
+        if [ -n "$lb_host" ]; then
+          lb_host=$(extract_lb_host_by_svc_name "$svc_name")
+          announce_host=$lb_host
+          announce_port=26379
+        else
+          announce_host="${CURRENT_POD_HOST_IP}"
+        fi
         break
       fi
     done
@@ -140,147 +160,6 @@ create_initial_conf_if_needed() {
   fi
 }
 
-# _find_master_fqdn — scan all data pod FQDNs and return the master's FQDN via stdout.
-# Returns empty string if none found.
-_find_master_fqdn() {
-  local data_port="${SERVICE_PORT:-6379}"
-  for fqdn in $(echo "${VALKEY_POD_FQDN_LIST:-}" | tr ',' '\n'); do
-    [ -z "${fqdn}" ] && continue
-    local cmd=(valkey-cli -h "${fqdn}" -p "${data_port}")
-    if [ "${TLS_ENABLED}" = "true" ]; then
-      cmd+=(--tls --cacert "${TLS_MOUNT_PATH:-/etc/pki/tls}/ca.crt")
-    fi
-    if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-      cmd+=(-a "${VALKEY_DEFAULT_PASSWORD}")
-    fi
-    cmd+=(--no-auth-warning)
-    local role
-    role=$("${cmd[@]}" info replication 2>/dev/null | grep "^role:" | tr -d '\r\n' | cut -d: -f2)
-    if [ "${role}" = "master" ]; then
-      echo "${fqdn}"
-      return 0
-    fi
-  done
-}
-
-# _sentinel_cli — run a valkey-cli command against this sentinel's own port.
-_sentinel_cli() {
-  local _scli=(valkey-cli -h 127.0.0.1 -p "${sentinel_port}" --no-auth-warning)
-  if [ "${TLS_ENABLED}" = "true" ]; then
-    _scli+=(--tls --cacert "${TLS_MOUNT_PATH:-/etc/pki/tls}/ca.crt")
-  fi
-  if ! is_empty "${SENTINEL_PASSWORD}"; then
-    _scli+=(-a "${SENTINEL_PASSWORD}")
-  fi
-  "${_scli[@]}" "$@" 2>/dev/null
-}
-
-calculate_sentinel_monitor_quorum() {
-  local sentinel_fqdns_raw=()
-  local sentinel_count=0
-  local sentinel_fqdn
-  local sentinel_monitor_quorum
-
-  IFS=',' read -ra sentinel_fqdns_raw <<< "${SENTINEL_POD_FQDN_LIST:-}"
-  for sentinel_fqdn in "${sentinel_fqdns_raw[@]}"; do
-    [ -n "${sentinel_fqdn}" ] && sentinel_count=$((sentinel_count + 1))
-  done
-
-  if [ "${sentinel_count}" -eq 0 ]; then
-    echo "ERROR: SENTINEL_POD_FQDN_LIST is empty — cannot compute Sentinel monitor quorum." >&2
-    return 1
-  fi
-
-  sentinel_monitor_quorum=$(( sentinel_count / 2 + 1 ))
-  echo "${sentinel_monitor_quorum}"
-}
-
-# _sentinel_set_or_warn — apply one SENTINEL SET and log a warning when the
-# sentinel does not answer OK. The discovery loop only verifies the monitor
-# registration itself, so a failed SET leaves the engine default in effect;
-# the warning makes that state diagnosable instead of silent.
-_sentinel_set_or_warn() {
-  local name="${1}"
-  shift
-  local output
-  output=$(_sentinel_cli SENTINEL SET "${name}" "$@")
-  output="${output//$'\r'/}"
-  if [ "${output}" != "OK" ]; then
-    echo "WARNING: SENTINEL SET ${name} ${1} returned '${output:-<empty>}' — engine default remains in effect." >&2
-  fi
-}
-
-# _register_monitor — dynamically register the master with the running sentinel
-# via SENTINEL MONITOR + SENTINEL SET.
-# Applies the same failover tunables as valkey-register-to-sentinel.sh and
-# post-restore-sentinel.sh, so failover timing does not depend on which
-# registration path happened to run first.
-_register_monitor() {
-  local master_fqdn="${1}"
-  local data_port="${SERVICE_PORT:-6379}"
-  local monitor_name="${VALKEY_COMPONENT_NAME}"
-  local sentinel_monitor_quorum
-  if is_empty "${monitor_name}"; then
-    echo "ERROR: VALKEY_COMPONENT_NAME is not set — cannot register sentinel monitor." >&2
-    return 1
-  fi
-  sentinel_monitor_quorum=$(calculate_sentinel_monitor_quorum) || return 1
-  echo "INFO: registering master ${master_fqdn}:${data_port} with sentinel as '${monitor_name}'." >&2
-  _sentinel_cli SENTINEL MONITOR "${monitor_name}" "${master_fqdn}" "${data_port}" "${sentinel_monitor_quorum}"
-  _sentinel_set_or_warn "${monitor_name}" down-after-milliseconds 20000
-  _sentinel_set_or_warn "${monitor_name}" failover-timeout 60000
-  _sentinel_set_or_warn "${monitor_name}" parallel-syncs 1
-  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    _sentinel_set_or_warn "${monitor_name}" auth-user "${VALKEY_DEFAULT_USER:-default}"
-    _sentinel_set_or_warn "${monitor_name}" auth-pass "${VALKEY_DEFAULT_PASSWORD}"
-  fi
-}
-
-# _wait_sentinel_ready — block until this sentinel's own 26379 port responds to PING.
-_wait_sentinel_ready() {
-  until _sentinel_cli PING | grep -q PONG; do
-    sleep 1
-  done
-}
-
-# _background_monitor_discovery — runs in background after sentinel starts.
-# Polls until sentinel is monitoring at least one master (either discovered
-# itself or learned from peer sentinels via pub/sub). If still 0 masters,
-# probes data pods for a master and registers it dynamically.
-# Loops indefinitely — no timeout — so even a very slow primary restart works.
-_background_monitor_discovery() {
-  _wait_sentinel_ready
-
-  while true; do
-    # If sentinel already knows a master (learned from peers or previous run), done.
-    local masters
-    masters=$(_sentinel_cli INFO sentinel | grep "^sentinel_masters:" | tr -d '\r\n' | cut -d: -f2)
-    if [ "${masters:-0}" -ge 1 ]; then
-      echo "INFO: sentinel is monitoring ${masters} master(s), background discovery done." >&2
-      return 0
-    fi
-
-    # Try to find the master from data pods and register.
-    local master_fqdn
-    master_fqdn=$(_find_master_fqdn)
-    if [ -n "${master_fqdn}" ]; then
-      _register_monitor "${master_fqdn}"
-      # Verify registration succeeded — SENTINEL MONITOR can fail transiently
-      # (e.g. DNS not yet ready) and return ERR without exiting non-zero.
-      sleep 2
-      masters=$(_sentinel_cli INFO sentinel | grep "^sentinel_masters:" | tr -d '\r\n' | cut -d: -f2)
-      if [ "${masters:-0}" -ge 1 ]; then
-        echo "INFO: sentinel is monitoring ${masters} master(s), background discovery done." >&2
-        return 0
-      fi
-      echo "WARNING: SENTINEL MONITOR registration failed, will retry in 5s..." >&2
-    else
-      echo "INFO: master not yet available, retrying in 5s..." >&2
-    fi
-
-    sleep 5
-  done
-}
 
 # This is magic for shellspec ut framework, do not modify!
 ${__SOURCED__:+false} : || return 0
@@ -291,14 +170,6 @@ create_initial_conf_if_needed
 rebuild_sentinel_acl
 reset_dynamic_conf
 append_dynamic_conf
-
-# If the conf has no monitor stanza, start a background loop that will
-# discover the master and register it once sentinel and data pods are ready.
-# This handles simultaneous restarts where the primary may not be up yet.
-if ! grep -q "^sentinel monitor" "${SENTINEL_CONF}" 2>/dev/null; then
-  echo "INFO: no sentinel monitor stanza — starting background discovery loop." >&2
-  _background_monitor_discovery &
-fi
 
 echo "Starting: valkey-server ${SENTINEL_CONF} --sentinel"
 exec valkey-server "${SENTINEL_CONF}" --sentinel

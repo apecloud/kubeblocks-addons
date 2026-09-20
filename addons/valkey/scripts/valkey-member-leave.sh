@@ -174,11 +174,12 @@ leaving_ip=$(getent hosts "${leaving_fqdn}" 2>/dev/null | awk '{print $1}' | hea
 #      master. A slave that queried the stuck sentinel got a stale "master
 #      is the deleted pod" answer and bound to a non-existent address,
 #      leaving the cluster in a 1-master + 1-good-slave + 1-stuck-slave
-#      topology that the cascade self-heal daemon could not repair: the
-#      stuck slave's master_host pointed to a DNS-NXDOMAIN host, so the
-#      daemon's remote-master-unreachable guard correctly skipped the
-#      repair attempt. (Issuing REPLICAOF on stale data is the failure
-#      mode the guard exists to prevent.)
+#      topology that nothing repaired automatically: the stuck slave's
+#      master_host pointed to a DNS-NXDOMAIN host, so the
+#      remote-master-unreachable guard in the then-existing cascade
+#      self-heal daemon correctly skipped the repair attempt. (Issuing
+#      REPLICAOF on stale data is the failure mode the guard exists to
+#      prevent.)
 #
 #   2) RESET temporarily zeros num-slaves. Any pod that restarts during this
 #      window may fail quorum and fall through to the heuristic bootstrap
@@ -194,8 +195,8 @@ leaving_ip=$(getent hosts "${leaving_fqdn}" 2>/dev/null | awk '{print $1}' | hea
 #
 # Trade-off summary:
 #   - Skip RESET (this version): cosmetic ghost slave entry until sentinel
-#     restart, no functional impact on failover, client routing, scale-out,
-#     scale-in, or self-heal.
+#     restart, no functional impact on failover, client routing, or
+#     scale-out / scale-in.
 #   - Call RESET (previous behaviour): roughly 17 percent chance of stuck
 #     slave bound to deleted master via stale sentinel answer (real
 #     functional break observed in 12h smoke run R6).

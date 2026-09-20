@@ -155,7 +155,7 @@ register_to_one_sentinel() {
   # Configure parameters
   budget_require "$BUDGET_SET" "sentinel set down-after" || return 1
   call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
-    SENTINEL set "${master_name}" down-after-milliseconds 20000 || return 1
+    SENTINEL set "${master_name}" down-after-milliseconds 10000 || return 1
   budget_require "$BUDGET_SET" "sentinel set failover-timeout" || return 1
   call_func_with_retry 3 2 execute_sentinel_cmd "${sentinel_fqdn}" \
     SENTINEL set "${master_name}" failover-timeout 60000 || return 1

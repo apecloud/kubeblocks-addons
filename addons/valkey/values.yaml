@@ -7,7 +7,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  registry: docker.io
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   repository: valkey/valkey
   pullPolicy: IfNotPresent
 

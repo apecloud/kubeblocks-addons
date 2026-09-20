@@ -185,9 +185,9 @@ Describe "Valkey Member-Leave Bash Script Tests"
     # (pre-failover) master, and any slave that queried it received a stale
     # answer and bound to a non-existent address. Observed live in 12h smoke
     # test as one slave stuck with master_host=<deleted-pod>, link=down,
-    # cluster topology unable to self-heal because the cascade self-heal
-    # daemon's PR #2615 remote-master-unreachable guard correctly skipped
-    # repair on a host that did not exist.
+    # cluster topology left broken with no automatic repair: the
+    # remote-master-unreachable guard in the then-existing cascade self-heal
+    # daemon correctly skipped repair on a host that did not exist.
     #
     # The fix removes the `SENTINEL RESET` invocation from the script
     # entirely. These tests assert the contract: no `SENTINEL RESET` token

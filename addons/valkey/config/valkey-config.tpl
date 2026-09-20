@@ -62,12 +62,7 @@ zset-max-listpack-value 64
 
 # IO threads -- use roughly half of available CPUs, capped at 8.
 # Setting 1 disables multi-threading (same as not setting it).
-{{- $cpu := default 0 $.PHY_CPU | int }}
-{{- if gt $cpu 1 }}
-io-threads {{ min (max (div $cpu 2) 1) 8 }}
-{{- else }}
-io-threads 1
-{{- end }}
+io-threads 4
 io-threads-do-reads yes
 
 # Memory policy
