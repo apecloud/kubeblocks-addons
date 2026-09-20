@@ -17,4 +17,5 @@ spec:
     - releases:
         - rocketmq-exporter-0.0.3
       compDefs:
-        - {{ include "rocketmq.compDefRocketMQExporter" . }}
+        # name prefix pattern, chart-version agnostic
+        - {{ include "rocketmq-exporter.cmpdPrefixPattern" . }}
