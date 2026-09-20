@@ -1,15 +1,25 @@
 {{/*
-ActionSet for Valkey RDB+ACL snapshot backup and restore.
+ActionSet for Valkey physical backup and restore (redis-aligned flow).
 
-Backup flow:
-  1. backupData: run BGSAVE on the target pod (secondary preferred), wait for
-     completion, archive dump.rdb plus users.acl when present, and push with
-     zstd compression.
+Backup flow (backupData):
+  1. BGSAVE on the target pod (secondary preferred via BackupPolicyTemplate),
+     wait for completion, tar the WHOLE DATA_DIR (dump.rdb, users.acl and —
+     with appendonly enabled — appendonlydir/) and push it as
+     <backup>.tar.zst, then push the Sentinel ACL file when the Sentinel
+     connection vars are supplied.
 
 Restore flow:
-  1. prepareData: pull the archive, extract it into DATA_DIR, and seed the
-     multipart AOF manifest/base/incr files from dump.rdb before the pod starts.
-  2. postReady: fail-closed Sentinel monitor re-registration after data restore.
+  1. prepareData: switch-data-dir.sh reroutes DATA_DIR to .restore_keys when
+     DP_RESTORE_KEY_PATTERNS is set (partial key restore); restore.sh extracts
+     the archive into DATA_DIR with the same safety checks as before.
+  2. postReady:
+     - restore-keys.sh: restores the Sentinel ACL rules, and — when
+       DP_RESTORE_KEY_PATTERNS is set — starts a local Valkey on the staged
+       archive and MIGRATEs the matching keys into the restored cluster.
+     - post-restore-sentinel.sh (valkey-specific, no redis counterpart):
+       verifies data-plane convergence after restore and re-arms Sentinel
+       monitoring when the Sentinel credentials are available; delegates to
+       the Sentinel startup self-discovery loop otherwise.
 
 KubeBlocks DataProtection passes standard DP_* variables into all job containers;
 DATA_DIR is injected from the ActionSet env. Current BackupPolicyTemplate env
@@ -51,14 +61,15 @@ spec:
         - bash
         - -c
         - |
+          {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}
     postReady:
       - job:
           image: $(IMAGE)
           onError: Fail
-          runOnTargetPodNode: false
+          runOnTargetPodNode: true
           command:
             - bash
             - -c
             - |
-              {{- .Files.Get "dataprotection/post-restore-sentinel.sh" | nindent 14 }}
+              {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 14 }}

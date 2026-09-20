@@ -1,14 +1,22 @@
 #!/bin/bash
-# restore.sh — prepareData phase: extract backup archive into DATA_DIR.
+# restore.sh — prepareData phase: extract the backup archive into DATA_DIR.
 #
-# Runs as an init container before the Valkey pod starts.
-# DATA_DIR must be empty (or contain only the .kb-data-protection placeholder)
-# to prevent accidentally overwriting a running cluster.
+# Runs as an init container before the Valkey pod starts.  DATA_DIR must be
+# empty (or contain only the .kb-data-protection placeholder) to prevent
+# accidentally overwriting a running cluster.  When DP_RESTORE_KEY_PATTERNS is
+# set, switch-data-dir.sh (concatenated before this file) has already pointed
+# DATA_DIR at ${DATA_DIR}/.restore_keys, so the full archive is staged there
+# for the postReady key-migration job instead of the real data directory.
+#
+# Unlike the previous valkey-specific version there is no AOF seeding: the
+# backup archives the whole data directory (including appendonlydir/ when
+# appendonly is enabled), so extracting it reproduces the exact on-disk state
+# the engine expects.
 
 set -e
 set -o pipefail
 
-[ -n "${DP_DATASAFED_BIN_PATH}" ] && export PATH="${PATH}:${DP_DATASAFED_BIN_PATH}"
+if [ -n "${DP_DATASAFED_BIN_PATH}" ]; then export PATH="${PATH}:${DP_DATASAFED_BIN_PATH}"; fi
 export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_BASE_PATH}"
 
 mkdir -p "${DATA_DIR}"
@@ -27,52 +35,17 @@ if [ -e "${placeholder}" ] && [ ! -f "${placeholder}" ]; then
 fi
 touch "${placeholder}"
 
-archive="${DP_BACKUP_NAME}.tar.zst"
-if datasafed list "${archive}" 2>/dev/null | grep -qF "${archive}"; then
-  echo "INFO: Restoring from ${archive}..."
-  datasafed pull -d zstd-fastest "${archive}" - | tar -xvf - -C "${DATA_DIR}"
+backupFile="${DP_BACKUP_NAME}.tar.zst"
+if [ "$(datasafed list "${backupFile}" 2>/dev/null)" = "${backupFile}" ]; then
+  echo "INFO: Restoring from ${backupFile}..."
+  datasafed pull -d zstd-fastest "${backupFile}" - | tar -xvf - -C "${DATA_DIR}"
+elif [ "$(datasafed list valkey-offline.tar 2>/dev/null)" = "valkey-offline.tar" ]; then
+  echo "INFO: Restoring from valkey-offline.tar..."
+  datasafed pull valkey-offline.tar - | tar -xvf - -C "${DATA_DIR}"
 else
-  echo "ERROR: backup archive '${archive}' not found in repository." >&2
-  exit 1
+  echo "INFO: Restoring from ${DP_BACKUP_NAME}.tar.gz..."
+  datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C "${DATA_DIR}"
 fi
 
-seed_multipart_aof_from_rdb() {
-  local rdb="${DATA_DIR}/dump.rdb"
-  local append_dirname="${VALKEY_APPEND_DIRNAME:-appendonlydir}"
-  local append_filename="${VALKEY_APPEND_FILENAME:-appendonly.aof}"
-  local append_dir="${DATA_DIR}/${append_dirname}"
-  local base_file="${append_dir}/${append_filename}.1.base.rdb"
-  local incr_file="${append_dir}/${append_filename}.1.incr.aof"
-  local manifest_file="${append_dir}/${append_filename}.manifest"
-  local restored_aof_state=""
-
-  if [ ! -s "${rdb}" ]; then
-    echo "ERROR: restored archive must contain a non-empty dump.rdb." >&2
-    exit 1
-  fi
-
-  restored_aof_state=$(find "${DATA_DIR}" -mindepth 1 \( \
-    -name "${append_dirname}" -o \
-    -name "${append_filename}" -o \
-    -name "${append_filename}.*" -o \
-    -name "*.aof" \
-  \) -print -quit)
-  if [ -n "${restored_aof_state}" ]; then
-    echo "ERROR: restored archive already contains AOF state at ${restored_aof_state}; refusing to synthesize AOF from dump.rdb." >&2
-    exit 1
-  fi
-
-  mkdir -p "${append_dir}"
-  cp "${rdb}" "${base_file}"
-  : > "${incr_file}"
-  {
-    printf 'file %s seq 1 type b\n' "$(basename "${base_file}")"
-    printf 'file %s seq 1 type i\n' "$(basename "${incr_file}")"
-  } > "${manifest_file}"
-  echo "INFO: Seeded multipart AOF manifest from restored dump.rdb."
-}
-
-seed_multipart_aof_from_rdb
-
-rm -f "${placeholder}" && sync
+rm -rf "${placeholder}" && sync
 echo "INFO: Restore complete."
