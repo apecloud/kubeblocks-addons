@@ -89,10 +89,13 @@ peer_members_to_list() {
 # Peer /members reads locally applied membership, exactly as etcd bootstrap
 # does. It does not need quorum (unlike etcdctl member list in etcd 3.5).
 read_peer_members() {
-  local endpoints="$1" timeout="$2" endpoint body
+  local endpoints="$1" timeout="$2" endpoint body remaining
+  local deadline=$((SECONDS + timeout))
   local peers tls_args=()
   IFS=',' read -ra peers <<< "$endpoints"
   for endpoint in "${peers[@]}"; do
+    remaining=$((deadline - SECONDS))
+    [ "$remaining" -gt 0 ] || return 1
     tls_args=()
     if [[ "$endpoint" == https://* ]]; then
       local cert
@@ -101,9 +104,9 @@ read_peer_members() {
       done
       tls_args=(--cacert "$TLS_MOUNT_PATH/ca.pem" --cert "$TLS_MOUNT_PATH/cert.pem" --key "$TLS_MOUNT_PATH/key.pem")
     fi
-    # Give every configured peer a chance. A shared deadline lets one stalled
-    # peer starve all later peers, even when one of them has the current list.
-    if body=$(curl --fail --silent --show-error --connect-timeout 3 --max-time "$timeout" "${tls_args[@]}" "$endpoint/members") &&
+    # Bound the entire query round. The startup caller rotates peers between
+    # rounds so a slow or stale first peer cannot starve healthy peers.
+    if body=$(curl --fail --silent --show-error --connect-timeout 3 --max-time "$remaining" "${tls_args[@]}" "$endpoint/members") &&
       printf '%s\n' "$body" | peer_members_to_list; then
       return 0
     fi

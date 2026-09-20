@@ -66,6 +66,45 @@ Describe 'Etcd startup registration barrier'
     The output should include 'registration confirmed'
   End
 
+  Context 'fallback from an unusable first peer'
+    Parameters
+      stale
+      stalled
+    End
+    It 'queries the healthy peer on the next round and starts successfully'
+      # Exercise the real HTTP query helper together with the startup loop.
+      . ../scripts/peer-members.sh
+      scenario="$1"
+      PEER_FQDNS=etcd-0.headless,etcd-1.headless,etcd-3.headless
+      curl() {
+        local url="${@: -1}"
+        echo "$url" >> "$test_dir/requests"
+        case "$url" in
+          http://etcd-0.headless:2380/members)
+            if [ "$scenario" = stalled ]; then
+              # Consume the full query budget, as curl --max-time would.
+              command sleep 5
+              return 28
+            fi
+            echo '[{"id":"1","name":"etcd-0","peerURLs":["http://etcd-0.headless:2380"]}]'
+            ;;
+          http://etcd-1.headless:2380/members)
+            echo '[{"id":"1","name":"etcd-0","peerURLs":["http://etcd-0.headless:2380"]},{"id":"2","name":"etcd-1","peerURLs":["http://etcd-1.headless:2380"]},{"id":"3","peerURLs":["http://etcd-3.headless:2380"]}]'
+            ;;
+          *) return 1;;
+        esac
+      }
+      # Bound a broken implementation without relying on subshell mutations.
+      sleep() { SECONDS=$((SECONDS + 60)); }
+      When call wait_for_member_registration
+      The status should be success
+      The output should include 'registration confirmed'
+      The contents of file "$test_dir/requests" should eq 'http://etcd-0.headless:2380/members
+http://etcd-1.headless:2380/members'
+      The contents of file "$default_conf" should include 'etcd-3=http://etcd-3.headless:2380'
+    End
+  End
+
   It 'bypasses the barrier for an initial new cluster'
     echo 'initial-cluster-state: new' > "$default_conf"
     When call wait_for_member_registration
