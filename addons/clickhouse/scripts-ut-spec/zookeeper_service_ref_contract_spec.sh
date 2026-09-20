@@ -75,7 +75,7 @@ clickhouse_22_component_definition_is_rendered() {
   local cmpd
   cmpd=$(helm template clickhouse .. --show-only templates/cmpd-ch-22.yaml) || return
 
-  grep -Fq -- 'name: clickhouse-22-1.0.3' <<<"$cmpd" || return 1
+  grep -Fq -- 'name: clickhouse-22-1.0.4' <<<"$cmpd" || return 1
   grep -Fq -- '- name: copy-keeper-client' <<<"$cmpd" || return 1
   grep -Fq -- '/shared-tools/clickhouse-keeper-client' <<<"$cmpd" || return 1
   grep -Fq -- '^clickhouse-22-1.*' <<<"$cmpd" || return 1
@@ -86,7 +86,7 @@ keeper_22_component_definition_is_rendered() {
   local cmpd
   cmpd=$(helm template clickhouse .. --show-only templates/cmpd-keeper-22.yaml) || return
 
-  grep -Fq -- 'name: clickhouse-keeper-22-1.0.3' <<<"$cmpd" || return 1
+  grep -Fq -- 'name: clickhouse-keeper-22-1.0.4' <<<"$cmpd" || return 1
   grep -Fq -- '- name: copy-keeper-client' <<<"$cmpd" || return 1
   grep -Fq -- '/shared-tools/clickhouse-keeper-client' <<<"$cmpd" || return 1
 }
