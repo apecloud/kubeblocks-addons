@@ -42,6 +42,7 @@ on:
           - redis
           - risingwave
           - rocketmq
+          - seaweedfs
           - starrocks-ce
           - tdengine
           - tidb
