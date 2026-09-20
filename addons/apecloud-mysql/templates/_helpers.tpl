@@ -345,11 +345,11 @@ env:
   - name: CLUSTER_START_INDEX
     value: {{ .Values.cluster.clusterStartIndex | default "1" | quote }}
   - name: MYSQL_TEMPLATE_CONFIG
-    value: {{ .Values.cluster.templateConfig | default "" | quote }}
+    value: {{ if .Values.cluster.templateConfig }}{{ .Values.cluster.templateConfig }}{{ else }}""{{ end }}
   - name: MYSQL_CUSTOM_CONFIG
-    value: {{ .Values.cluster.customConfig | default "" | quote }}
+    value: {{ if .Values.cluster.customConfig }}{{ .Values.cluster.customConfig }}{{ else }}""{{ end }}
   - name: MYSQL_DYNAMIC_CONFIG
-    value: {{ .Values.cluster.dynamicConfig | default "" | quote }}
+    value: {{ if .Values.cluster.dynamicConfig }}{{ .Values.cluster.dynamicConfig }}{{ else }}""{{ end }}
   - name: KB_EMBEDDED_WESQL
     value: {{ .Values.cluster.kbWeSQLImage | default "1" | quote }}
   - name: KB_MYSQL_VOLUME_DIR

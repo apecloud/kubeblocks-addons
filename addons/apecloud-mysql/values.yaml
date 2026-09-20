@@ -24,11 +24,11 @@ cluster:
   ## @param cluster.replicaSetCount
   replicaSetCount: 3
   ## MYSQL_TEMPLATE_CONFIG
-  templateConfig:
+  templateConfig: ""
   ## MYSQL_CUSTOM_CONFIG
-  customConfig:
+  customConfig: ""
   ## MYSQL_DYNAMIC_CONFIG
-  dynamicConfig:
+  dynamicConfig: ""
   ## KB_EMBEDDED_WESQL
   kbWeSQLImage: "1"
 
