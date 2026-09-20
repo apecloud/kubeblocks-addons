@@ -587,10 +587,11 @@ build_cluster_announce_info() {
     {
       echo "cluster-announce-ip $redis_announce_host_value"
       echo "cluster-announce-bus-port $redis_announce_bus_port_value"
-      if [ "$TLS_ENABLED" == "true" ]; then
+      if [[ "$TLS_ENABLED" == "true" && "$SERVICE_VERSION" != 6.0.* ]]; then
         echo "cluster-announce-tls-port $redis_announce_port_value"
         echo "cluster-announce-port 0"
       else
+        # Redis 6.0 uses announce-port for TLS too; announce-tls-port is newer.
         echo "cluster-announce-port $redis_announce_port_value"
       fi
     } >> $redis_real_conf
