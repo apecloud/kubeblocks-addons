@@ -23,6 +23,7 @@ spec:
         - 8.0.37
         - 8.0.38
         - 8.0.39
+        - 8.0.46
     - compDefs:
         - {{ include "mysql.componentDefName84" . }}
       releases:
@@ -126,6 +127,14 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.39
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
+        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+    - name: 8.0.46
+      serviceVersion: 8.0.46
+      images:
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.46
+        init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup-minimal:8.0.35
         init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     - name: 8.4.0
