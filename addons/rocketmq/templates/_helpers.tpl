@@ -98,6 +98,43 @@ Define rocketmq dashboard component definition name
 {{- end -}}
 
 {{/*
+Component definition patterns used by ComponentVersion.spec.compatibilityRules[].compDefs.
+KubeBlocks matches them with component.PrefixOrRegexMatched, which tries
+strings.HasPrefix first, so a plain name prefix is enough (no regex metacharacters,
+no chart version). Each pattern is derived from the corresponding ComponentDefinition
+name helper with the trailing chart version stripped, so nameOverride and
+componentDefinitionVersion overrides keep the pattern in sync with the real name.
+*/}}
+
+{{/*
+Define rocketmq broker 4.x component definition name prefix
+*/}}
+{{- define "rocketmq-broker.cmpdPrefixPattern" -}}
+{{- include "rocketmq.compDefRocketMQBroker4" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{/*
+Define rocketmq nameserver 4.x component definition name prefix
+*/}}
+{{- define "rocketmq-namesrv.cmpdPrefixPattern" -}}
+{{- include "rocketmq.compDefRocketMQNameSrv4" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{/*
+Define rocketmq exporter component definition name prefix
+*/}}
+{{- define "rocketmq-exporter.cmpdPrefixPattern" -}}
+{{- include "rocketmq.compDefRocketMQExporter" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{/*
+Define rocketmq dashboard component definition name prefix
+*/}}
+{{- define "rocketmq-dashboard.cmpdPrefixPattern" -}}
+{{- include "rocketmq.compDefRocketMQDashboard" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{/*
 Define rocketmq broker 4 component configuration template name
 */}}
 {{- define "rocketmq-broker4.configurationTemplate" -}}
