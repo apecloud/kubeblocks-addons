@@ -3,7 +3,7 @@ annotations:
 apiVersion: v2
 name: valkey-cluster
 type: application
-version: 0.1.0
+version: 1.0.3
 description: A Valkey Cluster Helm chart for KubeBlocks.
 dependencies:
   - name: kblib

@@ -1,6 +1,20 @@
 #!/bin/sh
 set -eu
 
+# NOTE: not wired into the addon anymore.
+#
+# This script reconciled the mounted config file with the running server and was
+# invoked by the (unreleased) `reconfigure` action under
+# ComponentDefinition.spec.configs[].  On KubeBlocks 1.0 the reconfigure path is
+# ParametersDefinition.spec.reloadAction (see templates/paramsdef.yaml), which
+# calls reload-parameter.sh directly for each changed parameter and therefore
+# needs neither the projection freshness gate nor the file-vs-runtime scan
+# implemented here.
+#
+# It is kept for manual/offline use (the same file path conventions still
+# apply).  Delete it together with scripts-ut-spec/reload_config_spec.sh if you
+# want to drop the unused code path.
+
 CONFIG_FILE="${CONFIG_FILE:-/etc/conf/valkey.conf}"
 DATA_LINK="${DATA_LINK:-/etc/conf/..data}"
 RELOAD_PARAM_SCRIPT="${RELOAD_PARAM_SCRIPT:-/scripts/reload-parameter.sh}"

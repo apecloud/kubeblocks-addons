@@ -1,16 +1,21 @@
 #!/bin/bash
 # reload-parameter.sh — hot-reload a single configuration parameter.
 #
-# Learning note:
-#   KubeBlocks calls the reconfigure action when a config parameter changes.
-#   The action script iterates all env vars and calls this script once per
-#   parameter.  This script translates the parameter name from
-#   environment-variable style (MAXMEMORY_POLICY) to Valkey config style
-#   (maxmemory-policy) and runs CONFIG SET on the live server.
+# Invocation (KubeBlocks 1.0):
+#   ParametersDefinition.spec.reloadAction.shellTrigger runs
+#       reload-parameter.sh <parameter-name> <value>
+#   once per changed dynamic parameter, inside the config-manager sidecar.  The
+#   sidecar uses the Valkey image, so valkey-cli below is available, and the
+#   component env vars (SERVICE_PORT, VALKEY_DEFAULT_PASSWORD,
+#   VALKEY_CLI_TLS_ARGS) are injected into it.
+#
+#   This script translates the parameter name from environment-variable style
+#   (MAXMEMORY_POLICY) to Valkey config style (maxmemory-policy) and runs
+#   CONFIG SET on the live server.
 #
 #   Not all parameters support CONFIG SET (e.g., bind, port require restart).
 #   Unsupported/static parameters are ignored, but value validation failures
-#   must fail closed so the reconfigure action cannot report a false success.
+#   must fail closed so the reload cannot report a false success.
 
 param_name="${1}"
 param_value="${2}"

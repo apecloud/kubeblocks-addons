@@ -1,0 +1,46 @@
+{{/*
+ParamConfigRenderer (PCR) — released KubeBlocks 1.0 shape
+(parameters.kubeblocks.io/v1alpha1).
+
+The PCR binds a ParametersDefinition to a ComponentDefinition: KubeBlocks
+resolves it by matching spec.componentDef against the cmpd name (and
+spec.serviceVersion, when set) and applies the reload action of the referenced
+PDs.  This is the released replacement for the `reconfigure` block that used to
+sit under ComponentDefinition.spec.configs[].
+
+- componentDef: valkey ComponentDefinitions do NOT embed the chart version, so
+  the PCR name stays stable as well.  Do not add the chart version here: two
+  PCRs matching the same componentDef would make the resolution order — and
+  therefore the effective parameter schema — nondeterministic.
+- configs[].name is the config file name, i.e. PD.spec.fileName.
+- configs[].templateName points at the ComponentDefinition configspec entry
+  (cmpd.yaml: configs[].name).  It may be omitted — the PCR controller then
+  resolves it by looking for a config template containing a `valkey.conf` key —
+  but setting it explicitly keeps the wiring independent of that extra patch.
+- fileFormatConfig: valkey.conf is a redis-format file.
+- reRenderResourceTypes: maxmemory is derived from PHY_MEMORY in the config
+  template, so the file has to be re-rendered after a vertical scale.
+*/}}
+{{- range .Values.valkeyVersions }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ printf "valkey%s-pcr" .major }}
+  labels:
+    {{- include "valkey.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" $ | nindent 4 }}
+spec:
+  componentDef: {{ .componentDef }}
+  parametersDefs:
+    - {{ printf "valkey%s-pd" .major }}
+
+  configs:
+    - name: valkey.conf
+      templateName: valkey-replication-config
+      fileFormatConfig:
+        format: redis
+      reRenderResourceTypes:
+        - vscale
+{{- end }}

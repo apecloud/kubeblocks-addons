@@ -103,19 +103,10 @@ Used as a fallback in ActionSet; BackupPolicyTemplate overrides per serviceVersi
 {{- end }}
 
 {{/*
-Reconfigure action — called by KubeBlocks when config parameters change.
-Reads the mounted ConfigMap config file and applies each parameter via
-CONFIG SET through reload-parameter.sh.  Includes a freshness gate to
-handle the Kubernetes ConfigMap projection race condition.
+Reload tools scripts ConfigMap name.  It is referenced by the reloadAction of
+every ParametersDefinition (see paramsdef.yaml) and defined in
+reload-tools-script.yaml.
 */}}
-{{- define "valkey.reconfigureAction" -}}
-reconfigure:
-  timeoutSeconds: 60
-  exec:
-    container: valkey
-    targetPodSelector: All
-    command:
-      - /scripts/reload-config.sh
-  retryPolicy:
-    maxRetries: 10
+{{- define "valkey.reloadToolsScript" -}}
+valkey-reload-tools-script
 {{- end -}}

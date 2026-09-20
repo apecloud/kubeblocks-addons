@@ -1,0 +1,26 @@
+{{/*
+Reload tools scripts ConfigMap.
+
+Every ParametersDefinition of this addon points its reloadAction at this
+ConfigMap.  KubeBlocks mounts it into the config-manager sidecar and executes
+`reload-parameter.sh` from it, once per changed parameter.
+
+The content is the same scripts/reload-parameter.sh that also ships inside the
+scripts ConfigMap (see scripts-template.yaml) — going through .Files.Get keeps a
+single source of truth, so the two can never drift.
+
+The name is intentionally NOT versioned: the ParametersDefinition is a stable
+object that has to keep pointing at one ConfigMap across chart upgrades,
+otherwise the reference would dangle.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "valkey.reloadToolsScript" . }}
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
+data:
+  reload-parameter.sh: |-
+    {{- .Files.Get "scripts/reload-parameter.sh" | nindent 4 }}

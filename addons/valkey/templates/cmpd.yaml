@@ -129,16 +129,21 @@ spec:
   # configs mounts a ConfigMap as files inside the container.
   # template: points to a ConfigMap whose keys become filenames.
   # externalManaged: true tells KB's config controller to manage this
-  # configuration: create ComponentParameters, watch for parameter changes,
-  # and invoke the ComponentDefinition reconfigure action for dynamic
-  # parameters. Without it, KB skips the whole config lifecycle.
+  # configuration: create ComponentParameters, watch for parameter changes and
+  # apply them. Which parameters are reloadable, and how they are reloaded, is
+  # declared by the ParametersDefinition + ParamConfigRenderer pair that
+  # references this component (see paramsdef.yaml / pcr-valkey.yaml).
+  # NOTE: do not put the reload action back here. The `reconfigure` key under
+  # configs[] only exists in an unreleased KubeBlocks API; in 1.0 the reload
+  # action lives in ParametersDefinition.spec.reloadAction, and
+  # lifecycleActions.reconfigure is reserved ("This Action is reserved for
+  # future versions").
   configs:
     - name: valkey-replication-config
       template: {{ include "valkey.configTemplate" $ }}
       namespace: {{ $.Release.Namespace }}
       volumeName: valkey-config
       externalManaged: true
-      {{- include "valkey.reconfigureAction" $ | nindent 6 }}
 
   # ── Scripts ────────────────────────────────────────────────────────────
   # defaultMode: 0555 — the files must be executable.
