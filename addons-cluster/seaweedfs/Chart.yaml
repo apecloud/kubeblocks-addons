@@ -1,0 +1,17 @@
+apiVersion: v2
+name: seaweedfs-cluster
+description: SeaweedFS Cluster for the KubeBlocks 1.0 addon
+version: 1.0.0
+appVersion: "4.47"
+keywords: [storage, object-storage, S3, seaweedfs]
+home: https://seaweedfs.com
+sources:
+  - https://github.com/seaweedfs/seaweedfs
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks-addons
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra

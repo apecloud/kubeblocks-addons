@@ -1,0 +1,83 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: seaweedfs-master
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-standalone") }}
+        - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-distributed") }}
+      releases:
+        - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+  releases:
+    - name: {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+      serviceVersion: {{ .Values.serviceVersion | quote }}
+      images:
+        master: {{ include "seaweedfs.image" . }}
+        roleProbe: {{ include "seaweedfs.image" . }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: seaweedfs-volume
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-standalone") }}
+        - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-distributed") }}
+      releases:
+        - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+  releases:
+    - name: {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+      serviceVersion: {{ .Values.serviceVersion | quote }}
+      images:
+        volume: {{ include "seaweedfs.image" . }}
+        memberLeave: {{ include "seaweedfs.image" . }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: seaweedfs-filer
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "filer") }}
+      releases:
+        - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+  releases:
+    - name: {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+      serviceVersion: {{ .Values.serviceVersion | quote }}
+      images:
+        filer: {{ include "seaweedfs.image" . }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: seaweedfs-s3
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
+      releases:
+        - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+  releases:
+    - name: {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+      serviceVersion: {{ .Values.serviceVersion | quote }}
+      images:
+        s3: {{ include "seaweedfs.image" . }}

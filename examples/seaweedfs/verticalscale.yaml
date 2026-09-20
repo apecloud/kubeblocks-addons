@@ -1,0 +1,16 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: seaweedfs-verticalscale
+  namespace: demo
+spec:
+  clusterName: seaweedfs
+  type: VerticalScaling
+  verticalScaling:
+  - componentName: s3
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: '2'
+      memory: 2Gi
