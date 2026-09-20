@@ -8,12 +8,13 @@ metadata:
     {{- include "mysql.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
+    # compDefs are name prefix patterns, chart-version agnostic
     - compDefs:
-        - {{ include "mysql.componentDefNameOrc57" . }}
+        - {{ include "mysql.componentDefPrefixOrc57" . }}
       releases:
         - 5.7.44
     - compDefs:
-        - {{ include "mysql.componentDefNameOrc80" . }}
+        - {{ include "mysql.componentDefPrefixOrc80" . }}
       releases:
         - 8.0.45
         - 8.0.46
