@@ -72,6 +72,28 @@ Scripts data: bundle every file under scripts/ into a single ConfigMap.
 {{- end }}
 
 {{/*
+Common shell library shared by every valkey script.  It is the "common.sh" key
+of the scripts ConfigMap (see scripts-template.yaml) and is also inlined into
+ops pods that do not mount that ConfigMap — e.g. the register-to-sentinel
+OpsDefinition.  Keep this the single source of truth: every script sources
+/scripts/common.sh and assumes exactly these functions exist.
+*/}}
+{{- define "valkey.commonLibrary" -}}
+#!/bin/bash
+{{- include "kblib.commons.call_func_with_retry" $ | nindent 0 }}
+{{- include "kblib.compvars.get_target_pod_fqdn_from_pod_fqdn_vars" $ | nindent 0 }}
+{{- include "kblib.pods.min_lexicographical_order_pod" $ | nindent 0 }}
+{{- include "kblib.ututils.set_xtrace_when_ut_mode_false" $ | nindent 0 }}
+{{- include "kblib.ututils.unset_xtrace_when_ut_mode_false" $ | nindent 0 }}
+{{- include "kblib.ututils.sleep_when_ut_mode_false" $ | nindent 0 }}
+
+# ── Utility helpers ─────────────────────────────────────────────────
+is_empty() { [ -z "$1" ]; }
+contains() { [[ "$1" == *"$2"* ]]; }
+extract_obj_ordinal() { echo "$1" | grep -oE '[0-9]+$'; }
+{{- end -}}
+
+{{/*
 Default Valkey image (first version in the list).
 Used as a fallback in ActionSet; BackupPolicyTemplate overrides per serviceVersion.
 */}}

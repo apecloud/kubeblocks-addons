@@ -167,6 +167,27 @@ spec:
           compDef: {{ .componentDef }}
           optional: true
           podFQDNs: Required
+    # Used by the memberJoin action (scripts/valkey-sentinel-member-join.sh):
+    # a joining Sentinel probes the data pods for the current primary and falls
+    # back to the lowest ordinal pod from this list when none answers.
+    - name: VALKEY_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ .componentDef }}
+          optional: true
+          podNames: Required
+    # NodePort mapping of the data pods ("podSvc:nodeport,..."). memberJoin
+    # registers the same host:nodeport address the data side registered, so a
+    # Sentinel never hands clients a different master address.
+    - name: VALKEY_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .componentDef }}
+          name: valkey-advertised
+          optional: true
+          port:
+            name: valkey-advertised
+            option: Required
     - name: VALKEY_DEFAULT_PASSWORD
       valueFrom:
         credentialVarRef:
@@ -195,6 +216,26 @@ spec:
         container: valkey-sentinel
         command: [sh, -c, /scripts/valkey-sentinel-account-provision.sh]
         targetPodSelector: All
+
+    # memberJoin: called on the pod that just joined the component when the
+    # Sentinel component is scaled out (3 → 5 Sentinels). A brand-new Sentinel
+    # starts with an empty state — no monitor stanza — so it neither counts for
+    # quorum nor can it vote in an election. The joined pod registers the
+    # current data primary with its own Sentinel process (SENTINEL MONITOR +
+    # the same failover tunables the other registration paths use); peer
+    # Sentinels discover the new node through the pub/sub HELLO channel, so no
+    # cross-registration is needed. See scripts/valkey-sentinel-member-join.sh.
+    # timeoutSeconds: the script waits up to 3 × 5s for the local Sentinel to
+    # answer PING before failing closed, so the default 30s is too tight.
+    memberJoin:
+      timeoutSeconds: 60
+      exec:
+        container: valkey-sentinel
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-sentinel-member-join.sh
+        targetPodSelector: Any
 
   runtime:
     containers:

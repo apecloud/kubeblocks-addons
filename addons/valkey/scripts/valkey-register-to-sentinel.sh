@@ -25,6 +25,7 @@ source /scripts/common.sh
 sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
 data_port="${SERVICE_PORT:-6379}"
 master_name="${VALKEY_COMPONENT_NAME}"
+REBUILD_SENTINEL_POD_NAME=${REBUILD_SENTINEL_POD_NAME:-""}
 
 # ── determine the address Sentinel should use to reach this primary ──────────
 
@@ -205,6 +206,9 @@ fi
 sentinel_monitor_quorum=$(( sentinel_count / 2 + 1 ))
 echo "Sentinel monitor quorum: ${sentinel_monitor_quorum}/${sentinel_count}"
 for fqdn in "${sentinel_fqdns[@]}"; do
+  if [[ -n $REBUILD_SENTINEL_POD_NAME && "$fqdn" != "$REBUILD_SENTINEL_POD_NAME."* ]]; then
+    continue
+  fi
   budget_require "$BUDGET_CONNECTIVITY" "next sentinel registration" || exit 1
   register_to_one_sentinel "${fqdn}" || exit 1
 done
