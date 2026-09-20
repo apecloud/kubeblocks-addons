@@ -1,0 +1,26 @@
+annotations:
+  category: Database
+apiVersion: v2
+name: valkey-cluster
+type: application
+version: 0.1.0
+description: A Valkey Cluster Helm chart for KubeBlocks.
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
+appVersion: "9.0.0"
+keywords:
+  - valkey
+  - database
+  - nosql
+  - replication
+home: https://github.com/apecloud/kubeblocks-addons/tree/main/addons-cluster/valkey
+icon: https://kubeblocks.io/img/logo.png
+maintainers:
+  - name: ApeCloud
+    url: https://kubeblocks.io/
+sources:
+  - https://github.com/valkey-io/valkey
+  - https://github.com/apecloud/kubeblocks-addons

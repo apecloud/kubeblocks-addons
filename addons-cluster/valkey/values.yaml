@@ -1,0 +1,66 @@
+# Default values for valkey-cluster.
+
+## @param version Valkey service version.
+version: 9.0.0
+
+## @param mode Valkey topology mode: standalone or replication.
+## standalone: a single Valkey data pod.
+## replication: Valkey data pods monitored by Valkey Sentinel.
+mode: replication
+
+## @param replicas data component replicas. Replication mode uses at least 2, at most 5 (CMPD replicasLimit).
+replicas: 3
+
+## @param cpu data component CPU limit/request.
+cpu: 0.5
+
+## @param memory data component memory in Gi.
+memory: 0.5
+
+## @param storage data component storage in Gi.
+storage: 20
+
+## @param storageClassName data volume StorageClass.
+storageClassName: ""
+
+## @param customSecretName default account secret name.
+## The secret must contain keys named username and password.
+customSecretName: ""
+
+## @param customSecretNamespace default account secret namespace.
+customSecretNamespace: ""
+
+## @param nodePortEnabled expose per-pod Valkey and Sentinel services through NodePort.
+nodePortEnabled: false
+
+## @param loadBalancerEnabled expose per-pod Valkey services through LoadBalancer.
+loadBalancerEnabled: false
+
+## @param podAntiAffinityEnabled add preferred pod anti-affinity for data and Sentinel pods.
+podAntiAffinityEnabled: false
+
+## @param tlsEnable enable TLS using a generated self-signed secret.
+tlsEnable: false
+
+sentinel:
+  ## @param sentinel.replicas Sentinel replicas: 3 or 5. Odd counts recommended; even counts add no quorum value.
+  replicas: 3
+  ## @param sentinel.cpu Sentinel CPU limit/request.
+  cpu: 0.5
+  ## @param sentinel.memory Sentinel memory in Gi.
+  memory: 0.5
+  ## @param sentinel.storage Sentinel storage in Gi.
+  storage: 5
+  ## @param sentinel.storageClassName Sentinel volume StorageClass.
+  storageClassName: ""
+  ## @param sentinel.customSecretName Sentinel default account secret name.
+  customSecretName: ""
+  ## @param sentinel.customSecretNamespace Sentinel default account secret namespace.
+  customSecretNamespace: ""
+
+prometheus:
+  enabled: false
+
+extra:
+  disableExporter: true
+  terminationPolicy: Delete
