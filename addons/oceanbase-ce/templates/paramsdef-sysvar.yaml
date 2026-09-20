@@ -38,27 +38,24 @@ spec:
 
   ##  require db instance restart
   ## staticParameters
-  {{- $staticParams := get $pd "staticParameters" }}
-  {{- if $staticParams }}
+  {{- with get $pd "staticParameters" }}
   staticParameters:
-    {{- range $staticParams }}
+    {{- range . }}
     - {{ . }}
     {{- end }}
   {{- end}}
 
-  {{- $dynamicParams := get $pd "dynamicParameters" }}
-  {{- if $dynamicParams }}
+  {{- with get $pd "dynamicParameters" }}
   dynamicParameters:
-    {{- range $dynamicParams }}
+    {{- range . }}
     - {{ . }}
     {{- end }}
   {{- end}}
 
       ## define immutable parameter list, this feature is not currently supported.
-  {{- $immutableParams := get $pd "immutableParameters" }}
-  {{- if $immutableParams }}
+  {{- with get $pd "immutableParameters" }}
   immutableParameters:
-    {{- range $immutableParams }}
+    {{- range . }}
     - {{ . }}
     {{- end }}
   {{- end}}
