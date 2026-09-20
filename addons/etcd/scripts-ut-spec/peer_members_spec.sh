@@ -48,6 +48,18 @@ Describe 'Etcd quorum-independent peer membership'
     The stderr should include '--connect-timeout 3 --max-time 5 http://etcd-0:2380/members'
   End
 
+  It 'falls back to a later peer when the first peer is unavailable'
+    curl() {
+      case "$*" in
+        *etcd-0:2380*) return 1;;
+        *) echo '[{"id":"1","peerURLs":["http://etcd-1:2380"],"name":"etcd-1"}]';;
+      esac
+    }
+    When call read_peer_members http://etcd-0:2380,http://etcd-1:2380 5
+    The status should be success
+    The output should include 'etcd-1'
+  End
+
   It 'fails closed when peer TLS credentials are missing'
     TLS_MOUNT_PATH=/nonexistent-etcd-test-tls
     When call read_peer_members https://etcd-0:2380 5

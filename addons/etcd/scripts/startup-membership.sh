@@ -42,6 +42,7 @@ registered_initial_cluster() {
 
 wait_for_member_registration() {
   local state endpoints="" fqdn pod endpoint own_peer members initial_cluster
+  local first_endpoint
   local deadline remaining request_timeout expected_cluster
   local last_members="<not observed>" query_error=""
   state=$(parse_config_value initial-cluster-state "$default_conf")
@@ -86,6 +87,12 @@ wait_for_member_registration() {
       query_error=" (query failed)"
     fi
     log "Startup registration not ready; waiting for a consistent member list"
+    # A peer can expose a valid but stale local snapshot. Rotate the order so
+    # retries eventually consult every peer instead of retrying the same one.
+    first_endpoint="${endpoints%%,*}"
+    if [[ "$endpoints" == *,* ]]; then
+      endpoints="${endpoints#*,},$first_endpoint"
+    fi
     [ "$SECONDS" -ge "$deadline" ] || sleep 1
   done
   log "Last observed membership$query_error: $(printf '%s\n' "$last_members" | awk 'NR <= 20 { print substr($0, 1, 512) }')"
