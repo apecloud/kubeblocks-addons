@@ -1,0 +1,26 @@
+"ClusterID" : 3291992280926361974
+"MemberID" : 13049071153751544597
+"RaftTerm" : 2
+"ID" : 968486567321571443
+"Name" : "node2"
+"PeerURL" : "http://127.0.0.1:24390"
+"ClientURL" : "http://127.0.0.1:24389"
+"IsLearner" : false
+
+"ID" : 7058601719546094542
+"Name" : ""
+"PeerURL" : "http://127.0.0.1:24410"
+"IsLearner" : false
+
+"ID" : 12331849422721938888
+"Name" : "node3"
+"PeerURL" : "http://127.0.0.1:24400"
+"ClientURL" : "http://127.0.0.1:24399"
+"IsLearner" : false
+
+"ID" : 13049071153751544597
+"Name" : "node1"
+"PeerURL" : "http://127.0.0.1:24380"
+"ClientURL" : "http://127.0.0.1:24379"
+"IsLearner" : false
+
