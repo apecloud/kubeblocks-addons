@@ -81,6 +81,43 @@ Define mysql component definition name
 {{- end -}}
 
 {{/*
+Component definition patterns used by ComponentVersion.spec.compatibilityRules[].compDefs.
+KubeBlocks matches them with component.PrefixOrRegexMatched, which tries
+strings.HasPrefix first, so a plain name prefix is enough (no regex metacharacters,
+no chart version). Each pattern is derived from the corresponding ComponentDefinition
+name helper with the trailing chart version stripped, so the prefix can never drift
+from cmpNamePrefix / Chart.Version changes.
+*/}}
+
+{{- define "mysql.componentDefPrefix57" -}}
+{{- include "mysql.componentDefName57" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{- define "mysql.componentDefPrefix80" -}}
+{{- include "mysql.componentDefName80" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{- define "mysql.componentDefPrefix84" -}}
+{{- include "mysql.componentDefName84" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{- define "mysql.componentDefPrefixOrc57" -}}
+{{- include "mysql.componentDefNameOrc57" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{- define "mysql.componentDefPrefixOrc80" -}}
+{{- include "mysql.componentDefNameOrc80" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{- define "mysql.componentDefPrefixMGR80" -}}
+{{- include "mysql.componentDefNameMGR80" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{- define "mysql.componentDefPrefixMGR84" -}}
+{{- include "mysql.componentDefNameMGR84" . | trimSuffix (printf "-%s" .Chart.Version) -}}
+{{- end -}}
+
+{{/*
 Define parametersdefinition name
 */}}
 {{- define "mysql.paramsDefName57" -}}
