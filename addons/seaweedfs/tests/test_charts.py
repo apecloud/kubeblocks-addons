@@ -109,8 +109,28 @@ class ChartsTest(unittest.TestCase):
                     for cm in self.maps.values():
                         self.assertNotIn("fixture-secret", str(cm))
 
+    def test_native_metrics_contract_for_all_components(self):
+        self.assertEqual(len(self.cmpds), 6)
+        for definition in self.cmpds.values():
+            spec = definition["spec"]
+            exporter = spec["exporter"]
+            # DisableExporter removes exporter.containerName: native exporters must
+            # leave it unset so disabling monitoring never removes the engine.
+            self.assertNotIn("containerName", exporter)
+            container = spec["runtime"]["containers"][0]
+            port = next(p for p in container["ports"] if p["name"] == exporter["scrapePort"])
+            self.assertEqual(exporter["scrapePath"], "/metrics")
+            self.assertEqual(port["containerPort"], 9327)
+            script = next(s for s in spec["scripts"] if s["name"] == "scripts")
+            command = self.maps[script["template"]]["data"][Path(container["command"][-1]).name]
+            self.assertIn("-metricsPort=9327", command)
+            # Metrics use Pod endpoints, not public client Service ports.
+            for service in spec["services"]:
+                self.assertNotIn(exporter["scrapePort"],
+                                 {p["targetPort"] for p in service["spec"]["ports"]})
+
     def test_filer_static_config_uses_component_template(self):
-        filer = next(d for d in self.cmpds.values() if d["metadata"]["name"].endswith("-filer-1.0.0"))
+        filer = next(d for d in self.cmpds.values() if d["metadata"]["name"].startswith("seaweedfs-filer-"))
         config = next(item for item in filer["spec"]["configs"] if item["name"] == "filer-config")
         self.assertNotIn("externalManaged", config)
         self.assertIn("filer.toml", self.maps[config["template"]]["data"])

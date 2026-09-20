@@ -70,6 +70,19 @@ aws --endpoint-url http://127.0.0.1:8333 s3 cp s3://example-bucket/object.txt -
 
 Use path-style S3 addressing. The gateway fails to start if either credential is absent. Credentials are read from environment variables, so changing the account Secret requires restarting **all** S3 instances. Automatic credential rotation and general account management are not implemented. The anonymous `/healthz` endpoint only checks that the gateway responds; it does not prove authenticated object reads or filer/volume availability.
 
+## Monitoring and logs
+
+Master, volume, filer and S3 expose native Prometheus metrics at `http://<pod-ip>:9327/metrics`.
+The port follows the [SeaweedFS 4.47 community chart](https://github.com/seaweedfs/seaweedfs/blob/4.47/k8s/charts/seaweedfs/values.yaml).
+Each ComponentDefinition declares a native exporter with the named `http-metrics`
+port; a compatible monitoring integration can discover these endpoints.
+No exporter sidecar or Pushgateway is needed. Metrics are not added to client Services
+and require a trusted cluster network, like the internal engine interfaces.
+
+All four processes log to container stderr (`-logtostderr=true`). Kubernetes container
+logs and a configured cluster log collector can read them without an additional file
+log sidecar. This does not enable S3 access/audit logs.
+
 ## Operations and boundaries
 
 All listed operations require live acceptance against the pinned candidate before being considered supported in production. Run operations sequentially and verify object checksums after each one.

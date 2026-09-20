@@ -11,6 +11,9 @@ spec:
   description: SeaweedFS s3 component.
   serviceKind: seaweedfs
   serviceVersion: {{ .Values.serviceVersion | quote }}
+  exporter:
+    scrapePath: /metrics
+    scrapePort: http-metrics
   podManagementPolicy: Parallel
   updateStrategy: Serial
   podUpdatePolicy: ReCreate
@@ -76,6 +79,8 @@ spec:
           capabilities:
             drop: ["ALL"]
         ports:
+          - name: http-metrics
+            containerPort: 9327
           - name: http
             containerPort: 8333
         startupProbe:
