@@ -44,7 +44,7 @@ test || __() {
 set -e
 
 # Ports are constant for the pod, so they are resolved once at load time — the
-# same style as valkey-member-leave.sh / valkey-sentinel-start.sh.  The
+# same style as valkey-sentinel-start.sh.  The
 # identity values below (master name, local Sentinel host) are read *inside*
 # the functions instead, so a unit test can change them per case.
 sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"

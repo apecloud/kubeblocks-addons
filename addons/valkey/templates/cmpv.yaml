@@ -37,7 +37,6 @@ spec:
         accountProvision: {{ $valkeyRepo }}:{{ .imageTag }}
         switchover: {{ $valkeyRepo }}:{{ .imageTag }}
         memberJoin: {{ $valkeyRepo }}:{{ .imageTag }}
-        memberLeave: {{ $valkeyRepo }}:{{ .imageTag }}
         roleProbe: {{ $valkeyRepo }}:{{ .imageTag }}
     {{- end }}
     {{- end }}
@@ -73,5 +72,6 @@ spec:
         # Sentinel runs as valkey-server --sentinel, so it uses the same image
         valkey-sentinel: {{ $valkeyRepo }}:{{ .imageTag }}
         accountProvision: {{ $valkeyRepo }}:{{ .imageTag }}
+        memberLeave: {{ $valkeyRepo }}:{{ .imageTag }}
     {{- end }}
     {{- end }}

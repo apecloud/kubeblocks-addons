@@ -491,24 +491,6 @@ spec:
           - /scripts/sync-acl.sh
         targetPodSelector: Any
 
-    # memberLeave: called when a pod is being removed (scale-in / eviction).
-    # Triggers a Sentinel failover if the leaving pod is the primary.
-    # Sentinel naturally marks the removed pod as s_down after
-    # down-after-milliseconds (SENTINEL RESET is intentionally NOT called).
-    memberLeave:
-      exec:
-        container: valkey
-        command:
-          - /bin/bash
-          - -c
-          - /scripts/valkey-member-leave.sh
-        env:
-          - name: CURRENT_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-
   # ── Runtime (PodSpec) ──────────────────────────────────────────────────
   runtime:
     containers:

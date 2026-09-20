@@ -263,6 +263,28 @@ spec:
           - /scripts/valkey-sentinel-member-join.sh
         targetPodSelector: Any
 
+    # memberLeave: called when a Sentinel pod is leaving the component
+    # (scale-in, pod removal).  Same flow as the redis addon's
+    # redis-sentinel-member-leave.sh: the leaving Sentinel REMOVES its monitor
+    # stanzas (stops campaigning/announcing immediately), every remaining
+    # Sentinel RESETs (drops the leaver from the known-sentinel lists without
+    # waiting for HELLO gossip), and the script fails closed when the remaining
+    # nodes disagree about num-other-sentinels.  Note: this is the Sentinel
+    # component's own leave — the data component deliberately has NO
+    # memberLeave (Sentinel self-heals the data topology).
+    # timeoutSeconds: worst case is remove (3×1s) + reset per peer (3×1s + 3s
+    # settle, up to 4 peers) + agreement (3×1s per peer) — 120s covers it with
+    # headroom.
+    memberLeave:
+      timeoutSeconds: 120
+      exec:
+        container: valkey-sentinel
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-sentinel-member-leave.sh > /tmp/member-leave.log 2>&1
+        targetPodSelector: Any
+
   runtime:
     containers:
       - name: valkey-sentinel
