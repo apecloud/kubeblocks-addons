@@ -132,7 +132,6 @@ spec:
             targetPort: client
       disableAutoProvision: true
     - name: peer
-      serviceName:
       spec:
         ports:
           - name: peer

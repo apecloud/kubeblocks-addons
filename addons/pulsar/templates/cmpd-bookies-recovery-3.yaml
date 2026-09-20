@@ -70,8 +70,8 @@ spec:
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/check-bookies.sh
-        env:
         {{- if .Values.debugEnabled }}
+        env:
           - name: PULSAR_LOG_ROOT_LEVEL
             value: DEBUG
           - name: PULSAR_LOG_LEVEL
