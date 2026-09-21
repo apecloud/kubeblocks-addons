@@ -37,6 +37,17 @@ class ScriptsTest(unittest.TestCase):
         return subprocess.run(["/bin/sh", str(SCRIPTS / name)], env=env,
                               capture_output=True, text=True, timeout=5)
 
+    def test_all_roles_enable_native_metrics_and_stderr_logging(self):
+        for role in ["master", "volume", "filer", "s3"]:
+            with self.subTest(role=role):
+                result = self.run_script(f"start-{role}.sh", AWS_ACCESS_KEY_ID="fixture-user",
+                                         AWS_SECRET_ACCESS_KEY="fixture-secret")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                args = result.stdout.splitlines()
+                self.assertIn("-metricsPort=9327", args)
+                self.assertIn("-logtostderr=true", args)
+                self.assertNotIn("fixture-secret", result.stdout + result.stderr)
+
     def test_master_uses_actual_fqdns_and_preserves_data(self):
         data = Path(self.env["SEAWEEDFS_DATA_DIR"])
         data.mkdir()

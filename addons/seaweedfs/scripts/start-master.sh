@@ -15,7 +15,7 @@ case "${SEAWEEDFS_VOLUME_SIZE_MB:-}" in ''|*[!0-9]*) seaweedfs_fail 'volume size
 [ "$SEAWEEDFS_VOLUME_SIZE_MB" -gt 0 ] || seaweedfs_fail 'volume size must be positive'
 data_dir=${SEAWEEDFS_DATA_DIR:-/data/master}
 mkdir -p "$data_dir"
-exec weed -logtostderr=true master -ip="$self" -ip.bind=0.0.0.0 \
+exec weed -logtostderr=true master -ip="$self" -ip.bind=0.0.0.0 -metricsPort=9327 \
   -port=9333 -port.grpc=19333 -mdir="$data_dir" -peers="$peers" \
   -defaultReplication="$SEAWEEDFS_REPLICATION" \
   -volumeSizeLimitMB="$SEAWEEDFS_VOLUME_SIZE_MB" -telemetry=false

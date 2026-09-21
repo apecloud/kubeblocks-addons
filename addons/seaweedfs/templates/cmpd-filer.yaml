@@ -11,6 +11,9 @@ spec:
   description: SeaweedFS filer component.
   serviceKind: seaweedfs
   serviceVersion: {{ .Values.serviceVersion | quote }}
+  exporter:
+    scrapePath: /metrics
+    scrapePort: http-metrics
   podManagementPolicy: Parallel
   updateStrategy: Serial
   podUpdatePolicy: ReCreate
@@ -59,6 +62,8 @@ spec:
               fieldRef:
                 fieldPath: metadata.name
         ports:
+          - name: http-metrics
+            containerPort: 9327
           - name: http
             containerPort: 8888
           - name: grpc
