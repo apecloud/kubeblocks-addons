@@ -36,7 +36,14 @@ ComponentDefinition names are major-scoped and intentionally do not include
 Chart.Version; selection order must not depend on SemVer lexicographic sorting.
 */}}
 {{- define "valkey.cmpdRegexpPattern" -}}
-^valkey-[0-9]+$
+^valkey-\d+
+{{- end -}}
+
+{{/*
+Define redis sentienl component definition regular expression name prefix
+*/}}
+{{- define "valkeySentinel.cmpdRegexpPattern" -}}
+^valkey-sentinel-\d+
 {{- end -}}
 
 {{/*
