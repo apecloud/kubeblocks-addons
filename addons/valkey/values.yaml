@@ -1,0 +1,68 @@
+# Default values for valkey.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+image:
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: valkey/valkey
+  pullPolicy: IfNotPresent
+
+## @param clusterDomain kubernetes cluster domain
+clusterDomain: cluster.local
+
+## @param dataMountPath the path where the valkey data is mounted
+dataMountPath: /data
+
+## @param tlsMountPath the path where the TLS certificates are mounted
+tlsMountPath: /etc/pki/tls
+
+logConfigs:
+  running: /data/running.log
+
+metrics:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: oliver006/redis_exporter
+    tag: v1.80.1
+    pullPolicy: IfNotPresent
+  service:
+    port: 9121
+
+## Valkey versions configuration
+## Array of major versions, each containing the ComponentDefinitions of this major
+## version and the minor versions with their specific image tags.
+## @param componentDef define the ComponentDefinition of the valkey data component
+## @param sentinelComponentDef define the ComponentDefinition of the valkey sentinel component
+## @param serviceVersion define default serviceVersion of each Component
+## @param defaultImageTag the image tag used when a minor version does not override it
+## @param mirrorVersions the service versions exposed by this major version
+valkeyVersions:
+  - major: "8"
+    componentDef: "valkey-8"
+    sentinelComponentDef: "valkey-sentinel-8"
+    serviceVersion: "8.1.8"
+    defaultImageTag: "8.1.8"
+    mirrorVersions:
+      - version: "8.0.9"
+        imageTag: "8.0.9"
+      - version: "8.1.8"
+        imageTag: "8.1.8"
+  - major: "9"
+    componentDef: "valkey-9"
+    sentinelComponentDef: "valkey-sentinel-9"
+    serviceVersion: "9.1.0"
+    defaultImageTag: "9.1.0"
+    mirrorVersions:
+      - version: "9.0.4"
+        imageTag: "9.0.4"
+      - version: "9.1.0"
+        imageTag: "9.1.0"
+
+extra:
+  global: {}
+  keepResource: false
