@@ -1,0 +1,23 @@
+{{/*
+Scripts ConfigMap — bundles every file under scripts/ into a single ConfigMap.
+The kblib helper functions (retry, pod FQDN utils) are inlined first so every
+script can source common.sh and get them for free.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "valkey.scriptsTemplate" . }}
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
+data:
+  # common.sh is sourced by all other scripts.  It provides:
+  #   call_func_with_retry, get_target_pod_fqdn_from_pod_fqdn_vars,
+  #   min_lexicographical_order_pod, set/unset_xtrace_when_ut_mode_false,
+  #   sleep_when_ut_mode_false, contains, is_empty, extract_obj_ordinal
+  common.sh: |-
+    {{- include "valkey.commonLibrary" $ | nindent 4 }}
+  {{- with include "valkey.extendScripts" . }}
+  {{- . | nindent 2 }}
+  {{- end }}

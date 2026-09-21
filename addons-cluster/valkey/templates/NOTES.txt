@@ -1,0 +1,7 @@
+Valkey cluster {{ include "kblib.clusterName" . }} has been rendered.
+
+Check cluster status:
+  kubectl get cluster {{ include "kblib.clusterName" . }} -n {{ .Release.Namespace }}
+
+Check pods:
+  kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ include "kblib.clusterName" . }}

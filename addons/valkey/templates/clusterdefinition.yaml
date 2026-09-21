@@ -1,0 +1,34 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: valkey
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+spec:
+  topologies:
+    # ── Standalone ────────────────────────────────────────────────────────────
+    # Single data node.  No replication, no HA.  Dev/test use only.
+    - name: standalone
+      default: true
+      components:
+        - name: valkey
+          compDef: {{ include "valkey.cmpdRegexpPattern" . }}
+
+    - name: replication
+      components:
+        - name: valkey-sentinel
+          compDef: {{ include "valkeySentinel.cmpdRegexpPattern" . }}
+        - name: valkey
+          compDef: {{ include "valkey.cmpdRegexpPattern" . }}
+      orders:
+        provision:
+          - valkey-sentinel   # sentinel must be ready before data nodes connect to it
+          - valkey
+        terminate:
+          - valkey            # drain data nodes first so sentinel doesn't trigger spurious failover
+          - valkey-sentinel
+        update:
+          - valkey-sentinel
+          - valkey

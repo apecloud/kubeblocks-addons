@@ -1,0 +1,137 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: valkey-register-to-sentinel
+spec:
+  ## This ops targets the valkey data component (standalone / replication), i.e.
+  ## the component whose primary has to be (re-)registered into every valkey
+  ## Sentinel pod.  It is the on-demand counterpart of the postProvision action
+  ## that runs scripts/valkey-register-to-sentinel.sh while provisioning, and
+  ## is meant for cases where the Sentinels no longer know the topology:
+  ##   - the topology was switched from standalone to replication
+  ##   - the cluster was restored and the primary address changed
+  ##   - a Sentinel pod was rebuilt and lost its monitor state
+  ##
+  ## A joining Sentinel does NOT need this ops: the sentinel component's
+  ## memberJoin action (scripts/valkey-sentinel-member-join.sh) registers the
+  ## primary with the new pod automatically.
+  componentInfos:
+    - componentDefinitionName: ^valkey-\d+$
+  podInfoExtractors:
+    - name: register-to-sentinel
+      podSelector:
+        ## select the primary pod, so CURRENT_POD_NAME / CURRENT_POD_HOST_IP
+        ## point at the primary (needed by the NodePort announce path)
+        role: primary
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+              targetContainerName: valkey
+        ## ── valkey (data) side ──────────────────────────────────────────
+        - name: VALKEY_COMPONENT_NAME
+          valueFrom:
+            envRef:
+              envName: VALKEY_COMPONENT_NAME
+              targetContainerName: valkey
+        - name: VALKEY_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: VALKEY_POD_FQDN_LIST
+              targetContainerName: valkey
+        - name: VALKEY_DEFAULT_USER
+          optional: true
+          valueFrom:
+            envRef:
+              envName: VALKEY_DEFAULT_USER
+              targetContainerName: valkey
+        - name: VALKEY_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: VALKEY_DEFAULT_PASSWORD
+              targetContainerName: valkey
+        - name: VALKEY_ADVERTISED_PORT
+          optional: true
+          valueFrom:
+            envRef:
+              envName: VALKEY_ADVERTISED_PORT
+              targetContainerName: valkey
+        - name: SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SERVICE_PORT
+              targetContainerName: valkey
+        - name: VALKEY_CLI_TLS_ARGS
+          optional: true
+          valueFrom:
+            envRef:
+              envName: VALKEY_CLI_TLS_ARGS
+              targetContainerName: valkey
+        ## ── sentinel side (all optional: the topology may be standalone) ──
+        - name: SENTINEL_COMPONENT_NAME
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_COMPONENT_NAME
+              targetContainerName: valkey
+        - name: SENTINEL_POD_FQDN_LIST
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_POD_FQDN_LIST
+              targetContainerName: valkey
+        - name: SENTINEL_SERVICE_PORT
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_SERVICE_PORT
+              targetContainerName: valkey
+        - name: SENTINEL_PASSWORD
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_PASSWORD
+              targetContainerName: valkey
+        ## ── identity of the selected (primary) pod ──────────────────────
+        - name: CURRENT_POD_NAME
+          valueFrom:
+            envRef:
+              envName: CURRENT_POD_NAME
+              targetContainerName: valkey
+        - name: CURRENT_POD_HOST_IP
+          valueFrom:
+            envRef:
+              envName: CURRENT_POD_HOST_IP
+              targetContainerName: valkey
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        REBUILD_SENTINEL_POD_NAME:
+          description: |
+            REBUILD_SENTINEL_POD_NAME is the sentinel pod name to be rebuilt.
+          type: string
+  actions:
+    - name: register-to-sentinel
+      workload:
+        type: Pod
+        podInfoExtractorName: register-to-sentinel
+        backoffLimit: 1
+        podSpec:
+          containers:
+            - name: register-to-sentinel
+              image: {{ include "valkey.defaultImage" . }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  # The register script sources the common library at runtime, but an ops pod
+                  # does not mount the scripts ConfigMap — write the shared library first
+                  # (same content as the common.sh key of valkey.scriptsTemplate).
+                  mkdir -p /scripts
+                  cat > /scripts/common.sh <<'COMMON_SH_EOF'
+                  {{- include "valkey.commonLibrary" $ | nindent 18 }}
+                  COMMON_SH_EOF
+                  {{- .Files.Get "scripts/valkey-register-to-sentinel.sh" | nindent 18 }}

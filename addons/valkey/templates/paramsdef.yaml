@@ -1,0 +1,98 @@
+{{/*
+ParametersDefinition (PD) — released KubeBlocks 1.0 shape
+(parameters.kubeblocks.io/v1alpha1).
+
+A PD carries only the engine-side parameter semantics: the config file name,
+the CUE schema, the static/immutable/dynamic classification and the reload
+action.  Anything that binds a PD to a component — componentDef, templateName,
+fileFormatConfig — belongs to the ParamConfigRenderer (see pcr-valkey.yaml).
+Those three fields used to live here, but they only exist in an unreleased
+KubeBlocks API and are rejected by the 1.0 CRDs.
+
+Both the CUE schema and the parameter classification are PER MAJOR (redis
+addon parity): config/valkey<major>-config-constraint.cue and
+config/valkey<major>-config-effect-scope.yaml.  A ComponentDefinition serves
+every release line of its major, so both files carry the union of that major's
+lines, with version-specific parameters marked inline.
+
+The schema is generated from the upstream src/config.c of the release lines —
+8.0/8.1 for valkey-8 and 9.0/9.1 for valkey-9 — so a parameter that only exists
+in one of them is documented as such, and parameters the addon owns (TLS, data
+directory layout, credentials, topology/announce addresses, container logging
+plumbing, module loading, Sentinel mode) are left out on purpose.
+
+reloadAction mirrors the other add-ons (redis, mysql, orioledb): a shellTrigger
+that KubeBlocks invokes once per changed parameter as
+
+    reload-parameter.sh <parameter-name> <value>
+
+inside the config-manager sidecar.  The sidecar runs the Valkey image
+(asContainerImage: true), so valkey-cli — which reload-parameter.sh uses to
+issue CONFIG SET — is available in it, and the component env vars
+(SERVICE_PORT, VALKEY_DEFAULT_PASSWORD, VALKEY_CLI_TLS_ARGS) are injected into
+it by KubeBlocks.
+*/}}
+{{- $registry := .Values.image.registry | default "docker.io" }}
+{{- $repository := .Values.image.repository }}
+{{- range .Values.valkeyVersions }}
+{{- $scope := $.Files.Get (printf "config/valkey%s-config-effect-scope.yaml" .major) | fromYaml }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ printf "valkey%s-pd" .major }}
+  labels:
+    {{- include "valkey.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" $ | nindent 4 }}
+spec:
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - "reload-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: {{ include "valkey.reloadToolsScript" $ }}
+        namespace: {{ $.Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            asContainerImage: true
+            # The serviceVersion of the component decides which image is used,
+            # see imageMappings below.
+            image: {{ printf "%s/%s:%s" $registry $repository .defaultImageTag }}
+            imageMappings:
+              {{- range .mirrorVersions }}
+              - serviceVersions:
+                  - {{ .version }}
+                image: {{ printf "%s/%s:%s" $registry $repository .imageTag }}
+              {{- end }}
+
+  fileName: valkey.conf
+
+  # Parameters whose value the engine only reads at startup: a change needs the
+  # config file rewritten and the process restarted.
+  staticParameters:
+    {{- range (get $scope "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+
+  # Parameters the engine accepts at runtime through CONFIG SET, which is what
+  # reload-parameter.sh issues.
+  dynamicParameters:
+    {{- range (get $scope "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+
+  # Owned by the chart (data directory layout): a change is rejected.
+  immutableParameters:
+    {{- range (get $scope "immutableParameters") }}
+    - {{ . }}
+    {{- end }}
+
+  parametersSchema:
+    topLevelKey: ValkeyParameter
+    cue: |-
+      {{- $.Files.Get (printf "config/valkey%s-config-constraint.cue" .major) | nindent 6 }}
+{{- end }}

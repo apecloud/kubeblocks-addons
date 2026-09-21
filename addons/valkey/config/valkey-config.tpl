@@ -1,0 +1,83 @@
+# Valkey default configuration template.
+# This file is rendered as a Go template by KubeBlocks.
+# Available variables correspond to the vars[] in ComponentDefinition.
+# e.g. {{ $.PHY_MEMORY }} resolves to the container memory limit in bytes.
+#
+# The startup script (valkey-start.sh) appends runtime-dynamic settings
+# (port, requirepass, replicaof, aclfile) to /etc/valkey/valkey.conf and
+# includes this file via the "include" directive.
+
+bind * -::*
+tcp-backlog 511
+timeout 0
+tcp-keepalive 300
+daemonize no
+pidfile /var/run/valkey_6379.pid
+
+loglevel notice
+logfile "/data/running.log"
+
+databases 16
+always-show-logo no
+set-proc-title yes
+
+# Persistence
+stop-writes-on-bgsave-error yes
+rdbcompression yes
+rdbchecksum yes
+dbfilename dump.rdb
+rdb-del-sync-files no
+dir /data
+
+# Replication
+replica-serve-stale-data yes
+replica-read-only yes
+repl-diskless-sync yes
+repl-diskless-sync-delay 5
+repl-diskless-load disabled
+repl-disable-tcp-nodelay no
+replica-priority 100
+
+# AOF
+appendonly yes
+appendfilename "appendonly.aof"
+appenddirname "appendonlydir"
+appendfsync everysec
+no-appendfsync-on-rewrite no
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 67108864
+aof-use-rdb-preamble yes
+
+# Slow log
+slowlog-log-slower-than 10000
+slowlog-max-len 128
+
+# Data structures
+hash-max-listpack-entries 128
+hash-max-listpack-value 64
+list-max-listpack-size -2
+set-max-intset-entries 512
+zset-max-listpack-entries 128
+zset-max-listpack-value 64
+
+# IO threads -- use roughly half of available CPUs, capped at 8.
+# Setting 1 disables multi-threading (same as not setting it).
+io-threads 4
+io-threads-do-reads yes
+
+# Memory policy
+# noeviction is the Valkey upstream default: when maxmemory is reached,
+# writes fail loudly instead of silently evicting data. For a database
+# service that is the safe default; cache deployments that prefer
+# eviction can set maxmemory-policy (dynamic parameter) per cluster.
+maxmemory-policy noeviction
+{{- $mem := default 0 $.PHY_MEMORY | int }}
+{{- if gt $mem 0 }}
+maxmemory {{ mulf $mem 0.8 | int }}
+{{- end }}
+
+# TLS is NOT configured here on purpose (same as the redis addon): whether TLS
+# is on, and the certificate paths that go with it, are decided at container
+# start by scripts/valkey-start.sh, which appends tls-port / tls-cert-file /
+# tls-key-file / tls-ca-cert-file / tls-auth-clients / tls-replication and
+# turns the plaintext port off (port 0) when TLS_ENABLED is true.

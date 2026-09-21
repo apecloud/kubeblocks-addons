@@ -1,0 +1,75 @@
+{{/*
+ActionSet for Valkey physical backup and restore (redis-aligned flow).
+
+Backup flow (backupData):
+  1. BGSAVE on the target pod (secondary preferred via BackupPolicyTemplate),
+     wait for completion, tar the WHOLE DATA_DIR (dump.rdb, users.acl and —
+     with appendonly enabled — appendonlydir/) and push it as
+     <backup>.tar.zst, then push the Sentinel ACL file when the Sentinel
+     connection vars are supplied.
+
+Restore flow:
+  1. prepareData: switch-data-dir.sh reroutes DATA_DIR to .restore_keys when
+     DP_RESTORE_KEY_PATTERNS is set (partial key restore); restore.sh extracts
+     the archive into DATA_DIR with the same safety checks as before.
+  2. postReady:
+     - restore-keys.sh: restores the Sentinel ACL rules, and — when
+       DP_RESTORE_KEY_PATTERNS is set — starts a local Valkey on the staged
+       archive and MIGRATEs the matching keys into the restored cluster.
+     - post-restore-sentinel.sh (valkey-specific, no redis counterpart):
+       verifies data-plane convergence after restore and re-arms Sentinel
+       monitoring when the Sentinel credentials are available; delegates to
+       the Sentinel startup self-discovery loop otherwise.
+
+KubeBlocks DataProtection passes standard DP_* variables into all job containers;
+DATA_DIR is injected from the ActionSet env. Current BackupPolicyTemplate env
+schema only supports versionMapping for this chart path, so cross-component
+Sentinel FQDN/password injection is not available here.
+*/}}
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: valkey-physical-br
+  labels:
+    clusterdefinition.kubeblocks.io/name: valkey
+    {{- include "valkey.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: TLS_MOUNT_PATH
+      value: {{ .Values.tlsMountPath }}
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: $(IMAGE)
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
+  restore:
+    prepareData:
+      image: $(IMAGE)
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}
+    postReady:
+      - job:
+          image: $(IMAGE)
+          onError: Fail
+          runOnTargetPodNode: true
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 14 }}

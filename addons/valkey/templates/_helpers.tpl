@@ -1,0 +1,119 @@
+{{/*
+Chart name.
+*/}}
+{{- define "valkey.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Common labels.
+*/}}
+{{- define "valkey.labels" -}}
+helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+app.kubernetes.io/name: {{ include "valkey.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Common annotations for all KubeBlocks resources.
+  - helm.sh/resource-policy: keep  →  prevents CRDs from being deleted on `helm uninstall`
+  - apps.kubeblocks.io/skip-immutable-check  →  allows re-installing without version conflict
+  - kubeblocks.io/crd-api-version  →  declares which KubeBlocks API version this addon targets
+*/}}
+{{- define "valkey.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+apps.kubeblocks.io/skip-immutable-check: "true"
+{{- end }}
+
+{{/*
+Regexp pattern used in ClusterDefinition.topologies[].components[].compDef.
+ComponentDefinition names are major-scoped and intentionally do not include
+Chart.Version; selection order must not depend on SemVer lexicographic sorting.
+*/}}
+{{- define "valkey.cmpdRegexpPattern" -}}
+^valkey-\d+
+{{- end -}}
+
+{{/*
+Define redis sentienl component definition regular expression name prefix
+*/}}
+{{- define "valkeySentinel.cmpdRegexpPattern" -}}
+^valkey-sentinel-\d+
+{{- end -}}
+
+{{/*
+Scripts ConfigMap name — versioned so upgrades create a new ConfigMap
+and old clusters keep using the one they were provisioned with.
+*/}}
+{{- define "valkey.scriptsTemplate" -}}
+valkey-scripts-template-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Config ConfigMap name. The template is shared across supported Valkey majors
+until an actual major-specific config delta appears.
+*/}}
+{{- define "valkey.configTemplate" -}}
+valkey-config-template
+{{- end -}}
+
+{{/*
+Inline helper to build the valkey-cli base command with optional TLS flags.
+Produces a variable assignment: VALKEY_CLI_TLS_ARGS="--tls --cacert <mount>/ca.crt"
+This is used inside shell scripts rather than as a Helm template.
+*/}}
+
+{{/*
+Scripts data: bundle every file under scripts/ into a single ConfigMap.
+*/}}
+{{- define "valkey.extendScripts" -}}
+{{- range $path, $_ := $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/*
+Common shell library shared by every valkey script.  It is the "common.sh" key
+of the scripts ConfigMap (see scripts-template.yaml) and is also inlined into
+ops pods that do not mount that ConfigMap — e.g. the register-to-sentinel
+OpsDefinition.  Keep this the single source of truth: every script sources
+/scripts/common.sh and assumes exactly these functions exist.
+*/}}
+{{- define "valkey.commonLibrary" -}}
+#!/bin/bash
+{{- include "kblib.commons.call_func_with_retry" $ | nindent 0 }}
+{{- include "kblib.compvars.get_target_pod_fqdn_from_pod_fqdn_vars" $ | nindent 0 }}
+{{- include "kblib.pods.min_lexicographical_order_pod" $ | nindent 0 }}
+{{- include "kblib.ututils.set_xtrace_when_ut_mode_false" $ | nindent 0 }}
+{{- include "kblib.ututils.unset_xtrace_when_ut_mode_false" $ | nindent 0 }}
+{{- include "kblib.ututils.sleep_when_ut_mode_false" $ | nindent 0 }}
+
+# ── Utility helpers ─────────────────────────────────────────────────
+is_empty() { [ -z "$1" ]; }
+contains() { [[ "$1" == *"$2"* ]]; }
+extract_obj_ordinal() { echo "$1" | grep -oE '[0-9]+$'; }
+{{- end -}}
+
+{{/*
+Default Valkey image (first version in the list).
+Used as a fallback in ActionSet; BackupPolicyTemplate overrides per serviceVersion.
+*/}}
+{{- define "valkey.defaultImage" -}}
+{{- $v := index .Values.valkeyVersions 0 -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ $v.defaultImageTag }}
+{{- end }}
+
+{{/*
+Reload tools scripts ConfigMap name.  It is referenced by the reloadAction of
+every ParametersDefinition (see paramsdef.yaml) and defined in
+reload-tools-script.yaml.
+*/}}
+{{- define "valkey.reloadToolsScript" -}}
+valkey-reload-tools-script
+{{- end -}}
