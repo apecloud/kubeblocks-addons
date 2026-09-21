@@ -3,6 +3,8 @@
 Requires Helm, PyYAML and jsonschema; never contacts a Kubernetes API.
 """
 import copy
+import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -74,6 +76,24 @@ class ChartsTest(unittest.TestCase):
                 self.assertEqual(pvc_names, {v["name"] for v in spec.get("volumes", [])})
                 if component["name"] in {"filer", "admin"}:
                     self.assertEqual(limits, {"minReplicas": 1, "maxReplicas": 1})
+
+    def test_addon_upgrade_keeps_existing_resources_specs_and_template_content(self):
+        # Recorded from a real Helm render at sourceCommit. Fingerprints cover
+        # complete specs and each CM value without duplicating the old templates.
+        legacy = json.loads((ADDON / "tests/fixtures/addon-1.0.0-contract.json").read_text())
+        current = {d["kind"] + "/" + d["metadata"]["name"]: d for d in self.documents}
+        self.assertLessEqual(set(legacy["resources"]), set(current))
+        def digest(value):
+            content = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+            return hashlib.sha256(content).hexdigest()
+        for name, expected in legacy["resources"].items():
+            with self.subTest(resource=name):
+                actual = current[name]
+                if "specSHA256" in expected:
+                    self.assertEqual(digest(actual["spec"]), expected["specSHA256"])
+                for key, fingerprint in expected.get("dataSHA256", {}).items():
+                    self.assertIn(key, actual["data"])
+                    self.assertEqual(digest(actual["data"][key]), fingerprint, key)
 
     def test_addon_upgrade_does_not_instantiate_admin_for_legacy_clusters(self):
         # Fixture is the four-component Cluster from addon 1.0.0 (2733f764c).
@@ -208,15 +228,8 @@ class ChartsTest(unittest.TestCase):
             releases = {r["name"]: r for r in version["spec"]["releases"]}
             for rule in version["spec"]["compatibilityRules"]:
                 for name in rule["compDefs"]:
-                    # Retain compatibility for the installed 1.0.0 definitions.
-                    # Their container/action image names did not change in 1.0.1.
-                    current_name = name
-                    if name not in self.cmpds:
-                        self.assertTrue(name.endswith("-1.0.0"), name)
-                        prefix = name.removesuffix("1.0.0")
-                        current_name = next(n for n in self.cmpds if n.startswith(prefix))
-                    covered.add(current_name)
-                    spec = self.cmpds[current_name]["spec"]
+                    covered.add(name)
+                    spec = self.cmpds[name]["spec"]
                     needed = {c["name"] for c in spec["runtime"]["containers"]}
                     needed |= {key for key, action in spec.get("lifecycleActions", {}).items() if "exec" in action}
                     for release in rule["releases"]:
