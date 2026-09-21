@@ -44,24 +44,55 @@ build_valkey_conf() {
   echo "include ${CONF_TEMPLATE}" > "${CONF_RUNTIME}"
 
   # Step 2: port (plain or TLS)
+  build_valkey_service_port
+
+  # Step 3: TLS material — written here, not in the config template/store,
+  # so the whole TLS switch lives in the start script (redis addon parity).
+  build_valkey_tls_config
+
+  # Step 4: announce IP/port for replication topology.
+  # When using NodePort or LoadBalancer, replicas must announce the
+  # external address so peers outside the cluster can connect.
+  build_announce_addr
+
+  # Step 5: replicaof — determine whether this pod is primary or secondary
+  build_replicaof_config
+
+  # Step 6: ACL / password
+  rebuild_acl_file
+  build_acl_entries
+  echo "aclfile ${ACL_FILE}" >> "${CONF_RUNTIME}"
+}
+
+# build_valkey_service_port — the listening port.  TLS_ENABLED is the only
+# switch (injected by the ComponentDefinition from tlsVarRef), exactly like the
+# redis addon's build_redis_service_port: TLS on → the TLS port carries the
+# service, TLS off → the plaintext port does.
+build_valkey_service_port() {
   if [ "${TLS_ENABLED}" = "true" ]; then
     echo "tls-port ${service_port}" >> "${CONF_RUNTIME}"
   else
     echo "port ${service_port}" >> "${CONF_RUNTIME}"
   fi
+}
 
-  # Step 3: announce IP/port for replication topology.
-  # When using NodePort or LoadBalancer, replicas must announce the
-  # external address so peers outside the cluster can connect.
-  build_announce_addr
-
-  # Step 4: replicaof — determine whether this pod is primary or secondary
-  build_replicaof_config
-
-  # Step 5: ACL / password
-  rebuild_acl_file
-  build_acl_entries
-  echo "aclfile ${ACL_FILE}" >> "${CONF_RUNTIME}"
+# build_valkey_tls_config — the certificate material, appended only when TLS is
+# enabled.  Nothing here is user-tunable through the config store: the paths
+# must match the volume KubeBlocks mounts at TLS_MOUNT_PATH, and a config-file
+# value could contradict it.  `port 0` turns the plaintext listener off so the
+# TLS port is the only way in (same directives as redis-start.sh).
+build_valkey_tls_config() {
+  if [ "${TLS_ENABLED}" = "true" ]; then
+    local tls_mount_path="${TLS_MOUNT_PATH:-/etc/pki/tls}"
+    {
+      echo "tls-cert-file ${tls_mount_path}/tls.crt"
+      echo "tls-key-file ${tls_mount_path}/tls.key"
+      echo "tls-ca-cert-file ${tls_mount_path}/ca.crt"
+      echo "tls-auth-clients no"
+      echo "tls-replication yes"
+      echo "port 0"
+    } >> "${CONF_RUNTIME}"
+  fi
 }
 
 build_announce_addr() {

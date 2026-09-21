@@ -76,12 +76,8 @@ maxmemory-policy noeviction
 maxmemory {{ mulf $mem 0.8 | int }}
 {{- end }}
 
-# TLS (enabled via runtime var)
-{{- if eq (index $ "TLS_ENABLED") "true" }}
-tls-cert-file {{ $.TLS_MOUNT_PATH }}/tls.crt
-tls-key-file  {{ $.TLS_MOUNT_PATH }}/tls.key
-tls-ca-cert-file {{ $.TLS_MOUNT_PATH }}/ca.crt
-tls-auth-clients no
-tls-replication yes
-port 0
-{{- end }}
+# TLS is NOT configured here on purpose (same as the redis addon): whether TLS
+# is on, and the certificate paths that go with it, are decided at container
+# start by scripts/valkey-start.sh, which appends tls-port / tls-cert-file /
+# tls-key-file / tls-ca-cert-file / tls-auth-clients / tls-replication and
+# turns the plaintext port off (port 0) when TLS_ENABLED is true.

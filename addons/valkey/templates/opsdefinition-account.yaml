@@ -1,0 +1,190 @@
+{{/*
+Account (ACL) management OpsDefinitions, mirroring the redis addon's
+opsdefinition-account.yaml:
+
+  valkey-master-account-ops   — run an ACL statement on every data pod
+  valkey-sentinel-account-ops — run an ACL statement on every Sentinel pod
+
+Both take ACL_COMMAND (the full ACL statement, hashed passwords preferred) and
+REPLICAS (how many pods the statement must reach; the ops fails unless every
+one of them answered).  The redis addon's third definition
+(redis-shard-account-ops) has no valkey counterpart: valkey supports the
+replication topology only.
+
+The ops pod does not mount the scripts ConfigMap, so the account script is
+inlined from the chart via .Files.Get (same idiom as
+opsdefinition-register-to-sentinel.yaml, which additionally has to write the
+shared common library — valkey-account.sh is self-contained and needs none).
+
+componentInfos: declared so the ops is discoverable for the right components
+(patterns, not exact names).  The redis definitions omit them; valkey's
+register-to-sentinel definition declares them, and that is the convention this
+addon follows.
+
+Env names differ from redis on purpose: the valkey ComponentDefinitions expose
+the VALKEY_ and SENTINEL_ prefixed vars, so the extractor maps them into the
+names the script reads.  TLS follows the redis addon instead of a probe:
+TLS_ENABLED (tlsVarRef, the upstream TLS switch) is forwarded into the ops pod,
+and the script turns it into `--tls --insecure` (no CA is mounted here).
+*/}}
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: valkey-master-account-ops
+spec:
+  componentInfos:
+    - componentDefinitionName: {{ include "valkey.cmpdRegexpPattern" . }}
+  podInfoExtractors:
+    - name: master-connection
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLUSTER_NAME
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAME
+              targetContainerName: valkey
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+              targetContainerName: valkey
+        - name: VALKEY_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: VALKEY_POD_FQDN_LIST
+              targetContainerName: valkey
+        - name: SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SERVICE_PORT
+              targetContainerName: valkey
+        - name: VALKEY_DEFAULT_USER
+          optional: true
+          valueFrom:
+            envRef:
+              envName: VALKEY_DEFAULT_USER
+              targetContainerName: valkey
+        - name: VALKEY_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: VALKEY_DEFAULT_PASSWORD
+              targetContainerName: valkey
+        - name: TLS_ENABLED
+          optional: true
+          valueFrom:
+            envRef:
+              envName: TLS_ENABLED
+              targetContainerName: valkey
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        ACL_COMMAND:
+          description: |
+            ACL_COMMAND is the complete valkey command for account operations, such as:
+            'ACL SETUSER alice-sen on ~* &* +@all #<hash-password>' or 'ACL DELUSER alice-sen',
+            It is recommended to use hashed passwords (#<hash-password>) instead of plaintext passwords when setting user credentials
+          type: string
+        REPLICAS:
+          description: |
+            REPLICAS is the number of pods the ACL command must reach (data pods for this
+            ops). When omitted, every pod in VALKEY_POD_FQDN_LIST is expected to answer.
+          type: integer
+  actions:
+    - name: master-account-ops
+      parameters: ["ACL_COMMAND","REPLICAS"]
+      workload:
+        type: Pod
+        podInfoExtractorName: master-connection
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: valkey-account-ops
+              image: {{ include "valkey.defaultImage" . }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/valkey-account.sh" | nindent 18 }}
+---
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: valkey-sentinel-account-ops
+spec:
+  componentInfos:
+    - componentDefinitionName: ^valkey-sentinel-\d+$
+  podInfoExtractors:
+    - name: sentinel-connection
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLUSTER_NAME
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAME
+              targetContainerName: valkey-sentinel
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+              targetContainerName: valkey-sentinel
+        - name: VALKEY_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: SENTINEL_POD_FQDN_LIST
+              targetContainerName: valkey-sentinel
+        - name: SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SENTINEL_SERVICE_PORT
+              targetContainerName: valkey-sentinel
+        - name: VALKEY_DEFAULT_USER
+          optional: true
+          valueFrom:
+            envRef:
+              envName: SENTINEL_USER
+              targetContainerName: valkey-sentinel
+        - name: VALKEY_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: SENTINEL_PASSWORD
+              targetContainerName: valkey-sentinel
+        - name: TLS_ENABLED
+          optional: true
+          valueFrom:
+            envRef:
+              envName: TLS_ENABLED
+              targetContainerName: valkey-sentinel
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        ACL_COMMAND:
+          description: |
+            ACL_COMMAND is the complete valkey command for account operations, such as:
+            'ACL SETUSER alice-sen on ~* &* +@all #<hash-password>' or 'ACL DELUSER alice-sen',
+            It is recommended to use hashed passwords (#<hash-password>) instead of plaintext passwords when setting user credentials
+          type: string
+        REPLICAS:
+          description: |
+            REPLICAS is the number of pods the ACL command must reach (Sentinel pods for
+            this ops). When omitted, every pod in SENTINEL_POD_FQDN_LIST is expected to answer.
+          type: integer
+  actions:
+    - name: sentinel-account-ops
+      parameters: ["ACL_COMMAND","REPLICAS"]
+      workload:
+        type: Pod
+        podInfoExtractorName: sentinel-connection
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: valkey-account-ops
+              image: {{ include "valkey.defaultImage" . }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/valkey-account.sh" | nindent 18 }}

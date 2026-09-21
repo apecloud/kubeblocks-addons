@@ -60,15 +60,27 @@ positive_int_or_empty() {
   esac
 }
 
-# Detect TLS via connection probe on the data pod.
-# Restore jobs do not mount the TLS volume (it may not exist in non-TLS
-# clusters), so probe: try plain first, then --tls --insecure.
-# --insecure is intentional HERE ONLY: no CA file is available in this execution face,
-# so certificate verification is impossible; in-cluster CLIs verify via --cacert.
+# detect_tls_args — TLS decision, redis addon parity: when the
+# ComponentDefinition's TLS_ENABLED (tlsVarRef) reaches this execution face it
+# is the ONLY switch and maps to the same `--tls --insecure` the redis addon
+# uses; restore jobs are not guaranteed to receive component vars, so when it is
+# absent fall back to a connection probe on the data pod (plain, then
+# --tls --insecure).  --insecure is intentional HERE ONLY: no CA file is available in this execution face, so certificate verification is
+# impossible; in-cluster CLIs verify via --cacert.
 detect_tls_args() {
   _tls_args=()
+  if [ "${TLS_ENABLED:-}" = "true" ]; then
+    _tls_args=(--tls --insecure)
+    echo "INFO: TLS_ENABLED=true — using --tls --insecure"
+    return 0
+  fi
+  if [ -n "${TLS_ENABLED:-}" ]; then
+    return 0
+  fi
   local _probe_base=(valkey-cli --no-auth-warning -h "${DP_DB_HOST}" -p "${data_port}")
-  [ -n "${DP_DB_PASSWORD:-}" ] && _probe_base+=(-a "${DP_DB_PASSWORD}")
+  if [ -n "${DP_DB_PASSWORD:-}" ]; then
+    _probe_base+=(-a "${DP_DB_PASSWORD}")
+  fi
   if ! "${_probe_base[@]}" PING 2>/dev/null | grep -q "PONG"; then
     if "${_probe_base[@]}" --tls --insecure PING 2>/dev/null | grep -q "PONG"; then
       _tls_args=(--tls --insecure)

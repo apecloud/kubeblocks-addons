@@ -23,19 +23,34 @@ set -o pipefail
 if [ -n "${DP_DATASAFED_BIN_PATH}" ]; then export PATH="${PATH}:${DP_DATASAFED_BIN_PATH}"; fi
 
 # TLS args for the TARGET cluster: the job does not mount the TLS volume, so
-# reuse the probe approach from backup.sh (plain first, then --tls --insecure).
+# TLS args — redis addon parity: when the ComponentDefinition's TLS_ENABLED
+# (tlsVarRef) reaches this execution face it is the ONLY switch, and it maps to
+# the same `--tls --insecure` the redis addon uses for its cli vars.
+# Certificate verification is impossible there: no CA file is available in this execution face (in-cluster CLIs verify via --cacert).
+# Backup/restore jobs are not guaranteed to receive component vars, so when
+# TLS_ENABLED is absent fall back to a connection probe (plain, then
+# --tls --insecure).
 _tls_args=()
-_probe_base=(valkey-cli --no-auth-warning -h "${DP_DB_HOST}" -p "${DP_DB_PORT}")
-[ -n "${DP_DB_PASSWORD:-}" ] && _probe_base+=(-a "${DP_DB_PASSWORD}")
-if ! "${_probe_base[@]}" PING 2>/dev/null | grep -q "PONG"; then
-  if "${_probe_base[@]}" --tls --insecure PING 2>/dev/null | grep -q "PONG"; then
-    _tls_args=(--tls --insecure)
-    echo "INFO: TLS detected via connection probe — using --tls --insecure"
+if [ "${TLS_ENABLED:-}" = "true" ]; then
+  _tls_args=(--tls --insecure)
+  echo "INFO: TLS_ENABLED=true — using --tls --insecure"
+elif [ -z "${TLS_ENABLED:-}" ]; then
+  _probe_base=(valkey-cli --no-auth-warning -h "${DP_DB_HOST}" -p "${DP_DB_PORT}")
+  if [ -n "${DP_DB_PASSWORD:-}" ]; then
+    _probe_base+=(-a "${DP_DB_PASSWORD}")
+  fi
+  if ! "${_probe_base[@]}" PING 2>/dev/null | grep -q "PONG"; then
+    if "${_probe_base[@]}" --tls --insecure PING 2>/dev/null | grep -q "PONG"; then
+      _tls_args=(--tls --insecure)
+      echo "INFO: TLS detected via connection probe — using --tls --insecure"
+    fi
   fi
 fi
 
 target_cli=(valkey-cli --no-auth-warning "${_tls_args[@]}" -h "${DP_DB_HOST}" -p "${DP_DB_PORT}")
-[ -n "${DP_DB_PASSWORD:-}" ] && target_cli+=(-a "${DP_DB_PASSWORD}")
+if [ -n "${DP_DB_PASSWORD:-}" ]; then
+  target_cli+=(-a "${DP_DB_PASSWORD}")
+fi
 
 function restore_sentinel_acl() {
   if [ -z "${SENTINEL_POD_FQDN_LIST}" ]; then

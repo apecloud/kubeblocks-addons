@@ -409,36 +409,12 @@
 
     "activerehashing": string & "yes" | "no" | *"yes"
 
-    // By default, TLS/SSL is disabled. To enable it, the "tls-port" configuration
-    // directive can be used to define TLS-listening ports. To enable TLS on the
-    // default port, use 7379 and set port to 0
-    "tls-port": int | *0
-
-    // Configure a X.509 certificate and private key to use for authenticating the server to connected clients, masters or cluster peers.  These files should be PEM formatted.
-    "tls-cert-file": string | *"redis.crt"
-
-    "tls-key-file": string | *"redis.key"
-
-    "tls-ca-cert-file": string | *""
-
-    "tls-ca-cert-dir": string | *""
-
-    "tls-auth-clients": string & "optional" | "no" | *""
-
-    "tls-replication": string & "yes" | "no" | *"no"
-
-    // By default, TLS session caching is enabled to allow faster and less expensive
-    // reconnections by clients that support it. Use the following directive to disable
-    // caching.
-    "tls-session-caching": string & "yes" | "no" | *"yes"
-
-    // Change the default number of TLS sessions cached. A zero value sets the cache
-    // to unlimited size. The default size is 20480.
-    "tls-session-cache-size": int | *20480
-
-    // Change the default timeout of cached TLS sessions. The default timeout is 300
-    // seconds.
-    "tls-session-cache-timeout": int | *300
+    // TLS is deliberately NOT a config parameter (redis addon parity): the
+    // tls-port / tls-cert-file / tls-key-file / tls-ca-cert-file /
+    // tls-auth-clients / tls-replication directives are written at container
+    // start by scripts/valkey-start.sh from TLS_ENABLED + TLS_MOUNT_PATH, so a
+    // user-supplied value here could contradict the mounted certificate and
+    // lock the cluster out.
 
 	...
 }

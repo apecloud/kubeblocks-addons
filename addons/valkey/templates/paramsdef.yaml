@@ -65,7 +65,6 @@ spec:
   staticParameters:
     - bind
     - port
-    - tls-port
     - daemonize
     - databases
     - logfile
