@@ -61,6 +61,19 @@ spec:
         volumes:
           - data
 
+    # ── Rebuild-instance support (redis addon parity) ────────────────────────
+    # Carries no dataset: KB's RebuildFrom uses it to re-seed users.acl on a
+    # freshly created pod, which then re-syncs the data from the primary.
+    - name: backup-for-rebuild-instance
+      actionSetName: valkey-for-rebuild-instance
+      env:
+        - name: REBUILD_CLUSTER_INSTANCE
+          value: "true"
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+
   schedules:
     - backupMethod: datafile
       enabled: false

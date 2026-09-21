@@ -8,7 +8,7 @@ fullnameOverride: ""
 
 image:
   registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: valkey/valkey
+  repository: apecloud/valkey
   pullPolicy: IfNotPresent
 
 ## @param clusterDomain kubernetes cluster domain

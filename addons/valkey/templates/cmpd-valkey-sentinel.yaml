@@ -214,6 +214,26 @@ spec:
           port:
             name: valkey-advertised
             option: Required
+    # LoadBalancer advertised service of the data pods ("svc:host",... /
+    # single host:port) — used by the memberJoin action to register the same
+    # LB address the data side registered (redis addon parity).
+    - name: VALKEY_LB_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .componentDef }}
+          name: valkey-lb-advertised
+          optional: true
+          port:
+            name: valkey-advertised
+            option: Required
+    - name: VALKEY_LB_ADVERTISED_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .componentDef }}
+          name: valkey-lb-advertised
+          optional: true
+          loadBalancer: Required
+          host: Required
     - name: VALKEY_DEFAULT_PASSWORD
       valueFrom:
         credentialVarRef:
@@ -234,7 +254,7 @@ spec:
     # skipping verification (see cmpd.yaml for the SAN contract).
     - name: VALKEY_CLI_TLS_ARGS
       value: ""
-      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --cacert {{.TLS_MOUNT_PATH}}/ca.crt{{else}}{{end}}` | toYaml }}
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
 
   lifecycleActions:
     accountProvision:
@@ -262,6 +282,29 @@ spec:
           - -c
           - /scripts/valkey-sentinel-member-join.sh
         targetPodSelector: Any
+        ## all lifecycle actions share the same env: KubeBlocks merges every
+        ## action's exec.env onto the kbagent sidecar container, which is what
+        ## actually executes the actions — the valkey-sentinel container's own
+        ## fieldRef envs are NOT visible to them.  Without CURRENT_POD_HOST_IP
+        ## here, the member-join script degrades the monitor address to the
+        ## pod FQDN, which a Sentinel without `sentinel resolve-hostnames yes`
+        ## rejects (redis addon parity: same block on its memberLeave).
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
 
     # memberLeave: called when a Sentinel pod is leaving the component
     # (scale-in, pod removal).  Same flow as the redis addon's
