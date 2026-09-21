@@ -1,0 +1,8 @@
+releases:
+  - version: "1.0.0"
+    released_at: "2026-08-10"
+    status: preview
+    notes: Initial HugeGraph 1.7.0 standalone release with RocksDB checkpoint backup and restore.
+    git_branch: "release-1.0"
+    git_tag: "1.0.0"
+    commit_sha: ""
