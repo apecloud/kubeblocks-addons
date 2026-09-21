@@ -8,7 +8,8 @@ Describe "Valkey TLS verification contract"
   start_script="../scripts/valkey-start.sh"
   account_script="../scripts/valkey-account.sh"
   config_tpl="../config/valkey-config.tpl"
-  config_constraint="../config/config-constraint.cue"
+  config_constraint="../config/valkey8-config-constraint.cue"
+  config_constraint9="../config/valkey9-config-constraint.cue"
   paramsdef="../templates/paramsdef.yaml"
   cluster_secret="../../../addons-cluster/valkey/templates/secret.yaml"
 
@@ -63,7 +64,7 @@ Describe "Valkey TLS verification contract"
       # TLS must not be user-tunable: the paths have to match the volume
       # KubeBlocks mounts, so a config-store value could lock the cluster out.
       # ("tls-dynamic" is an unrelated endpoint-type value, hence the ^"tls-" key match.)
-      When call grep -E '^[[:space:]]*"tls-' "${config_constraint}"
+      When call grep -E '^[[:space:]]*"tls-' "${config_constraint}" "${config_constraint9}"
       The status should be failure
     End
 

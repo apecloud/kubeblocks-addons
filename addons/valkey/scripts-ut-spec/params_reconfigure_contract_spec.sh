@@ -63,19 +63,34 @@ Describe "Valkey parameter reconfigure contract (KubeBlocks 1.0)"
   # ── the CUE schema must actually reach the PD ──────────────────────────
   # .Files.Get returns an empty string for a missing path, so a typo here
   # publishes a ParametersDefinition with an empty schema — no error anywhere.
-  It "loads the constraint file that exists in the chart"
-    When call grep -F '.Files.Get "config/config-constraint.cue"' "${paramsdef}"
+  # The schema is per major: valkey-8 and valkey-9 differ (see the version
+  # difference examples at the end of this file).
+  It "loads the per-major constraint file that exists in the chart"
+    When call grep -F '.Files.Get (printf "config/valkey%s-config-constraint.cue" .major)' "${paramsdef}"
     The status should be success
-    The stdout should include "config/config-constraint.cue"
+    The stdout should include "config/valkey%s-config-constraint.cue"
   End
 
-  It "ships a non-empty constraint file"
-    When call test -s "../config/config-constraint.cue"
+  It "ships a non-empty constraint file per major"
+    When call bash -c "test -s '../config/valkey8-config-constraint.cue' && test -s '../config/valkey9-config-constraint.cue' && echo both-present"
     The status should be success
+    The stdout should include "both-present"
+  End
+
+  It "loads the per-major parameter effect scope"
+    When call grep -F '.Files.Get (printf "config/valkey%s-config-effect-scope.yaml" .major) | fromYaml' "${paramsdef}"
+    The status should be success
+    The stdout should include "config/valkey%s-config-effect-scope.yaml"
+  End
+
+  It "declares the three parameter classes from that scope"
+    When call bash -c "grep -cE '^(static|dynamic|immutable)Parameters:' '../config/valkey8-config-effect-scope.yaml'"
+    The status should be success
+    The stdout should eq "3"
   End
 
   It "declares a CUE type matching the PD topLevelKey"
-    When call grep -F "#ValkeyParameter:" "../config/config-constraint.cue"
+    When call grep -F "#ValkeyParameter:" "../config/valkey8-config-constraint.cue"
     The status should be success
     The stdout should include "#ValkeyParameter:"
   End
@@ -134,5 +149,45 @@ Describe "Valkey parameter reconfigure contract (KubeBlocks 1.0)"
     When call grep -F "name: valkey-replication-config" "${data_cmpd}"
     The status should be success
     The stdout should include "- name: valkey-replication-config"
+  End
+
+  # ── version differences (generated from the upstream release lines) ─────
+  # valkey-8 serves 8.0 and 8.1, so its schema is the union of the two and
+  # marks what belongs to only one of them.
+  It "marks the parameters that exist in only one release line"
+    When call grep -F "// only in" "../config/valkey8-config-constraint.cue"
+    The status should be success
+    The stdout should include "// only in"
+  End
+
+  It "keeps the 8.0-only parameters in the valkey-8 schema"
+    # [[:space:]] instead of \\s: the macOS grep ERE does not know \\s.
+    When call bash -c "grep -cE '^[[:space:]]*\"(dynamic-hz|io-threads-do-reads|slowlog-max-len|slowlog-log-slower-than)\"' '../config/valkey8-config-constraint.cue'"
+    The status should be success
+    The stdout should eq "4"
+  End
+
+  It "records the 8.1 renames as legacy aliases"
+    When call grep -F "legacy alias: slowlog-log-slower-than" "../config/valkey8-config-constraint.cue"
+    The status should be success
+    The stdout should include "legacy alias: slowlog-log-slower-than"
+  End
+
+  It "keeps the valkey-9 schema free of the 8.0-only parameters"
+    When call bash -c "grep -cE '^[[:space:]]*\"(dynamic-hz|io-threads-do-reads|slowlog-max-len)\"' '../config/valkey9-config-constraint.cue'"
+    The status should be failure
+    The stdout should eq "0"
+  End
+
+  It "carries the 9.x commandlog parameters in the valkey-9 schema"
+    When call grep -F '"commandlog-slow-execution-max-len"' "../config/valkey9-config-constraint.cue"
+    The status should be success
+    The stdout should include "commandlog-slow-execution-max-len"
+  End
+
+  It "admits the 9.1-only parameters in the valkey-9 schema"
+    When call grep -F '"hash-seed"' "../config/valkey9-config-constraint.cue"
+    The status should be success
+    The stdout should include "hash-seed"
   End
 End

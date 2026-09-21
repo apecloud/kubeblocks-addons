@@ -9,6 +9,18 @@ fileFormatConfig — belongs to the ParamConfigRenderer (see pcr-valkey.yaml).
 Those three fields used to live here, but they only exist in an unreleased
 KubeBlocks API and are rejected by the 1.0 CRDs.
 
+Both the CUE schema and the parameter classification are PER MAJOR (redis
+addon parity): config/valkey<major>-config-constraint.cue and
+config/valkey<major>-config-effect-scope.yaml.  A ComponentDefinition serves
+every release line of its major, so both files carry the union of that major's
+lines, with version-specific parameters marked inline.
+
+The schema is generated from the upstream src/config.c of the release lines —
+8.0/8.1 for valkey-8 and 9.0/9.1 for valkey-9 — so a parameter that only exists
+in one of them is documented as such, and parameters the addon owns (TLS, data
+directory layout, credentials, topology/announce addresses, container logging
+plumbing, module loading, Sentinel mode) are left out on purpose.
+
 reloadAction mirrors the other add-ons (redis, mysql, orioledb): a shellTrigger
 that KubeBlocks invokes once per changed parameter as
 
@@ -23,6 +35,7 @@ it by KubeBlocks.
 {{- $registry := .Values.image.registry | default "docker.io" }}
 {{- $repository := .Values.image.repository }}
 {{- range .Values.valkeyVersions }}
+{{- $scope := $.Files.Get (printf "config/valkey%s-config-effect-scope.yaml" .major) | fromYaml }}
 ---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
@@ -57,79 +70,29 @@ spec:
               {{- end }}
 
   fileName: valkey.conf
-  immutableParameters:
-    - dir
-    - dbfilename
-    - appendfilename
-    - appenddirname
+
+  # Parameters whose value the engine only reads at startup: a change needs the
+  # config file rewritten and the process restarted.
   staticParameters:
-    - bind
-    - port
-    - daemonize
-    - databases
-    - logfile
-    - aclfile
-    - tcp-backlog
-    - io-threads
-    - io-threads-do-reads
+    {{- range (get $scope "staticParameters") }}
+    - {{ . }}
+    {{- end }}
+
+  # Parameters the engine accepts at runtime through CONFIG SET, which is what
+  # reload-parameter.sh issues.
   dynamicParameters:
-    - acllog-max-len
-    - activedefrag
-    - active-defrag-cycle-max
-    - active-defrag-cycle-min
-    - active-defrag-ignore-bytes
-    - active-expire-effort
-    - appendfsync
-    - appendonly
-    - auto-aof-rewrite-min-size
-    - auto-aof-rewrite-percentage
-    - hash-max-listpack-entries
-    - hash-max-listpack-value
-    - hll-sparse-max-bytes
-    - lazyfree-lazy-eviction
-    - lazyfree-lazy-expire
-    - lazyfree-lazy-server-del
-    - lazyfree-lazy-user-del
-    - lfu-decay-time
-    - lfu-log-factor
-    - list-compress-depth
-    - list-max-listpack-size
-    - loglevel
-    - maxclients
-    - maxmemory
-    - maxmemory-policy
-    - maxmemory-samples
-    - min-replicas-max-lag
-    - min-replicas-to-write
-    - notify-keyspace-events
-    - proto-max-bulk-len
-    - rdb-del-sync-files
-    - rdbchecksum
-    - rdbcompression
-    - replica-lazy-flush
-    - replica-priority
-    - replica-read-only
-    - replica-serve-stale-data
-    - repl-backlog-size
-    - repl-backlog-ttl
-    - repl-diskless-load
-    - repl-diskless-sync
-    - repl-diskless-sync-delay
-    - repl-disable-tcp-nodelay
-    - repl-timeout
-    - save
-    - set-max-intset-entries
-    - set-max-listpack-entries
-    - set-max-listpack-value
-    - slowlog-log-slower-than
-    - slowlog-max-len
-    - stop-writes-on-bgsave-error
-    - tcp-keepalive
-    - timeout
-    - zset-max-listpack-entries
-    - zset-max-listpack-value
+    {{- range (get $scope "dynamicParameters") }}
+    - {{ . }}
+    {{- end }}
+
+  # Owned by the chart (data directory layout): a change is rejected.
+  immutableParameters:
+    {{- range (get $scope "immutableParameters") }}
+    - {{ . }}
+    {{- end }}
+
   parametersSchema:
     topLevelKey: ValkeyParameter
     cue: |-
-      {{- $.Files.Get "config/config-constraint.cue" | nindent 6 }}
+      {{- $.Files.Get (printf "config/valkey%s-config-constraint.cue" .major) | nindent 6 }}
 {{- end }}
