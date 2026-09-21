@@ -18,7 +18,7 @@ spec:
   # serviceKind tells KubeBlocks the protocol family so it can expose
   # compatible service bindings to consumers.  Valkey is wire-compatible
   # with Redis, so we reuse the "redis" kind.
-  serviceKind: redis
+  serviceKind: valkey
   serviceVersion: {{ .serviceVersion }}
 
   # OrderedReady ensures pod-0 is Running before pod-1 starts.
