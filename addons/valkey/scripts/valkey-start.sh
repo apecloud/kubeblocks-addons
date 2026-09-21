@@ -176,7 +176,7 @@ build_replicaof_config() {
     # window (initialDelay 30s + failureThreshold×period = 90s) so the
     # heuristic election fallback (step A-3) has time to run.
     local attempt
-    for attempt in $(seq 1 6); do
+    for attempt in $(seq 1 3); do
       primary_fqdn=$(query_sentinel_quorum_for_master) || true
       if ! is_empty "${primary_fqdn}"; then
         # Verify the quorum-elected pod actually reports role=master right now.
@@ -190,13 +190,13 @@ build_replicaof_config() {
           echo "INFO: sentinel quorum + role verified: ${primary_fqdn}:${primary_port}" >&2
           break
         fi
-        echo "INFO: quorum elected ${primary_fqdn} but role='${actual_role:-<unreachable>}' — retrying in 5s." >&2
+        echo "INFO: quorum elected ${primary_fqdn} but role='${actual_role:-<unreachable>}' — retrying in 3s." >&2
         primary_fqdn=""
       else
-        echo "INFO: sentinel quorum not ready (attempt ${attempt}/6) — retrying in 5s." >&2
+        echo "INFO: sentinel quorum not ready (attempt ${attempt}/3) — retrying in 3s." >&2
       fi
-      if [ "${attempt}" -lt 6 ]; then
-        sleep_when_ut_mode_false 5
+      if [ "${attempt}" -lt 3 ]; then
+        sleep_when_ut_mode_false 3
       fi
     done
 

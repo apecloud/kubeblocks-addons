@@ -11,934 +11,528 @@ source ./utils.sh
 common_library_file="./common.sh"
 generate_common_library $common_library_file
 
-Describe "Valkey Switchover Bash Script Tests"
+Describe "Valkey Switchover Bash Script Tests (redis-aligned)"
   Include $common_library_file
   Include ../scripts/switchover.sh
 
-  init() {
-    ut_mode="true"
+  switchover_script="../scripts/switchover.sh"
+  CLI_LOG="${PWD}/valkey-cli-switchover-mock.log"
+
+  # ── valkey-cli mock ─────────────────────────────────────────────────────
+  # Calls are appended to $CLI_LOG: the script invokes valkey-cli inside
+  # command substitutions, so only a file survives the subshell.
+  #   MOCK_ROLE               default role answered by `info replication`
+  #   MOCK_ROLE_OVERRIDES     "host=role,host=role" per-host role
+  #   MOCK_PRIORITIES         default replica-priority
+  #   MOCK_PRIORITY_OVERRIDES "host=prio,host=prio"
+  #   MOCK_CONFIG_SET_FAIL / MOCK_FAILOVER_FAIL  make those answers fail
+  host_of_args() {
+    printf '%s' "${1}" | sed -E 's/.*-h ([^ ]+).*/\1/'
+  }
+
+  override_for_host() {
+    local csv="${1}" host="${2}" entry
+    [ -n "${csv}" ] || return 1
+    local IFS=','
+    for entry in ${csv}; do
+      if [ "${entry%%=*}" = "${host}" ]; then
+        printf '%s' "${entry#*=}"
+        return 0
+      fi
+    done
+    return 1
+  }
+
+  valkey-cli() {
+    printf '%s\n' "$*" >> "${CLI_LOG}"
+    local args="$*" host role prio
+    host="$(host_of_args "${args}")"
+    case "${args}" in
+      *"info replication"*)
+        role="$(override_for_host "${MOCK_ROLE_OVERRIDES:-}" "${host}")" || role="${MOCK_ROLE:-}"
+        [ -n "${role}" ] && printf 'role:%s\n' "${role}"
+        ;;
+      *"CONFIG GET replica-priority"*)
+        prio="$(override_for_host "${MOCK_PRIORITY_OVERRIDES:-}" "${host}")" || prio="${MOCK_PRIORITIES:-100}"
+        printf 'replica-priority\n%s\n' "${prio}"
+        ;;
+      *"CONFIG SET replica-priority "*)
+        if [ "${MOCK_CONFIG_SET_FAIL:-}" = "1" ]; then
+          printf '(error) ERR CONFIG SET failed\n'
+        else
+          printf 'OK\n'
+        fi
+        ;;
+      *"SENTINEL FAILOVER"*)
+        if [ "${MOCK_FAILOVER_FAIL:-}" = "1" ]; then
+          printf '(error) ERR No such master with that name\n'
+        else
+          printf 'OK\n'
+        fi
+        ;;
+      *)
+        printf 'OK\n'
+        ;;
+    esac
+  }
+
+  env_setup() {
     export SERVICE_PORT="6379"
     export COMPONENT_REPLICAS="3"
     export KB_SWITCHOVER_ROLE="primary"
+    export VALKEY_POD_FQDN_LIST="valkey-0.h,valkey-1.h,valkey-2.h"
+    export VALKEY_COMPONENT_NAME="mycluster-valkey"
+    export SENTINEL_COMPONENT_NAME="mycluster-valkey-sentinel"
+    export SENTINEL_POD_FQDN_LIST="sentinel-0.h,sentinel-1.h"
+    export SENTINEL_SERVICE_PORT="26379"
+    export KB_SWITCHOVER_CURRENT_FQDN="valkey-0.h"
+    export KB_SWITCHOVER_CANDIDATE_FQDN="valkey-2.h"
+    unset VALKEY_DEFAULT_PASSWORD
+    unset VALKEY_CLI_TLS_ARGS
+    unset SENTINEL_PASSWORD
+  }
+  Before "env_setup"
+
+  reset_state() {
+    : > "${CLI_LOG}"
+    unset MOCK_ROLE MOCK_ROLE_OVERRIDES MOCK_PRIORITIES MOCK_PRIORITY_OVERRIDES
+    unset MOCK_CONFIG_SET_FAIL MOCK_FAILOVER_FAIL
+    _orig_prio_fqdns=()
+    _orig_prio_values=()
+  }
+  Before "reset_state"
+
+  init() {
+    ut_mode="true"
   }
   BeforeAll "init"
 
   cleanup() {
-    rm -f "${common_library_file}"
-    unset SERVICE_PORT
-    unset COMPONENT_REPLICAS
-    unset KB_SWITCHOVER_ROLE
+    rm -f "${common_library_file}" "${CLI_LOG}"
   }
   AfterAll "cleanup"
 
-  Describe "get_role()"
-    Context "when valkey-cli returns master"
-      setup() {
-        export VALKEY_DEFAULT_PASSWORD=""
-      }
-      Before "setup"
+  # run_and_show_calls <cmd> [args...] — run it in this shell, then print the
+  # recorded valkey-cli calls.  The command's exit status is propagated: a
+  # trailing `cat` must not turn a failure into success.
+  run_and_show_calls() {
+    local rc=0
+    "$@" || rc=$?
+    echo "── recorded cli calls ──"
+    cat "${CLI_LOG}"
+    return "${rc}"
+  }
 
-      It "returns 'master'"
-        valkey-cli() {
-          printf "# Replication\r\nrole:master\r\nconnected_slaves:1\r\n"
-        }
-        When call get_role "valkey-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should eq "master"
-      End
+  # ══ valkey_role() ═══════════════════════════════════════════════════════
+  Describe "valkey_role()"
+    It "returns 'master' for a primary"
+      export MOCK_ROLE="master"
+      When call valkey_role "valkey-0.h"
+      The status should be success
+      The stdout should eq "master"
     End
 
-    Context "when valkey-cli returns slave"
-      It "returns 'slave'"
-        valkey-cli() {
-          printf "# Replication\r\nrole:slave\r\nmaster_host:valkey-0\r\n"
-        }
-        When call get_role "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should eq "slave"
-      End
+    It "returns 'slave' for a replica"
+      export MOCK_ROLE="slave"
+      When call valkey_role "valkey-1.h"
+      The status should be success
+      The stdout should eq "slave"
     End
 
-    Context "when connection fails"
-      It "returns empty string (exits 0 due to pipeline)"
-        valkey-cli() {
-          return 1
-        }
-        When call get_role "unreachable-host"
-        The status should be success
-        The stdout should eq ""
-      End
+    It "returns nothing when the pod does not answer"
+      export MOCK_ROLE=""
+      When call valkey_role "valkey-1.h"
+      The stdout should eq ""
     End
   End
 
+  # ══ build_cli() / sentinel_cli_for() ════════════════════════════════════
   Describe "build_cli()"
-    _build_cli_as_string() {
-      build_cli "$@"
-      printf '%s\n' "${_cli[*]}"
-    }
-
-    Context "when no password and no TLS args are set"
-      setup() {
-        export VALKEY_DEFAULT_PASSWORD=""
-        export VALKEY_CLI_TLS_ARGS=""
-      }
-      Before "setup"
-
-      teardown() {
-        unset VALKEY_DEFAULT_PASSWORD
-        unset VALKEY_CLI_TLS_ARGS
-      }
-      After "teardown"
-
-      It "returns basic valkey-cli command without -a or TLS flags"
-        When call _build_cli_as_string "valkey-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "valkey-cli"
-        The stdout should include "-h valkey-0.headless.default.svc.cluster.local"
-        The stdout should include "-p 6379"
-        The stdout should not include " -a "
-      End
+    It "uses the data port and no auth when no password is set"
+      build_cli_string() { build_cli "valkey-0.h"; printf '%s' "${_cli[*]}"; }
+      When call build_cli_string
+      The status should be success
+      The stdout should include "-h valkey-0.h -p 6379"
+      The stdout should not include "-a "
     End
 
-    Context "when VALKEY_DEFAULT_PASSWORD is set"
-      setup() {
-        export VALKEY_DEFAULT_PASSWORD="s3cr3t"
-        export VALKEY_CLI_TLS_ARGS=""
-      }
-      Before "setup"
-
-      teardown() {
-        unset VALKEY_DEFAULT_PASSWORD
-        unset VALKEY_CLI_TLS_ARGS
-      }
-      After "teardown"
-
-      It "appends -a <password> to the command"
-        When call _build_cli_as_string "valkey-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include " -a s3cr3t"
-      End
-    End
-
-    Context "when VALKEY_CLI_TLS_ARGS is set"
-      setup() {
-        export VALKEY_DEFAULT_PASSWORD=""
-        export VALKEY_CLI_TLS_ARGS="--tls --cacert /tls/ca.crt"
-      }
-      Before "setup"
-
-      teardown() {
-        unset VALKEY_DEFAULT_PASSWORD
-        unset VALKEY_CLI_TLS_ARGS
-      }
-      After "teardown"
-
-      It "appends TLS args to the command"
-        When call _build_cli_as_string "valkey-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "--tls"
-        The stdout should include "--cacert /tls/ca.crt"
-        The stdout should not include " -a "
-      End
-    End
-
-    Context "when both VALKEY_DEFAULT_PASSWORD and VALKEY_CLI_TLS_ARGS are set"
-      setup() {
-        export VALKEY_DEFAULT_PASSWORD="s3cr3t"
-        export VALKEY_CLI_TLS_ARGS="--tls --cacert /tls/ca.crt"
-      }
-      Before "setup"
-
-      teardown() {
-        unset VALKEY_DEFAULT_PASSWORD
-        unset VALKEY_CLI_TLS_ARGS
-      }
-      After "teardown"
-
-      It "includes both -a <password> and TLS args"
-        When call _build_cli_as_string "valkey-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include " -a s3cr3t"
-        The stdout should include "--tls"
-        The stdout should include "--cacert /tls/ca.crt"
-      End
+    It "appends the password and the TLS args built by the component vars"
+      export VALKEY_DEFAULT_PASSWORD="datapass"
+      export VALKEY_CLI_TLS_ARGS="--tls --cacert /etc/pki/tls/ca.crt"
+      build_cli_string() { build_cli "valkey-0.h"; printf '%s' "${_cli[*]}"; }
+      When call build_cli_string
+      The status should be success
+      The stdout should include "-a datapass"
+      The stdout should include "--tls --cacert /etc/pki/tls/ca.crt"
     End
   End
 
   Describe "sentinel_cli_for()"
-    _sentinel_cli_for_as_string() {
-      sentinel_cli_for "$@"
-      printf '%s\n' "${_sentinel_cli[*]}"
-    }
-
-    Context "when no sentinel password and no TLS args"
-      setup() {
-        export SENTINEL_PASSWORD=""
-        export VALKEY_CLI_TLS_ARGS=""
-        export SENTINEL_SERVICE_PORT="26379"
-      }
-      Before "setup"
-
-      teardown() {
-        unset SENTINEL_PASSWORD
-        unset VALKEY_CLI_TLS_ARGS
-        unset SENTINEL_SERVICE_PORT
-      }
-      After "teardown"
-
-      It "returns valkey-cli command targeting sentinel port 26379 without -a"
-        When call _sentinel_cli_for_as_string "sentinel-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "-h sentinel-0.headless.default.svc.cluster.local"
-        The stdout should include "-p 26379"
-        The stdout should not include " -a "
-      End
+    It "targets the Sentinel port with the Sentinel password"
+      export SENTINEL_PASSWORD="sentinelpass"
+      sentinel_cli_string() { sentinel_cli_for "sentinel-0.h"; printf '%s' "${_sentinel_cli[*]}"; }
+      When call sentinel_cli_string
+      The status should be success
+      The stdout should include "-h sentinel-0.h -p 26379"
+      The stdout should include "-a sentinelpass"
     End
 
-    Context "when SENTINEL_PASSWORD is set"
-      setup() {
-        export SENTINEL_PASSWORD="sentinelpass"
-        export VALKEY_CLI_TLS_ARGS=""
-        export SENTINEL_SERVICE_PORT="26379"
-      }
-      Before "setup"
-
-      teardown() {
-        unset SENTINEL_PASSWORD
-        unset VALKEY_CLI_TLS_ARGS
-        unset SENTINEL_SERVICE_PORT
-      }
-      After "teardown"
-
-      It "appends -a <sentinel-password> to the command"
-        When call _sentinel_cli_for_as_string "sentinel-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include " -a sentinelpass"
-      End
-    End
-
-    Context "when SENTINEL_SERVICE_PORT is set to a custom value"
-      setup() {
-        export SENTINEL_PASSWORD=""
-        export VALKEY_CLI_TLS_ARGS=""
-        export SENTINEL_SERVICE_PORT="36379"
-      }
-      Before "setup"
-
-      teardown() {
-        unset SENTINEL_PASSWORD
-        unset VALKEY_CLI_TLS_ARGS
-        unset SENTINEL_SERVICE_PORT
-      }
-      After "teardown"
-
-      It "uses the custom port instead of the default 26379"
-        When call _sentinel_cli_for_as_string "sentinel-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "-p 36379"
-        The stdout should not include "-p 26379"
-      End
+    It "honours a custom Sentinel port"
+      export SENTINEL_SERVICE_PORT="26380"
+      sentinel_cli_string() { sentinel_cli_for "sentinel-0.h"; printf '%s' "${_sentinel_cli[*]}"; }
+      When call sentinel_cli_string
+      The status should be success
+      The stdout should include "-p 26380"
     End
   End
 
-
-  Describe "execute_sentinel_failover()"
-    Context "when first Sentinel accepts the failover"
-      setup() {
-        export VALKEY_COMPONENT_NAME="mycluster-valkey"
-        export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local,sentinel-1.headless.default.svc.cluster.local"
-        export SENTINEL_SERVICE_PORT="26379"
-      }
-      Before "setup"
-
-      teardown() {
-        unset VALKEY_COMPONENT_NAME
-        unset SENTINEL_POD_FQDN_LIST
-        unset SENTINEL_SERVICE_PORT
-      }
-      After "teardown"
-
-      It "returns success"
-        valkey-cli() {
-          echo "OK"
-        }
-        When call execute_sentinel_failover
-        The status should be success
-        The stdout should include "FAILOVER accepted"
-      End
+  # ══ valkey_kernel_status() ══════════════════════════════════════════════
+  Describe "valkey_kernel_status()"
+    It "returns the single primary"
+      export MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-1.h=slave,valkey-2.h=slave"
+      When call valkey_kernel_status
+      The status should be success
+      The stdout should eq "valkey-0.h"
     End
 
-    Context "when all Sentinels reject the failover"
-      setup() {
-        export VALKEY_COMPONENT_NAME="mycluster-valkey"
-        export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local"
-        export SENTINEL_SERVICE_PORT="26379"
-      }
-      Before "setup"
-
-      teardown() {
-        unset VALKEY_COMPONENT_NAME
-        unset SENTINEL_POD_FQDN_LIST
-        unset SENTINEL_SERVICE_PORT
-      }
-      After "teardown"
-
-      It "returns failure"
-        valkey-cli() {
-          echo "(error) ERR No such master with that name"
-        }
-        When call execute_sentinel_failover
-        The status should be failure
-        The stderr should include "all Sentinel FAILOVER attempts failed"
-      End
-    End
-
-    Context "when first Sentinel fails but second accepts"
-      setup() {
-        export VALKEY_COMPONENT_NAME="mycluster-valkey"
-        export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local,sentinel-1.headless.default.svc.cluster.local"
-        export SENTINEL_SERVICE_PORT="26379"
-      }
-      Before "setup"
-
-      teardown() {
-        unset VALKEY_COMPONENT_NAME
-        unset SENTINEL_POD_FQDN_LIST
-        unset SENTINEL_SERVICE_PORT
-      }
-      After "teardown"
-
-      It "skips the failed Sentinel and returns success from the second"
-        valkey-cli() {
-          local args="$*"
-          case "${args}" in
-            *"sentinel-0"*) return 1 ;;   # sentinel-0 unreachable
-            *"sentinel-1"*) echo "OK" ;;
-          esac
-        }
-        When call execute_sentinel_failover
-        The status should be success
-        The stdout should include "FAILOVER accepted"
-        The stdout should include "sentinel-1"
-      End
-    End
-
-    Context "when Sentinel returns OK\\r (TLS carriage-return)"
-      setup() {
-        export VALKEY_COMPONENT_NAME="mycluster-valkey"
-        export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local"
-        export SENTINEL_SERVICE_PORT="26379"
-      }
-      Before "setup"
-
-      teardown() {
-        unset VALKEY_COMPONENT_NAME
-        unset SENTINEL_POD_FQDN_LIST
-        unset SENTINEL_SERVICE_PORT
-      }
-      After "teardown"
-
-      It "strips \\r and returns success"
-        valkey-cli() {
-          printf "OK\r"
-        }
-        When call execute_sentinel_failover
-        The status should be success
-        The stdout should include "FAILOVER accepted"
-      End
-    End
-  End
-
-  Describe "switchover_with_sentinel() — candidate role pre-check"
-    setup() {
-      export VALKEY_COMPONENT_NAME="mycluster-valkey"
-      export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local"
-      export SENTINEL_SERVICE_PORT="26379"
-      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
-      export KB_SWITCHOVER_CURRENT_FQDN="valkey-0.headless.default.svc.cluster.local"
-    }
-    Before "setup"
-
-    teardown() {
-      unset VALKEY_COMPONENT_NAME
-      unset SENTINEL_POD_FQDN_LIST
-      unset SENTINEL_SERVICE_PORT
-      unset VALKEY_POD_FQDN_LIST
-      unset KB_SWITCHOVER_CURRENT_FQDN
-    }
-    After "teardown"
-
-    Context "when candidate is already master (idempotent — target state achieved)"
-      It "returns success immediately without calling execute_sentinel_failover"
-        valkey-cli() {
-          printf 'role:master\n'
-        }
-        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        The stderr should include "already master"
-        The stderr should include "idempotent"
-        The stdout should not include "SHOULD_NOT_BE_CALLED"
-      End
-    End
-
-    Context "when wait_sentinel_sees_priority_bias times out — priorities are restored before aborting"
-      It "restores all replica priorities to 100 and returns failure without calling execute_sentinel_failover"
-        get_role() { echo "slave"; }
-        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
-        wait_sentinel_sees_priority_bias() { return 1; }
-        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be failure
-        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:100"
-        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:100"
-        The stdout should not include "SHOULD_NOT_BE_CALLED"
-      End
-    End
-
-    Context "when fresh scale-out candidate is absent from stale VALKEY_POD_FQDN_LIST"
-      It "still biases and restores the requested candidate"
-        export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
-        get_role() { echo "slave"; }
-        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
-        wait_sentinel_sees_priority_bias() { return 1; }
-        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
-        When call switchover_with_sentinel "valkey-3.headless.default.svc.cluster.local"
-        The status should be failure
-        The stdout should include "SET_PRIO:valkey-3.headless.default.svc.cluster.local:1"
-        The stdout should include "SET_PRIO:valkey-3.headless.default.svc.cluster.local:100"
-        The stdout should not include "SHOULD_NOT_BE_CALLED"
-      End
-    End
-
-    Context "when candidate role is unknown (get_role returns empty — transient network issue)"
-      It "fails closed and does not call Sentinel"
-        get_role() { echo ""; }
-        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; return 0; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be failure
-        The stderr should include "ERROR"
-        The stderr should include "could not determine role"
-        The stdout should not include "SHOULD_NOT_BE_CALLED"
-      End
-    End
-
-    Context "when priority normalization fails before targeted FAILOVER"
-      It "restores priorities and does not call Sentinel"
-        get_role() { echo "slave"; }
-        set_replica_priority() {
-          echo "SET_PRIO:${1}:${2}"
-          [ "${1%%.*}" = "valkey-2" ] && return 1
-          return 0
-        }
-        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; return 0; }
-        export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be failure
-        The stdout should include "SET_PRIO:valkey-2.headless.default.svc.cluster.local:100"
-        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:100"
-        The stdout should not include "SHOULD_NOT_BE_CALLED"
-        The stderr should include "failed to normalize priority"
-      End
-    End
-
-    Context "when candidate role is 'slave' (normal path)"
-      It "proceeds to call Sentinel without warnings"
-        get_role() { echo "slave"; }
-        set_replica_priority() { return 0; }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() { return 0; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "Biasing"
-        The stderr should eq ""
-      End
-    End
-
-    Context "when get_role returns empty on first try but slave on second (transient — retry succeeds)"
-      It "proceeds without the unknown-role warning"
-        _get_role_calls_file="${SHELLSPEC_TMPBASE}/get-role-calls"
-        printf '0' > "${_get_role_calls_file}"
-        get_role() {
-          local calls
-          calls=$(cat "${_get_role_calls_file}")
-          calls=$((calls + 1))
-          printf '%s' "${calls}" > "${_get_role_calls_file}"
-          [ "${calls}" -ge 2 ] && echo "slave" || echo ""
-        }
-        set_replica_priority() { return 0; }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() { return 0; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "Biasing"
-        The stderr should not include "WARNING"
-      End
-    End
-
-    Context "when candidate role is an unexpected value (e.g. 'connecting') — neither master nor slave"
-      It "aborts with an ERROR and does not call execute_sentinel_failover"
-        get_role() { echo "connecting"; }
-        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be failure
-        The stderr should include "ERROR"
-        The stderr should include "expected 'slave'"
-        The stdout should not include "SHOULD_NOT_BE_CALLED"
-      End
-    End
-
-    Context "when FAILOVER accepted but wrong candidate becomes master — priority restore deferred until after confirmation"
-      It "restores priorities only after wait_for_new_master (not before), and returns failure"
-        restore_order=""
-        get_role() { echo "slave"; }
-        set_replica_priority() {
-          # Record calls: tag 'during' only if wait_for_new_master has NOT run yet
-          if [ -z "${wfnm_done:-}" ]; then
-            restore_order="${restore_order}bias:"
-          else
-            restore_order="${restore_order}restore:"
-          fi
-          echo "SET_PRIO:${1}:${2}"
-          return 0
-        }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() {
-          wfnm_done=1
-          restore_order="${restore_order}wfnm:"
-          return 1
-        }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be failure
-        The stdout should include "Biasing"
-        # wfnm must appear before 'restore' in the ordering string
-        The variable restore_order should include "wfnm:restore:"
-        The variable restore_order should not include "restore:wfnm:"
-      End
-    End
-  End
-
-
-  Describe "wait_sentinel_sees_priority_bias()"
-    setup() {
-      export VALKEY_COMPONENT_NAME="mycluster-valkey"
-      export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local"
-      export SENTINEL_SERVICE_PORT="26379"
-      export KB_SWITCHOVER_CURRENT_FQDN="valkey-0.headless.default.svc.cluster.local"
-    }
-    Before "setup"
-
-    teardown() {
-      unset VALKEY_COMPONENT_NAME
-      unset SENTINEL_POD_FQDN_LIST
-      unset SENTINEL_SERVICE_PORT
-      unset KB_SWITCHOVER_CURRENT_FQDN
-    }
-    After "teardown"
-
-    Context "when candidate is priority 1 and other replica is priority 100"
-      It "returns success"
-        valkey-cli() {
-          printf 'name\nvalkey-1.headless.default.svc.cluster.local:6379\nslave-priority\n1\nname\nvalkey-2.headless.default.svc.cluster.local:6379\nslave-priority\n100\n'
-        }
-        When call wait_sentinel_sees_priority_bias "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "targeted bias"
-      End
-    End
-
-    Context "when another replica still has priority 1"
-      It "returns failure before FAILOVER can be issued"
-        valkey-cli() {
-          printf 'name\nvalkey-1.headless.default.svc.cluster.local:6379\nslave-priority\n1\nname\nvalkey-2.headless.default.svc.cluster.local:6379\nslave-priority\n1\n'
-        }
-        When call wait_sentinel_sees_priority_bias "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
-        The status should be failure
-        The stderr should include "full targeted priority bias"
-      End
-    End
-  End
-
-  Describe "set_replica_priority()"
-    It "logs a warning and returns failure when CONFIG SET returns unexpected output"
-      valkey-cli() {
-        echo "(error) ERR"
-      }
-      When call set_replica_priority "valkey-1.headless.default.svc.cluster.local" "1"
+    It "fails on a split brain (two primaries)"
+      export MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-1.h=master,valkey-2.h=slave"
+      When call valkey_kernel_status
       The status should be failure
-      The stderr should include "WARNING"
+      The stderr should include "multiple primaries detected"
     End
 
-    It "succeeds silently when CONFIG SET returns OK"
-      valkey-cli() {
-        echo "OK"
-      }
-      When call set_replica_priority "valkey-1.headless.default.svc.cluster.local" "100"
+    It "fails when no pod reports master"
+      export MOCK_ROLE="slave"
+      When call valkey_kernel_status
+      The status should be failure
+      The stderr should include "no primary found"
+    End
+
+    It "skips unreachable pods"
+      export MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-1.h=,valkey-2.h=slave"
+      When call valkey_kernel_status
       The status should be success
-      The stderr should eq ""
+      The stdout should eq "valkey-0.h"
     End
+  End
 
-    It "succeeds when CONFIG SET returns OK\\r (carriage-return stripped)"
-      valkey-cli() {
-        printf "OK\r"
-      }
-      When call set_replica_priority "valkey-1.headless.default.svc.cluster.local" "1"
+  # ══ pod_fqdns_with_candidate() ══════════════════════════════════════════
+  Describe "pod_fqdns_with_candidate()"
+    It "appends a candidate missing from a stale pod list"
+      export VALKEY_POD_FQDN_LIST="valkey-0.h,valkey-1.h"
+      When call pod_fqdns_with_candidate "valkey-2.h"
       The status should be success
-      The stderr should eq ""
+      The stdout should eq "valkey-0.h,valkey-1.h,valkey-2.h"
+    End
+
+    It "does not duplicate a candidate already in the list"
+      When call pod_fqdns_with_candidate "valkey-2.h"
+      The status should be success
+      The stdout should eq "valkey-0.h,valkey-1.h,valkey-2.h"
     End
   End
 
-
-  Describe "wait_for_new_master()"
-    setup() {
-      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
-    }
-    Before "setup"
-
-    teardown() {
-      unset VALKEY_POD_FQDN_LIST
-    }
-    After "teardown"
-
-    Context "when expected candidate becomes master before timeout"
-      It "returns success and prints confirmation"
-        get_role() {
-          case "$1" in
-            *"valkey-1"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
-        }
-        When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" ""
-        The status should be success
-        The stdout should include "New primary confirmed"
-        The stdout should include "valkey-1"
-      End
+  # ══ priority bias ═══════════════════════════════════════════════════════
+  Describe "bias_replica_priorities()"
+    It "sets the candidate to 1 and the other replicas to 100"
+      When call run_and_show_calls bias_replica_priorities "valkey-2.h" "valkey-1.h,valkey-2.h"
+      The status should be success
+      The stdout should include "-h valkey-2.h -p 6379 CONFIG SET replica-priority 1"
+      The stdout should include "-h valkey-1.h -p 6379 CONFIG SET replica-priority 100"
     End
 
-    Context "when fresh expected candidate is absent from stale VALKEY_POD_FQDN_LIST"
-      It "still confirms the candidate by appending the action-time FQDN"
-        export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
-        get_role() {
-          case "$1" in
-            *"valkey-3"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
-        }
-        When call wait_for_new_master "valkey-3.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "New primary confirmed"
-        The stdout should include "valkey-3"
-      End
+    It "leaves a never-promote replica (priority 0) untouched"
+      export MOCK_PRIORITY_OVERRIDES="valkey-1.h=0"
+      capture_then_bias() {
+        capture_replica_priorities "valkey-1.h,valkey-2.h"
+        bias_replica_priorities "valkey-2.h" "valkey-1.h,valkey-2.h"
+      }
+      When call run_and_show_calls capture_then_bias
+      The status should be success
+      The stdout should include "Preserving never-promote replica-priority=0 on valkey-1.h"
+      The stdout should not include "CONFIG SET replica-priority 100"
     End
 
-    Context "when no new master appears within max_wait (simulated via small limit)"
-      It "returns failure with a WARNING"
-        get_role() { echo "slave"; }
-        # Override max_wait to 0 so the loop exits immediately
-        wait_for_new_master() {
-          local expected_fqdn="${1}" exclude_fqdn="${2}"
-          local max_wait=0 elapsed=0
-          while [ "${elapsed}" -lt "${max_wait}" ]; do
-            elapsed=$((elapsed + 3))
-          done
-          echo "WARNING: ${expected_fqdn} did not confirm master role within ${max_wait}s" >&2
-          return 1
-        }
-        When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" ""
-        The status should be failure
-        The stderr should include "WARNING"
-      End
-    End
-
-    Context "when exclude_fqdn matches the current master (old master still reporting master)"
-      It "skips the excluded FQDN and returns success when a different node becomes master"
-        get_role() {
-          case "$1" in
-            *"valkey-0"*) echo "master" ;;
-            *"valkey-1"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
-        }
-        # valkey-0 is old master (excluded), valkey-1 is new master
-        When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "valkey-1"
-      End
-    End
-
-    Context "when expected_fqdn is empty — any new master is acceptable"
-      It "returns success as soon as any non-excluded node reports master"
-        get_role() {
-          case "$1" in
-            *"valkey-2"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
-        }
-        When call wait_for_new_master "" "valkey-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "New primary confirmed"
-      End
-    End
-
-    Context "when the wrong pod becomes master (not the expected candidate)"
-      It "does not return success for the wrong master — keeps waiting, returns success only for expected"
-        get_role() {
-          case "$1" in
-            *"valkey-2"*) echo "master" ;;   # wrong pod is master
-            *"valkey-1"*) echo "master" ;;   # expected pod also master (will match)
-            *) echo "slave" ;;
-          esac
-        }
-        # valkey-1 is expected; valkey-2 is also master but should be skipped
-        When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "valkey-1"
-      End
+    It "fails when a CONFIG SET does not answer OK"
+      export MOCK_CONFIG_SET_FAIL="1"
+      run_bias() {
+        ( sleep() { :; }
+          bias_replica_priorities "valkey-2.h" "valkey-1.h,valkey-2.h" )
+      }
+      When call run_bias
+      The status should be failure
+      The stderr should include "failed to apply the replica-priority bias"
     End
   End
 
-  Describe "switchover_with_sentinel() — success path restore ordering"
-    setup() {
-      export VALKEY_COMPONENT_NAME="mycluster-valkey"
-      export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local"
-      export SENTINEL_SERVICE_PORT="26379"
-      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
-      export KB_SWITCHOVER_CURRENT_FQDN="valkey-0.headless.default.svc.cluster.local"
-    }
-    Before "setup"
-
-    teardown() {
-      unset VALKEY_COMPONENT_NAME
-      unset SENTINEL_POD_FQDN_LIST
-      unset SENTINEL_SERVICE_PORT
-      unset VALKEY_POD_FQDN_LIST
-      unset KB_SWITCHOVER_CURRENT_FQDN
-    }
-    After "teardown"
-
-    Context "when FAILOVER accepted and correct candidate becomes master — priorities restored after wait_for_new_master succeeds"
-      It "restores priorities only after wait_for_new_master (not before), and returns success"
-        restore_order=""
-        get_role() { echo "slave"; }
-        set_replica_priority() {
-          if [ -z "${wfnm_done:-}" ]; then
-            restore_order="${restore_order}bias:"
-          else
-            restore_order="${restore_order}restore:"
-          fi
-          echo "SET_PRIO:${1}:${2}"
-          return 0
-        }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() {
-          wfnm_done=1
-          restore_order="${restore_order}wfnm:"
-          return 0
-        }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "Biasing"
-        # wfnm must appear before 'restore' in the ordering string
-        The variable restore_order should include "wfnm:restore:"
-        The variable restore_order should not include "restore:wfnm:"
-      End
+  Describe "capture/replace/restore replica priorities"
+    It "restores the captured values instead of a hardcoded 100"
+      export MOCK_PRIORITY_OVERRIDES="valkey-1.h=50,valkey-2.h=20"
+      capture_replica_priorities "valkey-1.h,valkey-2.h"
+      restore_and_show_calls() {
+        restore_replica_priorities
+        cat "${CLI_LOG}"
+      }
+      When call restore_and_show_calls
+      The status should be success
+      The stdout should include "Restoring replica-priorities"
+      The stdout should include "CONFIG SET replica-priority 50"
+      The stdout should include "CONFIG SET replica-priority 20"
     End
 
-    Context "when execute_sentinel_failover fails — priorities restored before returning failure"
-      It "restores all replica priorities to 100 and returns failure"
-        get_role() { echo "slave"; }
-        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { return 1; }
-        wait_for_new_master() { echo "SHOULD_NOT_BE_CALLED"; return 0; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be failure
-        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:100"
-        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:100"
-        The stdout should not include "SHOULD_NOT_BE_CALLED"
-      End
-    End
-
-    Context "when pods carry user-configured replica-priority values"
-      It "restores the captured original priorities instead of hardcoded 100"
-        get_role() { echo "slave"; }
-        get_replica_priority() {
-          case "${1}" in
-            valkey-0.*) echo "42" ;;
-            valkey-1.*) echo "25" ;;
-            *) echo "100" ;;
-          esac
-        }
-        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() { return 0; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        # Bias still uses 1/100 so Sentinel deterministically picks the candidate...
-        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:1"
-        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:100"
-        # ...but the restore puts back the captured user values, not 100.
-        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:42"
-        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:25"
-      End
-
-      It "preserves never-promote (priority 0) replicas through bias and restore"
-        get_role() { echo "slave"; }
-        get_replica_priority() {
-          case "${1}" in
-            valkey-0.*) echo "0" ;;     # never-promote replica
-            *) echo "100" ;;
-          esac
-        }
-        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() { return 0; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "Preserving never-promote replica-priority=0 on valkey-0.headless.default.svc.cluster.local"
-        # The 0-replica must NEVER be written to 100 — not during bias, not later.
-        The stdout should not include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:100"
-        # Candidate bias still applies, and restore writes back the captured 0.
-        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:1"
-        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:0"
-      End
-
-      It "warns but proceeds when the explicit candidate itself has priority 0"
-        get_role() { echo "slave"; }
-        get_replica_priority() {
-          case "${1}" in
-            valkey-1.*) echo "0" ;;
-            *) echo "100" ;;
-          esac
-        }
-        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() { return 0; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        The stderr should include "never-promote"
-        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:1"
-      End
-
-      It "falls back to 100 when a pod's current priority cannot be read"
-        get_role() { echo "slave"; }
-        get_replica_priority() { echo ""; }
-        set_replica_priority() { echo "SET_PRIO:${1}:${2}"; return 0; }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() { return 0; }
-        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "SET_PRIO:valkey-0.headless.default.svc.cluster.local:100"
-        The stdout should include "SET_PRIO:valkey-1.headless.default.svc.cluster.local:100"
-      End
-    End
-
-    Context "when successful candidate is absent from stale VALKEY_POD_FQDN_LIST"
-      It "restores the requested candidate after wait_for_new_master"
-        restore_order=""
-        export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
-        get_role() { echo "slave"; }
-        set_replica_priority() {
-          if [ -z "${wfnm_done:-}" ]; then
-            restore_order="${restore_order}bias:${1}:${2}|"
-          else
-            restore_order="${restore_order}restore:${1}:${2}|"
-          fi
-          echo "SET_PRIO:${1}:${2}"
-          return 0
-        }
-        wait_sentinel_sees_priority_bias() { return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() {
-          wfnm_done=1
-          restore_order="${restore_order}wfnm|"
-          return 0
-        }
-        When call switchover_with_sentinel "valkey-3.headless.default.svc.cluster.local"
-        The status should be success
-        The stdout should include "SET_PRIO:valkey-3.headless.default.svc.cluster.local:1"
-        The variable restore_order should include "restore:valkey-3.headless.default.svc.cluster.local:100|"
-        The variable restore_order should include "wfnm|restore:valkey-0.headless.default.svc.cluster.local:100|"
-      End
+    It "records the engine default when a pod cannot be reached"
+      MOCK_PRIORITY_OVERRIDES="" MOCK_PRIORITIES="" \
+        capture_replica_priorities "valkey-1.h"
+      When call captured_replica_priority "valkey-1.h"
+      The status should be success
+      The stdout should eq "100"
     End
   End
 
-  Describe "switchover_with_sentinel() — no-candidate path"
-    setup() {
-      export VALKEY_COMPONENT_NAME="mycluster-valkey"
-      export SENTINEL_POD_FQDN_LIST="sentinel-0.headless.default.svc.cluster.local"
-      export SENTINEL_SERVICE_PORT="26379"
-      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
-      export KB_SWITCHOVER_CURRENT_FQDN="valkey-0.headless.default.svc.cluster.local"
-    }
-    Before "setup"
-
-    teardown() {
-      unset VALKEY_COMPONENT_NAME
-      unset SENTINEL_POD_FQDN_LIST
-      unset SENTINEL_SERVICE_PORT
-      unset VALKEY_POD_FQDN_LIST
-      unset KB_SWITCHOVER_CURRENT_FQDN
-    }
-    After "teardown"
-
-    Context "when no candidate specified — skips priority bias and delegates directly to Sentinel"
-      It "calls execute_sentinel_failover without setting any replica priority"
-        priority_set_called=""
-        set_replica_priority() { priority_set_called="yes"; return 0; }
-        execute_sentinel_failover() { echo "OK"; return 0; }
-        wait_for_new_master() { return 0; }
-        When call switchover_with_sentinel ""
-        The status should be success
-        The stdout should include "OK"
-        The variable priority_set_called should eq ""
-      End
+  # ══ sentinel failover ═══════════════════════════════════════════════════
+  Describe "execute_sentinel_failover()"
+    It "issues SENTINEL FAILOVER against the master name"
+      When call run_and_show_calls execute_sentinel_failover "mycluster-valkey"
+      The status should be success
+      The stdout should include "Sentinel FAILOVER accepted by sentinel-0.h"
+      The stdout should include "SENTINEL FAILOVER mycluster-valkey"
+      The stdout should include "-p 26379"
     End
 
-    Context "when no candidate and execute_sentinel_failover fails — no priority restore, returns failure"
-      It "returns failure without calling set_replica_priority"
-        priority_set_called=""
-        set_replica_priority() { priority_set_called="yes"; return 0; }
-        execute_sentinel_failover() { return 1; }
-        wait_for_new_master() { return 0; }
-        When call switchover_with_sentinel ""
-        The status should be failure
-        The variable priority_set_called should eq ""
-      End
+    It "defaults the master name to VALKEY_COMPONENT_NAME"
+      When call run_and_show_calls execute_sentinel_failover
+      The status should be success
+      The stdout should include "SENTINEL FAILOVER mycluster-valkey"
     End
 
-    Context "when no candidate and wait_for_new_master fails — returns failure"
-      It "propagates wait_for_new_master failure instead of ignoring it"
-        set_replica_priority() { return 0; }
-        execute_sentinel_failover() { return 0; }
-        wait_for_new_master() { return 1; }
-        When call switchover_with_sentinel ""
-        The status should be failure
-        The stderr should include "no new primary confirmed"
-      End
+    It "fails when every Sentinel rejects the failover"
+      export MOCK_FAILOVER_FAIL="1"
+      When call run_and_show_calls execute_sentinel_failover "mycluster-valkey"
+      The status should be failure
+      The stderr should include "all Sentinel FAILOVER attempts failed"
+      The stdout should include "-h sentinel-1.h"
     End
   End
 
-  Describe "no-Sentinel switchover contract"
-    switchover_script="../scripts/switchover.sh"
+  # ══ data-plane verification ═════════════════════════════════════════════
+  Describe "check_switchover_result()"
+    It "succeeds once the requested candidate reports master"
+      check_and_show() {
+        ( export MOCK_ROLE_OVERRIDES="valkey-0.h=slave,valkey-1.h=slave,valkey-2.h=master"
+          check_switchover_result "valkey-2.h" "valkey-0.h" )
+      }
+      When call check_and_show
+      The status should be success
+      The stdout should include "Switchover successful: valkey-2.h is now the primary."
+    End
 
-    It "fails closed instead of using manual best-effort promotion"
+    It "ignores the old primary still reporting master while stepping down"
+      check_and_show() {
+        ( export MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-1.h=slave,valkey-2.h=master"
+          check_switchover_result "valkey-2.h" "valkey-0.h" )
+      }
+      When call check_and_show
+      The status should be success
+      The stdout should include "valkey-2.h is now the primary."
+    End
+
+    It "succeeds for any new primary when no candidate was requested"
+      check_and_show() {
+        ( export MOCK_ROLE_OVERRIDES="valkey-0.h=slave,valkey-1.h=master,valkey-2.h=slave"
+          check_switchover_result "" "valkey-0.h" )
+      }
+      When call check_and_show
+      The status should be success
+      The stdout should include "Switchover successful: new primary is valkey-1.h."
+    End
+
+    It "keeps waiting and fails when a different replica was promoted"
+      check_and_show() {
+        ( export MOCK_ROLE_OVERRIDES="valkey-0.h=slave,valkey-1.h=master,valkey-2.h=slave"
+          check_switchover_result "valkey-2.h" "valkey-0.h" )
+      }
+      When call check_and_show
+      The status should be failure
+      The stdout should include "Waiting for valkey-2.h to be promoted"
+      The stderr should include "valkey-2.h is not the primary"
+    End
+  End
+
+  # ══ switchover flows ════════════════════════════════════════════════════
+  Describe "switchover_with_candidate()"
+    It "is an idempotent success when the candidate is already master"
+      run_flow() {
+        ( export MOCK_ROLE_OVERRIDES="valkey-0.h=slave,valkey-1.h=slave,valkey-2.h=master"
+          switchover_with_candidate "valkey-2.h" )
+        echo "── recorded cli calls ──"
+        cat "${CLI_LOG}"
+      }
+      When call run_flow
+      The status should be success
+      The stdout should include "already the primary"
+      The stdout should not include "SENTINEL FAILOVER"
+    End
+
+    It "fails closed when the candidate role cannot be determined"
+      run_flow() {
+        ( export MOCK_ROLE=""
+          sleep() { :; }
+          switchover_with_candidate "valkey-2.h" )
+      }
+      When call run_flow
+      The status should be failure
+      The stderr should include "could not determine the role of valkey-2.h"
+    End
+
+    It "aborts when the candidate reports an unexpected role"
+      run_flow() {
+        ( export MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-2.h=connecting"
+          switchover_with_candidate "valkey-2.h" )
+      }
+      When call run_flow
+      The status should be failure
+      The stderr should include "expected 'slave'"
+    End
+
+    It "biases, fails over, verifies and restores on the happy path"
+      run_flow() {
+        ( export MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-1.h=slave,valkey-2.h=slave"
+          bias_replica_priorities() { echo "bias applied"; return 0; }
+          execute_sentinel_failover() { echo "Sentinel FAILOVER accepted by sentinel-0.h"; return 0; }
+          check_switchover_result() { echo "Switchover successful: $1 is now the primary."; return 0; }
+          restore_replica_priorities() { echo "Restoring replica-priorities..."; }
+          switchover_with_candidate "valkey-2.h" )
+      }
+      When call run_flow
+      The status should be success
+      The stdout should include "Biasing Sentinel toward candidate valkey-2.h"
+      The stdout should include "Sentinel FAILOVER accepted"
+      The stdout should include "Switchover successful"
+      The stdout should include "Restoring replica-priorities"
+    End
+
+    It "restores the priorities and fails when the bias cannot be applied"
+      run_flow() {
+        local rc=0
+        ( export MOCK_CONFIG_SET_FAIL="1" MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-2.h=slave"
+          sleep() { :; }
+          switchover_with_candidate "valkey-2.h" ) || rc=$?
+        echo "── recorded cli calls ──"
+        cat "${CLI_LOG}"
+        return "${rc}"
+      }
+      When call run_flow
+      The status should be failure
+      The stdout should include "Restoring replica-priorities"
+      The stdout should not include "SENTINEL FAILOVER"
+      The stderr should include "failed to apply the replica-priority bias"
+    End
+
+    It "restores the priorities when Sentinel rejects the failover"
+      run_flow() {
+        ( export MOCK_FAILOVER_FAIL="1" MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-2.h=slave"
+          switchover_with_candidate "valkey-2.h" )
+      }
+      When call run_flow
+      The status should be failure
+      The stdout should include "Restoring replica-priorities"
+      The stderr should include "all Sentinel FAILOVER attempts failed"
+    End
+
+    It "restores the priorities when the new primary is not confirmed"
+      run_flow() {
+        ( export MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-2.h=slave"
+          check_switchover_result() { return 1; }
+          switchover_with_candidate "valkey-2.h" )
+      }
+      When call run_flow
+      The status should be failure
+      The stdout should include "Restoring replica-priorities"
+    End
+  End
+
+  Describe "switchover_without_candidate()"
+    It "fails over and waits for any new primary"
+      run_flow() {
+        ( export MOCK_ROLE_OVERRIDES="valkey-0.h=master,valkey-1.h=slave,valkey-2.h=slave"
+          check_switchover_result() { echo "Switchover successful: new primary is valkey-1.h"; return 0; }
+          switchover_without_candidate )
+      }
+      When call run_flow
+      The status should be success
+      The stdout should include "Sentinel FAILOVER accepted"
+      The stdout should include "Switchover successful"
+    End
+
+    It "fails when the kernel status is unhealthy"
+      run_flow() {
+        ( export MOCK_ROLE="slave"
+          switchover_without_candidate )
+      }
+      When call run_flow
+      The status should be failure
+      The stderr should include "no primary found"
+    End
+  End
+
+  # ══ environment pre-checks ══════════════════════════════════════════════
+  Describe "check_environment_exist()"
+    It "is a no-op for a single-replica component"
+      run_check() {
+        ( export COMPONENT_REPLICAS="1"
+          check_environment_exist )
+      }
+      When call run_check
+      The status should be success
+      The stdout should include "nothing to switch over"
+    End
+
+    It "is a no-op when the role is not primary"
+      run_check() {
+        ( export KB_SWITCHOVER_ROLE="secondary"
+          check_environment_exist )
+      }
+      When call run_check
+      The status should be success
+      The stdout should include "switchover not for primary role"
+    End
+  End
+
+  # ══ contract ═══════════════════════════════════════════════════════════
+  # The Sentinel replica cache is NOT an authority in advertised-address
+  # topologies: a Sentinel names its replicas "<node-ip>:<nodeport>", not by pod
+  # FQDN, so a cache-based confirmation can never succeed there — that is what
+  # made targeted switchover fail with "did not confirm full targeted priority
+  # bias".  Guard against reintroducing such a check.
+  Describe "contract"
+    It "never parses the Sentinel replica cache"
+      When call grep -F "SENTINEL REPLICAS" "${switchover_script}"
+      The status should be failure
+    End
+
+    It "verifies the result on the data plane"
+      When call grep -F "info replication" "${switchover_script}"
+      The status should be success
+      The stdout should include "info replication"
+    End
+
+    It "delegates the promotion to Sentinel"
+      When call grep -F "SENTINEL FAILOVER" "${switchover_script}"
+      The status should be success
+      The stdout should include "SENTINEL FAILOVER"
+    End
+
+    It "keeps the never-promote guard for non-candidate replicas"
+      When call grep -F "Preserving never-promote replica-priority=0 on" "${switchover_script}"
+      The status should be success
+      The stdout should include "never-promote"
+    End
+
+    It "fails closed without Sentinel"
       When call grep -F "switchover is unsupported without Sentinel" "${switchover_script}"
       The status should be success
       The stdout should include "unsupported without Sentinel"
-    End
-
-    It "does not leave manual confirmation failures as best-effort success"
-      When call grep -F "wait_until_master \"${target_fqdn}\" 10 || true" "${switchover_script}"
-      The status should be failure
     End
   End
 End

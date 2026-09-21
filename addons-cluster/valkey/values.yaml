@@ -1,7 +1,7 @@
 # Default values for valkey-cluster.
 
 ## @param version Valkey service version.
-version: 9.0.0
+version: 9.1.0
 
 ## @param mode Valkey topology mode: standalone or replication.
 ## standalone: a single Valkey data pod.

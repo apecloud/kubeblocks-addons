@@ -32,14 +32,6 @@ replicas: {{ max .Values.replicas 2 }}
 {{- regexFind "^[0-9]+" (toString .Values.version) -}}
 {{- end -}}
 
-{{- define "valkey-cluster.topology" -}}
-{{- if eq .Values.mode "replication" -}}
-{{- printf "replication-%s" (include "valkey-cluster.major" .) -}}
-{{- else -}}
-{{- .Values.mode -}}
-{{- end -}}
-{{- end -}}
-
 {{- define "valkey-cluster.clusterCommon" }}
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
@@ -51,8 +43,10 @@ metadata:
     apps.kubeblocks.io/mode: {{ .Values.mode }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  clusterDef: valkey
-  topology: {{ include "valkey-cluster.topology" . }}
+  {{- if ne .Values.mode "standalone" }}
+    clusterDef: valkey
+    topology: {{- .Values.mode -}}
+  {{- end }}
 {{- end }}
 
 {{- define "valkey-cluster.componentResources" }}
