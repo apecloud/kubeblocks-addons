@@ -108,13 +108,15 @@ parse_valkey_primary_announce_addr() {
   local pod_name_ordinal
   pod_name_ordinal=$(extract_obj_ordinal "${pod_name}")
   # the value format of VALKEY_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  # Plain bash IFS splits instead of kblib's split()/equals(): common.sh
+  # shipped by older addon builds does not carry those helpers, and a missing
+  # function falls through to the coreutils split binary, which explodes on
+  # the FQDN ("cannot open '<fqdn>' for reading").
   local advertised_ports advertised_port svc_name port svc_name_ordinal lb_host
-  # shellcheck disable=SC2207
-  advertised_ports=($(split "${VALKEY_ADVERTISED_PORT}" ","))
+  IFS=',' read -ra advertised_ports <<< "${VALKEY_ADVERTISED_PORT}"
   for advertised_port in "${advertised_ports[@]}"; do
-    # shellcheck disable=SC2207
     local parts
-    parts=($(split "${advertised_port}" ":"))
+    IFS=':' read -ra parts <<< "${advertised_port}"
     svc_name="${parts[0]}"
     port="${parts[1]}"
     svc_name_ordinal=$(extract_obj_ordinal "${svc_name}")
@@ -134,7 +136,7 @@ parse_valkey_primary_announce_addr() {
     fi
   done
 
-  if equals "${found}" "false"; then
+  if [ "${found}" = "false" ]; then
     echo "Error: No matching svcName and port found for podName '${pod_name}', VALKEY_ADVERTISED_PORT: ${VALKEY_ADVERTISED_PORT}. Exiting." >&2
     return 1
   fi

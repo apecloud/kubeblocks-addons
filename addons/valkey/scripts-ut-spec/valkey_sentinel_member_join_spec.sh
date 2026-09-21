@@ -350,4 +350,14 @@ Describe "Valkey Sentinel Member-Join Bash Script Tests"
       The status should be success
     End
   End
+
+  Describe "kblib-independence contract"
+    It "does not call the kblib split()/equals() helpers"
+      # common.sh shipped by older installed addon builds lacks both helpers;
+      # a missing function falls through to the coreutils split binary and
+      # explodes on the FQDN.  Parsing must stay in plain bash IFS reads.
+      When call bash -c "! grep -qE '\$\((split|equals) ' '../scripts/valkey-sentinel-member-join.sh'"
+      The status should be success
+    End
+  End
 End
