@@ -11,14 +11,8 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{ include "kblib.helm.resourcePolicy" . }}
 {{- end -}}
 
-{{/* Definition revisions are independent of the chart delivery version.
-Keep existing definitions and mounted templates addressable across addon upgrades. */}}
-{{- define "seaweedfs.baseRevision" -}}1.0.0{{- end -}}
-
 {{- define "seaweedfs.cmpdName" -}}
-{{- $revision := include "seaweedfs.baseRevision" .root -}}
-{{- if eq .component "admin" -}}{{- $revision = "1.0.1" -}}{{- end -}}
-{{ printf "seaweedfs-%s-%s" .component $revision }}
+{{ printf "seaweedfs-%s-%s" .component .root.Chart.Version }}
 {{- end -}}
 
 {{- define "seaweedfs.image" -}}
@@ -26,11 +20,11 @@ Keep existing definitions and mounted templates addressable across addon upgrade
 {{- end -}}
 
 {{- define "seaweedfs.scriptsName" -}}
-{{ printf "seaweedfs-scripts-%s" (include "seaweedfs.baseRevision" .) }}
+{{ printf "seaweedfs-scripts-%s" .Chart.Version }}
 {{- end -}}
 
 {{- define "seaweedfs.filerConfigName" -}}
-{{ printf "seaweedfs-filer-config-%s" (include "seaweedfs.baseRevision" .) }}
+{{ printf "seaweedfs-filer-config-%s" .Chart.Version }}
 {{- end -}}
 
 {{- define "seaweedfs.scripts" -}}

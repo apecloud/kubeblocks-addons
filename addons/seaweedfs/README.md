@@ -93,15 +93,6 @@ sessions and maintenance schedulers, so its replica count is fixed at one.
 No Worker component is provisioned; operations that require workers need a separately
 configured worker and are not enabled by adding this UI.
 
-Addon 1.0.1 retains existing ComponentDefinition and script/config template names
-and specifications, adds the Admin startup script, and introduces an optional Admin topology
-entry (`template: true`). Upgrading the addon alone does not add Admin to existing
-four-component clusters. The new Cluster chart explicitly creates Admin with its
-PVC. To enable the console on an existing cluster, first upgrade the addon, then
-explicitly add an `admin` component specification with one replica, resources,
-and a `data` PVC (1 GiB by default). Keep the S3 account Secret and all existing
-data PVCs. Enable the external console Service only after Admin is ready.
-
 ## Monitoring and logs
 
 Master, volume, filer and S3 expose native Prometheus metrics at `http://<pod-ip>:9327/metrics`.
