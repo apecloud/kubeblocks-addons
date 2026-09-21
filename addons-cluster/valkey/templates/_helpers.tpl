@@ -44,8 +44,8 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- if ne .Values.mode "standalone" }}
-    clusterDef: valkey
-    topology: {{- .Values.mode -}}
+  clusterDef: valkey
+  topology: {{ .Values.mode }}
   {{- end }}
 {{- end }}
 
