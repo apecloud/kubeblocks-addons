@@ -75,6 +75,34 @@ class ChartsTest(unittest.TestCase):
                 if component["name"] in {"filer", "admin"}:
                     self.assertEqual(limits, {"minReplicas": 1, "maxReplicas": 1})
 
+    def test_addon_upgrade_does_not_instantiate_admin_for_legacy_clusters(self):
+        # Fixture is the four-component Cluster from addon 1.0.0 (2733f764c).
+        legacy = yaml.safe_load((ADDON / "tests/fixtures/cluster-1.0.0.yaml").read_text())
+        names = {c["name"] for c in legacy["spec"]["componentSpecs"]}
+        self.assertEqual(names, {"master", "volume", "filer", "s3"})
+        for topology in self.definition["spec"]["topologies"]:
+            with self.subTest(topology=topology["name"]):
+                # KubeBlocks release-1.0 resolveCompsFromTopology creates an
+                # omitted ComponentSpec unless its topology entry is a template.
+                implicit = {c["name"] for c in topology["components"]
+                            if not c.get("template", False)} - names
+                self.assertEqual(implicit, set())
+                admin = next(c for c in topology["components"] if c["name"] == "admin")
+                self.assertIs(admin["template"], True)
+                # clusterOrderedOrder orders only existing component names.
+                for operation, order in topology["orders"].items():
+                    existing = [name for group in order for name in group.split(",") if name in names]
+                    expected = ["master", "volume", "filer", "s3"]
+                    if operation == "terminate":
+                        expected.reverse()
+                    self.assertEqual(existing, expected)
+        # New chart instances opt in explicitly, including persistent storage.
+        for cluster in self.clusters:
+            admin = next(c for c in cluster["spec"]["componentSpecs"] if c["name"] == "admin")
+            self.assertEqual(admin["replicas"], 1)
+            claim = next(v for v in admin["volumeClaimTemplates"] if v["name"] == "data")
+            self.assertEqual(claim["spec"]["resources"]["requests"]["storage"], "1Gi")
+
     def test_scripts_mounts_credentials_and_service_ports_close(self):
         for definition in self.cmpds.values():
             spec = definition["spec"]

@@ -93,11 +93,13 @@ sessions and maintenance schedulers, so its replica count is fixed at one.
 No Worker component is provisioned; operations that require workers need a separately
 configured worker and are not enabled by adding this UI.
 
-Addon 1.0.1 adds versioned ComponentDefinitions and the Admin component to both
-topologies. Existing clusters need a reviewed definition/topology update and an
-`admin` component specification with its PVC; installing the addon alone does not
-establish that existing clusters have an Admin instance. Keep the S3 account Secret
-and all existing data PVCs when updating a cluster.
+Addon 1.0.1 adds versioned ComponentDefinitions and an optional Admin topology
+entry (`template: true`). Upgrading the addon alone does not add Admin to existing
+four-component clusters. The new Cluster chart explicitly creates Admin with its
+PVC. To enable the console on an existing cluster, first upgrade the addon, then
+explicitly add an `admin` component specification with one replica, resources,
+and a `data` PVC (1 GiB by default). Keep the S3 account Secret and all existing
+data PVCs. Enable the external console Service only after Admin is ready.
 
 ## Monitoring and logs
 

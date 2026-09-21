@@ -20,6 +20,7 @@ spec:
         - name: s3
           compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
         - name: admin
+          template: true
           compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "admin") }}
       orders:
         provision: [master, volume, filer, s3, admin]
@@ -36,6 +37,7 @@ spec:
         - name: s3
           compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
         - name: admin
+          template: true
           compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "admin") }}
       orders:
         provision: [master, volume, filer, s3, admin]
