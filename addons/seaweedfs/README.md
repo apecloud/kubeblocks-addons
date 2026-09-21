@@ -12,6 +12,7 @@ This is an initial implementation. Offline script, chart and KubeBlocks 1.0 sche
 | volume | Exactly 1, one data copy (`000`) | 2–32, two copies on distinct volume servers (`001`) | `/data/volume` |
 | filer | Exactly 1 | Exactly 1 | `/data/filer`, LevelDB2 |
 | s3 | 1–32 | 1–32 | Stateless |
+| admin | Exactly 1 | Exactly 1 | `/data/admin`, session keys and maintenance state |
 
 **The distributed topology still has a single filer.** Loss of its PVC can lose the object namespace even when volume data survives. It is not a complete HA or backup solution. Volume scale-out adds capacity; existing data is not automatically rebalanced. Direct volume scale-in is rejected by a lifecycle action because it requires data evacuation. Master membership and filer replicas are fixed.
 
@@ -70,6 +71,34 @@ aws --endpoint-url http://127.0.0.1:8333 s3 cp s3://example-bucket/object.txt -
 
 Use path-style S3 addressing. The gateway fails to start if either credential is absent. Credentials are read from environment variables, so changing the account Secret requires restarting **all** S3 instances. Automatic credential rotation and general account management are not implemented. The anonymous `/healthz` endpoint only checks that the gateway responds; it does not prove authenticated object reads or filer/volume availability.
 
+## Admin console
+
+The `default` Admin service is `<cluster>-admin`, with the `console` port 23646.
+Log in using the existing `<cluster>-s3-account-admin` username and password;
+no additional account is generated. In KBE, enabling or disabling the console
+controls its external access Service; the Admin component continues running.
+The Admin process requires both credentials
+and refuses to start without them. Credential changes require restarting Admin
+as well as every S3 instance.
+
+```sh
+kubectl -n demo port-forward svc/seaweedfs-admin 23646:23646
+```
+
+Open `http://127.0.0.1:23646`. For remote access, use an authenticated network path
+and HTTPS termination; the addon itself creates only an internal Service.
+Admin runs as one instance with a dedicated 1 GiB PVC for session keys, configuration,
+and maintenance task state. Scaling it with the S3 gateways would create independent
+sessions and maintenance schedulers, so its replica count is fixed at one.
+No Worker component is provisioned; operations that require workers need a separately
+configured worker and are not enabled by adding this UI.
+
+Addon 1.0.1 adds versioned ComponentDefinitions and the Admin component to both
+topologies. Existing clusters need a reviewed definition/topology update and an
+`admin` component specification with its PVC; installing the addon alone does not
+establish that existing clusters have an Admin instance. Keep the S3 account Secret
+and all existing data PVCs when updating a cluster.
+
 ## Monitoring and logs
 
 Master, volume, filer and S3 expose native Prometheus metrics at `http://<pod-ip>:9327/metrics`.
@@ -100,7 +129,7 @@ All listed operations require live acceptance against the pinned candidate befor
 | TLS, backup/restore, PITR, rebuild | No implementation or capability declarations | Not supported |
 | Engine upgrade, reconfigure, planned switchover | Single tested-version target; no operation contract yet | Not supported |
 
-Creation/update order is master → volume → filer → s3; termination is the reverse. Master pods are created in parallel to permit election, then updated serially, with followers before the leader. The engine performs failover; this addon does not offer a planned Switchover operation.
+Creation/update order is master → volume → filer → s3 → admin; termination is the reverse. Master pods are created in parallel to permit election, then updated serially, with followers before the leader. The engine performs failover; this addon does not offer a planned Switchover operation.
 
 ## Configuration and runtime inputs
 
@@ -116,7 +145,8 @@ Startup scripts use these explicit input contracts:
 | `SEAWEEDFS_MASTER_REPLICAS` | Definition constant, exactly `1` or `3` |
 | `SEAWEEDFS_REPLICATION` | Definition constant, `000` or `001` |
 | `SEAWEEDFS_FILER_HOST`, `SEAWEEDFS_FILER_PORT` | Internal filer Service host and HTTP port; do not expose/replace that internal service |
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Required KubeBlocks `admin` account Secret |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Required KubeBlocks S3 `admin` account Secret |
+| `WEED_ADMIN_USER`, `WEED_ADMIN_PASSWORD` | The same S3 `admin` account, referenced by the Admin component |
 
 Pod names need not have contiguous ordinals and DNS suffixes are not hardcoded. The engine runs as UID/GID 1000 with PVC fsGroup 1000. Mounted scripts are read-only executable files; the filer config is read-only and points its LevelDB2 store into the persistent volume. Startup never formats or removes existing data. Startup/liveness use local TCP checks; readiness uses the engine's HTTP health checks.
 

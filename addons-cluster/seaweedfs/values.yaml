@@ -30,5 +30,11 @@ s3:
     requests: {cpu: "100m", memory: "256Mi"}
     limits: {cpu: "1", memory: "1Gi"}
 
+admin:
+  storage: 1Gi
+  resources:
+    requests: {cpu: "100m", memory: "256Mi"}
+    limits: {cpu: "1", memory: "1Gi"}
+
 extra:
   terminationPolicy: DoNotTerminate

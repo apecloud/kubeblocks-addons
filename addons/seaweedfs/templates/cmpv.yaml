@@ -10,7 +10,9 @@ spec:
   compatibilityRules:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-standalone") }}
+        - seaweedfs-master-standalone-1.0.0
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-distributed") }}
+        - seaweedfs-master-distributed-1.0.0
       releases:
         - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
   releases:
@@ -32,7 +34,9 @@ spec:
   compatibilityRules:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-standalone") }}
+        - seaweedfs-volume-standalone-1.0.0
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-distributed") }}
+        - seaweedfs-volume-distributed-1.0.0
       releases:
         - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
   releases:
@@ -54,6 +58,7 @@ spec:
   compatibilityRules:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "filer") }}
+        - seaweedfs-filer-1.0.0
       releases:
         - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
   releases:
@@ -74,6 +79,7 @@ spec:
   compatibilityRules:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
+        - seaweedfs-s3-1.0.0
       releases:
         - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
   releases:
@@ -81,3 +87,23 @@ spec:
       serviceVersion: {{ .Values.serviceVersion | quote }}
       images:
         s3: {{ include "seaweedfs.image" . }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: seaweedfs-admin
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "admin") }}
+      releases:
+        - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+  releases:
+    - name: {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+      serviceVersion: {{ .Values.serviceVersion | quote }}
+      images:
+        admin: {{ include "seaweedfs.image" . }}

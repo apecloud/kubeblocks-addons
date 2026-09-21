@@ -19,10 +19,12 @@ spec:
           compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "filer") }}
         - name: s3
           compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
+        - name: admin
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "admin") }}
       orders:
-        provision: [master, volume, filer, s3]
-        update: [master, volume, filer, s3]
-        terminate: [s3, filer, volume, master]
+        provision: [master, volume, filer, s3, admin]
+        update: [master, volume, filer, s3, admin]
+        terminate: [admin, s3, filer, volume, master]
     - name: distributed
       components:
         - name: master
@@ -33,7 +35,9 @@ spec:
           compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "filer") }}
         - name: s3
           compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
+        - name: admin
+          compDef: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "admin") }}
       orders:
-        provision: [master, volume, filer, s3]
-        update: [master, volume, filer, s3]
-        terminate: [s3, filer, volume, master]
+        provision: [master, volume, filer, s3, admin]
+        update: [master, volume, filer, s3, admin]
+        terminate: [admin, s3, filer, volume, master]

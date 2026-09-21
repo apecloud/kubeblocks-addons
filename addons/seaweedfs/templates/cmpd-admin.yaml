@@ -1,0 +1,87 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "seaweedfs.cmpdName" (dict "root" . "component" "admin") }}
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: SeaweedFS admin console.
+  serviceKind: seaweedfs
+  serviceVersion: {{ .Values.serviceVersion | quote }}
+  podManagementPolicy: Parallel
+  updateStrategy: Serial
+  podUpdatePolicy: ReCreate
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 1
+  {{- include "seaweedfs.scripts" . | nindent 2 }}
+  volumes:
+    - name: data
+      needSnapshot: false
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: console
+            port: 23646
+            targetPort: console
+  vars:
+    {{- include "seaweedfs.masterVars" . | nindent 4 }}
+    - name: WEED_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: ^seaweedfs-s3-
+          name: admin
+          optional: false
+          username: Required
+    - name: WEED_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: ^seaweedfs-s3-
+          name: admin
+          optional: false
+          password: Required
+  runtime:
+    {{- include "seaweedfs.podSecurityContext" . | nindent 4 }}
+    terminationGracePeriodSeconds: 60
+    containers:
+      - name: admin
+        image: {{ include "seaweedfs.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/sh", "/scripts/start-admin.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        ports:
+          - name: console
+            containerPort: 23646
+        startupProbe:
+          tcpSocket:
+            port: console
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 90
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: console
+          periodSeconds: 10
+          timeoutSeconds: 6
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: console
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 6
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+            readOnly: true
+          - name: data
+            mountPath: /data
