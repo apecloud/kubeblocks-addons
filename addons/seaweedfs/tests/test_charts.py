@@ -180,15 +180,8 @@ class ChartsTest(unittest.TestCase):
             releases = {r["name"]: r for r in version["spec"]["releases"]}
             for rule in version["spec"]["compatibilityRules"]:
                 for name in rule["compDefs"]:
-                    # Retain compatibility for the installed 1.0.0 definitions.
-                    # Their container/action image names did not change in 1.0.1.
-                    current_name = name
-                    if name not in self.cmpds:
-                        self.assertTrue(name.endswith("-1.0.0"), name)
-                        prefix = name.removesuffix("1.0.0")
-                        current_name = next(n for n in self.cmpds if n.startswith(prefix))
-                    covered.add(current_name)
-                    spec = self.cmpds[current_name]["spec"]
+                    covered.add(name)
+                    spec = self.cmpds[name]["spec"]
                     needed = {c["name"] for c in spec["runtime"]["containers"]}
                     needed |= {key for key, action in spec.get("lifecycleActions", {}).items() if "exec" in action}
                     for release in rule["releases"]:

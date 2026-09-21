@@ -69,7 +69,7 @@ aws --endpoint-url http://127.0.0.1:8333 s3 cp /tmp/seaweedfs-example.txt s3://e
 aws --endpoint-url http://127.0.0.1:8333 s3 cp s3://example-bucket/object.txt -
 ```
 
-Use path-style S3 addressing. The gateway fails to start if either credential is absent. Credentials are read from environment variables, so changing the account Secret requires restarting **all** S3 instances. Automatic credential rotation and general account management are not implemented. The anonymous `/healthz` endpoint only checks that the gateway responds; it does not prove authenticated object reads or filer/volume availability.
+Use path-style S3 addressing. The gateway fails to start if either credential is absent. Credentials are read from environment variables, so changing the account Secret requires restarting **all** S3 instances. Automatic credential rotation is not implemented. Use the Admin console to manage additional S3 users, access keys and policies. The anonymous `/healthz` endpoint only checks that the gateway responds; it does not prove authenticated object reads or filer/volume availability.
 
 ## Admin console
 
@@ -93,12 +93,6 @@ sessions and maintenance schedulers, so its replica count is fixed at one.
 No Worker component is provisioned; operations that require workers need a separately
 configured worker and are not enabled by adding this UI.
 
-Addon 1.0.1 adds versioned ComponentDefinitions and the Admin component to both
-topologies. Existing clusters need a reviewed definition/topology update and an
-`admin` component specification with its PVC; installing the addon alone does not
-establish that existing clusters have an Admin instance. Keep the S3 account Secret
-and all existing data PVCs when updating a cluster.
-
 ## Monitoring and logs
 
 Master, volume, filer and S3 expose native Prometheus metrics at `http://<pod-ip>:9327/metrics`.
@@ -108,7 +102,7 @@ port; a compatible monitoring integration can discover these endpoints.
 No exporter sidecar or Pushgateway is needed. Metrics are not added to client Services
 and require a trusted cluster network, like the internal engine interfaces.
 
-All four processes log to container stderr (`-logtostderr=true`). Kubernetes container
+All five processes log to container stderr (`-logtostderr=true`). Kubernetes container
 logs and a configured cluster log collector can read them without an additional file
 log sidecar. This does not enable S3 access/audit logs.
 

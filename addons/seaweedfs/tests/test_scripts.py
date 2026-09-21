@@ -26,6 +26,8 @@ class ScriptsTest(unittest.TestCase):
                         SEAWEEDFS_FILER_HOST="demo-filer.ns.svc", SEAWEEDFS_FILER_PORT="8888")
         self.env.pop("AWS_ACCESS_KEY_ID", None)
         self.env.pop("AWS_SECRET_ACCESS_KEY", None)
+        self.env.pop("WEED_ADMIN_USER", None)
+        self.env.pop("WEED_ADMIN_PASSWORD", None)
 
     def stub(self, name, body):
         path = self.bin / name

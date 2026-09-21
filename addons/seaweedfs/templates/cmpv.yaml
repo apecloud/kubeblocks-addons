@@ -10,9 +10,7 @@ spec:
   compatibilityRules:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-standalone") }}
-        - seaweedfs-master-standalone-1.0.0
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-distributed") }}
-        - seaweedfs-master-distributed-1.0.0
       releases:
         - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
   releases:
@@ -34,9 +32,7 @@ spec:
   compatibilityRules:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-standalone") }}
-        - seaweedfs-volume-standalone-1.0.0
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-distributed") }}
-        - seaweedfs-volume-distributed-1.0.0
       releases:
         - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
   releases:
@@ -58,7 +54,6 @@ spec:
   compatibilityRules:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "filer") }}
-        - seaweedfs-filer-1.0.0
       releases:
         - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
   releases:
@@ -79,7 +74,6 @@ spec:
   compatibilityRules:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
-        - seaweedfs-s3-1.0.0
       releases:
         - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
   releases:
