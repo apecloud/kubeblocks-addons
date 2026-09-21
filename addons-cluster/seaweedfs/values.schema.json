@@ -7,7 +7,8 @@
     "master",
     "volume",
     "filer",
-    "s3"
+    "s3",
+    "admin"
   ],
   "properties": {
     "topology": {
@@ -121,6 +122,26 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 32
+        }
+      }
+    },
+    "admin": {
+      "type": "object",
+      "required": [
+        "resources",
+        "storage"
+      ],
+      "properties": {
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ]
+        },
+        "storage": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(Mi|Gi|Ti)$"
         }
       }
     }

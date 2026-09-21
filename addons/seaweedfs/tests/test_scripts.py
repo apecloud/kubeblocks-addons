@@ -109,6 +109,31 @@ class ScriptsTest(unittest.TestCase):
         self.assertIn("-port.lance=0\n", result.stdout)
         self.assertNotIn("fixture", result.stdout + result.stderr)
 
+    def test_admin_requires_existing_account_and_master_endpoints(self):
+        for changes in [{}, {"WEED_ADMIN_USER": "fixture-user"},
+                        {"WEED_ADMIN_PASSWORD": "fixture-secret"},
+                        {"WEED_ADMIN_USER": "fixture-user", "WEED_ADMIN_PASSWORD": "fixture-secret",
+                         "SEAWEEDFS_MASTER_FQDNS": ""}]:
+            result = self.run_script("start-admin.sh", **changes)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+            self.assertNotIn("fixture-secret", result.stderr)
+
+    def test_admin_preserves_state_and_does_not_put_credentials_in_argv(self):
+        data = Path(self.env["SEAWEEDFS_DATA_DIR"])
+        data.mkdir()
+        marker = data / ".session_key"
+        marker.write_text("existing-session-key")
+        for _ in range(2):
+            result = self.run_script("start-admin.sh", WEED_ADMIN_USER="fixture-user",
+                                     WEED_ADMIN_PASSWORD='fixture-$-"-secret')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("-port=23646\n", result.stdout)
+            self.assertIn(f"-dataDir={data}\n", result.stdout)
+            self.assertIn("-master=demo-master-2.m.ns.svc.corp:9333,demo-master-7.m.ns.svc.corp:9333,demo-master-11.m.ns.svc.corp:9333\n", result.stdout)
+            self.assertNotIn("fixture", result.stdout + result.stderr)
+            self.assertEqual(marker.read_text(), "existing-session-key")
+
     def test_volume_leave_is_always_rejected(self):
         result = self.run_script("member-leave-volume.sh")
         self.assertNotEqual(result.returncode, 0)

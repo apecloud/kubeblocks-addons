@@ -90,3 +90,16 @@ spec:
       limits:
         cpu: '1'
         memory: 1Gi
+  - name: admin
+    serviceVersion: "4.47.0"
+    replicas: 1
+    resources:
+      requests: {cpu: "100m", memory: "256Mi"}
+      limits: {cpu: "1", memory: "1Gi"}
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi

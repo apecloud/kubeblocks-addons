@@ -72,7 +72,7 @@ class ChartsTest(unittest.TestCase):
                 self.assertGreaterEqual(limits["maxReplicas"], component["replicas"])
                 pvc_names = {v["name"] for v in component.get("volumeClaimTemplates", [])}
                 self.assertEqual(pvc_names, {v["name"] for v in spec.get("volumes", [])})
-                if component["name"] == "filer":
+                if component["name"] in {"filer", "admin"}:
                     self.assertEqual(limits, {"minReplicas": 1, "maxReplicas": 1})
 
     def test_scripts_mounts_credentials_and_service_ports_close(self):
@@ -105,14 +105,20 @@ class ChartsTest(unittest.TestCase):
                 self.assertFalse(var["name"].startswith("KB_"))
                 ref = var.get("valueFrom", {}).get("credentialVarRef")
                 if ref:
+                    if "compDef" in ref:
+                        target = next(d for d in self.cmpds.values()
+                                      if re.search(ref["compDef"], d["metadata"]["name"]))
+                        accounts = {a["name"] for a in target["spec"].get("systemAccounts", [])}
                     self.assertIn(ref["name"], accounts)
                     for cm in self.maps.values():
                         self.assertNotIn("fixture-secret", str(cm))
 
     def test_native_metrics_contract_for_all_components(self):
-        self.assertEqual(len(self.cmpds), 6)
+        self.assertEqual(len(self.cmpds), 7)
         for definition in self.cmpds.values():
             spec = definition["spec"]
+            if "exporter" not in spec:
+                continue
             exporter = spec["exporter"]
             # DisableExporter removes exporter.containerName: native exporters must
             # leave it unset so disabling monitoring never removes the engine.
@@ -128,6 +134,25 @@ class ChartsTest(unittest.TestCase):
             for service in spec["services"]:
                 self.assertNotIn(exporter["scrapePort"],
                                  {p["targetPort"] for p in service["spec"]["ports"]})
+
+    def test_admin_reuses_s3_account_and_persists_singleton_state(self):
+        admin = next(d["spec"] for d in self.cmpds.values()
+                     if d["metadata"]["name"].startswith("seaweedfs-admin-"))
+        self.assertNotIn("systemAccounts", admin)
+        credentials = {v["name"]: v["valueFrom"]["credentialVarRef"]
+                       for v in admin["vars"] if "credentialVarRef" in v["valueFrom"]}
+        self.assertEqual(set(credentials), {"WEED_ADMIN_USER", "WEED_ADMIN_PASSWORD"})
+        for ref in credentials.values():
+            self.assertEqual(ref["compDef"], "^seaweedfs-s3-")
+            self.assertEqual(ref["name"], "admin")
+            self.assertFalse(ref["optional"])
+        self.assertEqual(admin["services"][0]["spec"]["ports"],
+                         [{"name": "console", "port": 23646, "targetPort": "console"}])
+        self.assertIn({"name": "data", "mountPath": "/data"},
+                      admin["runtime"]["containers"][0]["volumeMounts"])
+        for topology in self.definition["spec"]["topologies"]:
+            self.assertLess(topology["orders"]["provision"].index("s3"),
+                            topology["orders"]["provision"].index("admin"))
 
     def test_filer_static_config_uses_component_template(self):
         filer = next(d for d in self.cmpds.values() if d["metadata"]["name"].startswith("seaweedfs-filer-"))
