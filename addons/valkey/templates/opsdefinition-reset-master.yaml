@@ -1,0 +1,60 @@
+{{/*
+OpsDefinition for valkey-reset-master — port of the redis addon's
+redis-reset-master.  Runs `SENTINEL RESET <master-name>` against the Sentinel
+fleet until one accepts, so every Sentinel re-discovers the current topology
+instead of trusting stale state (used after instance rebuild / replacement).
+
+Env mapping: the ops job targets the DATA component, which carries the
+sentinel cross-component vars.  redis also assembles sentinel FQDNs from
+SENTINEL_HEADLESS_SERVICE_NAME + namespace; valkey's data cmpd already
+exposes SENTINEL_POD_FQDN_LIST, so the script reads it directly.
+TLS: VALKEY_CLI_TLS_ARGS is derived from TLS_ENABLED in the cmpd (redis maps
+REDIS_CLI_TLS_CMD); the ops pod does not mount the TLS volume, so the args
+carry --tls --insecure only.
+*/}}
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: valkey-reset-master
+spec:
+  podInfoExtractors:
+    - name: reset-master
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: SENTINEL_PASSWORD
+          valueFrom:
+            envRef:
+              envName: SENTINEL_PASSWORD
+        - name: VALKEY_COMPONENT_NAME
+          valueFrom:
+            envRef:
+              envName: VALKEY_COMPONENT_NAME
+        - name: SENTINEL_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: SENTINEL_POD_FQDN_LIST
+        - name: SENTINEL_SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SENTINEL_SERVICE_PORT
+        - name: VALKEY_CLI_TLS_ARGS
+          valueFrom:
+            envRef:
+              envName: VALKEY_CLI_TLS_ARGS
+  actions:
+    - name: reset-master
+      workload:
+        type: Pod
+        podInfoExtractorName: reset-master
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: reset-master
+              image: {{ include "valkey.defaultImage" . }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/valkey-reset-master.sh" | nindent 18 }}

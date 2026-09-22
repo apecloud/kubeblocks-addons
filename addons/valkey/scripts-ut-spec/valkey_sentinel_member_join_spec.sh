@@ -32,69 +32,22 @@ Describe "Valkey Sentinel Member-Join Bash Script Tests"
     export CURRENT_POD_HOST_IP="10.0.0.7"
     export KB_JOIN_MEMBER_POD_NAME="valkey-sentinel-3"
     export KB_JOIN_MEMBER_POD_FQDN="valkey-sentinel-3.headless.default.svc.cluster.local"
+    MJ_TMP="$(mktemp -d /tmp/mj-spec.XXXXXX)"
+    export MJ_TMP
   }
   BeforeAll "init"
 
   cleanup() {
+    rm -rf "${MJ_TMP}"
     rm -f "${common_library_file}"
     unset SERVICE_PORT SENTINEL_SERVICE_PORT VALKEY_COMPONENT_NAME
     unset VALKEY_POD_NAME_LIST VALKEY_POD_FQDN_LIST SENTINEL_POD_FQDN_LIST
     unset VALKEY_DEFAULT_USER VALKEY_DEFAULT_PASSWORD SENTINEL_PASSWORD
     unset CURRENT_POD_HOST_IP KB_JOIN_MEMBER_POD_NAME KB_JOIN_MEMBER_POD_FQDN
-    unset VALKEY_ADVERTISED_PORT
+    unset VALKEY_ADVERTISED_PORT VALKEY_LB_ADVERTISED_PORT VALKEY_LB_ADVERTISED_HOST
+    unset CUSTOM_SENTINEL_MASTER_NAME
   }
   AfterAll "cleanup"
-
-  Describe "build_data_cli() / build_sentinel_cli()"
-    _print_cmd() {
-      local cli_name="${1}"
-      shift
-      "${cli_name}" "$@"
-      if [ "${cli_name}" = "build_data_cli" ]; then
-        printf '%s\n' "${_data_cli_cmd[*]}"
-      else
-        printf '%s\n' "${_sentinel_cli_cmd[*]}"
-      fi
-    }
-
-    It "builds the data cli with host, data port and auth password"
-      When call _print_cmd build_data_cli "mycluster-valkey-0.headless.default.svc.cluster.local"
-      The status should be success
-      The stdout should include "--no-auth-warning"
-      The stdout should include "-h mycluster-valkey-0.headless.default.svc.cluster.local"
-      The stdout should include "-p 6379"
-      The stdout should include "-a datapass"
-      The stdout should not include "-p 26379"
-    End
-
-    It "builds the sentinel cli against the local sentinel with the sentinel password"
-      When call _print_cmd build_sentinel_cli "valkey-sentinel-3.headless.default.svc.cluster.local"
-      The status should be success
-      The stdout should include "-h valkey-sentinel-3.headless.default.svc.cluster.local"
-      The stdout should include "-p 26379"
-      The stdout should include "-a sentpass"
-    End
-
-    Context "when no passwords are set"
-      setup() {
-        unset VALKEY_DEFAULT_PASSWORD
-        unset SENTINEL_PASSWORD
-      }
-      Before "setup"
-
-      teardown() {
-        export VALKEY_DEFAULT_PASSWORD="datapass"
-        export SENTINEL_PASSWORD="sentpass"
-      }
-      After "teardown"
-
-      It "omits the -a flag entirely"
-        When call _print_cmd build_sentinel_cli "127.0.0.1"
-        The status should be success
-        The stdout should not include " -a "
-      End
-    End
-  End
 
   Describe "local_sentinel_host()"
     It "registers into the pod that just joined"
@@ -159,18 +112,41 @@ Describe "Valkey Sentinel Member-Join Bash Script Tests"
     End
   End
 
-  Describe "resolve_monitor_address()"
-    It "uses the pod fqdn and the data port by default"
-      When call resolve_monitor_address "mycluster-valkey-1.headless.default.svc.cluster.local"
+  Describe "parse_valkey_primary_announce_addr()"
+    _announce_values() {
+      parse_valkey_primary_announce_addr "$1"
+      printf 'host=%s port=%s\n' "${valkey_announce_host_value}" "${valkey_announce_port_value}"
+    }
+
+    It "uses the pod fqdn and the data port when no advertised service exists"
+      When call _announce_values "mycluster-valkey-1"
       The status should be success
-      The stdout should eq "mycluster-valkey-1.headless.default.svc.cluster.local 6379"
+      The stdout should include "host= port="
+      The stdout should include "VALKEY_ADVERTISED_PORT not found. Ignoring."
     End
 
-    It "prefers the NodePort address of that pod so both registration paths agree"
+    It "prefers the NodePort address of the primary pod so both registration paths agree"
       export VALKEY_ADVERTISED_PORT="mycluster-valkey-advertised-0:32024,mycluster-valkey-advertised-1:31318,mycluster-valkey-advertised-2:31000"
-      When call resolve_monitor_address "mycluster-valkey-1.headless.default.svc.cluster.local"
+      When call _announce_values "mycluster-valkey-1"
       The status should be success
-      The stdout should eq "10.0.0.7 31318"
+      The stdout should include "host=10.0.0.7 port=31318"
+      unset VALKEY_ADVERTISED_PORT
+    End
+
+    It "prefers the LoadBalancer host over the node ip and keeps the data port"
+      export VALKEY_ADVERTISED_PORT="mycluster-valkey-advertised-0:32024,mycluster-valkey-advertised-1:31318"
+      export VALKEY_LB_ADVERTISED_HOST="mycluster-valkey-advertised-0:203.0.113.7,mycluster-valkey-advertised-1:203.0.113.8"
+      When call _announce_values "mycluster-valkey-1"
+      The status should be success
+      The stdout should include "host=203.0.113.8 port=6379"
+      unset VALKEY_ADVERTISED_PORT VALKEY_LB_ADVERTISED_HOST
+    End
+
+    It "fails closed when the advertised list has no entry for the primary"
+      export VALKEY_ADVERTISED_PORT="mycluster-valkey-advertised-0:32024"
+      When call parse_valkey_primary_announce_addr "mycluster-valkey-9"
+      The status should be failure
+      The stderr should include "No matching svcName and port found"
       unset VALKEY_ADVERTISED_PORT
     End
   End
@@ -199,125 +175,134 @@ Describe "Valkey Sentinel Member-Join Bash Script Tests"
     End
   End
 
-  Describe "register_master_locally()"
-    Context "when the local sentinel has no monitor yet"
-      It "issues SENTINEL MONITOR plus the shared failover tunables and verifies the result"
-        monitor_issued="false"
-        valkey-cli() {
-          case "$*" in
-            *"get-master-addr-by-name"*)
-              if [ "${monitor_issued}" = "true" ]; then
-                echo "mycluster-valkey-1.headless.default.svc.cluster.local 6379"
-              else
-                echo "(nil)"
-              fi ;;
-            *"PING"*) echo "PONG" ;;
-            *"SENTINEL MONITOR"*) monitor_issued="true"; echo "OK" ;;
-            *"SENTINEL SET"*) echo "OK" ;;
-            *) echo "CMD: $*" ;;
-          esac
-        }
-        When call register_master_locally "mycluster-valkey-1.headless.default.svc.cluster.local" "6379"
-        The status should be success
-        The stdout should include "INFO: registering mycluster-valkey at mycluster-valkey-1.headless.default.svc.cluster.local:6379 (quorum 2)."
-        The stdout should include "Registered mycluster-valkey at mycluster-valkey-1.headless.default.svc.cluster.local 6379 with the local Sentinel."
-      End
+  Describe "register_master_to_sentinel()"
+    # The script invokes valkey-cli through an unquoted command string, so a
+    # valkey-cli() function mock intercepts every call.  get-master-addr runs
+    # inside a command substitution (subshell): state must live in a file.
+    It "issues SENTINEL MONITOR plus the shared failover tunables on a fresh sentinel"
+      GET_CALLS_FILE="${MJ_TMP}/get-calls.log"; echo 0 > "${GET_CALLS_FILE}"
+      CLI_LOG="${MJ_TMP}/cli.log"; : > "${CLI_LOG}"
+      valkey-cli() {
+        printf '%s\n' "$*" >> "${CLI_LOG}"
+        case "$*" in
+          *"get-master-addr-by-name"*)
+            local n
+            n=$(cat "${GET_CALLS_FILE}")
+            echo $((n + 1)) > "${GET_CALLS_FILE}"
+            # first call: not monitored yet; later calls: registered
+            if [ "${n}" -eq 0 ]; then echo ""; else echo "10.0.0.9"; echo "6379"; fi ;;
+          *"SENTINEL MONITOR"*) echo "OK" ;;
+          *) echo "OK" ;;
+        esac
+      }
+      When call register_master_to_sentinel "mycluster-valkey" "10.0.0.9" "6379" "2" "20000" "60000" "1"
+      The status should be success
+      The stdout should include "register master mycluster-valkey to local sentinel succeeded!"
+      The contents of file "${CLI_LOG}" should include "SENTINEL MONITOR mycluster-valkey 10.0.0.9 6379 2"
+      The contents of file "${CLI_LOG}" should include "SENTINEL SET mycluster-valkey down-after-milliseconds 20000"
+      The contents of file "${CLI_LOG}" should include "SENTINEL SET mycluster-valkey failover-timeout 60000"
+      The contents of file "${CLI_LOG}" should include "SENTINEL SET mycluster-valkey parallel-syncs 1"
+      The contents of file "${CLI_LOG}" should include "SENTINEL SET mycluster-valkey auth-user default"
+      The contents of file "${CLI_LOG}" should include "SENTINEL SET mycluster-valkey auth-pass datapass"
     End
 
-    Context "when the local sentinel already monitors the master"
-      It "skips SENTINEL MONITOR but still applies the tunables"
-        valkey-cli() {
-          case "$*" in
-            *"get-master-addr-by-name"*) echo "mycluster-valkey-1.headless.default.svc.cluster.local 6379" ;;
-            *"PING"*) echo "PONG" ;;
-            *"SENTINEL MONITOR"*) echo "UNEXPECTED SENTINEL MONITOR" ;;
-            *"SENTINEL SET"*) echo "OK" ;;
-            *) echo "CMD: $*" ;;
-          esac
-        }
-        When call register_master_locally "mycluster-valkey-1.headless.default.svc.cluster.local" "6379"
-        The status should be success
-        The stdout should include "skip SENTINEL MONITOR"
-        The stdout should not include "UNEXPECTED"
-      End
+    It "skips SENTINEL MONITOR when the master is already monitored"
+      CLI_LOG="${MJ_TMP}/cli.log"; : > "${CLI_LOG}"
+      valkey-cli() {
+        printf '%s\n' "$*" >> "${CLI_LOG}"
+        case "$*" in
+          *"get-master-addr-by-name"*) echo "10.0.0.9" ;;
+          *"SENTINEL MONITOR"*) echo "UNEXPECTED SENTINEL MONITOR" ;;
+          *) echo "OK" ;;
+        esac
+      }
+      When call register_master_to_sentinel "mycluster-valkey" "10.0.0.9" "6379" "2" "20000" "60000" "1"
+      The status should be success
+      The stdout should include "already monitored, skip SENTINEL MONITOR"
+      The contents of file "${CLI_LOG}" should not include "UNEXPECTED"
     End
 
-    Context "when the sentinel rejects a tunable"
-      It "fails closed instead of reporting a half-configured monitor"
-        valkey-cli() {
-          case "$*" in
-            *"get-master-addr-by-name"*) echo "(nil)" ;;
-            *"PING"*) echo "PONG" ;;
-            *"SENTINEL SET"*) echo "ERR unknown subcommand" ;;
-            *) echo "OK" ;;
-          esac
-        }
-        When call register_master_locally "mycluster-valkey-1.headless.default.svc.cluster.local" "6379"
-        The status should be failure
-        The stdout should include "INFO: registering mycluster-valkey"
-        The stderr should include "SENTINEL SET mycluster-valkey down-after-milliseconds returned"
-      End
+    It "fails closed when the Sentinel rejects SENTINEL MONITOR (valkey-cli exits 0 on ERR replies)"
+      CLI_LOG="${MJ_TMP}/cli.log"; : > "${CLI_LOG}"
+      valkey-cli() {
+        case "$*" in
+          *"get-master-addr-by-name"*) echo "" ;;
+          *"SENTINEL MONITOR"*) echo "ERR Invalid IP address or hostname specified" ;;
+          *) echo "OK" ;;
+        esac
+      }
+      When call register_master_to_sentinel "mycluster-valkey" "mycluster-valkey-0.headless.default.svc.cluster.local" "6379" "2" "20000" "60000" "1"
+      The status should be failure
+      The stderr should include "SENTINEL MONITOR returned 'ERR Invalid IP address or hostname specified'"
     End
 
-    Context "when the monitor registration does not take effect"
-      It "fails closed when the sentinel still has no master afterwards"
-        valkey-cli() {
-          case "$*" in
-            *"get-master-addr-by-name"*) echo "(nil)" ;;
-            *"PING"*) echo "PONG" ;;
-            *) echo "OK" ;;
-          esac
-        }
-        When call register_master_locally "mycluster-valkey-1.headless.default.svc.cluster.local" "6379"
-        The status should be failure
-        The stdout should include "INFO: registering mycluster-valkey"
-        The stderr should include "still has no master 'mycluster-valkey'"
-      End
-    End
-
-    Context "when the local sentinel is not reachable"
-      It "retries the PING and then fails closed"
-        sleep() { :; }
-        valkey-cli() {
-          case "$*" in
-            *"PING"*) echo "" ;;
-            *) echo "OK" ;;
-          esac
-        }
-        When call register_master_locally "mycluster-valkey-1.headless.default.svc.cluster.local" "6379"
-        The status should be failure
-        The stderr should include "is not answering PING"
-      End
+    It "fails when a SENTINEL SET exits non-zero"
+      CLI_LOG="${MJ_TMP}/cli.log"; : > "${CLI_LOG}"
+      valkey-cli() {
+        case "$*" in
+          *"get-master-addr-by-name"*) echo "" ;;
+          *"SENTINEL MONITOR"*) echo "OK" ;;
+          *"SENTINEL SET"*) echo "ERR unknown error"; return 1 ;;
+          *) echo "OK" ;;
+        esac
+      }
+      When call register_master_to_sentinel "mycluster-valkey" "10.0.0.9" "6379" "2" "20000" "60000" "1"
+      The status should be failure
+      The stdout should include "ERR unknown error"
     End
 
     Context "when the data node has no password"
       It "does not configure auth-user / auth-pass on the monitor"
-        cli_log=""
+        CLI_LOG="${MJ_TMP}/cli.log"; : > "${CLI_LOG}"
         unset VALKEY_DEFAULT_PASSWORD
         valkey-cli() {
-          cli_log="${cli_log}$*"$'\n'
+          printf '%s\n' "$*" >> "${CLI_LOG}"
           case "$*" in
-            *"get-master-addr-by-name"*) echo "mycluster-valkey-1.headless.default.svc.cluster.local 6379" ;;
-            *"PING"*) echo "PONG" ;;
+            *"get-master-addr-by-name"*) echo "10.0.0.9" ;;
             *) echo "OK" ;;
           esac
         }
-        _assert_no_auth_tunables() {
-          register_master_locally "mycluster-valkey-1.headless.default.svc.cluster.local" "6379"
-          if grep -q "auth-user\|auth-pass" <<<"${cli_log}"; then
-            return 1
-          fi
-          return 0
-        }
-        When call _assert_no_auth_tunables
+        When call register_master_to_sentinel "mycluster-valkey" "10.0.0.9" "6379" "2" "20000" "60000" "1"
         The status should be success
-        The stdout should include "skip SENTINEL MONITOR"
+        The stdout should include "register master mycluster-valkey to local sentinel succeeded!"
+        The contents of file "${CLI_LOG}" should not include "auth-user"
+        The contents of file "${CLI_LOG}" should not include "auth-pass"
         export VALKEY_DEFAULT_PASSWORD="datapass"
-      End
+        End
     End
   End
 
-  Describe "ComponentDefinition / OpsDefinition contract"
+  Describe "recover_registered_valkey_servers()"
+    It "probes the primary, resolves the NodePort address and registers it"
+      GET_CALLS_FILE="${MJ_TMP}/get-calls.log"; echo 0 > "${GET_CALLS_FILE}"
+      CLI_LOG="${MJ_TMP}/cli.log"; : > "${CLI_LOG}"
+      export VALKEY_ADVERTISED_PORT="mycluster-valkey-advertised-0:32024,mycluster-valkey-advertised-1:31318,mycluster-valkey-advertised-2:31000"
+      valkey-cli() {
+        printf '%s\n' "$*" >> "${CLI_LOG}"
+        case "$*" in
+          *"INFO replication"*)
+            case "$*" in
+              *"mycluster-valkey-1."*) echo "role:master" ;;
+              *) echo "role:slave" ;;
+            esac ;;
+          *"get-master-addr-by-name"*)
+            local n
+            n=$(cat "${GET_CALLS_FILE}")
+            echo $((n + 1)) > "${GET_CALLS_FILE}"
+            if [ "${n}" -eq 0 ]; then echo ""; else echo "10.0.0.7"; echo "31318"; fi ;;
+          *"SENTINEL MONITOR"*) echo "OK" ;;
+          *) echo "OK" ;;
+        esac
+      }
+      When call recover_registered_valkey_servers
+      The status should be success
+      The stdout should include "register master mycluster-valkey to local sentinel succeeded!"
+      The contents of file "${CLI_LOG}" should include "SENTINEL MONITOR mycluster-valkey 10.0.0.7 31318 2"
+      unset VALKEY_ADVERTISED_PORT
+    End
+  End
+
+  Describe "ComponentDefinition contract"
     sentinel_cmpd="../templates/cmpd-valkey-sentinel.yaml"
     ops_definition="../templates/opsdefinition-register-to-sentinel.yaml"
 
@@ -333,10 +318,19 @@ Describe "Valkey Sentinel Member-Join Bash Script Tests"
       The stdout should include "memberJoin:"
     End
 
-    It "exposes the data pod name list and NodePort mapping to the sentinel pods"
-      When call grep -c -E "name: VALKEY_POD_NAME_LIST|name: VALKEY_ADVERTISED_PORT" "${sentinel_cmpd}"
+    It "declares the shared pod fieldRef env on the memberJoin action (kbagent merges action envs; the container's own env is invisible to actions)"
+      # Regression: without CURRENT_POD_HOST_IP here the monitor address
+      # degraded to the pod FQDN and a Sentinel without resolve-hostnames
+      # rejected the registration.
+      When call bash -c "sed -n '/memberJoin:/,/memberLeave:/p' '${sentinel_cmpd}' | grep -c 'name: CURRENT_POD_HOST_IP'"
       The status should be success
-      The stdout should eq "2"
+      The stdout should eq "1"
+    End
+
+    It "exposes the data pod list and the NodePort / LB mappings to the sentinel pods"
+      When call grep -c -E "name: VALKEY_POD_NAME_LIST|name: VALKEY_ADVERTISED_PORT|name: VALKEY_LB_ADVERTISED_PORT|name: VALKEY_LB_ADVERTISED_HOST" "${sentinel_cmpd}"
+      The status should be success
+      The stdout should eq "4"
     End
 
     It "ships a register-to-sentinel OpsDefinition for the valkey data component"
@@ -353,6 +347,16 @@ Describe "Valkey Sentinel Member-Join Bash Script Tests"
         ! grep -qE '^[[:space:]]*exit[[:space:]]+0[[:space:]]*$' "${member_join_script}"
       }
       When call no_silent_success_contract
+      The status should be success
+    End
+  End
+
+  Describe "kblib-independence contract"
+    It "does not call the kblib split()/equals() helpers"
+      # common.sh shipped by older installed addon builds lacks both helpers;
+      # a missing function falls through to the coreutils split binary and
+      # explodes on the FQDN.  Parsing must stay in plain bash IFS reads.
+      When call bash -c "! grep -qE '\$\((split|equals) ' '../scripts/valkey-sentinel-member-join.sh'"
       The status should be success
     End
   End

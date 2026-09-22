@@ -92,8 +92,11 @@ sentinel_member_get() {
   fi
   sentinel_leave_member_name="${KB_LEAVE_MEMBER_POD_NAME}"
   sentinel_leave_member_fqdn="${KB_LEAVE_MEMBER_POD_FQDN}"
-  # shellcheck disable=SC2207
-  sentinel_pod_list=($(split "${SENTINEL_POD_FQDN_LIST}" ","))
+  # Plain bash IFS split instead of kblib's split(): common.sh shipped by
+  # older addon builds does not carry that helper, and a missing function
+  # falls through to the coreutils split binary, which explodes on the FQDN
+  # ("cannot open '<fqdn>' for reading").
+  IFS=',' read -ra sentinel_pod_list <<< "${SENTINEL_POD_FQDN_LIST}"
 }
 
 # get_masters <host> — capture `SENTINEL masters` from one Sentinel into
@@ -208,19 +211,25 @@ reset_remaining_sentinels() {
     success=false
     while [ "${retries}" -lt 3 ]; do
       build_sentinel_cli "${sentinel_pod}"
-      # valkey-cli exits non-zero on connection failure but still exits 0 for
-      # some protocol errors, and a failed connection prints a non-empty error
-      # text — so accept only a clean "OK" answer, never "non-empty output".
+      # SENTINEL RESET replies with the NUMBER of masters it reset (an integer,
+      # "0" when nothing matches) — never "OK" (verified on a live sentinel).
+      # Accept a pure integer as success; anything else means the command did
+      # not reach the Sentinel as an authenticated client (connection error
+      # text, NOAUTH reply — valkey-cli exits 0 for all of them).
       reset_out=$("${_sentinel_cli_cmd[@]}" SENTINEL RESET "*" 2>&1) || true
       reset_out="${reset_out//$'\r'/}"
-      if [ "${reset_out}" = "OK" ]; then
-        echo "sentinel is resetting at ${sentinel_pod} on port ${sentinel_port}."
-        success=true
-        break
-      fi
-      retries=$((retries + 1))
-      echo "retry ${retries}/3 for sentinel reset at ${sentinel_pod} failed. retrying..."
-      sleep_when_ut_mode_false 1
+      case "${reset_out}" in
+        ''|*[!0-9]*)
+          retries=$((retries + 1))
+          echo "retry ${retries}/3 for sentinel reset at ${sentinel_pod} failed: '${reset_out}'. retrying..."
+          sleep_when_ut_mode_false 1
+          ;;
+        *)
+          echo "sentinel is resetting at ${sentinel_pod} on port ${sentinel_port} (reset ${reset_out} masters)."
+          success=true
+          break
+          ;;
+      esac
     done
     if [ "${success}" = "true" ]; then
       echo "connected to the sentinel successfully after ${retries} retries"
