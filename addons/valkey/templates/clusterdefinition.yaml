@@ -16,25 +16,6 @@ spec:
         - name: valkey
           compDef: {{ include "valkey.cmpdRegexpPattern" . }}
 
-    {{- range .Values.valkeyVersions }}
-    - name: {{ printf "replication-%s" .major }}
-      components:
-        - name: valkey-sentinel
-          compDef: {{ .sentinelComponentDef }}
-        - name: valkey
-          compDef: {{ .componentDef }}
-      orders:
-        provision:
-          - valkey-sentinel   # sentinel must be ready before data nodes connect to it
-          - valkey
-        terminate:
-          - valkey            # drain data nodes first so sentinel doesn't trigger spurious failover
-          - valkey-sentinel
-        update:
-          - valkey-sentinel
-          - valkey
-    {{- end }}
-
     - name: replication
       components:
         - name: valkey-sentinel

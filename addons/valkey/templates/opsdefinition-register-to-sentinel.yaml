@@ -105,6 +105,11 @@ spec:
             envRef:
               envName: CURRENT_POD_HOST_IP
               targetContainerName: valkey
+        - name: CLUSTER_DOMAIN
+          valueFrom:
+            envRef:
+              envName: CLUSTER_DOMAIN
+              targetContainerName: valkey
   parametersSchema:
     openAPIV3Schema:
       properties:
@@ -135,3 +140,4 @@ spec:
                   {{- include "valkey.commonLibrary" $ | nindent 18 }}
                   COMMON_SH_EOF
                   {{- .Files.Get "scripts/valkey-register-to-sentinel.sh" | nindent 18 }}
+                  {{- .Files.Get "scripts/valkey-sentinel-sync-acl.sh" | nindent 18 }}

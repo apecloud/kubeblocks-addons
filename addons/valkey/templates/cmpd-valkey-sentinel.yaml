@@ -111,6 +111,8 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: "{{ $.Values.clusterDomain }}"
     # Sentinel's own credentials (used for inter-Sentinel auth)
     - name: SENTINEL_USER
       valueFrom:

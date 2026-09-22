@@ -324,3 +324,16 @@ ${__SOURCED__:+false} : || return 0
 load_common_library
 
 recover_registered_valkey_servers_if_needed
+
+# Sync the Sentinel ACL from an established peer: valkey-sentinel-start.sh
+# writes only the "default" user from SENTINEL_PASSWORD, so custom accounts
+# added to the fleet later must be pushed to the joining pod explicitly
+# (Sentinel does not replicate ACLs between peers).  Fail-closed: a Sentinel
+# with a stale ACL would reject authenticated clients after a restart.
+# The path is overridable for the unit tests.
+SYNC_ACL_SCRIPT="${SENTINEL_SYNC_ACL_SCRIPT:-/scripts/valkey-sentinel-sync-acl.sh}"
+if ! bash "${SYNC_ACL_SCRIPT}"; then
+  echo "ERROR: sentinel ACL sync failed — see the output above." >&2
+  exit 1
+fi
+echo "sentinel ACL sync succeeded."

@@ -207,6 +207,8 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: "{{ $.Values.clusterDomain }}"
 
     # ── Credentials ──
     # credentialVarRef resolves to the Secret KubeBlocks created for the
