@@ -63,7 +63,7 @@ if ! is_empty "${VALKEY_ADVERTISED_PORT}"; then
       if [ -n "$lb_host" ]; then
         echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
         primary_host="$lb_host"
-        announce_port="6379"
+        primary_port="6379"
       else
         primary_port="$CURRENT_POD_HOST_IP"
       fi
