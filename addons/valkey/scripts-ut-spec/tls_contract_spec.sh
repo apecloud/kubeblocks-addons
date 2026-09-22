@@ -13,15 +13,28 @@ Describe "Valkey TLS verification contract"
   paramsdef="../templates/paramsdef.yaml"
   cluster_secret="../../../addons-cluster/valkey/templates/secret.yaml"
 
-  It "builds VALKEY_CLI_TLS_ARGS with CA verification, not --insecure"
-    When call grep -F -- "--tls --cacert" "${data_cmpd}" "${sentinel_cmpd}"
+  It "builds VALKEY_CLI_TLS_ARGS as --tls --insecure for the in-cluster CLIs"
+    # The in-cluster CLIs connect with --tls --insecure: the CA path is not
+    # guaranteed to exist in every execution face that consumes the component
+    # vars, and a wrong --cacert makes each CLI call fail outright instead of
+    # connecting.  Both component definitions carry the same derivation.
+    When call grep -F -- "--tls --insecure" "${data_cmpd}" "${sentinel_cmpd}"
     The status should be success
     The stdout should include "cmpd.yaml"
     The stdout should include "cmpd-valkey-sentinel.yaml"
   End
 
-  It "does not skip certificate verification in the CMPD CLI args"
-    When call grep -F -- "--insecure" "${data_cmpd}" "${sentinel_cmpd}"
+  It "derives the in-cluster TLS args from TLS_ENABLED in both CMPDs"
+    When call grep -F -- '{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure' "${data_cmpd}" "${sentinel_cmpd}"
+    The status should be success
+    The stdout should include "cmpd.yaml"
+    The stdout should include "cmpd-valkey-sentinel.yaml"
+  End
+
+  It "does not pin a --cacert path in the CMPD CLI args"
+    # A pinned CA path silently breaks every in-cluster CLI whenever the mount
+    # does not match the path declared here.
+    When call grep -F -- "--cacert" "${data_cmpd}" "${sentinel_cmpd}"
     The status should be failure
   End
 
