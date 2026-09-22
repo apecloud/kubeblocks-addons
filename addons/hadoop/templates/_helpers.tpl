@@ -1,0 +1,119 @@
+{{/*
+Chart name
+*/}}
+{{- define "hadoop.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Chart name and version for labels
+*/}}
+{{- define "hadoop.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "hadoop.labels" -}}
+helm.sh/chart: {{ include "hadoop.chart" . }}
+{{ include "hadoop.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "hadoop.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "hadoop.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "hadoop.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "hadoop.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "hadoop.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Component definition regex patterns
+*/}}
+{{- define "hadoop.hdfsJournalnodeCmpdRegexPattern" -}}
+^hdfs-journalnode$
+{{- end }}
+
+{{- define "hadoop.hdfsNamenodeCmpdRegexPattern" -}}
+^hdfs-namenode$
+{{- end }}
+
+{{- define "hadoop.hdfsNamenodeStandaloneCmpdRegexPattern" -}}
+^hdfs-namenode-standalone$
+{{- end }}
+
+{{- define "hadoop.hdfsDatanodeCmpdRegexPattern" -}}
+^hdfs-datanode$
+{{- end }}
+
+{{- define "hadoop.hdfsDatanodeStandaloneCmpdRegexPattern" -}}
+^hdfs-datanode-standalone$
+{{- end }}
+
+{{/*
+Image references
+*/}}
+{{- define "hadoop.commonImage" -}}
+{{ .Values.image.common.registry }}/{{ .Values.image.common.repository }}:{{ .Values.image.common.tag }}
+{{- end }}
+
+{{- define "hadoop.journalNodeImage" -}}
+{{ .Values.journalNode.image.registry }}/{{ .Values.journalNode.image.repository }}:{{ .Values.journalNode.image.tag }}
+{{- end }}
+
+{{- define "hadoop.nameNodeImage" -}}
+{{ .Values.nameNode.image.registry }}/{{ .Values.nameNode.image.repository }}:{{ .Values.nameNode.image.tag }}
+{{- end }}
+
+{{- define "hadoop.initNameNodeFormatImage" -}}
+{{ default .Values.nameNode.image.registry .Values.nameNode.initImages.initNameNodeFormat.registry }}/{{ default .Values.nameNode.image.repository .Values.nameNode.initImages.initNameNodeFormat.repository }}:{{ default .Values.nameNode.image.tag .Values.nameNode.initImages.initNameNodeFormat.tag }}
+{{- end }}
+
+{{- define "hadoop.initZkfcFormatImage" -}}
+{{ default .Values.nameNode.image.registry .Values.nameNode.initImages.initZkfcFormat.registry }}/{{ default .Values.nameNode.image.repository .Values.nameNode.initImages.initZkfcFormat.repository }}:{{ default .Values.nameNode.image.tag .Values.nameNode.initImages.initZkfcFormat.tag }}
+{{- end }}
+
+{{- define "hadoop.dataNodeImage" -}}
+{{ .Values.dataNode.image.registry }}/{{ .Values.dataNode.image.repository }}:{{ .Values.dataNode.image.tag }}
+{{- end }}
+
+{{- define "hadoop.jmxExporterImage" -}}
+{{ .Values.image.jmxExporter.registry }}/{{ .Values.image.jmxExporter.repository }}:{{ .Values.image.jmxExporter.tag }}
+{{- end }}
+
+{{/*
+decommission runtime RBAC rules
+*/}}
+{{- define "hadoop.decommissionPolicyRules" -}}
+policyRules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - get
+      - list
+      - patch
+      - update
+{{- end }}
