@@ -190,3 +190,20 @@ ${__SOURCED__:+false} : || return 0
 load_common_library
 
 recover_registered_redis_servers_if_needed
+
+# Sync the Sentinel ACL from an established peer.  Sentinel never replicates
+# ACLs between peers and redis-sentinel-start-v2.sh writes only the "default"
+# user (from SENTINEL_PASSWORD), so a joining pod would otherwise keep rejecting
+# every custom account the fleet was given.  Fail-closed: a Sentinel with a
+# stale ACL locks authenticated clients out after a restart.
+# The path is overridable for the unit tests.
+SENTINEL_SYNC_ACL_SCRIPT="${SENTINEL_SYNC_ACL_SCRIPT:-/scripts/redis-sentinel-sync-acl.sh}"
+if [ -f "${SENTINEL_SYNC_ACL_SCRIPT}" ]; then
+  if ! bash "${SENTINEL_SYNC_ACL_SCRIPT}"; then
+    echo "ERROR: sentinel ACL sync failed — see the output above." >&2
+    exit 1
+  fi
+  echo "sentinel ACL sync succeeded."
+else
+  echo "WARNING: ${SENTINEL_SYNC_ACL_SCRIPT} not found — skipping the sentinel ACL sync." >&2
+fi

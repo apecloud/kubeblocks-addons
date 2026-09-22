@@ -123,6 +123,8 @@ spec:
     ## the name of current cluster instance
     - name: REDIS_DIAL_TIMEOUT
       value: "2"
+    - name: CLUSTER_DOMAIN
+      value: "{{ $.Values.clusterDomain }}"
     - name: SERVICE_VERSION
       valueFrom:
         componentVarRef:
