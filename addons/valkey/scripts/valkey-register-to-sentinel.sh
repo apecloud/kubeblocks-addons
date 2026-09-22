@@ -46,6 +46,11 @@ extract_lb_host_by_svc_name() {
   done
 }
 
+
+if is_empty "${VALKEY_ADVERTISED_PORT}"; then
+  VALKEY_ADVERTISED_PORT="${VALKEY_LB_ADVERTISED_PORT}"
+fi
+
 # NodePort path
 if ! is_empty "${VALKEY_ADVERTISED_PORT}"; then
   local_ordinal=$(extract_obj_ordinal "${CURRENT_POD_NAME}")
