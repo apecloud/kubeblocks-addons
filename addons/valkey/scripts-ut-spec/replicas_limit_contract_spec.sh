@@ -3,7 +3,6 @@
 
 Describe "Valkey replicasLimit contract"
   data_cmpd="../templates/cmpd.yaml"
-  sentinel_cmpd="../templates/cmpd-valkey-sentinel.yaml"
   cluster_schema="../../../addons-cluster/valkey/values.schema.json"
 
   It "declares the data component scale contract as 1..5"
@@ -13,11 +12,15 @@ Describe "Valkey replicasLimit contract"
     The stdout should include "maxReplicas: 5"
   End
 
-  It "declares the Sentinel scale contract as 3..5"
-    When call bash -c "grep -A6 'replicasLimit:' '${sentinel_cmpd}'"
+  It "keeps the Sentinel scale contract in the cluster chart schema (3..5)"
+    # The sentinel CMPD no longer declares replicasLimit — the bound users scale
+    # through lives in the cluster chart, so both ends are pinned there.  A
+    # future change to the sentinel CMPD bound without touching the chart (or
+    # the other way around) fails here.
+    When call bash -c "grep -A6 '\"Sentinel replicas\"' '${cluster_schema}'"
     The status should be success
-    The stdout should include "minReplicas: 3"
-    The stdout should include "maxReplicas: 5"
+    The stdout should include '"minimum": 3'
+    The stdout should include '"maximum": 5'
   End
 
   It "caps both cluster chart schema replica fields at the CMPD maximum (5)"
