@@ -242,8 +242,8 @@ Describe "Valkey Start Bash Script Tests"
       It "writes replicaof directive pointing to primary"
         When call build_replicaof_config
         The status should be success
-        # Path B (no sentinel) info-logs the lexicographic election to stderr.
-        The stderr should include "lexicographic"
+        # No Sentinel component: the same lowest-ordinal fallback runs.
+        The stderr should include "electing the lowest-ordinal pod valkey-0.valkey-headless.default.svc.cluster.local"
         The contents of file "${CONF_RUNTIME}" should include "replicaof valkey-0.valkey-headless.default.svc.cluster.local 6379"
       End
     End
@@ -273,31 +273,33 @@ Describe "Valkey Start Bash Script Tests"
       After "teardown"
 
       It "uses Sentinel-reported master as replicaof target"
-        # Mock query_sentinel_quorum_for_master directly: production code wraps
+        # Mock get_primary_addr_from_sentinels directly: production code wraps
         # valkey-cli inside `timeout 3 ...` which shell-execs the binary path
         # and bypasses test-scope shell function mocks.
-        query_sentinel_quorum_for_master() {
-          echo "valkey-0.valkey-headless.default.svc.cluster.local"
-        }
-        verify_pod_role() {
-          echo "master"
+        # The announced pair is used verbatim as the replicaof target — in
+        # NodePort mode that is node_ip:NodePort (redis addon parity).
+        get_primary_addr_from_sentinels() {
+          primary="10.13.25.18"
+          primary_port="31281"
+          return 0
         }
         When call build_replicaof_config
         The status should be success
-        # Sentinel quorum + role-verified path emits this exact info line to stderr.
-        The stderr should include "sentinel quorum + role verified"
-        The contents of file "${CONF_RUNTIME}" should include "replicaof valkey-0.valkey-headless.default.svc.cluster.local 6379"
+        # The Sentinel address is used as-is: no role verification, no FQDN
+        # mapping, no other source can override it.
+        The stderr should include "using Sentinel-reported master 10.13.25.18:31281 as-is"
+        The contents of file "${CONF_RUNTIME}" should include "replicaof 10.13.25.18 31281"
+        # Single attempt is enough — the retry loop must stop on success.
+        The stderr should not include "retrying in 3s"
       End
     End
 
-    Context "when Sentinel topology has no trusted master"
+    Context "when no Sentinel reports a master"
       setup() {
         : > "${CONF_RUNTIME}"
-        valkey_start_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/valkey-start-data.XXXXXX")
-        export DATA_DIR="${valkey_start_data_dir}"
         export SENTINEL_COMPONENT_NAME="valkey-sentinel"
         export SENTINEL_POD_FQDN_LIST="sentinel-0.sentinel-headless.default.svc.cluster.local"
-        export CURRENT_POD_NAME="valkey-0"
+        export CURRENT_POD_NAME="valkey-1"
         export VALKEY_POD_NAME_LIST="valkey-0,valkey-1"
         export VALKEY_POD_FQDN_LIST="valkey-0.valkey-headless.default.svc.cluster.local,valkey-1.valkey-headless.default.svc.cluster.local"
         export SERVICE_PORT="6379"
@@ -306,8 +308,6 @@ Describe "Valkey Start Bash Script Tests"
       Before "setup"
 
       teardown() {
-        rm -rf "${valkey_start_data_dir:-}"
-        unset DATA_DIR
         unset SENTINEL_COMPONENT_NAME
         unset SENTINEL_POD_FQDN_LIST
         unset CURRENT_POD_NAME
@@ -318,56 +318,64 @@ Describe "Valkey Start Bash Script Tests"
       }
       After "teardown"
 
-      It "allows lexicographic bootstrap only for a fresh data directory"
-        query_sentinel_quorum_for_master() { echo ""; }
-        scan_pods_for_master() { echo ""; }
-        verify_pod_role() { echo ""; }
+      It "falls back to the lowest-ordinal pod without any further probing"
+        sleep() { :; }
+        # Sentinel answered nothing: no pod scan, no replication-chain walk, no
+        # refusing the guess — the lowest-ordinal pod is the primary.
+        get_primary_addr_from_sentinels() { return 1; }
+        scan_pods_for_master() { echo "UNEXPECTED pod scan"; }
+        find_known_slave_pod() { echo "UNEXPECTED slave check"; }
         When call build_replicaof_config
         The status should be success
-        The stderr should include "electing bootstrap primary"
+        The stderr should include "electing the lowest-ordinal pod valkey-0.valkey-headless.default.svc.cluster.local"
+        The stdout should not include "UNEXPECTED"
+        The stderr should not include "UNEXPECTED"
+        The contents of file "${CONF_RUNTIME}" should include "replicaof valkey-0.valkey-headless.default.svc.cluster.local 6379"
       End
+    End
+  End
 
-      It "allows lexicographic election for full-cluster restart when data already exists"
-        touch "${DATA_DIR}/dump.rdb"
-        query_sentinel_quorum_for_master() { echo ""; }
-        scan_pods_for_master() { echo ""; }
-        verify_pod_role() { echo ""; }
-        When call build_replicaof_config
-        The status should be success
-        The stderr should include "treating as full-cluster restart"
-        The stderr should include "electing bootstrap primary"
-      End
+  Describe "check_current_pod_is_primary()"
+    setup() {
+      export VALKEY_COMPONENT_NAME="mycluster-valkey"
+      export CURRENT_POD_NAME="mycluster-valkey-1"
+      unset valkey_announce_host_value valkey_announce_port_value
+    }
+    Before "setup"
 
-      It "fails closed when any peer is already a slave even if this pod data dir is fresh"
-        query_sentinel_quorum_for_master() { echo ""; }
-        scan_pods_for_master() { echo ""; }
-        verify_pod_role() {
-          case "$1" in
-            valkey-1.*) echo "slave" ;;
-            *) echo "" ;;
-          esac
-        }
-        When call build_replicaof_config
-        The status should be failure
-        The stderr should include "reports role:slave"
-        The stderr should include "refusing lexicographic primary guess"
-      End
+    teardown() {
+      unset VALKEY_COMPONENT_NAME CURRENT_POD_NAME
+      unset valkey_announce_host_value valkey_announce_port_value
+    }
+    After "teardown"
 
-      It "fails closed when any peer is already a slave even if this pod data dir has existing data"
-        touch "${DATA_DIR}/dump.rdb"
-        query_sentinel_quorum_for_master() { echo ""; }
-        scan_pods_for_master() { echo ""; }
-        verify_pod_role() {
-          case "$1" in
-            valkey-1.*) echo "slave" ;;
-            *) echo "" ;;
-          esac
-        }
-        When call build_replicaof_config
-        The status should be failure
-        The stderr should include "reports role:slave"
-        The stderr should include "refusing lexicographic primary guess"
-      End
+    It "matches a pod FQDN reported by Sentinel"
+      primary="mycluster-valkey-1.mycluster-valkey-headless.default.svc.cluster.local"
+      primary_port="6379"
+      When call check_current_pod_is_primary
+      The status should be success
+      The stderr should include "primary by name mapping"
+    End
+
+    It "matches the advertised NodePort pair reported by Sentinel"
+      # NodePort mode: Sentinel reports node_ip:NodePort, so only the address
+      # pair identifies this pod — the redis addon's rule.
+      primary="10.13.25.18"
+      primary_port="31281"
+      valkey_announce_host_value="10.13.25.18"
+      valkey_announce_port_value="31281"
+      When call check_current_pod_is_primary
+      The status should be success
+      The stderr should include "primary by advertised mapping"
+    End
+
+    It "is false when another pod's pair is reported"
+      primary="10.13.25.20"
+      primary_port="30584"
+      valkey_announce_host_value="10.13.25.18"
+      valkey_announce_port_value="31281"
+      When call check_current_pod_is_primary
+      The status should be failure
     End
   End
 End

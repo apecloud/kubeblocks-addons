@@ -32,6 +32,13 @@ ACL_FILE="/data/users.acl"
 ACL_FILE_BAK="/data/users.acl.bak"
 service_port="${SERVICE_PORT:-6379}"
 
+# This pod's own announce address (replica-announce-ip/port), filled by
+# build_announce_addr().  check_current_pod_is_primary() compares the pair a
+# Sentinel reports against these values — the same advertised-mapping rule the
+# redis addon uses in check_current_pod_is_primary().
+valkey_announce_host_value=""
+valkey_announce_port_value=""
+
 load_common_library() {
   # shellcheck disable=SC1091
   source /scripts/common.sh
@@ -95,11 +102,30 @@ build_valkey_tls_config() {
   fi
 }
 
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$VALKEY_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
+
 build_announce_addr() {
   # Prefer per-pod NodePort, then LoadBalancer, then FQDN.
   local announce_host=""
   local announce_port=""
+  valkey_announce_host_value=""
+  valkey_announce_port_value=""
 
+  if is_empty "$VALKEY_ADVERTISED_PORT"; then
+     VALKEY_ADVERTISED_PORT="$VALKEY_LB_ADVERTISED_PORT"
+  fi
   # NodePort path
   if ! is_empty "${VALKEY_ADVERTISED_PORT}"; then
     local pod_ordinal
@@ -111,29 +137,14 @@ build_announce_addr() {
       port="${entry##*:}"
       if [ "$(extract_obj_ordinal "${svc_name}")" = "${pod_ordinal}" ]; then
         announce_port="${port}"
-        announce_host="${CURRENT_POD_HOST_IP}"
-        break
-      fi
-    done
-  fi
-
-  # LoadBalancer path (overrides NodePort host if available)
-  if is_empty "${announce_host}" && ! is_empty "${VALKEY_LB_ADVERTISED_PORT}"; then
-    local pod_ordinal
-    pod_ordinal=$(extract_obj_ordinal "${CURRENT_POD_NAME}")
-    for entry in $(echo "${VALKEY_LB_ADVERTISED_PORT}" | tr ',' '\n'); do
-      local svc_name port
-      svc_name="${entry%%:*}"
-      port="${entry##*:}"
-      if [ "$(extract_obj_ordinal "${svc_name}")" = "${pod_ordinal}" ]; then
-        announce_port="${service_port}"
-        # Extract LB host from VALKEY_LB_ADVERTISED_HOST (format: "svc1:host1,svc2:host2")
-        for lb_entry in $(echo "${VALKEY_LB_ADVERTISED_HOST}" | tr ',' '\n'); do
-          if [ "${lb_entry%%:*}" = "${svc_name}" ]; then
-            announce_host="${lb_entry##*:}"
-            break
-          fi
-        done
+        lb_host=$(extract_lb_host_by_svc_name "$svc_name")
+        if [ -n "$lb_host" ]; then
+          echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+          announce_host="$lb_host"
+          announce_port="6379"
+        else
+          announce_host="$CURRENT_POD_HOST_IP"
+        fi
         break
       fi
     done
@@ -154,137 +165,50 @@ build_announce_addr() {
   if ! is_empty "${announce_host}"; then
     echo "replica-announce-ip ${announce_host}" >> "${CONF_RUNTIME}"
     echo "replica-announce-port ${announce_port}" >> "${CONF_RUNTIME}"
+    valkey_announce_host_value="${announce_host}"
+    valkey_announce_port_value="${announce_port}"
   fi
 }
 
 build_replicaof_config() {
-  local primary_fqdn=""
-  local primary_port="${service_port}"
+  # primary / primary_port hold the replication target, in priority order:
+  #   1. the (host, port) pair a Sentinel reports — used VERBATIM, without any
+  #      role re-verification and without mapping it back to a pod FQDN (redis
+  #      addon parity: in NodePort mode the pair is node_ip + the pod's unique
+  #      NodePort, which is directly routable).
+  #   2. the lowest-ordinal pod of the component, when no Sentinel answers
+  #      (fresh bootstrap, full-cluster restart, or Sentinel still starting).
+  primary=""
+  primary_port="${service_port}"
 
   if ! is_empty "${SENTINEL_COMPONENT_NAME}" && ! is_empty "${SENTINEL_POD_FQDN_LIST}"; then
-    # ── Path A: sentinel-managed cluster ────────────────────────────────
-    # Sentinel is the authoritative source of truth for who is master.
-    #
-    # Step A-1: query ALL sentinels and require quorum consensus (majority
-    # agreement on the same master FQDN) before trusting the result.
-    # This prevents split-brain caused by scale-in or failover-timeout overlap,
-    # where different sentinels transiently hold different master epochs.
-    #
-    # Retry up to 6 times (5s apart ≈ 54s total including verify timeouts)
-    # to cover the sentinel failover convergence window before falling back
-    # to direct pod scan.  Must complete within the liveness probe kill
-    # window (initialDelay 30s + failureThreshold×period = 90s) so the
-    # heuristic election fallback (step A-3) has time to run.
+    # Ask every Sentinel and adopt the address most of them report.  Retry 3
+    # times (3s apart) so a still-converging fleet gets a chance before falling
+    # back to the ordinal election.
     local attempt
     for attempt in $(seq 1 3); do
-      primary_fqdn=$(query_sentinel_quorum_for_master) || true
-      if ! is_empty "${primary_fqdn}"; then
-        # Verify the quorum-elected pod actually reports role=master right now.
-        # Even with quorum agreement, sentinel can converge to a different master
-        # between when different pods query — the earlier quorum answer may point
-        # to a pod that has already been demoted to slave.  Following a slave as
-        # master creates circular replication (A→B, B→A → both become masters).
-        local actual_role
-        actual_role=$(verify_pod_role "${primary_fqdn}") || true
-        if [ "${actual_role}" = "master" ]; then
-          echo "INFO: sentinel quorum + role verified: ${primary_fqdn}:${primary_port}" >&2
-          break
-        fi
-        echo "INFO: quorum elected ${primary_fqdn} but role='${actual_role:-<unreachable>}' — retrying in 3s." >&2
-        primary_fqdn=""
-      else
-        echo "INFO: sentinel quorum not ready (attempt ${attempt}/3) — retrying in 3s." >&2
+      if get_primary_addr_from_sentinels; then
+        echo "INFO: using Sentinel-reported master ${primary}:${primary_port} as-is (attempt ${attempt}/3)." >&2
+        break
       fi
+      echo "INFO: no Sentinel-reported master yet (attempt ${attempt}/3) — retrying in 3s." >&2
       if [ "${attempt}" -lt 3 ]; then
         sleep_when_ut_mode_false 3
       fi
     done
-
-    if is_empty "${primary_fqdn}"; then
-      # Step A-2: sentinel hasn't registered the master yet (e.g. simultaneous
-      # restart, background discovery loop still running).  Scan the data pods
-      # directly — whichever one is already up and reports role:master is the
-      # ground truth.  Retry up to 3 times (3s apart) to tolerate transient
-      # connection failures under resource contention (e.g. many pods restarting
-      # simultaneously on EKS can cause brief TCP timeouts to surviving pods).
-      echo "INFO: sentinel exhausted — scanning data pods for running master." >&2
-      local scan_attempt
-      for scan_attempt in 1 2 3; do
-        primary_fqdn=$(scan_pods_for_master) || true
-        if ! is_empty "${primary_fqdn}"; then
-          echo "INFO: found running master via pod scan (attempt ${scan_attempt}): ${primary_fqdn}" >&2
-          break
-        fi
-        if [ "${scan_attempt}" -lt 3 ]; then
-          echo "INFO: pod scan empty (attempt ${scan_attempt}/3) — retrying in 3s." >&2
-          sleep_when_ut_mode_false 3
-        fi
-      done
-      if ! is_empty "${primary_fqdn}"; then
-        : # already logged above
-      else
-        # Step A-3: no peer is a master yet. Fresh component bootstrap and
-        # clean full-component restart both need one pod to seed the topology
-        # by lexicographic order. Existing data alone is not unsafe: Stop/Start
-        # preserves PVC data while every data pod is down. The unsafe signal is
-        # observing an already-running slave while Sentinel cannot prove the
-        # master; guessing then can create a second master after restart/restore.
-        local known_slave_fqdn
-        known_slave_fqdn=$(find_known_slave_pod) || true
-        if ! is_empty "${known_slave_fqdn}"; then
-          echo "ERROR: Sentinel topology has no trusted master but ${known_slave_fqdn} reports role:slave — refusing lexicographic primary guess." >&2
-          return 1
-        fi
-        if ! is_fresh_bootstrap_data_dir; then
-          echo "INFO: Sentinel topology has no trusted master and ${DATA_DIR:-/data} contains existing data, but no running peer role was observed — treating as full-cluster restart." >&2
-        fi
-        # Elect the lowest-ordinal pod as the bootstrap primary, then verify it
-        # is actually reporting role:master.
-        # During rolling restarts the lexicographic pod may itself be a slave
-        # (sentinel already failed over to a different pod); connecting to it
-        # would create a cascading topology that sentinel will not auto-correct.
-        echo "INFO: no running master found — electing bootstrap primary by lexicographic order." >&2
-        local heuristic_fqdn
-        heuristic_fqdn=$(elect_lexicographic_primary)
-        local heuristic_role
-        heuristic_role=$(verify_pod_role "${heuristic_fqdn}") || true
-        if [ "${heuristic_role}" = "master" ] || is_empty "${heuristic_role}"; then
-          # Confirmed master, or pod unreachable (fresh cluster bootstrap).
-          primary_fqdn="${heuristic_fqdn}"
-        else
-          # Heuristic pod is a slave — follow its replication chain to find the
-          # real master and avoid creating a cascading sub-slave topology.
-          echo "INFO: heuristic pod ${heuristic_fqdn} is '${heuristic_role}' — finding real master." >&2
-          local chained
-          chained=$(follow_slave_to_master "${heuristic_fqdn}") || true
-          if ! is_empty "${chained}"; then
-            echo "INFO: real master via replication chain: ${chained}" >&2
-            primary_fqdn="${chained}"
-          else
-            # Last resort: 3 extra quorum retries (10s apart).
-            local retry
-            for retry in 1 2 3; do
-              sleep_when_ut_mode_false 10
-              primary_fqdn=$(query_sentinel_quorum_for_master) || true
-              if ! is_empty "${primary_fqdn}"; then
-                echo "INFO: sentinel quorum found master on retry ${retry}: ${primary_fqdn}" >&2
-                break
-              fi
-            done
-            # Fall back to heuristic if all else fails (sentinel may be starting).
-            is_empty "${primary_fqdn}" && primary_fqdn="${heuristic_fqdn}"
-          fi
-        fi
-      fi
-    fi
-  else
-    # ── Path B: no sentinel (standalone or fresh cluster) ───────────────
-    echo "INFO: no sentinel configured — electing primary by lexicographic order." >&2
-    primary_fqdn=$(elect_lexicographic_primary)
   fi
 
-  if is_empty "${primary_fqdn}"; then
-    echo "ERROR: could not determine primary FQDN — aborting." >&2
+  if is_empty "${primary}"; then
+    # No Sentinel answer (or no Sentinel component at all): the lowest-ordinal
+    # pod is the deterministic primary — the same rule the initial bootstrap
+    # and the data-side registration use.
+    primary=$(elect_lexicographic_primary)
+    primary_port="${service_port}"
+    echo "INFO: no Sentinel-reported master — electing the lowest-ordinal pod ${primary}." >&2
+  fi
+
+  if is_empty "${primary}"; then
+    echo "ERROR: could not determine the primary — aborting." >&2
     exit 1
   fi
 
@@ -299,32 +223,29 @@ build_replicaof_config() {
   fi
 
   # If this pod is the elected primary, no replicaof directive needed.
-  if contains "${primary_fqdn}" "${CURRENT_POD_NAME}."; then
+  # Two rules (redis parity): a pod-FQDN report contains "<pod>.<component>",
+  # and an address report (NodePort / LoadBalancer) equals this pod's own
+  # replica-announce pair.
+  if check_current_pod_is_primary; then
     echo "INFO: this pod is the primary — no replicaof directive needed." >&2
     return
   fi
 
-  echo "replicaof ${primary_fqdn} ${primary_port}" >> "${CONF_RUNTIME}"
+  echo "replicaof ${primary} ${primary_port}" >> "${CONF_RUNTIME}"
 }
 
-is_fresh_bootstrap_data_dir() {
-  local dir="${DATA_DIR:-/data}"
-  [ ! -e "${dir}/dump.rdb" ] || return 1
-  [ ! -e "${dir}/appendonly.aof" ] || return 1
-  [ ! -d "${dir}/appendonlydir" ] || return 1
-  [ ! -e "${dir}/nodes.conf" ] || return 1
-  return 0
-}
-
-# query_sentinel_quorum_for_master — query ALL sentinel pods and return the
-# master FQDN only when a strict majority (>= floor(N/2)+1) agree on the same
-# answer.  Returns empty string (exit 0) if no quorum consensus exists yet.
+# get_primary_addr_from_sentinels — ask every Sentinel for the master address and
+# adopt the (host, port) pair most of them report, exactly as the data pod
+# announced it (pod FQDN, or node_ip:NodePort / LB host:port in NodePort /
+# LoadBalancer mode).  Fills the globals primary / primary_port.
 #
-# This prevents split-brain during sentinel FAILOVER convergence windows:
-# if scale-in deletes the master and sentinel is mid-FAILOVER, different
-# sentinels may hold different epoch/master values.  Requiring quorum ensures
-# we only follow a master that sentinel has durably elected.
-query_sentinel_quorum_for_master() {
+# Same shape as the redis addon: the announced pair is used verbatim as the
+# replicaof target — a Sentinel never reports a pod FQDN in NodePort mode (it
+# holds the NODE ip + the pod's unique NodePort), so mapping the address back to
+# a pod FQDN is neither needed nor reliable.  The address is trusted as-is: no
+# role re-verification, the pair with the most votes wins even while the fleet
+# is still converging.  Returns 1 only when no Sentinel answered.
+get_primary_addr_from_sentinels() {
   local sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
   local master_name="${VALKEY_COMPONENT_NAME}"
 
@@ -334,118 +255,66 @@ query_sentinel_quorum_for_master() {
     sentinel_cli_base+=(-a "${SENTINEL_PASSWORD}")
   fi
 
+  local -a sentinel_fqdns=()
   IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
   local total="${#sentinel_fqdns[@]}"
-  local quorum=$(( total / 2 + 1 ))
 
-  # Collect each sentinel's answer as a list of "fqdn count" pairs using
-  # parallel arrays (bash 3 compatible; pods run bash 4 on Linux but keep safe).
-  local vote_keys=() vote_vals=()
-
+  local -A addr_count=()
+  local s_fqdn response host port key
   for s_fqdn in "${sentinel_fqdns[@]}"; do
-    local response master_addr
+    [ -n "${s_fqdn}" ] || continue
     response=$(timeout 3 "${sentinel_cli_base[@]}" -h "${s_fqdn}" \
                  SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null) || continue
-    master_addr=$(echo "${response}" | head -n1 | tr -d '\r\n')
-    is_empty "${master_addr}" && continue
-    [ "${master_addr}" = "(nil)" ] && continue
+    # The reply is two lines: <host> and <port>.
+    host=$(printf '%s' "${response}" | sed -n '1p' | tr -d '\r\n')
+    port=$(printf '%s' "${response}" | sed -n '2p' | tr -d '\r\n')
+    [ -n "${host}" ] || continue
+    [ "${host}" = "(nil)" ] && continue
+    [ -n "${port}" ] || continue
 
-    # Resolve master_addr → FQDN from our known pod list.
-    local resolved=""
-    IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
-    for pod_fqdn in "${pod_fqdns[@]}"; do
-      local pod_ip
-      pod_ip=$(getent hosts "${pod_fqdn}" 2>/dev/null | awk '{print $1}' | head -n1) || true
-      if [ "${master_addr}" = "${pod_ip}" ] || [ "${master_addr}" = "${pod_fqdn}" ] || \
-         contains "${pod_fqdn}" "${master_addr}."; then
-        resolved="${pod_fqdn}"
-        break
-      fi
-    done
+    key="${host}:${port}"
+    addr_count["${key}"]=$(( ${addr_count["${key}"]:-0} + 1 ))
+    echo "INFO: sentinel ${s_fqdn} reports master ${key}." >&2
+  done
 
-    if is_empty "${resolved}"; then
-      echo "WARNING: sentinel ${s_fqdn} returned master '${master_addr}' — no matching FQDN." >&2
-      continue
-    fi
-
-    # Accumulate vote for this FQDN.
-    local found=0
-    local i
-    for i in "${!vote_keys[@]}"; do
-      if [ "${vote_keys[$i]}" = "${resolved}" ]; then
-        vote_vals[$i]=$(( vote_vals[$i] + 1 ))
-        found=1
-        break
-      fi
-    done
-    if [ "${found}" -eq 0 ]; then
-      vote_keys+=("${resolved}")
-      vote_vals+=(1)
+  local best_key="" best_count=0
+  for key in "${!addr_count[@]}"; do
+    if [ "${addr_count[$key]}" -gt "${best_count}" ]; then
+      best_key="${key}"
+      best_count="${addr_count[$key]}"
     fi
   done
 
-  # Find the candidate with the highest vote count.
-  local winner="" winner_votes=0
-  for i in "${!vote_keys[@]}"; do
-    if [ "${vote_vals[$i]}" -gt "${winner_votes}" ]; then
-      winner="${vote_keys[$i]}"
-      winner_votes="${vote_vals[$i]}"
-    fi
-  done
+  if [ -z "${best_key}" ]; then
+    echo "INFO: no Sentinel reported a master address." >&2
+    return 1
+  fi
 
-  if [ "${winner_votes}" -ge "${quorum}" ]; then
-    echo "${winner}"
+  primary="${best_key%%:*}"
+  primary_port="${best_key##*:}"
+  echo "INFO: ${best_count}/${total} Sentinels report master ${primary}:${primary_port} — taking it as-is." >&2
+  return 0
+}
+
+# check_current_pod_is_primary — true when this pod is the master a Sentinel
+# reported.  Two rules, both from the redis addon:
+#   1. FQDN announce: the reported host contains "<pod-name>.<component-name>".
+#   2. Address announce (NodePort / LoadBalancer): the reported (host, port)
+#      equals this pod's own replica-announce pair.
+check_current_pod_is_primary() {
+  local pod_fqdn_prefix="${CURRENT_POD_NAME}.${VALKEY_COMPONENT_NAME}"
+  if contains "${primary}" "${pod_fqdn_prefix}"; then
+    echo "INFO: current pod is primary by name mapping (${primary})." >&2
     return 0
   fi
-
-  if [ "${winner_votes}" -gt 0 ]; then
-    echo "INFO: sentinel quorum not reached (best=${winner_votes}/${total}, need=${quorum})." >&2
-  fi
-  # No consensus — caller will retry or fall back to pod scan.
-  return 0
-}
-
-# scan_pods_for_master — query every known data pod except ourselves and return
-# the FQDN of whichever one reports role:master.
-#
-# This is the bridge between "sentinel is still initialising" and "fresh cluster
-# with no master anywhere".  A non-empty result means an existing master is
-# already running; empty means we need to bootstrap one via lexicographic order.
-#
-# We skip ourselves because valkey-server hasn't started yet and won't respond.
-scan_pods_for_master() {
-  # shellcheck disable=SC2206
-  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
-  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
-  fi
-
-  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
-  for pod_fqdn in "${pod_fqdns[@]}"; do
-    contains "${pod_fqdn}" "${CURRENT_POD_NAME}." && continue
-    local role
-    role=$(timeout 3 "${cli_base[@]}" -h "${pod_fqdn}" info replication 2>/dev/null \
-      | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
-    if [ "${role}" = "master" ]; then
-      echo "${pod_fqdn}"
+  if ! is_empty "${valkey_announce_host_value}" && ! is_empty "${valkey_announce_port_value}"; then
+    if [ "${primary}" = "${valkey_announce_host_value}" ] && \
+       [ "${primary_port}" = "${valkey_announce_port_value}" ]; then
+      echo "INFO: current pod is primary by advertised mapping (${primary}:${primary_port})." >&2
       return 0
     fi
-  done
-  return 0
-}
-
-find_known_slave_pod() {
-  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
-  for pod_fqdn in "${pod_fqdns[@]}"; do
-    contains "${pod_fqdn}" "${CURRENT_POD_NAME}." && continue
-    local role
-    role=$(verify_pod_role "${pod_fqdn}") || true
-    if [ "${role}" = "slave" ]; then
-      echo "${pod_fqdn}"
-      return 0
-    fi
-  done
-  return 0
+  fi
+  return 1
 }
 
 # elect_lexicographic_primary — return the FQDN of the lowest-ordinal pod.
@@ -460,46 +329,6 @@ elect_lexicographic_primary() {
     exit 1
   fi
   echo "${fqdn}"
-}
-
-# verify_pod_role — return the replication role ("master", "slave", or "") of a remote pod.
-verify_pod_role() {
-  local fqdn="$1"
-  # shellcheck disable=SC2206
-  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
-  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
-  fi
-  local role
-  role=$(timeout 3 "${cli_base[@]}" -h "${fqdn}" info replication 2>/dev/null \
-    | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
-  echo "${role}"
-}
-
-# follow_slave_to_master — given a slave FQDN, return the FQDN of the pod it
-# replicates from.  Returns empty if the chain cannot be resolved to a known pod.
-follow_slave_to_master() {
-  local slave_fqdn="$1"
-  # shellcheck disable=SC2206
-  local cli_base=(valkey-cli --no-auth-warning ${VALKEY_CLI_TLS_ARGS} -p "${service_port}")
-  if ! is_empty "${VALKEY_DEFAULT_PASSWORD}"; then
-    cli_base+=(-a "${VALKEY_DEFAULT_PASSWORD}")
-  fi
-  local master_host
-  master_host=$("${cli_base[@]}" -h "${slave_fqdn}" info replication 2>/dev/null \
-    | grep "^master_host:" | tr -d '\r\n' | cut -d: -f2) || true
-  is_empty "${master_host}" && return 0
-  IFS=',' read -ra pod_fqdns <<< "${VALKEY_POD_FQDN_LIST}"
-  for pod_fqdn in "${pod_fqdns[@]}"; do
-    local pod_ip
-    pod_ip=$(getent hosts "${pod_fqdn}" 2>/dev/null | awk '{print $1}' | head -n1) || true
-    if [ "${master_host}" = "${pod_ip}" ] || [ "${master_host}" = "${pod_fqdn}" ] || \
-       contains "${pod_fqdn}" "${master_host}."; then
-      echo "${pod_fqdn}"
-      return 0
-    fi
-  done
-  return 0
 }
 
 rebuild_acl_file() {
