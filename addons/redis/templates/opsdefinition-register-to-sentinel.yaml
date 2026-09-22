@@ -111,6 +111,10 @@ spec:
           valueFrom:
             envRef:
               envName: IS_REDIS5
+        - name: CLUSTER_DOMAIN
+          valueFrom:
+            envRef:
+              envName: CLUSTER_DOMAIN
   parametersSchema:
     openAPIV3Schema:
       properties:
