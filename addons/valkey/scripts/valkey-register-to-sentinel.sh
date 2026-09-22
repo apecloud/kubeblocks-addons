@@ -65,7 +65,7 @@ if ! is_empty "${VALKEY_ADVERTISED_PORT}"; then
         primary_host="$lb_host"
         primary_port="6379"
       else
-        primary_port="$CURRENT_POD_HOST_IP"
+        primary_host="$CURRENT_POD_HOST_IP"
       fi
       break
     fi
