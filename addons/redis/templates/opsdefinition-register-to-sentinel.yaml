@@ -111,6 +111,10 @@ spec:
           valueFrom:
             envRef:
               envName: IS_REDIS5
+        - name: CLUSTER_DOMAIN
+          valueFrom:
+            envRef:
+              envName: CLUSTER_DOMAIN
   parametersSchema:
     openAPIV3Schema:
       properties:
@@ -157,3 +161,4 @@ spec:
                   {{- include "kblib.envs.env_exists" $ | nindent 18 }}
                   COMMON_SH_EOF
                   {{- .Files.Get "scripts/redis-register-to-sentinel.sh" | nindent 18 }}
+                  {{- .Files.Get "scripts/redis-sentinel-sync-acl.sh" | nindent 18 }}
