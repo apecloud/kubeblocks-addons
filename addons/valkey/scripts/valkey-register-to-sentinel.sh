@@ -32,6 +32,20 @@ REBUILD_SENTINEL_POD_NAME=${REBUILD_SENTINEL_POD_NAME:-""}
 primary_host=""
 primary_port="${data_port}"
 
+extract_lb_host_by_svc_name() {
+  local svc_name="$1"
+  for lb_composed_name in $(echo "$VALKEY_LB_ADVERTISED_HOST" | tr ',' '\n' ); do
+    if [[ ${lb_composed_name} == *":"* ]]; then
+       if [[ ${lb_composed_name%:*} == "$svc_name" ]]; then
+         echo "${lb_composed_name#*:}"
+         break
+       fi
+    else
+       break
+    fi
+  done
+}
+
 # NodePort path
 if ! is_empty "${VALKEY_ADVERTISED_PORT}"; then
   local_ordinal=$(extract_obj_ordinal "${CURRENT_POD_NAME}")
@@ -39,8 +53,15 @@ if ! is_empty "${VALKEY_ADVERTISED_PORT}"; then
     svc_name="${entry%%:*}"
     svc_port="${entry##*:}"
     if [ "$(extract_obj_ordinal "${svc_name}")" = "${local_ordinal}" ]; then
-      primary_host="${CURRENT_POD_HOST_IP}"
+      lb_host=$(extract_lb_host_by_svc_name "$svc_name")
       primary_port="${svc_port}"
+      if [ -n "$lb_host" ]; then
+        echo "Found load balancer host for svcName '$svc_name', value is '$lb_host'."
+        primary_host="$lb_host"
+        announce_port="6379"
+      else
+        primary_port="$CURRENT_POD_HOST_IP"
+      fi
       break
     fi
   done
