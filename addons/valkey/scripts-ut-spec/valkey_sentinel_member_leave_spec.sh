@@ -44,6 +44,10 @@ Describe "Valkey Sentinel Member Leave Script Tests"
         fi
         printf '%b\n' "${MOCK_MASTERS_OUTPUT:-}"
         ;;
+      # SENTINEL RESET replies with the NUMBER of reset masters (an integer),
+      # never "OK" — verified on a live sentinel.
+      *"SENTINEL RESET"*)
+        printf '%s\n' "${MOCK_RESET_REPLY:-1}" ;;
       *)
         printf 'OK\n' ;;
     esac
@@ -160,6 +164,33 @@ Describe "Valkey Sentinel Member Leave Script Tests"
       The status should be success
       The stdout should eq "1"
     End
+
+    It "fails closed when the RESET reply is an error text instead of a count"
+      # valkey-cli exits 0 even for error replies, and a failed connection /
+      # NOAUTH prints non-numeric text — the integer-reply contract must treat
+      # it as a failure.
+      sentinel_reset_err_exit_status() {
+        local rc=0
+        ( export MOCK_RESET_REPLY="(error) NOAUTH Authentication required."
+          reset_remaining_sentinels ) >/dev/null 2>&1 || rc=$?
+        printf '%s' "${rc}"
+      }
+      When call sentinel_reset_err_exit_status
+      The status should be success
+      The stdout should eq "1"
+    End
+
+    It "accepts a zero count as a successful reset"
+      sentinel_reset_zero_exit_status() {
+        local rc=0
+        ( export MOCK_RESET_REPLY="0"
+          reset_remaining_sentinels ) >/dev/null 2>&1 || rc=$?
+        printf '%s' "${rc}"
+      }
+      When call sentinel_reset_zero_exit_status
+      The status should be success
+      The stdout should eq "0"
+    End
   End
 
   Describe "check_all_sentinel_agreement()"
@@ -190,6 +221,16 @@ Describe "Valkey Sentinel Member Leave Script Tests"
       When call check_agreement_exit_status
       The status should be success
       The stdout should eq "1"
+    End
+  End
+
+  Describe "kblib-independence contract"
+    It "does not call the kblib split()/equals() helpers"
+      # common.sh shipped by older installed addon builds lacks both helpers;
+      # a missing function falls through to the coreutils split binary and
+      # explodes on the FQDN.  Parsing must stay in plain bash IFS reads.
+      When call bash -c "! grep -qE '\$\((split|equals) ' '../scripts/valkey-sentinel-member-leave.sh'"
+      The status should be success
     End
   End
 End

@@ -207,6 +207,8 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: "{{ $.Values.clusterDomain }}"
 
     # ── Credentials ──
     # credentialVarRef resolves to the Secret KubeBlocks created for the
@@ -331,7 +333,7 @@ spec:
     # cover the per-component pod FQDNs and service names.
     - name: VALKEY_CLI_TLS_ARGS
       value: ""
-      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --cacert {{.TLS_MOUNT_PATH}}/ca.crt{{else}}{{end}}` | toYaml }}
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}--tls --insecure{{else}}{{end}}` | toYaml }}
 
     # ── Sentinel cross-component references (optional — absent in standalone) ──
     # compDef uses a regexp prefix; KubeBlocks resolves the concrete name at runtime.
