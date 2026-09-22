@@ -169,4 +169,21 @@ Describe "Redis Sentinel Member Join Script Tests"
       End
     End
   End
+
+  Describe "sentinel ACL sync contract"
+    # A joining Sentinel starts with only the "default" user (written by
+    # redis-sentinel-start-v2.sh from SENTINEL_PASSWORD) and Sentinel never
+    # replicates ACLs between peers, so memberJoin has to push the fleet ACL.
+    It "runs the sentinel ACL sync after the master registration"
+      When call grep -F "redis-sentinel-sync-acl.sh" "../scripts/redis-sentinel-member-join.sh"
+      The status should be success
+      The stdout should include "redis-sentinel-sync-acl.sh"
+    End
+
+    It "fails the action when the ACL sync fails"
+      When call grep -F "sentinel ACL sync failed" "../scripts/redis-sentinel-member-join.sh"
+      The status should be success
+      The stdout should include "sentinel ACL sync failed"
+    End
+  End
 End
