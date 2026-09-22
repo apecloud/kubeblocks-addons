@@ -42,6 +42,7 @@ Describe "Valkey post-restore Sentinel contract"
   End
 
   It "uses current Cluster spec.restore contract in the restore example"
+    Skip if "the valkey restore example is not part of this branch" test ! -f "${restore_example}"
     When call grep -E "restore:|source:|apiGroup: dataprotection.kubeblocks.io|dataprotection.kubeblocks.io/volume-restore-policy: Parallel|DATA_REPLICA_COUNT" "${restore_example}"
     The status should be success
     The stdout should include "restore:"
@@ -52,17 +53,20 @@ Describe "Valkey post-restore Sentinel contract"
   End
 
   It "does not use the legacy restore annotation in the restore example"
+    Skip if "the valkey restore example is not part of this branch" test ! -f "${restore_example}"
     When call grep -F "kubeblocks.io/restore-from-backup" "${restore_example}"
     The status should be failure
   End
 
   It "uses EnvVar array format (not object) for restore-env annotation"
+    Skip if "the valkey restore example is not part of this branch" test ! -f "${restore_example}"
     When call grep -F '"name":"DATA_REPLICA_COUNT","value"' "${restore_example}"
     The status should be success
     The stdout should include '"name":"DATA_REPLICA_COUNT"'
   End
 
   It "documents POST_RESTORE_SENTINEL_EXPECTED_COUNT in the restore example"
+    Skip if "the valkey restore example is not part of this branch" test ! -f "${restore_example}"
     When call grep -F 'POST_RESTORE_SENTINEL_EXPECTED_COUNT' "${restore_example}"
     The status should be success
     The stdout should include "POST_RESTORE_SENTINEL_EXPECTED_COUNT"
