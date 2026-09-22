@@ -278,22 +278,6 @@ spec:
           - -c
           - /scripts/redis-sentinel-member-join.sh
         targetPodSelector: Any
-        env:
-          - name: CURRENT_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: CURRENT_POD_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.podIP
-          - name: CURRENT_POD_HOST_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.hostIP
     memberLeave:
       exec:
         container: redis-sentinel
