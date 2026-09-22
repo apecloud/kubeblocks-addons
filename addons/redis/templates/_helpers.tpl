@@ -189,7 +189,7 @@ Generate scripts configmap
 {{- define "redis.extend.scripts" -}}
 {{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
 {{- $name := $path | base }}
-{{- if not (has $name (list "redis-sentinel-account-provision.sh" "redis-sentinel-member-join.sh" "redis-sentinel-member-leave.sh" "redis-sentinel-ping.sh" "redis-sentinel-post-start.sh" "redis-sentinel-start-v2.sh" "redis5-sentinel-start-v2.sh" "redis6-sentinel-post-start.sh")) }}
+{{- if not (has $name (list "redis-sentinel-account-provision.sh" "redis-sentinel-member-join.sh" "redis-sentinel-member-leave.sh" "redis-sentinel-ping.sh" "redis-sentinel-post-start.sh" "redis-sentinel-start-v2.sh" "redis5-sentinel-start-v2.sh" "redis6-sentinel-post-start.sh" "redis-sentinel-sync-acl.sh")) }}
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
@@ -202,7 +202,7 @@ Generate scripts configmap for the independent redis-sentinel component.
 {{- define "redis-sentinel.extend.scripts" -}}
 {{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
 {{- $name := $path | base }}
-{{- if has $name (list "redis-sentinel-account-provision.sh" "redis-sentinel-member-join.sh" "redis-sentinel-member-leave.sh" "redis-sentinel-ping.sh" "redis-sentinel-post-start.sh" "redis-sentinel-start-v2.sh" "redis5-sentinel-start-v2.sh" "redis6-sentinel-post-start.sh") }}
+{{- if has $name (list "redis-sentinel-account-provision.sh" "redis-sentinel-member-join.sh" "redis-sentinel-member-leave.sh" "redis-sentinel-ping.sh" "redis-sentinel-post-start.sh" "redis-sentinel-start-v2.sh" "redis5-sentinel-start-v2.sh" "redis6-sentinel-post-start.sh" "redis-sentinel-sync-acl.sh") }}
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
