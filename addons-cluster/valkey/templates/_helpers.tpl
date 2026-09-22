@@ -129,6 +129,7 @@ schedulingPolicy:
 
 {{- define "valkey-cluster.componentSpec" }}
 - name: valkey
+  componentDef: valkey-{{ (split "." .Values.version)._0 }}
   {{- include "valkey-cluster.replicaCount" . | nindent 2 }}
   serviceVersion: {{ .Values.version | quote }}
   {{- include "valkey-cluster.exporter" . | nindent 2 }}
@@ -162,6 +163,7 @@ schedulingPolicy:
 
 {{- define "valkey-cluster.sentinelComponentSpec" }}
 - name: valkey-sentinel
+  componentDef: valkey-sentinel
   replicas: {{ max .Values.sentinel.replicas 3 }}
   serviceVersion: {{ .Values.version | quote }}
   {{- include "valkey-cluster.tls" . | nindent 2 }}
