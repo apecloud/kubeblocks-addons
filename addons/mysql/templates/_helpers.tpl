@@ -352,9 +352,9 @@ startupProbe:
       - -c
       - |
         mysql -u${MYSQL_ADMIN_USER} -p${MYSQL_ADMIN_PASSWORD} -P3306 -h127.0.0.1 -e "select check_ts from kubeblocks.kb_health_check where type=1 limit 1;"
-  periodSeconds: 5
+  periodSeconds: 10
   timeoutSeconds: 2
-  failureThreshold: 60
+  failureThreshold: 3600
 {{- end }}
 
 {{/*
