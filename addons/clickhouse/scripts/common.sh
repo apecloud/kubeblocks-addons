@@ -1,6 +1,6 @@
 #!/bin/bash
 export RETRY_ATTEMPTS=3
-export SLEEP_INTERVAL=5
+export SLEEP_INTERVAL=2
 export TLS_MOUNT_PATH="/etc/pki/tls"
 export CLICKHOUSE_PORT="${CLICKHOUSE_TCP_PORT:-9000}"
 export CLICKHOUSE_HOST="${CLICKHOUSE_HOST:-localhost}"
@@ -57,6 +57,22 @@ function keeper_client_bin() {
 	fi
 }
 
+# Whether the resolved keeper client knows --accept-invalid-certificate (25.10+).
+# Cached: the probe spawns the client once per script run at most.
+_keeper_client_accepts_invalid_cert=""
+function keeper_client_accepts_invalid_certificate() {
+	local client="$1"
+
+	if [[ -z "$_keeper_client_accepts_invalid_cert" ]]; then
+		if "$client" --help 2>&1 | grep -q -- "--accept-invalid-certificate"; then
+			_keeper_client_accepts_invalid_cert="yes"
+		else
+			_keeper_client_accepts_invalid_cert="no"
+		fi
+	fi
+	[[ "$_keeper_client_accepts_invalid_cert" == "yes" ]]
+}
+
 # Low-level keeper client execution with connection retry
 # Handles connection issues, timeouts, and transient network problems
 function keeper_run() {
@@ -73,18 +89,22 @@ function keeper_run() {
 
 	for attempt in $(seq 1 $RETRY_ATTEMPTS); do
 		local output
+		local keeper_host="$host"
+		if [[ "${TLS_ENABLED:-false}" == "true" && "$host" != secure://* ]]; then
+			keeper_host="secure://$host"
+		fi
 		local keeper_args=(
 			--connection-timeout=15
 			--session-timeout=30
 			--operation-timeout=15
 			--history-file=/dev/null
-			-h "$host"
+			-h "$keeper_host"
 			-p "$CLICKHOUSE_KEEPER_PORT"
-			--query "$query"
 		)
-		if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
-			keeper_args+=(--tls-ca-file "$CLICKHOUSE_TLS_CA" --tls-cert-file "$CLICKHOUSE_TLS_CERT" --tls-key-file "$CLICKHOUSE_TLS_KEY")
+		if [[ "$keeper_host" == secure://* ]] && keeper_client_accepts_invalid_certificate "$keeper_client"; then
+			keeper_args+=(--accept-invalid-certificate)
 		fi
+		keeper_args+=(--query "$query")
 		if output=$("$keeper_client" "${keeper_args[@]}" 2>&1); then
 			if [[ "$output" != *"Coordination error"* ]] &&
 				[[ "$output" != *"Connection refused"* ]] &&
@@ -155,22 +175,25 @@ function get_zxid() {
 	echo "$zxid"
 }
 
-# Get keeper node mode by keeper
+# Get keeper node mode by keeper.
+# Reads `srvr` over the addon's own TLS-aware 4lw path: the keeper client's own
+# four-letter-word mode opens a plain StreamSocket with the raw `-h` value, so it
+# cannot be used together with the "secure://" host prefix that carries TLS.
 function get_mode_by_keeper() {
-	local mode=$(keeper_run "$1" "srvr" | grep Mode)
+	local mode=$(get_srvr "$1" | grep Mode)
 	echo "$mode" | awk '{print $2}'
 }
 
 # Get mode with retry to tolerate some network failures
 function get_mode_with_retry() {
 	local host="$1"
-	for _ in {1..5}; do
+	for _ in {1..3}; do
 		local mode
 		if mode=$(get_mode "$host") && [[ -n "$mode" ]]; then
 			echo "$mode"
 			return 0
 		fi
-		sleep 6
+		sleep 2
 	done
 	return 1
 }
