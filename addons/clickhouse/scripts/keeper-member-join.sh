@@ -5,6 +5,9 @@ source /scripts/common.sh
 new_member_fqdn="$KB_JOIN_MEMBER_POD_FQDN"
 new_member_name="$KB_JOIN_MEMBER_POD_NAME"
 keeper_raft_port=${CLICKHOUSE_KEEPER_RAFT_PORT:-9234}
+if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
+  keeper_raft_port=${CLICKHOUSE_KEEPER_RAFT_TLS_PORT:-9444}
+fi
 
 # 1. Find leader from existing members
 leader_fqdn=$(find_leader "$CH_KEEPER_POD_FQDN_LIST")
