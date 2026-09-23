@@ -209,7 +209,7 @@ spec:
           optional: false
           replicas: Required
   updateStrategy: Serial
-  podManagementPolicy: Parallel
+  podManagementPolicy: OrderedReady
   volumes:
     - name: data
   tls:
