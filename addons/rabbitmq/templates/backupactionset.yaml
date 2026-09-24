@@ -1,0 +1,49 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: rabbitmq-physical-br
+  labels:
+    clusterdefinition.kubeblocks.io/name: rabbitmq
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    # Backup jobs inherit target-pod env, but POD_NAME resolves to the job pod.
+    # Rebuild the broker nodename from the selected data-protection target pod.
+    - name: RABBITMQ_NODENAME
+      value: rabbit@$(DP_TARGET_POD_NAME).$(K8S_SERVICE_NAME).$(POD_NAMESPACE)
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: $(IMAGE)
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
+  restore:
+    prepareData:
+      image: $(IMAGE)
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 10 }}
+    postReady:
+      - job:
+          image: $(IMAGE)
+          runOnTargetPodNode: true
+          onError: Fail
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/post-restore.sh" | nindent 14 }}
