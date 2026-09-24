@@ -10,8 +10,8 @@ function handle_exit() {
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
     echo "failed with exit code $exit_code"
-    touch "${DP_BACKUP_INFO_FILE}.exit"
-    exit 1
+    touch "${DP_BACKUP_INFO_FILE}.exit" || true
+    exit "${exit_code}"
   fi
 }
 trap handle_exit EXIT

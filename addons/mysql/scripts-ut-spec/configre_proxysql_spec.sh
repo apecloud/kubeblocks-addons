@@ -21,6 +21,14 @@ Describe "ProxySQL Configuration Script Tests"
     End
   End
 
+  Describe "Secret Hygiene Tests"
+    It "does not pass the MySQL root password to log"
+      When run grep -nE 'log .*MYSQL_ROOT_PASSWORD' ../scripts/configure-proxysql.sh
+      The status should be failure
+      The output should equal ""
+    End
+  End
+
   Describe "MySQL Exec Function Tests"
 
     It "executes MySQL command successfully"
