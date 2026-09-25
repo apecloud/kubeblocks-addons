@@ -19,6 +19,14 @@ spec:
       - {{ index . 0 }}
 {{- end }}
 {{- end }}
+{{- if .Values.es9.enabled }}
+  - compDefs:
+      - {{ include "elasticsearch9.cmpdRegexPattern" . }}
+      - {{ include "elasticsearchMaster9.cmpdRegexPattern" . }}
+      - {{ include "elasticsearchData9.cmpdRegexPattern" . }}
+    releases:
+      - {{ .Values.es9.serviceVersion | quote }}
+{{- end }}
   releases:
 {{- range .Values.esVersions }}
 {{- range .minors }}
@@ -36,4 +44,16 @@ spec:
       prepare-custom-plugins: {{ $imageRegistry }}/{{ $.Values.image.customPlugins.repository }}:{{ $.Values.image.customPlugins.tag }}
 {{- end }}
 {{- end }}
+{{- end }}
+{{- if .Values.es9.enabled }}
+  - name: {{ .Values.es9.serviceVersion | quote }}
+    serviceVersion: {{ .Values.es9.serviceVersion | quote }}
+    images:
+      elasticsearch: {{ .Values.es9.images.elasticsearch | quote }}
+      prepare-plugins: {{ .Values.es9.images.plugin | quote }}
+      install-plugins: {{ .Values.es9.images.elasticsearch | quote }}
+      exporter: {{ .Values.es9.images.exporter | quote }}
+      memberleave: {{ .Values.es9.images.tools | quote }}
+      install-es-agent: {{ .Values.es9.images.agent | quote }}
+      es-agent: {{ .Values.es9.images.elasticsearch | quote }}
 {{- end }}

@@ -1,220 +1,48 @@
-{{/*
-Expand the name of the chart.
-*/}}
-{{- define "elasticsearch.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "elasticsearch.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
-{{- define "elasticsearch.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Common labels
-*/}}
-{{- define "elasticsearch.labels" -}}
-helm.sh/chart: {{ include "elasticsearch.chart" . }}
-{{ include "elasticsearch.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
-Selector labels
-*/}}
-{{- define "elasticsearch.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "elasticsearch.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Common annotations
-*/}}
-{{- define "elasticsearch.annotations" -}}
-{{ include "kblib.helm.resourcePolicy" . }}
-{{ include "elasticsearch.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "elasticsearch.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
-{{- end }}
-
-{{- define "elasticsearch.cmpdRegexPattern" -}}
-^elasticsearch(-master|-data)?-(6|7|8)-
+{{- define "elasticsearch9.cmpdName" -}}
+elasticsearch-9-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "elasticsearchGeneric.cmpdRegexPattern" -}}
-^elasticsearch-(6|7|8)-
+{{- define "elasticsearchMaster9.cmpdName" -}}
+elasticsearch-master-9-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "elasticsearchMaster.cmpdRegexPattern" -}}
-^elasticsearch-master-(6|7|8)-
+{{- define "elasticsearchData9.cmpdName" -}}
+elasticsearch-data-9-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "elasticsearchData.cmpdRegexPattern" -}}
-^elasticsearch-data-(6|7|8)-
+{{- define "elasticsearch9.cmpdRegexPattern" -}}
+^elasticsearch-9-
 {{- end -}}
 
-{{- define "elasticsearch6.cmpdName" -}}
-elasticsearch-6-{{ .Chart.Version }}
+{{- define "elasticsearchMaster9.cmpdRegexPattern" -}}
+^elasticsearch-master-9-
 {{- end -}}
 
-{{- define "elasticsearchMaster6.cmpdName" -}}
-elasticsearch-master-6-{{ .Chart.Version }}
+{{- define "elasticsearchData9.cmpdRegexPattern" -}}
+^elasticsearch-data-9-
 {{- end -}}
 
-{{- define "elasticsearchData6.cmpdName" -}}
-elasticsearch-data-6-{{ .Chart.Version }}
+{{- define "elasticsearch9.cmpdFamilyRegexPattern" -}}
+^elasticsearch(-master|-data)?-9-
 {{- end -}}
 
-{{- define "elasticsearch6.cmpdRegexPattern" -}}
-^elasticsearch-6-
+{{- define "elasticsearch9.configTplName" -}}
+elasticsearch-9-config-tpl-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "elasticsearchMaster6.cmpdRegexPattern" -}}
-^elasticsearch-master-6-
+{{- define "kibana9.cmpdName" -}}
+kibana-9-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "elasticsearchData6.cmpdRegexPattern" -}}
-^elasticsearch-data-6-
+{{- define "kibana9.cmpdRegexPattern" -}}
+^kibana-9-
 {{- end -}}
 
-{{- define "elasticsearch7.cmpdName" -}}
-elasticsearch-7-{{ .Chart.Version }}
+{{- define "kibana9.configTplName" -}}
+kibana-9-config-tpl
 {{- end -}}
 
-{{- define "elasticsearchMaster7.cmpdName" -}}
-elasticsearch-master-7-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchData7.cmpdName" -}}
-elasticsearch-data-7-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearch7.cmpdRegexPattern" -}}
-^elasticsearch-7-
-{{- end -}}
-
-{{- define "elasticsearchMaster7.cmpdRegexPattern" -}}
-^elasticsearch-master-7-
-{{- end -}}
-
-{{- define "elasticsearchData7.cmpdRegexPattern" -}}
-^elasticsearch-data-7-
-{{- end -}}
-
-{{- define "elasticsearch8.cmpdName" -}}
-elasticsearch-8-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchMaster8.cmpdName" -}}
-elasticsearch-master-8-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearchData8.cmpdName" -}}
-elasticsearch-data-8-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearch8.cmpdRegexPattern" -}}
-^elasticsearch-8-
-{{- end -}}
-
-{{- define "elasticsearchMaster8.cmpdRegexPattern" -}}
-^elasticsearch-master-8-
-{{- end -}}
-
-{{- define "elasticsearchData8.cmpdRegexPattern" -}}
-^elasticsearch-data-8-
-{{- end -}}
-
-{{- define "elasticsearch.scriptsTplName" -}}
-elasticsearch-scripts-tpl
-{{- end -}}
-
-{{- define "elasticsearch6.configTplName" -}}
-elasticsearch-6-config-tpl-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearch7.configTplName" -}}
-elasticsearch-7-config-tpl-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "elasticsearch8.configTplName" -}}
-elasticsearch-8-config-tpl-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "kibana6.cmpdName" -}}
-kibana-6-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "kibana6.cmpdRegexPattern" -}}
-^kibana-6-
-{{- end -}}
-
-{{- define "kibana7.cmpdName" -}}
-kibana-7-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "kibana7.cmpdRegexPattern" -}}
-^kibana-7-
-{{- end -}}
-
-{{- define "kibana8.cmpdName" -}}
-kibana-8-{{ .Chart.Version }}
-{{- end -}}
-
-{{- define "kibana8.cmpdRegexPattern" -}}
-^kibana-8-
-{{- end -}}
-
-{{- define "kibana6.configTplName" -}}
-kibana-6-config-tpl
-{{- end -}}
-
-{{- define "kibana7.configTplName" -}}
-kibana-7-config-tpl
-{{- end -}}
-
-{{- define "kibana8.configTplName" -}}
-kibana-8-config-tpl
-{{- end -}}
-
-{{- define "kibana.probe" -}}
-exec:
-  command:
-  - bash
-  - -c
-  - |
-    /mnt/remote-scripts/kibana-probe.sh
-{{- end -}}
-
-{{- define "elasticsearch.common" }}
+{{- define "elasticsearch9.common" }}
 provider: kubeblocks
 description: Elasticsearch is a distributed, restful search engine optimized for speed and relevance on production-scale workloads.
 serviceKind: elasticsearch
@@ -302,24 +130,6 @@ runtime:
       volumeMounts:
         - mountPath: /tmp/plugins
           name: plugins
-    - name: prepare-custom-plugins
-      imagePullPolicy: {{ .Values.image.pullPolicy }}
-      command:
-        - sh
-        - -c
-        - |
-          /plugins/pick-plugins.sh all $ELASTICSEARCH_VERSION /mnt/local-plugins
-      securityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - ALL
-        privileged: false
-        runAsNonRoot: true
-        runAsUser: 1000
-      volumeMounts:
-        - mountPath: /mnt/local-plugins
-          name: local-plugins       
     - name: install-plugins
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
@@ -499,7 +309,7 @@ runtime:
         timeoutSeconds: 5
         periodSeconds: 5
     - name: es-agent
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.agent.repository }}:{{ .Values.image.agent.tag }}
+      image: {{ .Values.es9.images.elasticsearch | quote }}
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
       - /usr/share/elasticsearch/bin/es-agent
@@ -592,7 +402,7 @@ runtime:
 {{- end }}
 {{- end }}
 
-{{- define "kibana.common" }}
+{{- define "kibana9.common" }}
 provider: kubeblocks
 description: Kibana is a browser-based analytics and search dashboard for Elasticsearch.
 serviceKind: kibana
@@ -624,7 +434,7 @@ vars:
 - name: ELASTIC_USER_PASSWORD
   valueFrom:
     credentialVarRef:
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearch9.cmpdFamilyRegexPattern" . }}
       name: elastic
       optional: false
       password: Required
@@ -633,7 +443,7 @@ vars:
 - name: KIBANA_SYSTEM_USER_PASSWORD
   valueFrom:
     credentialVarRef:
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearch9.cmpdFamilyRegexPattern" . }}
       name: kibana_system
       optional: false
       password: Required
@@ -642,7 +452,7 @@ vars:
 - name: ELASTICSEARCH_HOST
   valueFrom:
     serviceVarRef:
-      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
+      compDef: {{ include "elasticsearch9.cmpdFamilyRegexPattern" . }}
       name: http
       host: Required
       multipleClusterObjectOption:
@@ -713,48 +523,3 @@ runtime:
   securityContext:
     fsGroup: 1000
 {{- end }}
-
-{{- define "elasticsearch.commonVars" -}}
-- name: ELASTICSEARCH_VERSION
-  valueFrom:
-    componentVarRef:
-      optional: false
-      serviceVersion: Required
-- name: ELASTICSEARCH_PORT
-  value: "9200"
-- name: ELASTIC_USERNAME
-  value: "elastic"
-- name: REMOTE_PRIMARY_HOST
-  valueFrom:
-    serviceRefVarRef:
-      name: remote-instances
-      optional: true
-      host: Required
-- name: REMOTE_PRIMARY_PORT
-  valueFrom:
-    serviceRefVarRef:
-      name: remote-instances
-      optional: true
-      port: Required
-- name: REMOTE_PRIMARY_USER
-  valueFrom:
-    serviceRefVarRef:
-      name: remote-instances
-      optional: true
-      username: Optional
-- name: REMOTE_PRIMARY_PASSWORD
-  valueFrom:
-    serviceRefVarRef:
-      name: remote-instances
-      optional: true
-      password: Optional
-{{- end -}}
-
-{{- define "elasticsearch.remoteServiceRef" }}
-serviceRefDeclarations:
-- name: remote-instances
-  serviceRefDeclarationSpecs:
-    - serviceKind: elasticsearch
-      serviceVersion: "^*"
-  optional: true
-{{- end -}}
