@@ -20,6 +20,8 @@ image:
   pullPolicy: IfNotPresent
 
 clickhouseVersions:
+  - version: 26.5.3
+    imageTag: 26.5.3
   - version: 25.9.7
     imageTag: 25.9.7
   - version: 25.4.4
