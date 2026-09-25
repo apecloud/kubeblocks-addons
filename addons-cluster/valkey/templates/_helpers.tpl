@@ -24,9 +24,43 @@ disableExporter: true
 {{- if eq .Values.mode "standalone" }}
 replicas: 1
 {{- else if eq .Values.mode "replication" }}
-replicas: {{ max .Values.replicas 2 }}
+replicas: {{ .Values.replicas }}
 {{- end }}
 {{- end }}
+
+{{- define "valkey-cluster.validateInputs" -}}
+{{- if and .Values.nodePortEnabled .Values.loadBalancerEnabled -}}
+{{- fail "nodePortEnabled and loadBalancerEnabled are mutually exclusive" -}}
+{{- end -}}
+{{- if ne (empty .Values.customSecretName) (empty .Values.customSecretNamespace) -}}
+{{- fail "customSecretName and customSecretNamespace must be set together" -}}
+{{- end -}}
+{{- if ne (empty .Values.sentinel.customSecretName) (empty .Values.sentinel.customSecretNamespace) -}}
+{{- fail "sentinel.customSecretName and sentinel.customSecretNamespace must be set together" -}}
+{{- end -}}
+{{- if and (eq .Values.mode "replication") (lt (int .Values.replicas) 2) -}}
+{{- fail "mode=replication requires replicas >= 2" -}}
+{{- end -}}
+{{- if or (lt (int .Values.sentinel.replicas) 3) (gt (int .Values.sentinel.replicas) 5) -}}
+{{- fail "sentinel.replicas must be in the supported range 3..5" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "valkey-cluster.memoryQuantity" -}}
+{{- if kindIs "string" .Values.memory -}}{{ .Values.memory }}{{- else -}}{{ .Values.memory }}Gi{{- end -}}
+{{- end -}}
+
+{{- define "valkey-cluster.storageQuantity" -}}
+{{- if kindIs "string" .Values.storage -}}{{ .Values.storage }}{{- else -}}{{ .Values.storage }}Gi{{- end -}}
+{{- end -}}
+
+{{- define "valkey-cluster.sentinelMemoryQuantity" -}}
+{{- if kindIs "string" .Values.sentinel.memory -}}{{ .Values.sentinel.memory }}{{- else -}}{{ .Values.sentinel.memory }}Gi{{- end -}}
+{{- end -}}
+
+{{- define "valkey-cluster.sentinelStorageQuantity" -}}
+{{- if kindIs "string" .Values.sentinel.storage -}}{{ .Values.sentinel.storage }}{{- else -}}{{ .Values.sentinel.storage }}Gi{{- end -}}
+{{- end -}}
 
 {{- define "valkey-cluster.major" -}}
 {{- regexFind "^[0-9]+" (toString .Values.version) -}}
@@ -37,6 +71,42 @@ replicas: {{ max .Values.replicas 2 }}
 {{- printf "replication-%s" (include "valkey-cluster.major" .) -}}
 {{- else -}}
 {{- .Values.mode -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Fail-fast contract for cluster (sharding) mode: missing or out-of-range
+inputs must abort rendering — never silently fall back to replication or
+defaults (design record: issue #3021 / Slock #valkey:a7e4c67f).
+v1 boundary: Valkey 9 only; in-cluster networking only.
+*/}}
+{{- define "valkey-cluster.validateClusterMode" -}}
+{{- if not .Values.cluster -}}
+{{- fail "mode=cluster requires the .cluster block (cluster.shards, cluster.replicas)" -}}
+{{- end -}}
+{{- if not .Values.cluster.shards -}}
+{{- fail "mode=cluster requires cluster.shards (3..32)" -}}
+{{- end -}}
+{{- if or (lt (int .Values.cluster.shards) 3) (gt (int .Values.cluster.shards) 32) -}}
+{{- fail (printf "cluster.shards=%v out of the supported range 3..32" .Values.cluster.shards) -}}
+{{- end -}}
+{{- if not .Values.cluster.replicas -}}
+{{- fail "mode=cluster requires cluster.replicas (pods per shard, 1..5)" -}}
+{{- end -}}
+{{- if or (lt (int .Values.cluster.replicas) 1) (gt (int .Values.cluster.replicas) 5) -}}
+{{- fail (printf "cluster.replicas=%v out of the supported range 1..5" .Values.cluster.replicas) -}}
+{{- end -}}
+{{- if ne (include "valkey-cluster.major" .) "9" -}}
+{{- fail (printf "mode=cluster v1 supports Valkey 9 only, got version %v" .Values.version) -}}
+{{- end -}}
+{{- if or .Values.nodePortEnabled .Values.loadBalancerEnabled -}}
+{{- fail "mode=cluster v1 supports in-cluster networking only: nodePortEnabled/loadBalancerEnabled are not supported" -}}
+{{- end -}}
+{{- if .Values.tlsEnable -}}
+{{- fail "mode=cluster v1 does not support TLS yet (shard template and start script do not wire tls-port); tlsEnable must be false" -}}
+{{- end -}}
+{{- if or .Values.customSecretName .Values.customSecretNamespace -}}
+{{- fail "mode=cluster v1 does not wire customSecretName/customSecretNamespace into shard system accounts; unset them (silently ignoring credentials is not acceptable)" -}}
 {{- end -}}
 {{- end -}}
 
@@ -59,10 +129,10 @@ spec:
 resources:
   limits:
     cpu: {{ .Values.cpu | quote }}
-    memory: {{ print .Values.memory "Gi" | quote }}
+    memory: {{ include "valkey-cluster.memoryQuantity" . | quote }}
   requests:
     cpu: {{ .Values.cpu | quote }}
-    memory: {{ print .Values.memory "Gi" | quote }}
+    memory: {{ include "valkey-cluster.memoryQuantity" . | quote }}
 {{- end }}
 
 {{- define "valkey-cluster.componentStorages" }}
@@ -76,17 +146,17 @@ volumeClaimTemplates:
       {{- end }}
       resources:
         requests:
-          storage: {{ print .Values.storage "Gi" }}
+          storage: {{ include "valkey-cluster.storageQuantity" . }}
 {{- end }}
 
 {{- define "valkey-cluster.sentinelResources" }}
 resources:
   limits:
     cpu: {{ .Values.sentinel.cpu | quote }}
-    memory: {{ print .Values.sentinel.memory "Gi" | quote }}
+    memory: {{ include "valkey-cluster.sentinelMemoryQuantity" . | quote }}
   requests:
     cpu: {{ .Values.sentinel.cpu | quote }}
-    memory: {{ print .Values.sentinel.memory "Gi" | quote }}
+    memory: {{ include "valkey-cluster.sentinelMemoryQuantity" . | quote }}
 {{- end }}
 
 {{- define "valkey-cluster.sentinelStorages" }}
@@ -100,7 +170,7 @@ volumeClaimTemplates:
       {{- end }}
       resources:
         requests:
-          storage: {{ print .Values.sentinel.storage "Gi" }}
+          storage: {{ include "valkey-cluster.sentinelStorageQuantity" . }}
 {{- end }}
 
 {{- define "valkey-cluster.componentSchedulingPolicy" }}
@@ -114,6 +184,20 @@ schedulingPolicy:
                 app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
                 app.kubernetes.io/managed-by: "kubeblocks"
                 apps.kubeblocks.io/component-name: "valkey"
+            topologyKey: kubernetes.io/hostname
+          weight: 100
+{{- end }}
+
+{{- define "valkey-cluster.shardSchedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+                app.kubernetes.io/component: "valkey-cluster-shard"
             topologyKey: kubernetes.io/hostname
           weight: 100
 {{- end }}
@@ -168,7 +252,7 @@ schedulingPolicy:
 
 {{- define "valkey-cluster.sentinelComponentSpec" }}
 - name: valkey-sentinel
-  replicas: {{ max .Values.sentinel.replicas 3 }}
+  replicas: {{ .Values.sentinel.replicas }}
   serviceVersion: {{ .Values.version | quote }}
   {{- include "valkey-cluster.tls" . | nindent 2 }}
   {{- if .Values.podAntiAffinityEnabled }}

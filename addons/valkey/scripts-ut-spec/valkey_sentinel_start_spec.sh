@@ -87,18 +87,25 @@ Describe "Valkey Sentinel Start Bash Script Tests"
   End
 
   Describe "calculate_sentinel_monitor_quorum()"
-    It "computes strict majority and ignores empty entries"
+    It "rejects empty entries instead of inflating the target list"
       export SENTINEL_POD_FQDN_LIST="s-0.h.ns.svc,,s-1.h.ns.svc,s-2.h.ns.svc,"
       When call calculate_sentinel_monitor_quorum
-      The status should be success
-      The stdout should eq "2"
+      The status should be failure
+      The stderr should include "empty target"
+    End
+
+    It "rejects duplicate targets instead of inflating quorum"
+      export SENTINEL_POD_FQDN_LIST="s-0.h.ns.svc,s-0.h.ns.svc,s-1.h.ns.svc"
+      When call calculate_sentinel_monitor_quorum
+      The status should be failure
+      The stderr should include "duplicate target"
     End
 
     It "fails when the list is empty"
       export SENTINEL_POD_FQDN_LIST=""
       When call calculate_sentinel_monitor_quorum
       The status should be failure
-      The stderr should include "cannot compute Sentinel monitor quorum"
+      The stderr should include "empty target"
     End
   End
 End

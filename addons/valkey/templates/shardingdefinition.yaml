@@ -1,0 +1,52 @@
+{{- /*
+ShardingDefinition for Valkey Cluster (sharding) mode.
+
+Phase B (issue #3026) enables shard lifecycle: shardRemove drains this shard's slots and only deletes nodes after a
+POSITIVE zero-slots observation (never on del-node success alone).
+*/}}
+apiVersion: apps.kubeblocks.io/v1
+kind: ShardingDefinition
+metadata:
+  name: valkey-cluster
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
+spec:
+  template:
+    compDef: {{ include "valkeyCluster.cmpdRegexpPattern" . }}
+  shardsLimit:
+    # Valkey Cluster needs >=3 masters for a sane slot/failover layout.
+    # 32 is the reviewed v1 upper bound (raise only with scale evidence).
+    minShards: 3
+    maxShards: 32
+  # Parallel provisioning is REQUIRED for single-shot formation: cluster
+  # create needs every shard's designated primary reachable at once; the
+  # coordinator defers (rc=1, framework retry) until all shards answer —
+  # deterministic convergence, no sleeps. Updates stay Serial for safe
+  # rolling behavior.
+  provisionStrategy: Parallel
+  updateStrategy: Serial
+  systemAccounts:
+    - name: default
+      shared: true
+  lifecycleActions:
+    shardRemove:
+      exec:
+        container: valkey-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/valkey-cluster-manage.sh --shard-remove
+        env:
+          # kbagent-executed actions do NOT inherit the runtime container's
+          # downward-API env — pod identity must be declared on the action
+          # itself (r2 live first-blocker; same pattern as sentinel cmpd).
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+      retryPolicy:
+        maxRetries: 20
+        retryInterval: 5

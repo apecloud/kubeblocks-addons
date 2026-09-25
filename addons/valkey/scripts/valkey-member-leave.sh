@@ -33,8 +33,25 @@ port="${SERVICE_PORT:-6379}"
 load_common_library() {
   # shellcheck source=/dev/null
   source /scripts/common.sh
+  # shellcheck source=/dev/null
+  source /scripts/sentinel-endpoint.sh
 }
 sentinel_port="${SENTINEL_SERVICE_PORT:-26379}"
+ACTION_CLIENT_TIMEOUT_SECONDS="${ACTION_CLIENT_TIMEOUT_SECONDS:-3}"
+
+member_leave_diagnose() {
+  local phase="$1"
+  local retry_safe="$2"
+  local detail="$3"
+  {
+    echo "memberLeave diagnosis:"
+    echo "  action: memberLeave"
+    echo "  phase: ${phase}"
+    echo "  cluster: ${KB_CLUSTER_NAME:-<unset>}"
+    echo "  detail: ${detail}"
+    echo "  next-retry-safe: ${retry_safe}"
+  } >&2
+}
 
 build_data_cli() {
   local host="${1}"
@@ -60,6 +77,44 @@ build_sentinel_cli() {
   fi
 }
 
+run_data_cli() {
+  timeout "${ACTION_CLIENT_TIMEOUT_SECONDS}" "${_data_cli_cmd[@]}" "$@"
+}
+
+run_selected_sentinel_cli() {
+  timeout "${ACTION_CLIENT_TIMEOUT_SECONDS}" "${s_cli[@]}" "$@"
+}
+
+run_sentinel_cli_for_host() {
+  local host="$1"
+  shift
+  build_sentinel_cli "${host}"
+  timeout "${ACTION_CLIENT_TIMEOUT_SECONDS}" "${_sentinel_cli_cmd[@]}" "$@"
+}
+
+canonicalize_sentinel_endpoints() {
+  local raw="$1"
+  local endpoint
+  local -A seen=()
+
+  sentinel_fqdns=()
+  case "${raw}" in
+    ""|,*|*,|*,,*)
+      return 1
+      ;;
+  esac
+
+  IFS=',' read -ra raw_sentinel_fqdns <<< "${raw}"
+  for endpoint in "${raw_sentinel_fqdns[@]}"; do
+    if is_empty "${endpoint}" || [ -n "${seen[${endpoint}]:-}" ]; then
+      return 1
+    fi
+    seen["${endpoint}"]=1
+    sentinel_fqdns+=("${endpoint}")
+  done
+  [ "${#sentinel_fqdns[@]}" -gt 0 ]
+}
+
 # Fail-closed safety check: when no Sentinel is reachable, only allow
 # member-leave to succeed if the leaving pod is a confirmed replica.
 # Returns 0 for slave, 1 for master/unknown/empty.
@@ -75,22 +130,94 @@ no_sentinel_safety_check() {
 
 sentinel_master_state() {
   # Prints one of:
-  #   leaving   - Sentinel still reports the leaving pod as master
-  #   different - Sentinel reports another concrete master
-  #   unknown   - Sentinel has no concrete master answer
-  local sm
-  sm=$("${s_cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
-         | head -n1 | tr -d '\r\n') || true
-  if is_empty "${sm}" || [ "${sm}" = "(nil)" ]; then
+  #   leaving   - a strict majority still reports the leaving pod as master
+  #   different - a strict majority reports the same other concrete master
+  #   unknown   - configured Sentinels have no strict-majority answer
+  local endpoint reply host reported_port vote_host
+  local total="${#sentinel_fqdns[@]}"
+  local threshold=$((total / 2))
+  local -a fields=()
+  local -A votes=()
+
+  if [ "${total}" -eq 0 ]; then
     echo "unknown"
     return 0
   fi
-  if contains "${sm}" "${KB_LEAVE_MEMBER_POD_NAME}." || \
-     { ! is_empty "${leaving_ip}" && [ "${sm}" = "${leaving_ip}" ]; }; then
-    echo "leaving"
-    return 0
+
+  for endpoint in "${sentinel_fqdns[@]}"; do
+    reply=$(run_sentinel_cli_for_host "${endpoint}" \
+      SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null) || continue
+    mapfile -t fields < <(printf '%s\n' "${reply}" | tr -d '\r' | sed '/^$/d')
+    if [ "${#fields[@]}" -ne 2 ]; then
+      continue
+    fi
+    host="${fields[0]}"
+    reported_port="${fields[1]}"
+    vote_host=$(resolve_sentinel_master_endpoint "${host}" "${reported_port}" member-leave) || continue
+    if [ "${vote_host%%.*}" = "${KB_LEAVE_MEMBER_POD_FQDN%%.*}" ]; then
+      vote_host="__leaving__"
+    fi
+    votes["${vote_host}"]=$(( ${votes["${vote_host}"]:-0} + 1 ))
+  done
+
+  for vote_host in "${!votes[@]}"; do
+    if [ "${votes[${vote_host}]}" -gt "${threshold}" ]; then
+      if [ "${vote_host}" = "__leaving__" ]; then
+        echo "leaving"
+      else
+        echo "different"
+      fi
+      return 0
+    fi
+  done
+  echo "unknown"
+}
+
+handle_master_leave() {
+  local sentinel_state failover_out failover_rc=0
+  sentinel_state=$(sentinel_master_state)
+  case "${sentinel_state}" in
+    different)
+      echo "Sentinel already reports a different master — memberLeave is safe to continue."
+      return 0
+      ;;
+    unknown)
+      member_leave_diagnose \
+        "master-not-yet-observable" "yes" \
+        "Sentinel returned no concrete master for ${master_name}; keeping the leaving primary."
+      return 1
+      ;;
+  esac
+
+  echo "Leaving pod is the primary per Sentinel — triggering SENTINEL FAILOVER..."
+  failover_out=$(run_selected_sentinel_cli SENTINEL FAILOVER "${master_name}" 2>&1) || failover_rc=$?
+  echo "SENTINEL FAILOVER response: ${failover_out}"
+  if [ "${failover_rc}" -ne 0 ]; then
+    member_leave_diagnose \
+      "failover-transport" "yes" \
+      "SENTINEL FAILOVER transport failed with rc=${failover_rc}; no protocol acceptance was observed."
+    return 1
   fi
-  echo "different"
+  case "${failover_out}" in
+    OK*)
+      member_leave_diagnose \
+        "failover-issued" "yes" \
+        "Sentinel accepted failover; a later invocation must observe a different master."
+      return 1
+      ;;
+    *"BUSY"*|*"INPROG"*)
+      member_leave_diagnose \
+        "failover-in-progress" "yes" \
+        "Sentinel reports an existing failover; a later invocation must confirm its result."
+      return 1
+      ;;
+    *)
+      member_leave_diagnose \
+        "failover-rejected" "no" \
+        "SENTINEL FAILOVER returned ${failover_out:-<empty>}."
+      return 1
+      ;;
+  esac
 }
 
 # This is magic for shellspec ut framework, do not modify!
@@ -100,21 +227,35 @@ ${__SOURCED__:+false} : || return 0
 load_common_library
 
 if is_empty "${SENTINEL_COMPONENT_NAME}" || is_empty "${SENTINEL_POD_FQDN_LIST}"; then
-  if is_empty "${KB_LEAVE_MEMBER_POD_FQDN}"; then
-    echo "ERROR: no Sentinel component and KB_LEAVE_MEMBER_POD_FQDN is not set — cannot prove memberLeave is safe." >&2
+  if is_empty "${KB_LEAVE_MEMBER_POD_FQDN}" || is_empty "${KB_LEAVE_MEMBER_POD_NAME}"; then
+    echo "ERROR: no Sentinel component and leaving-member identity is incomplete — cannot prove memberLeave is safe." >&2
     exit 1
   fi
   build_data_cli "${KB_LEAVE_MEMBER_POD_FQDN}"
-  leaving_role=$("${_data_cli_cmd[@]}" INFO replication 2>/dev/null \
+  leaving_role=$(run_data_cli INFO replication 2>/dev/null \
                    | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
   echo "Leaving pod: ${KB_LEAVE_MEMBER_POD_FQDN}, role: ${leaving_role:-unknown}"
-  no_sentinel_safety_check "${leaving_role}"
-  exit $?
+  if no_sentinel_safety_check "${leaving_role}"; then
+    exit 0
+  fi
+  member_leave_diagnose \
+    "no-sentinel-safety-proof" "no" \
+    "The leaving pod is not a confirmed replica and no Sentinel topology is configured."
+  exit 1
 fi
 
-if is_empty "${KB_LEAVE_MEMBER_POD_FQDN}"; then
-  echo "KB_LEAVE_MEMBER_POD_FQDN not set — skipping." >&2
-  exit 0
+if is_empty "${KB_LEAVE_MEMBER_POD_FQDN}" || is_empty "${KB_LEAVE_MEMBER_POD_NAME}"; then
+  member_leave_diagnose \
+    "missing-leaving-member" "no" \
+    "KB_LEAVE_MEMBER_POD_FQDN and KB_LEAVE_MEMBER_POD_NAME are required to prove memberLeave completion."
+  exit 1
+fi
+
+if ! canonicalize_sentinel_endpoints "${SENTINEL_POD_FQDN_LIST}"; then
+  member_leave_diagnose \
+    "invalid-sentinel-endpoints" "no" \
+    "SENTINEL_POD_FQDN_LIST must contain unique, nonempty endpoints."
+  exit 1
 fi
 
 master_name="${VALKEY_COMPONENT_NAME}"
@@ -122,42 +263,40 @@ leaving_fqdn="${KB_LEAVE_MEMBER_POD_FQDN}"
 
 # Determine the role of the leaving pod
 build_data_cli "${leaving_fqdn}"
-leaving_role=$("${_data_cli_cmd[@]}" INFO replication 2>/dev/null \
+leaving_role=$(run_data_cli INFO replication 2>/dev/null \
                  | grep "^role:" | tr -d '\r\n' | cut -d: -f2) || true
 
 echo "Leaving pod: ${leaving_fqdn}, role: ${leaving_role:-unknown}"
 
-# Pick the most up-to-date reachable Sentinel (highest config-epoch).
-# Using config-epoch avoids choosing an isolated/stale sentinel that has
-# fallen behind after repeated failovers — stale sentinels have no slaves
-# and will reject or silently no-op SENTINEL FAILOVER requests.
+# Pick one reachable Sentinel only as the command recipient. Completion is
+# determined separately by strict-majority readback across every configured
+# Sentinel, so this single endpoint can never establish the terminal state.
 sentinel_fqdn=""
-best_epoch=-1
-IFS=',' read -ra sentinel_fqdns <<< "${SENTINEL_POD_FQDN_LIST}"
 for s in "${sentinel_fqdns[@]}"; do
   build_sentinel_cli "${s}"
-  if "${_sentinel_cli_cmd[@]}" PING 2>/dev/null | grep -q "PONG"; then
-    epoch=$("${_sentinel_cli_cmd[@]}" SENTINEL masters 2>/dev/null \
-              | awk '/^config-epoch$/{getline; gsub(/\r/,""); print; exit}')
-    epoch="${epoch:-0}"
-    if [ "${epoch}" -gt "${best_epoch}" ]; then
-      best_epoch="${epoch}"
-      sentinel_fqdn="${s}"
-    fi
+  if timeout "${ACTION_CLIENT_TIMEOUT_SECONDS}" "${_sentinel_cli_cmd[@]}" PING 2>/dev/null | grep -q "PONG"; then
+    sentinel_fqdn="${s}"
+    break
   fi
 done
 
 if is_empty "${sentinel_fqdn}"; then
-  no_sentinel_safety_check "${leaving_role}"
-  exit $?
+  if no_sentinel_safety_check "${leaving_role}"; then
+    exit 0
+  fi
+  member_leave_diagnose \
+    "sentinel-unreachable" "yes" \
+    "No Sentinel answered within ${ACTION_CLIENT_TIMEOUT_SECONDS}s and the leaving pod is not a confirmed replica."
+  exit 1
 fi
 
-echo "Using sentinel ${sentinel_fqdn} (config-epoch=${best_epoch})"
+echo "Using sentinel ${sentinel_fqdn} as the failover command recipient"
 build_sentinel_cli "${sentinel_fqdn}"
 s_cli=("${_sentinel_cli_cmd[@]}")
 
 # Resolve the leaving pod's IP once for all comparisons below.
-leaving_ip=$(getent hosts "${leaving_fqdn}" 2>/dev/null | awk '{print $1}' | head -n1) || true
+leaving_ip=$(timeout "${ACTION_CLIENT_TIMEOUT_SECONDS}" getent hosts "${leaving_fqdn}" 2>/dev/null \
+  | awk '{print $1}' | head -n1) || true
 
 # Policy: never call SENTINEL RESET on member leave.
 #
@@ -202,59 +341,27 @@ leaving_ip=$(getent hosts "${leaving_fqdn}" 2>/dev/null | awk '{print $1}' | hea
 #
 # Behaviour for each leave path:
 #   - leaving_role == "master" AND sentinel still points at leaving pod:
-#       call FAILOVER, wait for new master to be confirmed, then return.
-#       Sentinel itself transitions the demoted master to s_down via
-#       down-after-milliseconds.
+#       call FAILOVER and return a classified retry. A later invocation only
+#       succeeds after Sentinel positively reports a different master.
 #   - leaving_role == "master" AND sentinel already moved on (fast-path):
 #       skip FAILOVER. KubeBlocks removes the pod next; sentinel naturally
 #       marks it s_down and excludes it from decisions.
 #   - leaving_role == "slave" (non-master):
 #       no sentinel action needed. Sentinel self-cleans once the pod is gone.
 
-if [ "${leaving_role}" = "master" ]; then
-  # Double-check sentinel's current opinion before issuing FAILOVER.
-  # KubeBlocks calls switchover before memberLeave; if the chosen sentinel
-  # already reports a different master the failover is done — skip FAILOVER
-  # (sentinel auto-cleans when the pod actually goes away).
-  sentinel_state=$(sentinel_master_state)
-  if [ "${sentinel_state}" = "leaving" ]; then
-    echo "Leaving pod is the primary per sentinel — triggering SENTINEL FAILOVER first..."
-    # valkey-cli exits 0 even for protocol errors; capture output and log it.
-    failover_out=$("${s_cli[@]}" SENTINEL FAILOVER "${master_name}" 2>&1) || true
-    echo "SENTINEL FAILOVER response: ${failover_out}"
-    case "${failover_out}" in
-      *"ERR"*|*"error"*|*"BUSY"*)
-        echo "ERROR: SENTINEL FAILOVER rejected — ${failover_out}" >&2
-        exit 1 ;;
-    esac
-    # Wait up to 30 s for a new primary to emerge
-    failover_done=false
-    for _ in $(seq 1 10); do
-      sleep_when_ut_mode_false 3
-      new_master=$("${s_cli[@]}" SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null \
-                     | head -n1 | tr -d '\r\n') || true
-      # Accept the failover as complete when Sentinel reports a master that is
-      # neither the leaving pod's IP nor its pod name/FQDN fragment.
-      # Append "." so "valkey-1." does not match "valkey-10.headless...".
-      if ! is_empty "${new_master}" && \
-         [ "${new_master}" != "(nil)" ] && \
-         ! contains "${new_master}" "${KB_LEAVE_MEMBER_POD_NAME}." && \
-         { is_empty "${leaving_ip}" || [ "${new_master}" != "${leaving_ip}" ]; }; then
-        echo "New primary elected: ${new_master}"
-        failover_done=true
-        break
-      fi
-    done
-    if [ "${failover_done}" = "false" ]; then
-      echo "ERROR: failover still in progress after 30s — refusing memberLeave success while the leaving pod is still master." >&2
-      exit 1
-    fi
-  elif [ "${sentinel_state}" = "different" ]; then
-    echo "Sentinel already reports a different master — skipping SENTINEL FAILOVER. Sentinel will self-clean when the pod is deleted by KubeBlocks."
-  else
-    echo "ERROR: Sentinel returned no concrete master for ${master_name}; refusing memberLeave success while leaving pod is locally master." >&2
+case "${leaving_role}" in
+  slave)
+    echo "Leaving pod is a confirmed replica — memberLeave is safe to continue."
+    ;;
+  master)
+    handle_master_leave || exit 1
+    ;;
+  *)
+    member_leave_diagnose \
+      "leaving-role-unknown" "yes" \
+      "The leaving pod did not return role:master or role:slave within ${ACTION_CLIENT_TIMEOUT_SECONDS}s."
     exit 1
-  fi
-fi
+    ;;
+esac
 
-echo "Member leave handling complete."
+echo "Member leave handling positively confirmed."
