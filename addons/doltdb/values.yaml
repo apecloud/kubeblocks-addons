@@ -1,0 +1,49 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: docker.io
+  repository: dolthub/dolt-sql-server
+  pullPolicy: IfNotPresent
+
+## @param versions DoltDB versions configuration.
+versions:
+  - version: "2.1.10"
+    tag: "2.1.10"
+    serviceVersion: "2.1.10"
+    isDefault: true
+
+## @param port Dolt SQL server port.
+port: 3306
+
+## @param remotesapiPort Dolt direct-to-standby remotesapi port.
+remotesapiPort: 50051
+
+## @param metrics Dolt SQL server built-in Prometheus metrics endpoint settings.
+metrics:
+  host: 0.0.0.0
+  port: 11228
+
+## @param dataMountPath Dolt data directory used by the official server image.
+dataMountPath: /var/lib/dolt
+
+## @param configMountPath KubeBlocks-rendered base config directory.
+configMountPath: /kb-config/doltdb
+
+## @param generatedConfigPath Pod-local Dolt SQL server config path generated at startup.
+generatedConfigPath: /var/lib/dolt/.kb/server.yaml
+
+## @param tlsMountPath TLS certificate mount path consumed by server.yaml.
+tlsMountPath: /etc/pki/tls
+
+## @param rootHost Host allowed for the root account initialized by the server image.
+rootHost: "%"
+
+## @param roleProbe role probe timing for replication topology.
+roleProbe:
+  periodSeconds: 2
+  timeoutSeconds: 3
+
+## kblib required values.
+extra:
+  keepResource: true
