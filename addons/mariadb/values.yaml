@@ -12,6 +12,8 @@ image:
       repository: prom/mysqld-exporter
       tag: v0.14.0
   syncer:
+    # Independent of image.registry. Keep the three-field triple complete.
+    registry: docker.io
     repository: apecloud/syncer
     # Keep the chart default on a published syncer tag. Candidate or
     # engine-specific syncer builds must be supplied explicitly by values
