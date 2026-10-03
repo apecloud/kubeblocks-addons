@@ -25,3 +25,17 @@ Validate kafka version and mode
     {{- end }}
   {{- end }}
 {{- end }}
+
+{{- $announceModes := 0 -}}
+{{- if .Values.nodePortEnabled }}
+{{- $announceModes = add $announceModes 1 }}
+{{- end }}
+{{- if .Values.fixedPodIPEnabled }}
+{{- $announceModes = add $announceModes 1 }}
+{{- end }}
+{{- if .Values.loadBalancerEnabled }}
+{{- $announceModes = add $announceModes 1 }}
+{{- end }}
+{{- if gt (int $announceModes) 1 }}
+{{- fail "nodePortEnabled, fixedPodIPEnabled, and loadBalancerEnabled are mutually exclusive; enable at most one" }}
+{{- end }}
