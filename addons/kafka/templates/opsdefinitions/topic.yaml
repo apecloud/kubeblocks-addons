@@ -67,8 +67,11 @@ spec:
                 - |
                   set -e
                   SERVERS=()
-                  for i in $(seq 0 $((${COMPONENT_REPLICAS}-1))); do
-                    SERVERS+=("${KB_COMP_SVC_NAME}-${i}:${KB_COMP_SVC_PORT_BROKER}")
+                  : "${KB_COMP_REPLICAS:?missing KB_COMP_REPLICAS}"
+                  : "${KB_CLUSTER_COMP_NAME:?missing KB_CLUSTER_COMP_NAME}"
+                  : "${KB_COMP_HEADLESS_SVC_NAME:?missing KB_COMP_HEADLESS_SVC_NAME}"
+                  for i in $(seq 0 $((${KB_COMP_REPLICAS}-1))); do
+                    SERVERS+=("${KB_CLUSTER_COMP_NAME}-${i}.${KB_COMP_HEADLESS_SVC_NAME}:${KB_COMP_SVC_PORT_BROKER:-9092}")
                   done
                   KB_CONNECT_ENDPOINT=$(printf "%s," "${SERVERS[@]}")
                   KB_CONNECT_ENDPOINT=${KB_CONNECT_ENDPOINT%,}
@@ -76,7 +79,7 @@ spec:
                   if [[ ${type} == "delete" ]];then
                     echo $command
                     $command
-                    return
+                    exit 0
                   fi
 
                   function addCommandArg(){
