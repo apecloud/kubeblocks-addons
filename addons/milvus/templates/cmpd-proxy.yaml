@@ -13,7 +13,7 @@ spec:
   systemAccounts:
     - name: root
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 16
         numDigits: 4
         numSymbols: 0
