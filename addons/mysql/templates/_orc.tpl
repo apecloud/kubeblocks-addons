@@ -40,7 +40,7 @@ volumes:
 systemAccounts:
   - name: root
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 10
       numDigits: 5
       numSymbols: 0
@@ -48,7 +48,7 @@ systemAccounts:
   - name: kbadmin
     statement:
       create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT ALL PRIVILEGES ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 16
       numDigits: 8
       numSymbols: 0
@@ -56,7 +56,7 @@ systemAccounts:
   - name: proxysql
     statement:
       create: CREATE USER IF NOT EXISTS ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 16
       numDigits: 8
       numSymbols: 0

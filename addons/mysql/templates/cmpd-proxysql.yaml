@@ -47,14 +47,14 @@ spec:
   systemAccounts:
     - name: admin
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 16
         numDigits: 8
         numSymbols: 0
         letterCase: MixedCases
     - name: cluster
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 16
         numDigits: 8
         numSymbols: 0
