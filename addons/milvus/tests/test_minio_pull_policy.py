@@ -29,6 +29,15 @@ class MinioPullPolicyTest(unittest.TestCase):
             check=True, capture_output=True, text=True,
         )
 
+    def test_kubeblocks_version_matches_password_config(self):
+        chart = yaml.safe_load((self.chart / "Chart.yaml").read_text())
+        constraint = chart["annotations"]["addon.kubeblocks.io/kubeblocks-version"]
+        # v1.1.0-beta.9 is the first published release whose ComponentDefinition
+        # schema contains systemAccounts[].passwordConfig. v1.0.0 only has
+        # passwordGenerationPolicy, so the old >=1.0.0 promise fails OpenAPI
+        # validation on a declared supported version.
+        self.assertEqual(constraint, ">=1.1.0-beta.9")
+
     def test_minio_password_generation(self):
         for mode, flags in [("install", []), ("upgrade", ["--is-upgrade"])]:
             with self.subTest(mode=mode):

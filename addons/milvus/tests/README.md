@@ -21,7 +21,10 @@ This test does not contact a Kubernetes cluster.
 
 The password regression also renders install and upgrade manifests and checks
 that the MinIO admin account explicitly declares `passwordConfig: {}` while
-retaining the required password credential reference. This requires a matching
-KubeBlocks ComponentDefinition CRD supporting `spec.systemAccounts[].passwordConfig`
-(KubeBlocks release-1.1 PR #10739 or later); rendering alone does not validate
-API-server defaulting or runtime credential creation.
+retaining the required password credential reference. The chart annotation
+must be `>=1.1.0-beta.9`: that is the first published KubeBlocks release whose
+ComponentDefinition schema contains `spec.systemAccounts[].passwordConfig`.
+v1.0.0 only has `passwordGenerationPolicy`, and a chart that still promises
+`>=1.0.0` fails normal OpenAPI validation on that declared version.
+Rendering alone does not validate API-server defaulting or runtime credential
+creation.
