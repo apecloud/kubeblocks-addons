@@ -106,6 +106,9 @@ addons-cluster/starrocks-ce/ @yandongxiao @leon-ape @apecloud/kb-reviewers @apec
 addons/tidb/ @cjc7373 @csuzhangxc @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/tidb/ @cjc7373 @csuzhangxc @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/valkey/ @weicao @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/valkey/ @weicao @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/vanilla-postgresql/ @kizuna-lek @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/vanilla-postgresql/ @kizuna-lek @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
