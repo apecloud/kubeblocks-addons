@@ -325,21 +325,21 @@ spec:
   systemAccounts:
     - name: sa
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 10
         numDigits: 3
         numSymbols: 0
         letterCase: MixedCases
     - name: kbadmin
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 10
         numDigits: 3
         numSymbols: 0
         letterCase: MixedCases
     - name: master
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 10
         numDigits: 3
         numSymbols: 3
