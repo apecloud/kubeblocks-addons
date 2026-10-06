@@ -512,6 +512,20 @@ function configure_tls {
   fi
 }
 
+emit_sqlserver_log_tail() {
+  local logfile="/log/sqlserver.log"
+  local line
+  if [ ! -f "$logfile" ]; then
+    log "sqlserver.log is absent at ${logfile}"
+    return 0
+  fi
+  log "sqlserver.log tail begin"
+  while IFS= read -r line; do
+    log "sqlserver.log: ${line}"
+  done < <(tail -n 80 "$logfile" 2>/dev/null || true)
+  log "sqlserver.log tail end"
+}
+
 function wait_for_local_sqlserver_ready {
   local timeout=${1:-0}  # Default timeout is 0 (no timeout)
   local start_time=$(date +%s)
@@ -535,6 +549,7 @@ function wait_for_local_sqlserver_ready {
       elapsed=$(($(date +%s) - start_time))
       if [ "$elapsed" -ge "$timeout" ]; then
         log "ERROR: Timeout waiting for local sqlserver to be ready after ${elapsed}s"
+        emit_sqlserver_log_tail
         exit 1
       fi
       log "sqlserver is not ready, waiting 5 seconds (${elapsed}/${timeout}s elapsed)"
