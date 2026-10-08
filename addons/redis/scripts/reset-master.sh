@@ -24,11 +24,11 @@ reset_master_in_sentinels() {
     fi
     if [ $? -eq 0 ]; then
       echo "reset master in sentinel ${sentinel_pod} succeeded"
-      exit 0
+    else
+      echo "reset master in sentinel ${sentinel_pod} failed"
+      exit 1
     fi
   done
-  echo "reset master in sentinel failed"
-  exit 1
 }
 
 # This is magic for shellspec ut framework.
