@@ -43,8 +43,9 @@ for sentinel_fqdn in $(echo "${SENTINEL_POD_FQDN_LIST}" | tr ',' '\n'); do
   fi
   if [ $? -eq 0 ]; then
     echo "reset master in sentinel ${sentinel_fqdn} succeeded"
-    exit 0
+  else
+    echo "reset master in sentinel ${sentinel_fqdn} failed"
+    exit 1
   fi
 done
-echo "reset master in sentinel failed"
-exit 1
+
