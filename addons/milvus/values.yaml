@@ -22,8 +22,8 @@ images:
     tag: 3.5.5-r2
   minio:
     registry: ""
-    repository: minio/minio
-    tag: RELEASE.2022-03-17T06-34-49Z
+    repository: apecloud/minio
+    tag: RELEASE.2024-06-29T01-20-47Z
   ostools:
     registry: ""
     repository: apecloud/os-shell
