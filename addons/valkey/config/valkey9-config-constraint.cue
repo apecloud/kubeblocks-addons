@@ -131,7 +131,7 @@
 
     "cluster-enabled"?: string & "yes" | "no"
 
-    "cluster-link-sendbuf-limit"?: int | string | *0
+    "cluster-link-sendbuf-limit"?: int | *0
 
     "cluster-manual-failover-timeout"?: int | *5000
 
@@ -271,7 +271,7 @@
 
     "maxclients"?: int | *10000
 
-    "maxmemory"?: int | string | *0
+    "maxmemory"?: int | *0
 
     "maxmemory-clients"?: string | *"0"
 
@@ -394,7 +394,7 @@
 
     "shutdown-timeout"?: int | *10
 
-    "slot-migration-max-failover-repl-bytes"?: int | string | *0
+    "slot-migration-max-failover-repl-bytes"?: int | *0
 
     "socket-mark-id"?: int | *0
 

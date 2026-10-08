@@ -123,7 +123,7 @@
 
     "cluster-enabled"?: string & "yes" | "no"
 
-    "cluster-link-sendbuf-limit"?: int | string | *0
+    "cluster-link-sendbuf-limit"?: int | *0
 
     // only in 8.1
     "cluster-manual-failover-timeout"?: int | *5000
@@ -265,7 +265,7 @@
 
     "maxclients"?: int | *10000
 
-    "maxmemory"?: int | string | *0
+    "maxmemory"?: int | *0
 
     "maxmemory-clients"?: string | *"0"
 
