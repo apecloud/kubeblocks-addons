@@ -45,6 +45,8 @@ metadata:
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 data:
+  role-probe.sh: |-
+    {{- .Files.Get "scripts/orc-role-probe.sh" | nindent 4 }}
   switchover.sh: |-
     {{- .Files.Get "scripts/orc-switchover.sh" | nindent 4 }}
   member-leave.sh: |-
