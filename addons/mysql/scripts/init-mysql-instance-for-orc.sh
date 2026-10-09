@@ -20,6 +20,27 @@ mysql_error() {
 	exit 1
 }
 
+orchestrator_api_base() {
+  local endpoint="${ORCHESTRATOR_API:-${ORC_ENDPOINTS%% *}}"
+
+  if [[ "$endpoint" != http://* && "$endpoint" != https://* ]]; then
+    endpoint="${endpoint%%:*}"
+    endpoint="http://${endpoint}:${ORC_PORTS}"
+  fi
+  endpoint="${endpoint%/}"
+  printf '%s\n' "${endpoint%/api}"
+}
+
+set_cluster_alias() {
+  local cluster_info="$1"
+  local cluster_alias="$2"
+  local api_base
+
+  api_base=$(orchestrator_api_base)
+  curl --fail --silent --show-error --max-time 4 -X GET \
+    "${api_base}/api/set-cluster-alias/${cluster_info}?alias=${cluster_alias}"
+}
+
 # create orchestrator user in mysql
 create_mysql_user() {
   mysql_note "Create MySQL User and Grant Permissions..."
@@ -48,8 +69,6 @@ EOF
 
   local instance="${POD_NAME}"
   local cluster_alias="${CLUSTER_NAME}"
-  local orchestrator_url="${ORC_ENDPOINTS}" # for example, http://orchestrator:3000
-
   mysql_note "Registering cluster in Orchestrator"
   mysql_note "  Instance: $instance"
   mysql_note "  Alias: $cluster_alias"
@@ -90,7 +109,7 @@ EOF
   fi
 
   # Set alias via API
-  curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${cluster_info}?alias=${cluster_alias}"
+  set_cluster_alias "$cluster_info" "$cluster_alias"
   sleep 5
   result=""
   attempt=0
@@ -102,7 +121,7 @@ EOF
     fi
     mysql_note "Cluster alias not set yet, waiting... (attempt $((attempt + 1))/$max_attempts)"
     attempt=$((attempt + 1))
-    curl --silent -X GET "http://${orchestrator_url}/api/set-cluster-alias/${cluster_info}?alias=${cluster_alias}"
+    set_cluster_alias "$cluster_info" "$cluster_alias"
     sleep 5
   done
   if [ $attempt -eq $max_attempts ]; then
