@@ -34,6 +34,10 @@ spec:
       value: "false"
     - name: PURGE_BINLOG
       value: "on"
+    # Disk-usage percentage at which synced+uploaded binlogs are purged.
+    # Default 80 keeps production behaviour; overridable for tests.
+    - name: PURGE_BINLOG_DISK_THRESHOLD
+      value: "80"
   backup:
     backupData:
       image: {{ .Values.image.registry }}/{{ .Values.image.walgImage.repository }}:{{ .Values.image.walgImage.tag }}

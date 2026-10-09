@@ -157,13 +157,58 @@ function save_backup_status() {
 
 cleanup_mysql_binlogs() {
 
+    # Discover replica hosts from the target primary itself: each replica
+    # registers its report_host there. The previous KB_ITS_*_HOSTNAME env
+    # discovery never worked in a DataProtection job pod (those env vars were
+    # only injected into workload pods by pre-1.0 KubeBlocks), which made this
+    # whole cleanup a silent no-op.
+    function get_replica_hosts() {
+        local hosts
+        # Semisync replicas do NOT set report_host (only the MGR cmpd and
+        # mysql-entrypoint.sh pass --report-host), so SHOW REPLICAS / SHOW
+        # SLAVE HOSTS leave the Host column empty; whitespace-splitting with
+        # `awk '{print $2}'` then slides onto the Port and returns "3306"
+        # instead of a host. Discover the connected replicas from the
+        # primary's own Binlog Dump threads, whose HOST carries the replica's
+        # real ip:port regardless of report_host.
+        hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e \
+            "SELECT HOST FROM information_schema.PROCESSLIST WHERE COMMAND LIKE 'Binlog Dump%'" 2>/dev/null)
+        if [[ -z "$hosts" ]]; then
+            # Fallback: report_host-based discovery. Split on TAB so an empty
+            # Host column stays empty instead of sliding onto the Port.
+            hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e "SHOW REPLICAS" 2>/dev/null | awk -F'\t' '{print $2}')
+            if [[ -z "$hosts" ]]; then
+                # MySQL 5.7 syntax
+                hosts=$(mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE HOSTS" 2>/dev/null | awk -F'\t' '{print $2}')
+            fi
+        fi
+        # Strip the ephemeral ":port" from PROCESSLIST HOST (ip:port), drop
+        # blank lines and the primary itself, and de-duplicate.
+        printf '%s\n' "$hosts" \
+            | sed 's/:[0-9]\{1,\}$//' \
+            | sed '/^$/d' \
+            | grep -v "^${DP_DB_HOST}$" \
+            | sort -u || true
+    }
+
     # Get synced binlog files from all replicas
     function get_synced_binlogs() {
+        # Reset per call: this is invoked repeatedly in the long-lived archiver
+        # process, and a leaked value from a previous call would let a purge
+        # proceed on a stale synced position when replica discovery fails.
+        local min_synced_file=""
 
         readarray -t all_binlogs < <(ls -1 "$LOG_DIR"/*-bin.[0-9]* | sort -V)
 
-        # TODO: KB_ITS_.*_HOSTNAME will be removed in kb1.0 and needs to be modified accordingly
-        local REPLICA_HOSTS=($(env | grep "KB_ITS_.*_HOSTNAME" | cut -d= -f2 | grep -v "^${DP_DB_HOST}$"))
+        local REPLICA_HOSTS=($(get_replica_hosts))
+        # Match the binlog file name from replica status against the real
+        # binlog prefix (LOG_PREFIX, derived from log_bin_basename), not a
+        # reconstructed ${DP_TARGET_POD_NAME}-bin which can drift from the
+        # actual writer pod after a switchover or when the env is unset.
+        # DEBUG must go to stderr: this function's stdout is captured by
+        # `synced_binlogs=$(get_synced_binlogs)`, so echoing here on stdout
+        # both hides the line from the pod log and corrupts the return value.
+        echo "DEBUG cleanup: DP_TARGET_POD_NAME=${DP_TARGET_POD_NAME}, LOG_PREFIX=${LOG_PREFIX}, replicas=[${REPLICA_HOSTS[*]}]" >&2
 
         # Check synchronization status of each replica
         for host in "${REPLICA_HOSTS[@]}"; do
@@ -171,7 +216,8 @@ cleanup_mysql_binlogs() {
                 mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e "SHOW REPLICA STATUS\G" 2>/dev/null ||
                 mysql -u"${DP_DB_USER}" -h"$host" -p"${DP_DB_PASSWORD}" -N -e "SHOW SLAVE STATUS\G"
             )
-            local current_file=$(echo "$status_output" | grep -o "${DP_TARGET_POD_NAME}-bin\.[0-9]*" | tail -n1)
+            local current_file=$(echo "$status_output" | grep -o "${LOG_PREFIX}\.[0-9]*" | tail -n1)
+            echo "DEBUG cleanup: replica=${host} current_file=${current_file:-<none>}" >&2
 
             if [[ -z "$current_file" ]]; then
                 return 1
@@ -200,10 +246,12 @@ cleanup_mysql_binlogs() {
 
     # Get the list of binlog files that have been uploaded to backup storage
     function get_uploaded_binlogs() {
+        # Match the actual log basename. DP_TARGET_POD_NAME can remain on the
+        # original primary after switchover and would hide every uploaded file.
         datasafed list -f --recursive / -o json \
             | jq -s -r ".[] | sort_by(.mtime) | .[] | .path" \
             | grep "\.zst$" \
-            | grep "${DP_TARGET_POD_NAME}" \
+            | grep -F "${LOG_PREFIX}." \
             | xargs -I {} basename {} .zst \
             | paste -sd ' ' -
     }
@@ -223,41 +271,45 @@ cleanup_mysql_binlogs() {
           return
       fi
 
-      # Get the latest 5 binlog files
-      local latest_binlogs=$(printf "%s\n" "${all_binlogs[@]: -4}" | xargs -n1 basename)
-
-      for binlog_file in "${all_binlogs[@]}"; do
-          if [ ! -f "$binlog_file" ]; then
-              continue
+      # PURGE BINARY LOGS TO '<file>' deletes every file BEFORE <file> (prefix
+      # deletion). So the scan must stop at the FIRST file that has to be kept
+      # (not synced+uploaded, or one of the newest 5): purging past it would
+      # delete it as well and tear a hole in the archived binlog sequence.
+      local keep_tail_start=$((total_files - 5))
+      local first_kept=""
+      local i
+      for ((i = 0; i < total_files; i++)); do
+          local base_name=$(basename "${all_binlogs[$i]}")
+          if ((i >= keep_tail_start)); then
+              first_kept="$base_name"
+              echo "Keeping $base_name and newer (newest 5 binlog files)"
+              break
           fi
-
-          local base_name=$(basename "$binlog_file")
-
-          # Skip if it's one of the latest 5 files
-          if echo "$latest_binlogs" | grep -q "$base_name"; then
-              echo "Keeping $base_name (one of latest 5 binlog files)"
-              continue
-          fi
-
-          # Original logic: check if synced and uploaded
-          if echo "$synced_files" | grep -q "$base_name" && echo "$uploaded_files" | grep -q "$base_name"; then
-              echo "Purging binary log: $base_name from master host"
-
-              if mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e \
-                  "PURGE BINARY LOGS TO '$base_name'" &>/dev/null; then
-                  echo "Successfully purged binary log: $base_name on master host ${DP_DB_HOST}"
-              else
-                  echo "Failed to connect or purge binary log: $base_name on master host ${DP_DB_HOST}"
-              fi
-          else
-              echo "Keeping $base_name (not yet synced or uploaded)"
+          if ! (echo "$synced_files" | tr ' ' '\n' | grep -Fxq "$base_name" &&
+                echo "$uploaded_files" | tr ' ' '\n' | grep -Fxq "$base_name"); then
+              first_kept="$base_name"
+              echo "Keeping $base_name and newer (not yet synced or uploaded)"
+              break
           fi
       done
+
+      if [[ -z "$first_kept" || "$first_kept" == "$(basename "${all_binlogs[0]}")" ]]; then
+          echo "No purgeable binlog prefix on master host"
+          return
+      fi
+
+      echo "Purging binary logs before $first_kept on master host"
+      if mysql -u"${DP_DB_USER}" -h"${DP_DB_HOST}" -p"${DP_DB_PASSWORD}" -N -e \
+          "PURGE BINARY LOGS TO '$first_kept'" &>/dev/null; then
+          echo "Successfully purged binary logs before $first_kept on master host ${DP_DB_HOST}"
+      else
+          echo "Failed to connect or purge binary logs on master host ${DP_DB_HOST}"
+      fi
     }
 
     # Purge all binlog files on replica except for the latest 5 files
     function purge_replica_binlogs() {
-        local REPLICA_HOSTS=($(env | grep "KB_ITS_.*_HOSTNAME" | cut -d= -f2 | grep -v "^${DP_DB_HOST}$"))
+        local REPLICA_HOSTS=($(get_replica_hosts))
 
         for host in "${REPLICA_HOSTS[@]}"; do
             echo "Processing replica host: $host"
@@ -294,9 +346,16 @@ cleanup_mysql_binlogs() {
         done
     }
 
-    # Get list of synced binlogs
-    local synced_binlogs=$(get_synced_binlogs)
-    if [ $? -ne 0 ] || [ -z "$synced_binlogs" ]; then
+    # Get list of synced binlogs. Declare and assign on separate lines so the
+    # `if [ $? -ne 0 ]` below reflects get_synced_binlogs' exit code and not
+    # the always-zero exit of `local` -- this is what keeps the fail-closed
+    # "don't purge when replica sync is unknown" guard actually closed.
+    # Use `if ! ...` so a non-zero get_synced_binlogs does not trip the
+    # actionset-wide `set -e` before this fail-closed guard runs (a plain
+    # `synced_binlogs=$(...)` assignment aborts the whole archiver under set -e;
+    # the `if !` context suppresses that and still catches the failure).
+    local synced_binlogs
+    if ! synced_binlogs=$(get_synced_binlogs) || [ -z "$synced_binlogs" ]; then
         echo "No synced binlog files found"
         return 0
     fi
@@ -336,10 +395,14 @@ while true; do
   # purge the expired bin logs
   purge_expired_files
 
-  # clean up synced and uploaded binary log files when disk usage >= 80%
+  # clean up synced and uploaded binary log files when disk usage reaches the
+  # threshold. The threshold defaults to 80% (production behaviour unchanged);
+  # it is overridable via PURGE_BINLOG_DISK_THRESHOLD so tests can exercise the
+  # purge path without filling a large shared host volume to 80%.
+  purge_threshold="${PURGE_BINLOG_DISK_THRESHOLD:-80}"
   disk_usage=$(df -h ${LOG_DIR} | awk 'NR==2 {print $5}' | cut -d'%' -f1)
-  if [ -n "${disk_usage}" ] && [ "${disk_usage}" -ge 80 ] && [ "${PURGE_BINLOG}" = "on" ]; then
-      echo "Executing cleanup_mysql_binlogs due to: Disk usage is ${disk_usage}% (>= 80%)"
+  if [ -n "${disk_usage}" ] && [ "${disk_usage}" -ge "${purge_threshold}" ] && [ "${PURGE_BINLOG}" = "on" ]; then
+      echo "Executing cleanup_mysql_binlogs due to: Disk usage is ${disk_usage}% (>= ${purge_threshold}%)"
       cleanup_mysql_binlogs
   fi
 
