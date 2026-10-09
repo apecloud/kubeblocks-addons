@@ -6,7 +6,8 @@
       "title": "Version",
       "description": "The version of ElasticSearch.",
       "type": "string",
-      "default": "8.8.2"
+      "default": "8.8.2",
+      "pattern": "^([678][.].+|9[.]3[.]2)$"
     },
     "mode": {
       "title": "Mode",
