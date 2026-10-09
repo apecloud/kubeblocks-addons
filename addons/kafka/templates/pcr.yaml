@@ -9,7 +9,7 @@ metadata:
 spec:
   componentDef: {{ include "kafka-broker.componentDefName" . }}
   parametersDefs:
-    - {{ include "kafka.paramsDefName" . }}
+    - {{ include "kafka.paramsDefNameBroker" . }}
   configs:
     - name: server.properties
       fileFormatConfig:
@@ -43,7 +43,7 @@ metadata:
 spec:
   componentDef: {{ include "kafka-combine.componentDefName" . }}
   parametersDefs:
-    - {{ include "kafka.paramsDefName" . }}
+    - {{ include "kafka.paramsDefNameCombined" . }}
   configs:
     - name: server.properties
       fileFormatConfig:
@@ -60,7 +60,7 @@ metadata:
 spec:
   componentDef: {{ include "kafka-controller.componentDefName" . }}
   parametersDefs:
-    - {{ include "kafka.paramsDefName" . }}
+    - {{ include "kafka.paramsDefNameController" . }}
   configs:
     - name: server.properties
       fileFormatConfig:
