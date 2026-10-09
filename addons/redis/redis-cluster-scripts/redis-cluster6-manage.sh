@@ -921,8 +921,19 @@ sync_acl_for_redis_cluster_shard() {
       continue
     fi
     cluster_state=$(echo "$cluster_info" | awk -F: '/cluster_state/{print $2}' | tr -d '[:space:]')
-    if is_empty "$cluster_state" || equals "$cluster_state" "ok"; then
+    # Only trust a pod whose cluster_state is explicitly "ok". An empty
+    # cluster_state means the state could not be determined (parse anomaly or
+    # an unreachable pod) and must be skipped, not accepted as a source of
+    # truth for ACL rules.
+    if equals "$cluster_state" "ok"; then
        acl_list=$($redis_base_cmd -p $pod_service_port -h "$pod_fqdn" ACL LIST)
+       # ACL LIST must succeed before this pod is treated as the sync source;
+       # a failed command (e.g. connection blip) must not be mistaken for
+       # "no ACL rules to sync".
+       if [ $? -ne 0 ]; then
+         acl_list=""
+         continue
+       fi
        is_ok=true
        break
     fi
