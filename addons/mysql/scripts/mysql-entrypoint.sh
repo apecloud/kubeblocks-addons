@@ -7,8 +7,13 @@ if [ ${#fqdn_name} -gt 60 ] && [ "${MYSQL_MAJOR}" = "5.7" ]; then
 fi
 SERVICE_ID=$((${POD_NAME##*-} + 1))
 
+# exec so this shell is replaced by the entrypoint (which itself execs mysqld):
+# the orc runtime wrapper backgrounds this script and sends TERM to $! on pod
+# stop; without exec that TERM killed this intermediate bash and mysqld was
+# orphaned until the grace-period SIGKILL, forcing InnoDB crash recovery on
+# every pod stop.
 if [ "${MYSQL_MAJOR}" = '5.7' ]; then
-  /scripts/docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${fqdn_name} \
+  exec /scripts/docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${fqdn_name} \
     --ignore-db-dir=lost+found \
     --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
     --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
@@ -16,7 +21,7 @@ if [ "${MYSQL_MAJOR}" = '5.7' ]; then
     --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
     --skip-slave-start=$skip_slave_start
 elif [ "${MYSQL_MAJOR}" = '8.0' ]; then
-  docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${fqdn_name} \
+  exec docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${fqdn_name} \
     --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
     --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
     --plugin-load-add=audit_log=audit_log.so \
