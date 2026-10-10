@@ -1,19 +1,11 @@
 #!/bin/sh
-# Called by KubeBlocks before a Galera node is removed.
-# Perform a graceful eviction: flush tables and let the cluster
-# detect the node's departure via keepalive timeout.
 
-set -e
+# Compatibility no-op for ComponentDefinitions published before alpha.27.
+#
+# Galera removes a departed member through its native membership protocol and
+# the mariadb container preStop owns graceful shutdown. Keep this stable script
+# path available for existing alpha.26 consumers without issuing SQL or
+# mutating wsrep state from the kbagent execution container.
 
-mariadb_cmd() { mariadb "-u${MARIADB_ROOT_USER}" "-p${MARIADB_ROOT_PASSWORD}" -P3306 -h127.0.0.1 -s "$@"; }
-
-echo "Gracefully evicting ${POD_NAME:-this node} from Galera cluster..."
-
-# Flush tables to ensure a clean state before shutdown
-mariadb_cmd -e "FLUSH TABLES;" 2>/dev/null || true
-
-# Set wsrep_desync=ON to avoid being selected as a SST donor during shutdown
-mariadb_cmd -e "SET GLOBAL wsrep_desync=ON;" 2>/dev/null || true
-
-echo "Member leave preparation complete. Node will be evicted on shutdown."
+echo "galera memberLeave compatibility no-op: native membership handles eviction"
 exit 0

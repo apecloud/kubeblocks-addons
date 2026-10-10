@@ -79,10 +79,19 @@ Describe "alpha.72 v1 replication user path convergence (static gates)"
   CMPD_ENTRYPOINT="${ADDON_ROOT}/scripts/replication-entrypoint.sh"
   MEMBER_JOIN="${ADDON_ROOT}/scripts/replication-member-join.sh"
 
-  Describe "Gate 1: Chart.yaml literal version"
-    It "is exactly 1.2.0-alpha.31 (alpha.26 bump: replication merged topology)"
-      When call grep -c '^version: 1.2.0-alpha.31$' "${CHART_YAML}"
-      The output should eq "1"
+  chart_alpha_at_least_26() {
+    chart_version=$(awk '$1 == "version:" { print $2; exit }' "${CHART_YAML}") || return 1
+    case "${chart_version}" in
+      1.2.0-alpha.*) ;;
+      *) return 1 ;;
+    esac
+    chart_alpha=${chart_version##*.}
+    [ "${chart_alpha}" -ge 26 ] 2>/dev/null
+  }
+
+  Describe "Gate 1: Chart.yaml version floor"
+    It "stays at or beyond alpha.26 (replication merged topology floor)"
+      When call chart_alpha_at_least_26
       The status should be success
     End
 
