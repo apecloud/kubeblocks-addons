@@ -1,0 +1,11 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: doltdb-cluster-backup
+  namespace: demo
+spec:
+  # Supported methods from the cluster BackupPolicy:
+  # - dolt-backup
+  backupMethod: dolt-backup
+  backupPolicyName: doltdb-cluster-doltdb-backup-policy
+  deletionPolicy: Delete

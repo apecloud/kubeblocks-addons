@@ -1,0 +1,28 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: doltdb
+  labels:
+    {{- include "doltdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "doltdb.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+      {{- range .Values.versions }}
+        - {{ .serviceVersion }}
+      {{- end }}
+      compDefs:
+        - {{ include "doltdb.cmpdRegexpPattern" . }}
+        - {{ include "doltdb.replicationCmpdRegexpPattern" . }}
+  releases:
+  {{- range .Values.versions }}
+    {{- $image := printf "%s/%s:%s" ($.Values.image.registry | default "docker.io") $.Values.image.repository .tag }}
+    - name: {{ .serviceVersion }}
+      serviceVersion: {{ .serviceVersion }}
+      images:
+        doltdb: {{ $image }}
+        postProvision: {{ $image }}
+        roleProbe: {{ $image }}
+        switchover: {{ $image }}
+  {{- end }}

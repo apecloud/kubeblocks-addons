@@ -1,0 +1,10 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: doltdb-restart
+  namespace: demo
+spec:
+  clusterName: doltdb-cluster
+  type: Restart
+  restart:
+    - componentName: doltdb

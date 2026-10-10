@@ -1,0 +1,15 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: doltdb-replication-switchover
+  namespace: demo
+spec:
+  clusterName: doltdb-replication
+  type: Switchover
+  timeoutSeconds: 300
+  switchover:
+    - componentName: doltdb
+      # Set this to the current primary Pod name.
+      instanceName: doltdb-replication-doltdb-0
+      # Set this to a current standby Pod name.
+      candidateName: doltdb-replication-doltdb-1

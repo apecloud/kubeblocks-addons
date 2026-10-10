@@ -1,0 +1,80 @@
+{{- $imageRepository := printf "%s/%s" (.Values.image.registry | default "docker.io") .Values.image.repository }}
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: {{ include "doltdb.backupPolicyTemplate" . }}
+  labels:
+    {{- include "doltdb.labels" . | nindent 4 }}
+spec:
+  serviceKind: doltdb
+  compDefs:
+    - {{ include "doltdb.cmpdRegexpPattern" . }}
+  target:
+    role: ""
+    account: root
+  backupMethods:
+    - name: dolt-backup
+      snapshotVolumes: false
+      actionSetName: {{ include "doltdb.backupActionSet" . }}
+      env:
+        - name: IMAGE
+          valueFrom:
+            versionMapping:
+              {{- range .Values.versions }}
+              - serviceVersions:
+                  - {{ .serviceVersion | quote }}
+                mappedValue: {{ printf "%s:%s" $imageRepository .tag | quote }}
+              {{- end }}
+        - name: DOLT_REPLICATION_RESTORE
+          value: "false"
+      targetVolumes:
+        volumes:
+          - data
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+  schedules:
+    - backupMethod: dolt-backup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: {{ include "doltdb.replicationBackupPolicyTemplate" . }}
+  labels:
+    {{- include "doltdb.labels" . | nindent 4 }}
+spec:
+  serviceKind: doltdb
+  compDefs:
+    - {{ include "doltdb.replicationCmpdRegexpPattern" . }}
+  target:
+    role: primary
+    account: root
+  backupMethods:
+    - name: dolt-backup
+      snapshotVolumes: false
+      actionSetName: {{ include "doltdb.backupActionSet" . }}
+      env:
+        - name: IMAGE
+          valueFrom:
+            versionMapping:
+              {{- range .Values.versions }}
+              - serviceVersions:
+                  - {{ .serviceVersion | quote }}
+                mappedValue: {{ printf "%s:%s" $imageRepository .tag | quote }}
+              {{- end }}
+        - name: DOLT_REPLICATION_RESTORE
+          value: "true"
+      targetVolumes:
+        volumes:
+          - data
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+  schedules:
+    - backupMethod: dolt-backup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d

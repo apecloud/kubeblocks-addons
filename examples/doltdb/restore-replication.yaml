@@ -1,0 +1,42 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: doltdb-replication-restore
+  namespace: demo
+spec:
+  restore:
+    source:
+      apiGroup: dataprotection.kubeblocks.io
+      kind: Backup
+      name: doltdb-replication-backup
+      namespace: demo
+    parameters:
+      dataprotection.kubeblocks.io/volume-restore-policy: Parallel
+      dataprotection.kubeblocks.io/source-target-name: doltdb
+  terminationPolicy: Delete
+  clusterDef: doltdb
+  topology: replication
+  componentSpecs:
+    - name: doltdb
+      serviceVersion: "2.1.10"
+      # 1 primary + 1 standby. Valid total replica range is 2..6.
+      replicas: 2
+      env:
+        - name: DOLT_DATABASE
+          value: testdb
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: "1"
+          memory: 1Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
