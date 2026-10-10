@@ -2,12 +2,17 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+## @param mode cluster topology: standalone (single node), replication
+## (primary/secondary), or galera (multi-primary wsrep). Selects the matching
+## topology in the mariadb ClusterDefinition.
+##
 mode: standalone
 ## @param version MARIADB cluster version
 ##
 version: mariadb
 
-## @param replicas specify cluster replicas
+## @param replicas specify cluster replicas. standalone is forced to 1;
+## replication needs >= 2; galera needs an odd number >= 3 for quorum.
 ##
 replicas: 1
 
