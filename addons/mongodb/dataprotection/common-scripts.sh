@@ -167,7 +167,7 @@ function set_backup_config_env() {
     else
       DP_log "Failed to extract region from endpoint: $endpoint"
     fi
-  elif [[ "$provider" == "Minio" ]]; then
+  elif [[ "$provider" == "Minio" || "$provider" == "GCS" ]]; then
     export S3_FORCE_PATH_STYLE="true"
   else
     echo "Unsupported provider: $provider"
