@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hbase-standalone
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hbase.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - hbase-standalone-2.5
+      releases:
+        - 2.5.6
+  releases:
+    - name: 2.5.6
+      serviceVersion: 2.5.6
+      images:
+        hbase-standalone: {{ include "hbase.hbaseStandaloneImage" . | quote }}
+        jmx-exporter: {{ include "hbase.jmxExporterImage" . | quote }}
