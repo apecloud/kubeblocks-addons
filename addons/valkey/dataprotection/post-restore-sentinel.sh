@@ -242,10 +242,26 @@ build_sentinel_target_list() {
   expected_sentinel_count=""
   if [ -n "${SENTINEL_POD_FQDN_LIST:-}" ]; then
     local sentinel_fqdn_list_raw=()
+    case ",${SENTINEL_POD_FQDN_LIST}," in
+      *",,"*)
+        echo "ERROR: SENTINEL_POD_FQDN_LIST contains an empty target." >&2
+        return 1
+        ;;
+    esac
     IFS=',' read -ra sentinel_fqdn_list_raw <<< "${SENTINEL_POD_FQDN_LIST}"
-    local sentinel_fqdn
+    local sentinel_fqdn existing_fqdn
     for sentinel_fqdn in "${sentinel_fqdn_list_raw[@]}"; do
-      [ -n "${sentinel_fqdn}" ] && sentinel_fqdn_list+=("${sentinel_fqdn}")
+      [ -n "${sentinel_fqdn}" ] || {
+        echo "ERROR: SENTINEL_POD_FQDN_LIST contains an empty target." >&2
+        return 1
+      }
+      for existing_fqdn in "${sentinel_fqdn_list[@]}"; do
+        if [ "${existing_fqdn}" = "${sentinel_fqdn}" ]; then
+          echo "ERROR: SENTINEL_POD_FQDN_LIST contains duplicate target '${sentinel_fqdn}'." >&2
+          return 1
+        fi
+      done
+      sentinel_fqdn_list+=("${sentinel_fqdn}")
     done
     expected_sentinel_count="${#sentinel_fqdn_list[@]}"
     if [ "${expected_sentinel_count}" -eq 0 ]; then
@@ -297,6 +313,17 @@ build_sentinel_target_list() {
   fi
 }
 
+monitor_matches_expected() {
+  local raw="$1"
+  local existing_host existing_port expected_ip
+  existing_host=$(printf '%s\n' "${raw}" | sed -n '1p' | tr -d '\r')
+  existing_port=$(printf '%s\n' "${raw}" | sed -n '2p' | tr -d '\r')
+  expected_ip=$(getent hosts "${primary_fqdn}" 2>/dev/null | awk '{print $1; exit}') || true
+  [ "${existing_port}" = "${data_port}" ] || return 1
+  [ "${existing_host}" = "${primary_fqdn}" ] || \
+    { [ -n "${expected_ip}" ] && [ "${existing_host}" = "${expected_ip}" ]; }
+}
+
 register_sentinels_with_credentials() {
   local reachable_sentinel_fqdn_list=()
   local failed_sentinel_count=0
@@ -345,7 +372,7 @@ register_sentinels_with_credentials() {
   echo "INFO: using Sentinel monitor quorum ${sentinel_monitor_quorum}/${sentinel_count}."
 
   local configured_sentinel_count=0
-  local sentinel_configured existing monitor_out sentinel_set_out
+  local sentinel_configured existing monitor_out remove_out sentinel_set_out verify_out
   for sentinel_fqdn in "${reachable_sentinel_fqdn_list[@]}"; do
     sentinel_configured=1
 
@@ -355,7 +382,18 @@ register_sentinels_with_credentials() {
     existing=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" \
                  SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null) || true
     existing=$(printf '%s' "${existing}" | tr -d '\r')
-    if [ -z "${existing}" ] || [ "${existing}" = "(nil)" ]; then
+    if [ -n "${existing}" ] && [ "${existing}" != "(nil)" ] && ! monitor_matches_expected "${existing}"; then
+      echo "INFO: Sentinel ${sentinel_fqdn} has a stale '${master_name}' endpoint — replacing it."
+      remove_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" \
+        SENTINEL remove "${master_name}" 2>&1) || true
+      remove_out=$(printf '%s' "${remove_out}" | tr -d '\r\n')
+      if [ "${remove_out}" != "OK" ]; then
+        echo "ERROR: SENTINEL remove failed on ${sentinel_fqdn}: ${remove_out}" >&2
+        sentinel_configured=0
+      fi
+      existing=""
+    fi
+    if [ "${sentinel_configured}" -eq 1 ] && { [ -z "${existing}" ] || [ "${existing}" = "(nil)" ]; }; then
       echo "INFO: Registering master '${master_name}' (${primary_fqdn}:${data_port}) with ${sentinel_fqdn}"
       monitor_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" \
         SENTINEL monitor "${master_name}" "${primary_fqdn}" "${data_port}" "${sentinel_monitor_quorum}" 2>&1) || {
@@ -367,7 +405,7 @@ register_sentinels_with_credentials() {
         echo "ERROR: SENTINEL monitor unexpected response from ${sentinel_fqdn}: ${monitor_out}" >&2
         sentinel_configured=0
       fi
-    else
+    elif [ "${sentinel_configured}" -eq 1 ]; then
       echo "INFO: Sentinel ${sentinel_fqdn} already monitors '${master_name}' — updating config."
     fi
 
@@ -389,6 +427,13 @@ register_sentinels_with_credentials() {
       sentinel_set_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" SENTINEL set "${master_name}" auth-pass "${DP_DB_PASSWORD}" 2>&1) || true
       sentinel_set_out=$(printf '%s' "${sentinel_set_out}" | tr -d '\r\n')
       [ "${sentinel_set_out}" != "OK" ] && { echo "ERROR: failed to set auth-pass on ${sentinel_fqdn}: ${sentinel_set_out}" >&2; sentinel_configured=0; }
+    fi
+
+    verify_out=$("${sentinel_cli_base[@]}" -h "${sentinel_fqdn}" \
+      SENTINEL get-master-addr-by-name "${master_name}" 2>/dev/null) || true
+    if ! monitor_matches_expected "${verify_out}"; then
+      echo "ERROR: Sentinel ${sentinel_fqdn} did not read back the expected ${primary_fqdn}:${data_port} monitor endpoint." >&2
+      sentinel_configured=0
     fi
 
     if [ "${sentinel_configured}" -eq 1 ]; then
@@ -416,34 +461,31 @@ register_sentinels_with_credentials() {
   fi
 }
 
+post_restore_main() {
+  detect_tls_args
+
+  data_cli_base=(valkey-cli --no-auth-warning "${_tls_args[@]}" -p "${data_port}")
+  [ -n "${DP_DB_PASSWORD:-}" ] && data_cli_base+=(-a "${DP_DB_PASSWORD}")
+
+  sentinel_cli_base=(valkey-cli --no-auth-warning "${_tls_args[@]}" -p "${sentinel_port}")
+  [ -n "${SENTINEL_PASSWORD:-}" ] && sentinel_cli_base+=(-a "${SENTINEL_PASSWORD}")
+
+  derive_target_context || return 1
+  discover_primary || return 1
+
+  if [ -n "${SENTINEL_PASSWORD:-}" ]; then
+    # Credentials make this execution responsible for re-arming every
+    # Sentinel, but they never waive the data-plane convergence gate.
+    build_sentinel_target_list || return 1
+    register_sentinels_with_credentials || return 1
+  else
+    echo "INFO: SENTINEL_PASSWORD not provided — Sentinel monitor registration is delegated to the Sentinel self-discovery loop."
+  fi
+  verify_replication_converged
+}
+
 # This is magic for shellspec ut framework, do not modify!
 ${__SOURCED__:+false} : || return 0
 
 # ── main ─────────────────────────────────────────────────────────────────────
-detect_tls_args
-
-# Build a valkey-cli prefix for the data nodes
-data_cli_base=(valkey-cli --no-auth-warning "${_tls_args[@]}" -p "${data_port}")
-[ -n "${DP_DB_PASSWORD:-}" ] && data_cli_base+=(-a "${DP_DB_PASSWORD}")
-
-# Build a sentinel cli prefix
-sentinel_cli_base=(valkey-cli --no-auth-warning "${_tls_args[@]}" -p "${sentinel_port}")
-[ -n "${SENTINEL_PASSWORD:-}" ] && sentinel_cli_base+=(-a "${SENTINEL_PASSWORD}")
-
-derive_target_context || exit 1
-discover_primary || exit 1
-
-if [ -n "${SENTINEL_PASSWORD:-}" ]; then
-  # Fail-closed registration path: credentials were explicitly provided
-  # (restore env), so this job is responsible for re-arming every Sentinel.
-  build_sentinel_target_list || exit 1
-  register_sentinels_with_credentials || exit 1
-else
-  # No Sentinel credentials in this execution face. Verify data-plane
-  # convergence with the data credentials we do have; Sentinel monitor
-  # registration is delegated to the Sentinel startup self-discovery loop
-  # (valkey-sentinel-start.sh), which owns the Sentinel credentials and
-  # applies the same failover tunables.
-  echo "INFO: SENTINEL_PASSWORD not provided — verifying data-plane convergence; Sentinel monitor registration is delegated to the Sentinel self-discovery loop."
-  verify_replication_converged || exit 1
-fi
+post_restore_main

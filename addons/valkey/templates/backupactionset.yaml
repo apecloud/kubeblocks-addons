@@ -23,6 +23,8 @@ metadata:
   labels:
     clusterdefinition.kubeblocks.io/name: valkey
     {{- include "valkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "valkey.annotations" . | nindent 4 }}
 spec:
   backupType: Full
   env:
