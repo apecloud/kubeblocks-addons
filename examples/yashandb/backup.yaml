@@ -1,0 +1,10 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: yashandb-cluster-backup
+  namespace: demo
+spec:
+  # 2026-06-02 Reason: add Stage 3A full-backup-only example; Purpose: trigger the YashanDB BackupPolicyTemplate full backup method without claiming restore support.
+  backupMethod: full
+  backupPolicyName: yashandb-cluster-yashan-comp-backup-policy
+  deletionPolicy: Delete

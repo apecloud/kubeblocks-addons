@@ -83,14 +83,57 @@ Define yashandb component definition regular expression name prefix
 Define yashandb scripts template name
 */}}
 {{- define "yashandb.scriptsTplName" -}}
-yashandb-scripts-tpl
+{{- printf "yashandb-scripts-tpl-%s" .Chart.Version | replace "." "-" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
 Define yashandb config template name
 */}}
 {{- define "yashandb.configTplName" -}}
-yashandb-configuration-tpl
+{{- printf "yashandb-configuration-tpl-%s" .Chart.Version | replace "." "-" | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+2026-07-06 Reason: ParametersDefinition must reference the ComponentDefinition config entry, not the generated ConfigurationTemplate name.
+Purpose: keep config and parameter binding names drift-free across templates.
+Time: 2026-07-06.
+*/}}
+{{- define "yashandb.configEntryName" -}}
+yashandb-configs
+{{- end -}}
+
+{{/*
+Define yashandb parameters definition name
+*/}}
+{{- define "yashandb.paramsDefName" -}}
+yashandb-configuration-pd
+{{- end -}}
+
+{{/*
+Define YashanDB exporter source config map name.
+*/}}
+{{- define "yashandb.metricsConfigName" -}}
+{{- printf "yashandb-exporter-config-%s" .Chart.Version | replace "." "-" | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Define the optional YashanDB exporter image.
+*/}}
+{{- define "yashandb.metricsImage" -}}
+{{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+{{- end -}}
+
+{{/*
+Define the local YashanDB port scraped by the optional exporter sidecar.
+*/}}
+{{- define "yashandb.metricsTargetPort" -}}
+{{- if .Values.metrics.target.port -}}
+{{ .Values.metrics.target.port }}
+{{- else if .Values.ha.fixedAddress.enabled -}}
+{{ .Values.ha.fixedAddress.dbPort | default 2688 }}
+{{- else -}}
+1688
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -102,3 +145,5 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+
