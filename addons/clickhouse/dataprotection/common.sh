@@ -224,20 +224,21 @@ s3:
   use_custom_storage_class: false # S3_USE_CUSTOM_STORAGE_CLASS
   storage_class: STANDARD # S3_STORAGE_CLASS, by default allow only from list https://github.com/aws/aws-sdk-go-v2/blob/main/service/s3/types/enums.go#L787-L799
   concurrency: 1 # S3_CONCURRENCY
-  max_parts_count: 4000 # S3_MAX_PARTS_COUNT, number of parts for S3 multipart uploads
+  max_parts_count: 2000 # S3_MAX_PARTS_COUNT, number of parts for S3 multipart uploads
   allow_multipart_download: false # S3_ALLOW_MULTIPART_DOWNLOAD, allow faster multipart download speed, but will require additional disk space, download_concurrency * part size in worst case
   checksum_algorithm: "" # S3_CHECKSUM_ALGORITHM, use it when you use object lock which allow to avoid delete keys from bucket until some timeout after creation, use CRC32 as fastest
   object_labels: {} # S3_OBJECT_LABELS, allow setup metadata for each object during upload, use {macro_name} from system.macros and {backupName} for current backup name The format for this env variable is "key1:value1,key2:value2". For YAML please continue using map syntax
   custom_storage_class_map: {} # S3_CUSTOM_STORAGE_CLASS_MAP, allow setup storage class depending on the backup name regexp pattern, format nameRegexp > className
   request_payer: "" # S3_REQUEST_PAYER, define who will pay to request, look https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html for details, possible values requester, if empty then bucket owner
   debug: false # S3_DEBUG
+  retry_mode: adaptive
 EOF
 	export CLICKHOUSE_BACKUP_CONFIG="$clickhouse_backup_config"
 }
 
 function getToolConfigValue() {
     local var=$1
-    cat $toolConfig | grep "$var[[:space:]]*=" | awk '{print $NF}'
+    cat $toolConfig | grep "${var}[[:space:]]*=" | awk '{print $NF}'
 }
 
 function configure_clickhouse_backup_custom_storage_if_encrypted() {

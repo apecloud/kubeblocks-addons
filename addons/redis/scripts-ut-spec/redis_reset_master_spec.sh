@@ -54,7 +54,7 @@ Describe "Redis Reset Master Script Tests"
       End
     End
 
-    Context "when first sentinel fails but second succeeds"
+    Context "when the first sentinel reset fails"
       call_count=0
       redis-cli() {
         call_count=$((call_count + 1))
@@ -77,14 +77,18 @@ Describe "Redis Reset Master Script Tests"
       }
       Before "setup"
 
-      It "falls through to second sentinel"
+      It "fails fast without falling through to the second sentinel"
+        # Since #3543 the script resets every sentinel of the list and exits 1 as
+        # soon as one reset fails, so sentinel-1 is never attempted.
         When run reset_master_in_sentinels
-        The status should be success
-        The stdout should include "succeeded"
+        The status should be failure
+        The stdout should include "reset master in sentinel sentinel-0..."
+        The stdout should include "reset master in sentinel sentinel-0 failed"
+        The stdout should not include "sentinel-1"
       End
     End
 
-    Context "when all sentinels fail"
+    Context "when every sentinel reset fails"
       redis-cli() {
         echo "ERR No such master"
         return 1
@@ -104,7 +108,8 @@ Describe "Redis Reset Master Script Tests"
       It "exits with failure"
         When run reset_master_in_sentinels
         The status should be failure
-        The stdout should include "reset master in sentinel failed"
+        The stdout should include "reset master in sentinel sentinel-0 failed"
+        The stdout should not include "succeeded"
       End
     End
 
