@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "redis.labels" . | nindent 4 }}
   annotations:
-    {{- include "redis.apiVersion" . | nindent 4 }}
+    {{- include "redis.annotations" . | nindent 4 }}
 spec:
   template:
     compDef: {{ include "redisCluster.cmpdRegexpPattern" . }}
@@ -19,7 +19,8 @@ spec:
       shared: true
   lifecycleActions:
     shardRemove:
-      timeoutSeconds: 600
+      nonBlocking: true
+      timeoutSeconds: 3600
       exec:
         container: redis-cluster
         command:
