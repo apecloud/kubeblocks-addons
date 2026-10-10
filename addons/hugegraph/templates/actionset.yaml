@@ -1,0 +1,34 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: {{ include "hugegraph.actionSetName" . }}
+  labels:
+    {{- include "hugegraph.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_ROOT
+      value: {{ .Values.dataMountPath }}
+    - name: API_PORT
+      value: "8080"
+  backup:
+    backupData:
+      image: {{ include "hugegraph.image" . }}
+      runOnTargetPodNode: true
+      command:
+        - /bin/bash
+        - -c
+        - |
+          {{- .Files.Get "scripts/backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 10
+  restore:
+    prepareData:
+      image: {{ include "hugegraph.image" . }}
+      runOnTargetPodNode: true
+      command:
+        - /bin/bash
+        - -c
+        - |
+          {{- .Files.Get "scripts/restore.sh" | nindent 10 }}

@@ -1,0 +1,29 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: {{ include "hugegraph.backupPolicyTemplateName" . }}
+  labels:
+    {{- include "hugegraph.labels" . | nindent 4 }}
+spec:
+  serviceKind: hugegraph
+  compDefs:
+    - {{ include "hugegraph.cmpdPattern" . }}
+  target:
+    role: ""
+    strategy: All
+    account: admin
+  backupMethods:
+    - name: checkpoint
+      snapshotVolumes: false
+      actionSetName: {{ include "hugegraph.actionSetName" . }}
+      targetVolumes:
+        volumes:
+          - data
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+  schedules:
+    - backupMethod: checkpoint
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 7d

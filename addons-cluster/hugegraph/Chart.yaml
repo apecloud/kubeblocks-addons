@@ -1,0 +1,23 @@
+apiVersion: v2
+name: hugegraph-cluster
+description: Apache HugeGraph standalone cluster chart for KubeBlocks.
+type: application
+version: 1.0.0
+appVersion: "1.7.0"
+
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
+
+home: https://hugegraph.apache.org/
+icon: https://hugegraph.apache.org/img/logo.svg
+
+maintainers:
+  - name: ApeCloud
+    url: https://kubeblocks.io/
+
+sources:
+  - https://github.com/apache/incubator-hugegraph
+  - https://github.com/apecloud/kubeblocks-addons

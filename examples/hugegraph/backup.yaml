@@ -1,0 +1,9 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: hugegraph-cluster-backup
+  namespace: demo
+spec:
+  backupMethod: checkpoint
+  backupPolicyName: hugegraph-cluster-server-backup-policy
+  deletionPolicy: Delete

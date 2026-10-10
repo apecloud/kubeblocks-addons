@@ -1,0 +1,159 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "hugegraph.cmpdName" . }}
+  labels:
+    {{- include "hugegraph.labels" . | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    {{- include "hugegraph.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Apache HugeGraph 1.7.0 standalone server with RocksDB.
+  serviceKind: hugegraph
+  serviceVersion: {{ .Values.serviceVersion }}
+  exporter:
+    containerName: hugegraph-exporter
+    scrapePath: /metrics
+    scrapePort: metrics
+    scrapeScheme: http
+  minReadySeconds: 10
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 1
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: http
+            port: 8080
+            targetPort: http
+          - name: gremlin
+            port: 8182
+            targetPort: gremlin
+  scripts:
+    - name: hugegraph-scripts
+      template: {{ include "hugegraph.scriptsTemplateName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  volumes:
+    - name: data
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 4
+        numSymbols: 0
+        letterCase: MixedCases
+  vars:
+    - name: ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "hugegraph.cmpdName" . }}
+          name: admin
+          optional: false
+          username: Required
+    - name: ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "hugegraph.cmpdName" . }}
+          name: admin
+          optional: false
+          password: Required
+  logConfigs:
+    - name: running
+      filePathPattern: {{ .Values.logConfigs.running }}
+  runtime:
+    terminationGracePeriodSeconds: 30
+    containers:
+      - name: hugegraph
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+        command:
+          - /bin/bash
+          - /scripts/start.sh
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/bash
+                - /scripts/shutdown.sh
+        env:
+          - name: PASSWORD
+            value: $(ADMIN_PASSWORD)
+          - name: HUGEGRAPH_DATA_ROOT
+            value: {{ .Values.dataMountPath }}
+        ports:
+          - name: http
+            containerPort: 8080
+          - name: gremlin
+            containerPort: 8182
+        startupProbe:
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - >-
+                curl --fail --silent --show-error --user "${ADMIN_USER}:${ADMIN_PASSWORD}"
+                http://127.0.0.1:8080/graphspaces/DEFAULT/graphs >/dev/null
+          failureThreshold: 60
+          periodSeconds: 5
+          timeoutSeconds: 3
+        readinessProbe:
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - >-
+                curl --fail --silent --show-error --user "${ADMIN_USER}:${ADMIN_PASSWORD}"
+                http://127.0.0.1:8080/graphspaces/DEFAULT/graphs >/dev/null
+          failureThreshold: 3
+          periodSeconds: 10
+          timeoutSeconds: 3
+        livenessProbe:
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - >-
+                curl --fail --silent --show-error --user "${ADMIN_USER}:${ADMIN_PASSWORD}"
+                http://127.0.0.1:8080/graphspaces/DEFAULT/graphs >/dev/null
+          failureThreshold: 6
+          periodSeconds: 15
+          timeoutSeconds: 3
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+          - name: scripts
+            mountPath: /scripts
+      - name: hugegraph-exporter
+        image: {{ include "hugegraph.exporterImage" . }}
+        imagePullPolicy: {{ .Values.exporter.image.pullPolicy }}
+        env:
+          - name: HUGEGRAPH_USERNAME
+            value: $(ADMIN_USER)
+          - name: HUGEGRAPH_PASSWORD
+            value: $(ADMIN_PASSWORD)
+        ports:
+          - name: metrics
+            containerPort: 9404
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+          failureThreshold: 3
+          periodSeconds: 10
+          timeoutSeconds: 3
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+          failureThreshold: 6
+          periodSeconds: 15
+          timeoutSeconds: 3
+        resources:
+          {{- toYaml .Values.exporter.resources | nindent 10 }}

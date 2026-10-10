@@ -1,0 +1,21 @@
+apiVersion: monitor.kubeblocks.io/v1alpha1
+kind: MonitorDefinition
+metadata:
+  name: hugegraph
+  labels:
+    {{- include "hugegraph.labels" . | nindent 4 }}
+spec:
+  clusterDefRef: hugegraph
+  components:
+    - componentDefRef: hugegraph
+      regexEnabled: true
+      componentKinds:
+        - hugegraph.*
+      collectors:
+        - name: hugegraph-exporter
+          monitorType: prometheus
+          metrics:
+            collectionInterval: 30s
+            prometheus:
+              scrapePort: metrics
+              metricsPath: /metrics
