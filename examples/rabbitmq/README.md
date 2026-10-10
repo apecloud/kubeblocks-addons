@@ -49,6 +49,42 @@ kubectl apply -f examples/rabbitmq/cluster.yaml
 > RabbitMQ needs `peer discovery` role to create events and get endpoints. This is essential for discovering other RabbitMQ nodes and forming a cluster.
 > When `PulicyRule` API is ready, rules defined in the `Role` can be defined in the `ComponentDefintion.Spec.PolicyRule`. Such that KubeBlocks will automatically create and manage the `Role` and `RoleBinding` for the component.
 
+### Data Protection
+
+RabbitMQ supports a physical `physical` backup method for the `data` volume.
+The method selects all RabbitMQ pods, stops the RabbitMQ application on every
+discovered cluster node, waits for every target to pass the stop barrier, then
+archives each pod's data directory into a per-pod artifact named
+`<source-pod>.tar.zst`. No node is restarted until every target has written its
+archive barrier marker.
+
+This first implementation is intentionally narrow:
+
+- It is a full physical backup, not PITR or logical export/import.
+- Restore must use the same namespace, cluster name, component name, replica count, and serviceVersion as the source cluster so RabbitMQ node identity matches the restored Mnesia data.
+- The restore example relies on that same identity mapping: `source-target-name: rabbitmq` maps the source component and each restored pod consumes the archive for the same source pod name. If the target pod names differ, do not use this example until the Restore explicitly supplies the corresponding `source-target-pod-name` mapping and the Backup/Restore status proves every target PVC consumed the intended source target.
+- `scaleOut.fromBackup`, `RebuildInstance`, cross-topology restore, and cross-version restore are not claimed by this example.
+- Validate the Backup target list, stop/archive barrier logs, per-pod archive list, Restore/PVC conditions, restored AMQP publish/get, management login, policies/users, and cleanup before treating a restore as successful.
+
+Create a BackupRepo first:
+
+```bash
+kubectl apply -f examples/rabbitmq/backuprepo.yaml
+```
+
+Create a full physical backup:
+
+```bash
+kubectl apply -f examples/rabbitmq/backup.yaml
+```
+
+Restore after deleting the source Cluster while retaining the Backup and
+BackupRepo contents:
+
+```bash
+kubectl apply -f examples/rabbitmq/restore.yaml
+```
+
 ### Horizontal scaling
 
 > [!Important]

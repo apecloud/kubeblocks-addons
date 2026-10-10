@@ -1,0 +1,41 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: rabbitmq-backup-policy-template
+  labels:
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+spec:
+  serviceKind: rabbitmq
+  compDefs:
+    - {{ include "rabbitmq.cmpdNamePrefix" . }}.*
+  target:
+    role: ""
+    strategy: All
+    account: root
+  backupMethods:
+    - name: physical
+      snapshotVolumes: false
+      actionSetName: rabbitmq-physical-br
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+      env:
+        - name: IMAGE
+          valueFrom:
+            versionMapping:
+            {{- $imageRegistry := .Values.image.registry | default "docker.io" -}}
+            {{- range .Values.versions }}
+            {{- range .minors }}
+            {{- if not (index . 3) }}
+              - serviceVersions:
+                  - {{ index . 1 }}
+                mappedValue: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+  schedules:
+    - backupMethod: physical
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 7d
