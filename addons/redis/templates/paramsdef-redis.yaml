@@ -1,15 +1,21 @@
 # reuse redis7-config-effect-scope.
 {{- range .Values.redisVersions }}
 {{- $pd := $.Files.Get "config/redis-config-effect-scope.yaml" | fromYaml }}
+{{- $major := .major }}
+{{- $componentDefs := list
+      (dict "pdName" (printf "redis%s-config-pd" $major) "componentDef" .componentDef)
+      (dict "pdName" (printf "redis%s-syncer-config-pd" $major) "componentDef" .syncerComponentDef)
+}}
+{{- range $componentDef := $componentDefs }}
 ---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ printf "redis%s-config-pd" .major }}
+  name: {{ $componentDef.pdName }}
   labels:
     {{- include "redis.labels" $ | nindent 4 }}
 spec:
-  componentDef: {{ printf "%s-%s" .componentDef  $.Chart.Version }}
+  componentDef: {{ printf "%s-%s" $componentDef.componentDef $.Chart.Version }}
   templateName: redis-replication-config
   fileName: redis.conf
   fileFormatConfig:
@@ -18,7 +24,7 @@ spec:
   parametersSchema:
     topLevelKey: RedisParameter
     cue: |-
-      {{- $.Files.Get (printf "config/redis%s-config-constraint.cue" .major) | nindent 6 }}
+      {{- $.Files.Get (printf "config/redis%s-config-constraint.cue" $major) | nindent 6 }}
 
   ## require db instance restart
   {{- if hasKey $pd "staticParameters" }}
@@ -28,4 +34,5 @@ spec:
     - {{ . }}
     {{- end }}
   {{- end}}
+{{- end}}
 {{- end}}

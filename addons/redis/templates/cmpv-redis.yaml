@@ -11,6 +11,7 @@ spec:
   {{- range .Values.redisVersions }}
   - compDefs:
       - {{ .componentDef }}
+      - {{ .syncerComponentDef }}
     releases:
   {{- range .mirrorVersions }}
     - {{ .version }}
@@ -27,6 +28,7 @@ spec:
       redis: {{ $redisRepository }}:{{ .imageTag }}
       metrics: {{ include "metrics.repository" $ }}:v1.80.1
       init-dbctl: {{ $.Values.dbctlImage.registry | default ( $.Values.image.registry | default "docker.io" ) }}/{{ $.Values.dbctlImage.repository }}:{{ $.Values.dbctlImage.tag }}
+      init-syncer: {{ $.Values.image.registry | default "docker.io" }}/{{ $.Values.image.syncer.repository }}:{{ $.Values.image.syncer.tag }}
       postProvision: {{ $redisRepository }}:{{ .imageTag }}
       accountProvision: {{ $redisRepository }}:{{ .imageTag }}
       switchover: {{ $redisRepository }}:{{ .imageTag }}
