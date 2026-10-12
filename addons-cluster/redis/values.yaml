@@ -99,12 +99,6 @@ sentinel:
   # it is ignored when sentinel.useEmptyDefaultPassword is true
   customSecretName: ""
   customSecretNamespace: ""
-  ## @param sentinel.useEmptyDefaultPassword if set true, the chart renders a secret named
-  ## "<cluster name>-sentinel-custom-default" holding the empty password of the sentinel default user, and refers
-  ## to it as the default system account of the redis-sentinel component
-  ## if set false, sentinel.customSecretName/customSecretNamespace is used when they are set, otherwise KubeBlocks
-  ## generates a random password for the sentinel default user
-  useEmptyDefaultPassword: false
   storageClassName: ""
 
 ## if mode is cluster, specify the redis cluster parameters
