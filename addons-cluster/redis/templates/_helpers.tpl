@@ -30,14 +30,6 @@ To provide the password with your own secret instead, set customSecretName / cus
 {{ printf "%s-custom-default-password" (include "kblib.clusterName" .) }}
 {{- end }}
 
-{{- define "redis-cluster.sentinelEmptyPasswordEnabled" -}}
-{{- if .Values.sentinel.useEmptyDefaultPassword }}true{{- end -}}
-{{- end }}
-
-{{- define "redis-cluster.sentinelEmptyPasswordSecretName" -}}
-{{ printf "%s-sentinel-custom-default" (include "kblib.clusterName" .) }}
-{{- end }}
-
 {{- define "redis-cluster.shardEmptyPasswordEnabled" -}}
 {{- if .Values.redisCluster.useEmptyDefaultPassword }}true{{- end -}}
 {{- end }}
@@ -224,11 +216,11 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   {{- end }}
   {{- end }}
   serviceVersion: {{ .Values.version }}
-  {{- if eq (include "redis-cluster.sentinelEmptyPasswordEnabled" .) "true" }}
+  {{- if eq (include "redis-cluster.emptyPasswordEnabled" .) "true" }}
   systemAccounts:
     - name: default
       secretRef:
-        name: {{ include "redis-cluster.sentinelEmptyPasswordSecretName" . }}
+        name: {{ include "redis-cluster.emptyPasswordSecretName" . }}
         namespace: {{ .Release.Namespace }}
   {{- else if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
   systemAccounts:
