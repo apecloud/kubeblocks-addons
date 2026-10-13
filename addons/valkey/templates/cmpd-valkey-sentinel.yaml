@@ -28,7 +28,6 @@ spec:
   provider: community
   description: Valkey Sentinel v{{ .major }}.x — HA monitor and failover orchestrator
   serviceKind: redis-sentinel
-  serviceVersion: {{ .serviceVersion }}
   # Parallel: all Sentinel pods start concurrently.  There is no ordering
   # dependency between Sentinel peers — they elect a leader among themselves.
   podManagementPolicy: Parallel

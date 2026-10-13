@@ -6,8 +6,6 @@ metadata:
   labels:
     {{- include "mariadb.labels" . | nindent 4 }}
 data:
-  update-parameter.sh: |-
-    {{- .Files.Get "reloader/update-parameter.sh" | nindent 4 }}
   replication-roleprobe.sh: |-
     {{- .Files.Get "scripts/replication-roleprobe.sh" | nindent 4 }}
   replication-member-join.sh: |-

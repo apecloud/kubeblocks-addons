@@ -1,3 +1,8 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
 {{/*
 Library of component vars related functions implemented in Bash. Currently, the following functions are available:
 - get_target_pod_fqdn_from_pod_fqdn_vars: Get the target pod FQDN from a list of pod FQDN variables based on the pod name.

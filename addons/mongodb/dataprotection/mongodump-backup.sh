@@ -1,3 +1,4 @@
+#!/bin/bash
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
@@ -8,7 +9,7 @@ trap handle_exit EXIT
 # TODO: support endpoint env for sharding cluster.
 mongo_uri="mongodb://${DP_DB_HOST}:${DP_DB_PORT}"
 START_TIME=$(get_current_time)
-mongodump --uri "${mongo_uri}" -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} --authenticationDatabase admin --oplog --archive --numParallelCollections=${PARALLEL} | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.archive.zst"
+mongodump $(mongodb_tls_client_options mongodump) --uri "${mongo_uri}" -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} --authenticationDatabase admin --oplog --archive --numParallelCollections=${PARALLEL} | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.archive.zst"
 
 echo "" | datasafed push - oplog.signal
 # stat and save the backup information

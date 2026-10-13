@@ -39,6 +39,8 @@ def postgresql_conf_to_dict(file_path):
 
 def main(filename):
     restore_dir = os.environ.get('RESTORE_DATA_DIR', '')
+    conf_dir = os.environ.get('POSTGRES_CONF_DIR', '/home/postgres/conf')
+    pgdata_dir = os.environ.get('POSTGRES_PGDATA_DIR', '/home/postgres/pgdata')
     local_config = yaml.safe_load(
         os.environ.get('SPILO_CONFIGURATION',
                        os.environ.get('PATRONI_CONFIGURATION', ''))) or {}
@@ -49,25 +51,31 @@ def main(filename):
     postgresql = local_config['postgresql']
     postgresql['config_dir'] = '/home/postgres/pgdata/conf'
     postgresql['custom_conf'] = '/home/postgres/conf/postgresql.conf'
+    postgresql['remove_data_directory_on_rewind_failure'] = True
 
     # add pg_hba.conf
-    with open('/home/postgres/conf/pg_hba.conf', 'r') as f:
+    with open(os.path.join(conf_dir, 'pg_hba.conf'), 'r') as f:
         lines = read_file_lines(f)
         if lines:
             postgresql['pg_hba'] = lines
     if restore_dir and os.path.isfile(
             os.path.join(restore_dir, 'kb_restore.signal')):
-        if 'postgresql' not in local_config:
-            local_config['postgresql'] = {}
-        with open('/home/postgres/conf/replica_restore.conf', 'r') as f:
+        with open(os.path.join(conf_dir, 'replica_restore.conf'), 'r') as f:
             replica_restore_conf = yaml.safe_load(f)
             local_config['postgresql'].update(replica_restore_conf)
+        if 'bootstrap' not in local_config:
+            local_config['bootstrap'] = {}
+        local_config['bootstrap']['method'] = 'kb_restore'
+        local_config['bootstrap']['kb_restore'] = {
+            'command': 'bash {}'.format(os.path.join(restore_dir, 'kb_restore.sh')),
+            'keep_existing_recovery_conf': False,
+        }
 
     # point in time recovery(PITR)
-    if os.path.isfile("/home/postgres/pgdata/conf/recovery.conf"):
-        with open('/home/postgres/conf/kb_pitr.conf', 'r') as f:
+    if os.path.isfile(os.path.join(pgdata_dir, "conf/recovery.conf")):
+        with open(os.path.join(conf_dir, 'kb_pitr.conf'), 'r') as f:
             pitr_config = yaml.safe_load(f)
-            re_config = postgresql_conf_to_dict("/home/postgres/pgdata/conf/recovery.conf")
+            re_config = postgresql_conf_to_dict(os.path.join(pgdata_dir, "conf/recovery.conf"))
             pitr_config[pitr_config['method']]['recovery_conf'].update(re_config)
             local_config['bootstrap'].update(pitr_config)
 
@@ -76,8 +84,8 @@ def main(filename):
         local_config['bootstrap'] = {}
     if 'dcs' not in local_config['bootstrap']:
         local_config['bootstrap']['dcs'] = {}
-    if os.path.exists('/home/postgres/conf/patroni.yaml'):
-        with open('/home/postgres/conf/patroni.yaml', 'r') as f:
+    if os.path.exists(os.path.join(conf_dir, 'patroni.yaml')):
+        with open(os.path.join(conf_dir, 'patroni.yaml'), 'r') as f:
             local_config['bootstrap']['dcs'].update(yaml.safe_load(f))
     else:
         print('patroni.yaml not found')

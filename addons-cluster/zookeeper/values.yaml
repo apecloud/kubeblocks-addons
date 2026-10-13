@@ -33,3 +33,6 @@ storage: 10
 
 ## @param log storage, the unit is Gi
 logStorage: 2
+
+# if loadBalancerEnabled enable, will create a load balancer service for each zookeeper pod.
+loadBalancerEnabled: false

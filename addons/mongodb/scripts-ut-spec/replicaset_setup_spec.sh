@@ -17,12 +17,15 @@ Describe "Mongodb Startup Script Tests"
     # Also export MONGODB_ROOT so it's accessible to both the test and the script under test.
     export MONGODB_ROOT=${DATA_VOLUME:-/data/mongodb}
     POD_NAME="cluster-mongodb-0"
+    TLS_ENABLED=false
 
     # Create the directory for the dependency script the main script will 'source'.
     MOCK_SCRIPTS_DIR="./mock_scripts"
     mkdir -p "$MOCK_SCRIPTS_DIR"
     # Define a mock 'process_restore_signal' function in our mock common.sh file.
     cat > "$MOCK_SCRIPTS_DIR/mongodb-common.sh" <<'EOF'
+. ../scripts/mongodb-client.sh
+. ../scripts/mongodb-common.sh
 process_restore_signal() {
   echo "Mocked process_restore_signal called with: $2"
 }

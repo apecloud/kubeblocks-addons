@@ -6,6 +6,7 @@ metadata:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
     {{- include "clickhouse.apiVersion" . | nindent 4 }}
+    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   template:
     compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
@@ -14,3 +15,6 @@ spec:
     maxShards: 128
   provisionStrategy: Parallel
   updateStrategy: Parallel
+  systemAccounts:
+    - name: admin
+      shared: true

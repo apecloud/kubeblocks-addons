@@ -1,6 +1,33 @@
 #!/bin/bash
 # shellcheck disable=SC2086
 
+prepare_mongodb_tls() {
+    if [ "${TLS_ENABLED:-false}" != "true" ]; then
+        return 0
+    fi
+    # MongoDB requires the certificate and private key in a single PEM file.
+    (
+        umask 077
+        mkdir -p /etc/mongodb/tls &&
+            cat /etc/pki/tls/cert.pem /etc/pki/tls/key.pem > /etc/mongodb/tls/mongodb.pem
+    )
+}
+
+mongodb_tls_server_options() {
+    if [ "${TLS_ENABLED:-false}" = "true" ]; then
+        # Internal mongod/mongos connections also use encryption without peer verification.
+        # MongoDB 4.0 is the only supported series predating the 4.2 TLS option names.
+        case "${MONGODB_SERVICE_VERSION:-}" in
+            4.0|4.0.*)
+                echo "--sslMode requireSSL --sslCAFile /etc/pki/tls/ca.pem --sslPEMKeyFile /etc/mongodb/tls/mongodb.pem --sslAllowConnectionsWithoutCertificates --sslAllowInvalidCertificates --sslAllowInvalidHostnames"
+                ;;
+            *)
+                echo "--tlsMode requireTLS --tlsCAFile /etc/pki/tls/ca.pem --tlsCertificateKeyFile /etc/mongodb/tls/mongodb.pem --tlsAllowConnectionsWithoutCertificates --tlsAllowInvalidCertificates --tlsAllowInvalidHostnames"
+                ;;
+        esac
+    fi
+}
+
 function wait_restore_completion_by_cluster_cr() {
     local max_retries=$1
     local wait_interval=5
@@ -171,9 +198,4 @@ generate_endpoints() {
     done
 
     IFS=','; echo "${endpoints[*]}"
-}
-
-function get_mongodb_client_name() {
-    local client_name=$(mongosh --version 1>/dev/null&&echo mongosh||echo mongo)
-    echo $client_name
 }

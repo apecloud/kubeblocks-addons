@@ -33,6 +33,7 @@ spec:
           - bash
           - -c
           - |
+            {{- .Files.Get "scripts/mongodb-client.sh" | nindent 12 }}
             {{- .Files.Get "dataprotection/shard-pbm-pre-backup.sh" | nindent 12 }}
     postBackup: []
     backupData:
@@ -45,6 +46,7 @@ spec:
         - bash
         - -c
         - |
+          {{- .Files.Get "scripts/mongodb-client.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/shard-pbm-full-backup.sh" | nindent 10 }}
     preDelete:
@@ -63,6 +65,7 @@ spec:
           - bash
           - -c
           - |
+            {{- .Files.Get "scripts/mongodb-client.sh" | nindent 12 }}
             {{- .Files.Get "dataprotection/shard-pbm-restore-prepare.sh" | nindent 12 }}
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
@@ -71,5 +74,6 @@ spec:
           - bash
           - -c
           - |
+            {{- .Files.Get "scripts/mongodb-client.sh" | nindent 12 }}
             {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
             {{- .Files.Get "dataprotection/shard-pbm-full-restore.sh" | nindent 12 }}

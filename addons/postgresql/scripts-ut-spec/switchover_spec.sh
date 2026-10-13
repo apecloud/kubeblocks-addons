@@ -24,121 +24,193 @@ Describe "PostgreSQL Switchover Script Tests"
   }
   AfterAll 'cleanup'
 
+  setup() {
+    tmpdir=$(mktemp -d -t pg-switchover-XXXXXX)
+    STATE_FILE="${tmpdir}/switchover-sent"
+    CLUSTER_JSON_BEFORE='{"members":[{"name":"pod-0","role":"leader"},{"name":"pod-1","role":"replica"}]}'
+    CLUSTER_JSON_AFTER='{"members":[{"name":"pod-0","role":"replica"},{"name":"pod-1","role":"leader"}]}'
+    SWITCHOVER_BODY="Successfully switched over"
+    SWITCHOVER_CODE=200
+    CURL_CLUSTER_EXIT=0
+    CURL_SWITCHOVER_EXIT=0
+    SWITCHOVER_VERIFY_ATTEMPTS=2
+    SWITCHOVER_VERIFY_INTERVAL=0
+    export STATE_FILE CLUSTER_JSON_BEFORE CLUSTER_JSON_AFTER SWITCHOVER_BODY \
+      SWITCHOVER_CODE CURL_CLUSTER_EXIT CURL_SWITCHOVER_EXIT \
+      SWITCHOVER_VERIFY_ATTEMPTS SWITCHOVER_VERIFY_INTERVAL
+    unset KB_SWITCHOVER_CANDIDATE_NAME 2>/dev/null || true
+  }
+
+  teardown() {
+    rm -rf "${tmpdir}"
+  }
+
+  BeforeEach 'setup'
+  AfterEach 'teardown'
+
+  # Emulates the two curl call shapes in switchover.sh:
+  #   GET  .../cluster    -> cluster topology JSON (switches once /switchover was called)
+  #   POST .../switchover -> "<body>\n<http_code>" (the -w "\n%{http_code}" format)
+  Mock curl
+    url=""
+    for arg; do url="$arg"; done
+    case "$url" in
+      */cluster)
+        if [ "${CURL_CLUSTER_EXIT:-0}" -ne 0 ]; then
+          exit "${CURL_CLUSTER_EXIT}"
+        fi
+        if [ -f "${STATE_FILE}" ]; then
+          printf '%s' "${CLUSTER_JSON_AFTER}"
+        else
+          printf '%s' "${CLUSTER_JSON_BEFORE}"
+        fi
+        ;;
+      */switchover)
+        if [ "${CURL_SWITCHOVER_EXIT:-0}" -ne 0 ]; then
+          exit "${CURL_SWITCHOVER_EXIT}"
+        fi
+        touch "${STATE_FILE}"
+        printf '%s\n%s' "${SWITCHOVER_BODY}" "${SWITCHOVER_CODE}"
+        ;;
+    esac
+  End
+
   Describe "switchover()"
     Context "when CURRENT_POD_NAME is not set"
-      setup() {
-        unset CURRENT_POD_NAME
-      }
-      Before 'setup'
-
       It "exits with an error"
+        unset CURRENT_POD_NAME
         When run switchover
         The output should include "CURRENT_POD_NAME is not set. Exiting..."
         The status should be failure
       End
     End
 
-    # Context "when POSTGRES_PRIMARY_POD_NAME is not unique"
-    #   setup() {
-    #     CURRENT_POD_NAME="pod1"
-    #     POSTGRES_PRIMARY_POD_NAME="pod1,pod2"
-    #   }
-    #   Before 'setup'
+    Context "when the leader cannot be resolved from patroni"
+      It "defers with a transient classification instead of silently succeeding"
+        export CURRENT_POD_NAME="pod-0"
+        export CURL_CLUSTER_EXIT=7
+        When run switchover
+        The status should be failure
+        The error should include "phase: leader-not-resolved"
+        The error should include "next-retry-safe: yes"
+      End
+    End
 
-    #   It "exits with an error"
-    #     When run switchover
-    #     The output should include "Error: POSTGRES_PRIMARY_POD_NAME should be a unique pod name. Exiting."
-    #     The status should be failure
-    #   End
-    # End
+    Context "when the current pod is no longer the leader"
+      It "reports success without candidate when leadership already moved"
+        export CURRENT_POD_NAME="pod-1"
+        When run switchover
+        The status should eq 0
+        The output should include "Leadership already moved to pod-0"
+      End
 
-    # Context "when POSTGRES_POD_NAME_LIST or POSTGRES_POD_FQDN_LIST is not set"
-    #   setup() {
-    #     CURRENT_POD_NAME="pod1"
-    #     POSTGRES_PRIMARY_POD_NAME="pod1"
-    #     unset POSTGRES_POD_NAME_LIST
-    #     unset POSTGRES_POD_FQDN_LIST
-    #   }
-    #   Before 'setup'
+      It "reports success when the requested candidate is already the leader"
+        export CURRENT_POD_NAME="pod-1"
+        export KB_SWITCHOVER_CANDIDATE_NAME="pod-0"
+        When run switchover
+        The status should eq 0
+        The output should include "Switchover already completed"
+      End
 
-    #   It "exits with an error"
-    #     When run switchover
-    #     The output should include "POSTGRES_POD_NAME_LIST or POSTGRES_POD_FQDN_LIST is not set. Exiting..."
-    #     The status should be failure
-    #   End
-    # End
+      It "fails when the leader is neither this pod nor the candidate"
+        export CURRENT_POD_NAME="pod-1"
+        export KB_SWITCHOVER_CANDIDATE_NAME="pod-2"
+        When run switchover
+        The status should be failure
+        The error should include "phase: leader-mismatch"
+        The error should include "next-retry-safe: no"
+      End
+    End
 
-    # Context "when the current pod FQDN is not found"
-    #   setup() {
-    #     CURRENT_POD_NAME="pod1"
-    #     KB_SWITCHOVER_CURRENT_NAME="pod1"
-    #     POSTGRES_PRIMARY_POD_NAME="pod1"
-    #     POSTGRES_POD_NAME_LIST="pod2,pod3"
-    #     POSTGRES_POD_FQDN_LIST="pod2.example.com,pod3.example.com"
-    #   }
-    #   Before 'setup'
+    Context "when the switchover is performed"
+      It "succeeds with candidate and verifies the new leader"
+        export CURRENT_POD_NAME="pod-0"
+        export KB_SWITCHOVER_CANDIDATE_NAME="pod-1"
+        When run switchover
+        The status should eq 0
+        The output should include "Switchover API response (HTTP 200)"
+        The output should include "Switchover verified: new leader is pod-1"
+      End
 
-    #   It "exits with an error"
-    #     When run switchover
-    #     The output should include "Error: Failed to get current pod: pod1 fqdn from postgres pod fqdn list: pod2.example.com,pod3.example.com. Exiting."
-    #     The status should be failure
-    #   End
-    # End
+      It "succeeds without candidate on a checked 2xx, with no poll verification"
+        export CURRENT_POD_NAME="pod-0"
+        # keep the cluster view unchanged: the no-candidate path must not
+        # depend on observing a leader change (patroni /switchover is
+        # synchronous; the checked 2xx is the confirmation)
+        export CLUSTER_JSON_AFTER="${CLUSTER_JSON_BEFORE}"
+        When run switchover
+        The status should eq 0
+        The output should include "Switchover API response (HTTP 200)"
+        The output should not include "Switchover verified"
+      End
 
-    # Context "when switchover action is called for a non-primary pod"
-    #   setup() {
-    #     CURRENT_POD_NAME="pod1"
-    #     POSTGRES_PRIMARY_POD_NAME="pod2"
-    #     KB_SWITCHOVER_CURRENT_NAME="pod1"
-    #     POSTGRES_POD_NAME_LIST="pod1,pod2"
-    #     POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
-    #   }
-    #   Before 'setup'
+      It "verifies a standby_leader candidate in standby clusters"
+        export CURRENT_POD_NAME="pod-0"
+        export KB_SWITCHOVER_CANDIDATE_NAME="pod-1"
+        export CLUSTER_JSON_BEFORE='{"members":[{"name":"pod-0","role":"standby_leader"},{"name":"pod-1","role":"replica"}]}'
+        export CLUSTER_JSON_AFTER='{"members":[{"name":"pod-0","role":"replica"},{"name":"pod-1","role":"standby_leader"}]}'
+        When run switchover
+        The status should eq 0
+        The output should include "Switchover verified: new leader is pod-1"
+      End
+    End
 
-    #   It "exits without error"
-    #     When run switchover
-    #     The output should include "switchover action not triggered for primary pod. Exiting"
-    #   End
-    # End
+    Context "when patroni rejects or fails the switchover request"
+      It "defers with a transient classification on HTTP 503"
+        export CURRENT_POD_NAME="pod-0"
+        export SWITCHOVER_CODE=503
+        export SWITCHOVER_BODY="switchover is not possible: no good candidates"
+        When run switchover
+        The status should be failure
+        The output should include "Switchover API response (HTTP 503)"
+        The error should include "phase: switchover-rejected"
+        The error should include "next-retry-safe: yes"
+      End
 
-    # Context "when KB_SWITCHOVER_CANDIDATE_NAME is set"
-    #   setup() {
-    #     CURRENT_POD_NAME="pod1"
-    #     POSTGRES_PRIMARY_POD_NAME="pod1"
-    #     KB_SWITCHOVER_CURRENT_NAME="pod1"
-    #     POSTGRES_POD_NAME_LIST="pod1,pod2"
-    #     POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
-    #     KB_SWITCHOVER_CANDIDATE_NAME="pod2"
-    #   }
-    #   Before 'setup'
+      It "fails hard on HTTP 412"
+        export CURRENT_POD_NAME="pod-0"
+        export SWITCHOVER_CODE=412
+        export SWITCHOVER_BODY="switchover is not possible: leader name does not match"
+        When run switchover
+        The status should be failure
+        The output should include "Switchover API response (HTTP 412)"
+        The error should include "phase: switchover-rejected"
+        The error should include "next-retry-safe: no"
+      End
 
-    #   It "calls switchover_with_candidate"
-    #     switchover_with_candidate() {
-    #       echo "Calling switchover_with_candidate with arguments: $1 $2 $3"
-    #     }
-    #     When run switchover
-    #     The output should include "Calling switchover_with_candidate with arguments: pod1.example.com pod1 pod2"
-    #   End
-    # End
+      It "fails when the switchover API is unreachable"
+        export CURRENT_POD_NAME="pod-0"
+        export CURL_SWITCHOVER_EXIT=7
+        When run switchover
+        The status should be failure
+        The output should include "performs switchover without candidate"
+        The error should include "phase: switchover-api-unreachable"
+        The error should include "next-retry-safe: yes"
+      End
+    End
 
-    # Context "when KB_SWITCHOVER_CANDIDATE_NAME is not set"
-    #   setup() {
-    #     CURRENT_POD_NAME="pod1"
-    #     POSTGRES_PRIMARY_POD_NAME="pod1"
-    #     KB_SWITCHOVER_CURRENT_NAME="pod1"
-    #     POSTGRES_POD_NAME_LIST="pod1,pod2"
-    #     POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
-    #     unset KB_SWITCHOVER_CANDIDATE_NAME
-    #   }
-    #   Before 'setup'
+    Context "when the switchover result cannot be confirmed"
+      It "defers when the candidate does not become leader within the bounded window"
+        export CURRENT_POD_NAME="pod-0"
+        export KB_SWITCHOVER_CANDIDATE_NAME="pod-1"
+        export CLUSTER_JSON_AFTER="${CLUSTER_JSON_BEFORE}"
+        When run switchover
+        The status should be failure
+        The output should include "Switchover not confirmed yet"
+        The error should include "phase: switchover-not-confirmed"
+        The error should include "next-retry-safe: yes"
+      End
 
-    #   It "calls switchover_without_candidate"
-    #     switchover_without_candidate() {
-    #       echo "Calling switchover_without_candidate with arguments: $1 $2"
-    #     }
-    #     When run switchover
-    #     The output should include "Calling switchover_without_candidate with arguments: pod1.example.com pod1"
-    #   End
-    # End
+      It "fails hard when leadership moved to a pod other than the candidate"
+        export CURRENT_POD_NAME="pod-0"
+        export KB_SWITCHOVER_CANDIDATE_NAME="pod-1"
+        export CLUSTER_JSON_AFTER='{"members":[{"name":"pod-0","role":"replica"},{"name":"pod-2","role":"leader"}]}'
+        When run switchover
+        The status should be failure
+        The output should include "Switchover API response (HTTP 200)"
+        The error should include "phase: switchover-wrong-leader"
+        The error should include "next-retry-safe: no"
+      End
+    End
   End
 End

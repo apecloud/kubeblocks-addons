@@ -1,0 +1,70 @@
+KubeBlocks Enterprise License Agreement
+
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+
+IMPORTANT: PLEASE READ THIS LICENSE AGREEMENT CAREFULLY BEFORE USING THIS SOFTWARE.
+
+This software and related documentation files (the "Software") are the proprietary
+and confidential property of ApeCloud Co., Ltd. ("ApeCloud"). The Software is
+protected by copyright laws and international copyright treaties, as well as other
+intellectual property laws and treaties.
+
+1. GRANT OF LICENSE
+
+   Subject to the terms of a valid, executed ApeCloud Enterprise Subscription
+   Agreement between you and ApeCloud, ApeCloud grants you a limited,
+   non-exclusive, non-transferable, non-sublicensable license to use the Software
+   solely for your internal business operations.
+
+2. RESTRICTIONS
+
+   You may not:
+   a. Copy, modify, adapt, translate, or create derivative works of the Software;
+   b. Distribute, sell, sublicense, rent, lease, or otherwise transfer the Software
+      or any rights therein to any third party;
+   c. Reverse engineer, disassemble, decompile, or attempt to derive the source
+      code of the Software (except to the extent permitted by applicable law);
+   d. Remove or alter any proprietary notices, labels, or marks on the Software;
+   e. Use the Software to provide services to third parties without prior written
+      consent from ApeCloud.
+
+3. INTELLECTUAL PROPERTY
+
+   ApeCloud retains all right, title, and interest in and to the Software,
+   including all intellectual property rights therein. No rights are granted to
+   you except as expressly set forth in this Agreement.
+
+4. CONFIDENTIALITY
+
+   The Software contains trade secrets and proprietary information of ApeCloud.
+   You agree to maintain the confidentiality of the Software and not to disclose
+   it to any third party without ApeCloud's prior written consent.
+
+5. DISCLAIMER OF WARRANTIES
+
+   THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. APECLOUD
+   EXPRESSLY DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, STATUTORY, OR
+   OTHERWISE, INCLUDING WITHOUT LIMITATION ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+6. LIMITATION OF LIABILITY
+
+   IN NO EVENT SHALL APECLOUD BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR RELATED TO THIS
+   AGREEMENT OR THE USE OF THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+   SUCH DAMAGES.
+
+7. TERMINATION
+
+   This license is effective until terminated. ApeCloud may terminate this license
+   immediately upon written notice if you breach any of its terms. Upon
+   termination, you must destroy all copies of the Software.
+
+8. GOVERNING LAW
+
+   This Agreement shall be governed by the laws of the People's Republic of China.
+   Any dispute arising from this Agreement shall be submitted to the competent
+   courts of Shanghai, China.
+
+For licensing inquiries, please contact: support@apecloud.com
+Website: https://www.apecloud.com

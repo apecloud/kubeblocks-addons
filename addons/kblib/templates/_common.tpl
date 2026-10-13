@@ -1,3 +1,8 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
 {{- define "kblib.syncer.policyRules" -}}
 policyRules:
 - apiGroups:

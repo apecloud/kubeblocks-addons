@@ -1,3 +1,8 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
 {{/*
 Library of envs related functions implemented in Bash. Currently, the following functions are available:
 - env_exist: Check if a single environment variable exists in the system's environment variables.

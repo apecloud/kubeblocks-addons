@@ -20,6 +20,7 @@ spec:
         - {{ include "pulsar4.brokerCmpdRegexPattern" . }}
       releases:
         - 4.0.6
+        - 4.0.12
   releases:
     - name: 2.11.2
       serviceVersion: 2.11.2
@@ -39,3 +40,9 @@ spec:
         broker: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.broker.repository }}:4.0.6
         init-broker-cluster: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.broker.repository }}:4.0.6
         init-sysctl: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.broker.repository }}:4.0.6
+    - name: 4.0.12
+      serviceVersion: 4.0.12
+      images:
+        broker: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_12.broker.repository }}:4.0.12
+        init-broker-cluster: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_12.broker.repository }}:4.0.12
+        init-sysctl: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_12.broker.repository }}:4.0.12

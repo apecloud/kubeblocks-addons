@@ -1,3 +1,4 @@
+# shellcheck disable=SC2148
 export PGPASSWORD=${DP_DB_PASSWORD}
 # use datasafed and default config
 export WALG_DATASAFED_CONFIG=""
@@ -45,7 +46,7 @@ function switch_wal_log() {
     LAST_TRANS=$(pg_waldump $(${PSQL} -Atc "select pg_walfile_name(pg_current_wal_lsn())") --rmgr=Transaction 2>/dev/null |tail -n 1)
     if [ "${LAST_TRANS}" != "" ] && [ "$(find ${LOG_DIR}/archive_status/ -name '*.ready')" = "" ]; then
       DP_log "start to switch wal file"
-      ${PSQL} -c "select pg_switch_wal()"
+      ${PSQL} -c "select pg_switch_wal()" || DP_error_log "pg_switch_wal failed, will retry on the next round"
       for i in $(seq 1 60); do
         if [ "$(find ${LOG_DIR}/archive_status/ -name '*.ready')" != "" ]; then
           DP_log "switch wal file successfully"
@@ -60,7 +61,7 @@ function switch_wal_log() {
 # upload wal log
 function upload_wal_log() {
     local TODAY_INCR_LOG=$(date +%Y%m%d);
-    cd ${LOG_DIR}
+    cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
     for i in $(ls -tr ./archive_status/ | grep .ready); do
       wal_name=${i%.*}
       LOG_STOP_TIME=$(pg_waldump ${wal_name} --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
@@ -69,8 +70,14 @@ function upload_wal_log() {
       fi
       if [ -f ${wal_name} ]; then
         DP_log "upload ${wal_name}"
-        datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst"
-        mv -f ./archive_status/${i} ./archive_status/${wal_name}.done;
+        # Rename .ready to .done only after a successful upload. Marking a
+        # failed upload as .done lets PostgreSQL recycle a WAL segment that
+        # never reached the repository, leaving a hole in the PITR chain.
+        if datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst"; then
+          mv -f ./archive_status/${i} ./archive_status/${wal_name}.done;
+        else
+          DP_error_log "failed to upload ${wal_name}, keeping ${i} for retry"
+        fi
       fi
     done
 }
@@ -138,7 +145,7 @@ function check_pg_process() {
 function uploadMissingLogs() {
     DP_log "start to upload the wal log which maybe misses"
     local TODAY_INCR_LOG=$(date +%Y%m%d)
-    cd ${LOG_DIR}
+    cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
     uploadedLogs=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) | .[] | .path')
     if [[ -z ${uploadedLogs} ]]; then
       return
@@ -157,7 +164,7 @@ function uploadMissingLogs() {
       fi
       if [ -f ${wal_name} ]; then
         DP_log "upload ${wal_name}"
-        datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst"
+        datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst" || DP_error_log "failed to upload ${wal_name}"
       fi
     done
     save_backup_status

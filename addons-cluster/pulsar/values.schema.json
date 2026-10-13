@@ -442,6 +442,12 @@
                 }
             }
         },
+        "loadBalancerEnabled": {
+            "title": "Load Balancer Enabled",
+            "description": "Create a LoadBalancer service for each broker pod. NodePort takes precedence when both are enabled.",
+            "type": "boolean",
+            "default": false
+        },
         "nodePortEnabled": {
             "title": "Node Port Enabled",
             "description": "Enable Node Port",

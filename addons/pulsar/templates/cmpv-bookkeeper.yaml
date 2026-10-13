@@ -22,6 +22,7 @@ spec:
         - {{ include "pulsar4.bookkeeperCmpdRegexPattern" . }}
       releases:
         - 4.0.6
+        - 4.0.12
   releases:
     - name: 2.11.2
       serviceVersion: 2.11.2
@@ -41,3 +42,9 @@ spec:
         bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6
         memberLeave: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6
         init-bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_6.bookie.repository }}:4.0.6
+    - name: 4.0.12
+      serviceVersion: 4.0.12
+      images:
+        bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_12.bookie.repository }}:4.0.12
+        memberLeave: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_12.bookie.repository }}:4.0.12
+        init-bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v4_0_12.bookie.repository }}:4.0.12

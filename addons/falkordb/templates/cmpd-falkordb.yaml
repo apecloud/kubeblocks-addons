@@ -13,7 +13,6 @@ spec:
   provider: kubeblocks
   description: A falkordb v{{ .major }}.0 component definition for Kubernetes
   serviceKind: falkordb
-  serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: OrderedReady
   podUpgradePolicy: ReCreate
   minReadySeconds: 10

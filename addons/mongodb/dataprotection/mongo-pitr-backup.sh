@@ -4,7 +4,7 @@ retention_minute=""
 if [ ! -z ${DP_TTL_SECONDS} ];then
   retention_minute=$((${DP_TTL_SECONDS}/60))
 fi
-export MONGODB_URI="mongodb://${DP_DB_USER}:${DP_DB_PASSWORD}@${DP_DB_HOST}:${DP_DB_PORT}/?authSource=admin"
+export MONGODB_URI="mongodb://${DP_DB_USER}:${DP_DB_PASSWORD}@${DP_DB_HOST}:${DP_DB_PORT}/?authSource=admin$(mongodb_tls_uri_options)"
 export OPLOG_ARCHIVE_TIMEOUT_INTERVAL=${DP_ARCHIVE_INTERVAL}
 export OPLOG_ARCHIVE_AFTER_SIZE=${ARCHIVE_AFTER_SIZE}
 # use datasafed and default config
@@ -40,8 +40,10 @@ check_oplog_push_process(){
     echo $errorLog && exit 1
   fi
   # check role of the connected mongodb
-  export CLIENT=`which mongosh&&echo mongosh||echo mongo`
-  isPrimary=$($CLIENT -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} --port ${DP_DB_PORT} --host ${DP_DB_HOST} --authenticationDatabase admin  --eval 'rs.isMaster().ismaster' --quiet)
+  CLIENT=$(get_mongodb_client_name)
+  # shellcheck disable=SC2034
+  local CLUSTER_MONGO="$CLIENT $(mongodb_tls_client_options "$CLIENT") -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} --port ${DP_DB_PORT} --host ${DP_DB_HOST} --authenticationDatabase admin --quiet --eval"
+  isPrimary=$(mongodb_query_json 'rs.isMaster().ismaster') || exit $?
   if [ "${isPrimary}" != "true" ]; then
     DP_log "isPrimary: ${isPrimary}"
     retryTimes=$(($retryTimes+1))

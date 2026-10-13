@@ -16,3 +16,9 @@ spec:
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
+      configs:
+      - name: qdrant-config-template
+        variables:
+          {{ if .Values.config.default_replication_factor }}
+          default_replication_factor: "{{ .Values.config.default_replication_factor }}"
+          {{- end }}

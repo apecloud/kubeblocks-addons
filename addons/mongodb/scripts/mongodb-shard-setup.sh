@@ -9,8 +9,9 @@ mkdir -p $MONGODB_ROOT/tmp
 export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 
 . "/scripts/mongodb-common.sh"
+prepare_mongodb_tls || exit 1
 
-process="mongod --bind_ip_all --port $PORT --replSet $CLUSTER_COMPONENT_NAME --config /etc/mongodb/mongodb.conf"
+process="mongod --bind_ip_all --port $PORT --replSet $CLUSTER_COMPONENT_NAME --config /etc/mongodb/mongodb.conf $(mongodb_tls_server_options)"
 boot_or_enter_restore "$process"
 
 echo "INFO: Startup backup agent for restore."

@@ -1,3 +1,8 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
 {{/*
 Library of string functions implemented in Bash. Currently, the following functions are available:
 - is_empty(string): Check if a string is empty.

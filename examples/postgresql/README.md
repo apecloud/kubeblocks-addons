@@ -22,11 +22,16 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 
 | Major Versions | Description |
 |---------------|-------------|
-| 12            | 12.14.0,12.14.1,12.15.0,12.22.0|
-| 14            | 14.7.2,14.8.0,14.18.0|
-| 15            | 15.7.0,15.13.0|
-| 16            | 16.4.0,16.9.0|
-| 17            | 17.5.0|
+| 12            | 12.14.0, 12.14.1, 12.15.0, 12.22.0 |
+| 13            | 13.23.0 |
+| 14            | 14.7.2, 14.8.0, 14.18.0, 14.23.0 |
+| 15            | 15.7.0, 15.13.0, 15.18.0 |
+| 16            | 16.4.0, 16.9.0, 16.14.0 |
+| 17            | 17.5.0, 17.10.0 |
+| 18            | 18.1.0, 18.4.0 |
+
+PostgreSQL 13 reached upstream end of life on November 13, 2025. Version 13.23.0
+is its final patch and is provided for compatibility; plan an upgrade to a supported major.
 
 ## Prerequisites
 
@@ -80,7 +85,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,15.7.0,15.13.0,16.4.0,16.9.0,17.5.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,15.7.0,15.13.0,15.18.0,16.4.0,16.9.0,16.14.0,17.5.0,17.10.0,18.1.0,18.4.0]
       serviceVersion: "14.7.2"
 ```
 
@@ -94,7 +99,7 @@ And the expected output is like:
 
 ```bash
 NAME         VERSIONS                                                                                    STATUS      AGE
-postgresql   17.5.0,16.9.0,16.4.0,15.13.0,15.7.0,14.18.0,14.8.0,14.7.2,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
+postgresql   18.4.0,18.1.0,17.10.0,17.5.0,16.14.0,16.9.0,16.4.0,15.18.0,15.13.0,15.7.0,14.23.0,14.18.0,14.8.0,14.7.2,13.23.0,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
 ```
 
 ### Horizontal scaling
@@ -326,7 +331,7 @@ kubectl apply -f examples/postgresql/configure.yaml
 ```
 
 This example will change the `max_connections` to `200`.
-> `max_connections` indicates maximum number of client connections allowed. It is a dynamic parameter, so the change will take effect without restarting the database.
+> `max_connections` indicates the maximum number of client connections allowed. It is a static parameter, so KubeBlocks restarts PostgreSQL instances in a controlled sequence for the change to take effect.
 
 ```bash
 kbcli cluster explain-config pg-cluster # kbcli is a command line tool to interact with KubeBlocks

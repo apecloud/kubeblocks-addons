@@ -12,3 +12,5 @@ data:
     {{- .Files.Get "scripts/qdrant-setup.sh" | nindent 4 }}
   member-leave.sh: |-
     {{- .Files.Get "scripts/qdrant-member-leave.sh" | nindent 4 }}
+  role-probe.sh: |-
+    {{- .Files.Get "scripts/role-probe.sh" | nindent 4 }}

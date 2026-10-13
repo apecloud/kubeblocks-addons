@@ -395,6 +395,16 @@
 	// Controls whether an expression index can be created. Since TiDB v5.2.0, if the function in an expression is safe, you can create an expression index directly based on this function without enabling this configuration. If you want to create an expression index based on other functions, you can enable this configuration, but correctness issues might exist. By querying the `tidb_allow_function_for_expression_index` variable, you can get the functions that are safe to be directly used for creating an expression.
 	"experimental.allow-expression-index": bool | *false
 
+
+	// Enables the prepared plan cache. When enabled, execution plans of prepared statements are cached,
+	// which can significantly reduce latency for repeated parameterized queries (e.g. OLTP workloads like TPCC).
+	"prepared-plan-cache.enabled": bool | *true
+
+	// The maximum number of cached plans in the prepared plan cache.
+	"prepared-plan-cache.capacity": int & >=1 | *1000
+
+	// The ratio of memory reserved as a guard to prevent OOM when the plan cache uses too much memory.
+	"prepared-plan-cache.memory-guard-ratio": float & >=0 & <=1 | *0.1
 	...
 }
 

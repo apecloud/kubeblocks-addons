@@ -32,17 +32,31 @@ Create chart name and version as used by the chart label.
 
 
 {{/*
-Dynamic component definition name for clickhouse
+Dynamic component definition name for clickhouse.
+In withZookeeper mode with a legacy version (ClickHouse 22.x and earlier), use
+the clickhouse-22 ComponentDefinition, which injects a keeper-image initContainer
+that runs zk_create_root before the server starts.
 */}}
 {{- define "clickhouse-cluster.cmpdName" -}}
+{{- if semverCompare "<23.0.0" (.Values.version | default "") -}}
+clickhouse-22-1
+{{- else -}}
 clickhouse-1
+{{- end -}}
 {{- end }}
 
 {{/*
-Dynamic component definition name for clickhouse-keeper
+Dynamic component definition name for clickhouse-keeper.
+For a legacy version (ClickHouse 22.x and earlier), use the
+clickhouse-keeper-22 ComponentDefinition, which copies clickhouse-keeper-client
+to the shared-tools volume.
 */}}
 {{- define "clickhouse-cluster.keeperCmpdName" -}}
+{{- if semverCompare "<23.0.0" (.Values.version | default "") -}}
+clickhouse-keeper-22-1
+{{- else -}}
 clickhouse-keeper-1
+{{- end -}}
 {{- end }}
 
 {{/*
@@ -153,6 +167,7 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
     services:
     - name: default
       serviceType: {{ .Values.service.type | default "NodePort" }}
+    {{- include "clickhouse-cluster.serviceRefs" . | indent 4 }}
     systemAccounts:
     - name: admin
       passwordConfig:
@@ -167,4 +182,37 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
     {{- include "kblib.componentResources" . | indent 4 }}
     {{- include "kblib.componentStorages" . | indent 4 }}
     {{- include "clickhouse-cluster.tls" . | indent 4 }}
+{{- end }}
+
+{{/*
+Define serviceRefs for external ZooKeeper clusters.
+Rendered only in the withZookeeper mode. Renders the primary ZooKeeper
+reference (clickhouseZookeeper) and up to 7 auxiliary ZooKeeper references
+(clickhouseAuxZookeeper1..7), matching the serviceRefDeclarations in the
+clickhouse ComponentDefinition.
+*/}}
+{{- define "clickhouse-cluster.serviceRefs" -}}
+{{- if eq $.Values.mode "withZookeeper" }}
+{{- $zookeeper := required "zookeeper is required when mode is withZookeeper" .Values.zookeeper }}
+{{- $primary := required "zookeeper.primary is required when mode is withZookeeper" $zookeeper.primary }}
+{{- $_ := required "zookeeper.primary.cluster is required when mode is withZookeeper" $primary.cluster }}
+{{- $serviceRefs := list (dict "name" "clickhouseZookeeper" "ref" $primary) }}
+{{- if and .Values.zookeeper .Values.zookeeper.auxiliary }}
+{{- range $idx, $aux := .Values.zookeeper.auxiliary }}
+{{- if lt $idx 7 }}
+{{- $_ := required (printf "zookeeper.auxiliary[%d].cluster is required" $idx) $aux.cluster }}
+{{- $serviceRefs = append $serviceRefs (dict "name" (printf "clickhouseAuxZookeeper%d" (add $idx 1)) "ref" $aux) }}
+{{- end }}
+{{- end }}
+{{- end }}
+serviceRefs:
+{{- range $serviceRefs }}
+  - name: {{ .name }}
+    namespace: {{ .ref.namespace | default $.Release.Namespace | quote }}
+    clusterServiceSelector:
+      cluster: {{ .ref.cluster | quote }}
+      podFQDNs:
+        component: {{ .ref.component | default "zookeeper" }}
+{{- end }}
+{{- end }}
 {{- end }}

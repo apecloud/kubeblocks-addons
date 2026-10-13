@@ -1,4 +1,32 @@
 {{- $time_zone := getEnvByName ( getContainerByName $.podSpec.containers "graphd" ) "DEFAULT_TIMEZONE" }}
+{{- $graphd_container := getContainerByName $.podSpec.containers "graphd" }}
+{{- $phy_memory := getContainerMemory $graphd_container }}
+{{- $phy_cpu := getContainerCPU $graphd_container }}
+
+{{- /* Compute resource-adaptive parameters, keep the values within the constraint range:
+  num_worker_threads [0,100], max_job_size [1,256], max_sessions_per_ip_per_user [1,10000],
+  memory_tracker_untracked_reserved_memory_mb [0,102400], min_batch_size [1024,131072] */}}
+{{- $num_worker_threads := 0 }}
+{{- $num_netio_threads := 0 }}
+{{- $max_job_size := 1 }}
+{{- $min_batch_size := 8192 }}
+{{- $max_sessions := 300 }}
+{{- $untracked_memory_mb := 50 }}
+
+{{- if gt $phy_cpu 0 }}
+{{- /* max_job_size is recommended to be half of the physical CPU cores */}}
+{{- $max_job_size = max 1 ( min ( div ( int $phy_cpu ) 2 ) 256 ) }}
+{{- $num_worker_threads = min ( int $phy_cpu ) 100 }}
+{{- $num_netio_threads = min ( int $phy_cpu ) 100 }}
+{{- $min_batch_size = min ( max 8192 ( mul ( int $phy_cpu ) 512 ) ) 131072 }}
+{{- end }}
+
+{{- if gt $phy_memory 0 }}
+{{- /* one session per 64MB memory, at least 300 */}}
+{{- $max_sessions = min ( max 300 ( div ( int $phy_memory ) 33554432 ) ) 10000 }}
+{{- /* reserve 5% of memory for the system, at least 50MB */}}
+{{- $untracked_memory_mb = max 50 ( min ( div ( div ( int $phy_memory ) 20 ) 1048576 ) 102400 ) }}
+{{- end }}
 
 ########## basics ##########
 # Whether to run as a daemon process
@@ -64,9 +92,9 @@
 # The number of threads to accept incoming connections
 --num_accept_threads=1
 # The number of networking IO threads, 0 for # of CPU cores
---num_netio_threads=0
+--num_netio_threads={{ $num_netio_threads }}
 # The number of threads to execute user queries, 0 for # of CPU cores
---num_worker_threads=0
+--num_worker_threads={{ $num_worker_threads }}
 # HTTP service ip
 --ws_ip=0.0.0.0
 # HTTP service port
@@ -90,7 +118,8 @@
 
 ########## memory ##########
 # System memory high watermark ratio, cancel the memory checking when the ratio greater than 1.0
---system_memory_high_watermark_ratio=1.0
+# WARNING: must NOT be 1.0, otherwise memory_tracker_limit_ratio will not take effect
+--system_memory_high_watermark_ratio=0.8
 
 ########## audit ##########
 # This variable is used to enable audit. The value can be 'true' or 'false'.
@@ -142,7 +171,7 @@
 
 ########## experimental feature ##########
 # if use experimental features
---enable_experimental_feature=false
+--enable_experimental_feature=true
 
 ########## Black box ########
 # Enable black box
@@ -156,13 +185,13 @@
 
 ########## session ##########
 # Maximum number of sessions that can be created per IP and per user
---max_sessions_per_ip_per_user=300
+--max_sessions_per_ip_per_user={{ $max_sessions }}
 
 ########## memory tracker ##########
 # trackable memory ratio (trackable_memory / (total_memory - untracked_reserved_memory) )
 --memory_tracker_limit_ratio=0.8
 # untracked reserved memory in Mib
---memory_tracker_untracked_reserved_memory_mb=50
+--memory_tracker_untracked_reserved_memory_mb={{ $untracked_memory_mb }}
 
 # enable log memory tracker stats periodically
 --memory_tracker_detail_log=false
@@ -176,6 +205,19 @@
 
 # experimental configuration
 --enable_data_balance=true
---enable_experimental_feature=true
 
---containerized=false
+########## performance optimization ##########
+# Maximum number of concurrent jobs, recommended to be half of the physical CPU cores
+--max_job_size={{ $max_job_size }}
+# Minimum batch size for processing datasets, only takes effect when max_job_size > 1
+--min_batch_size={{ $min_batch_size }}
+# Number of paths built per thread during path building phase
+--path_batch_size=10000
+
+########## container/cgroup ##########
+# Run inside a container, memory tracker reads the cgroup limit instead of host /proc/meminfo
+--containerized=true
+--cgroup_v2_controllers=/sys/fs/cgroup/cgroup.controllers
+--cgroup_v2_memory_stat_path=/sys/fs/cgroup/memory.stat
+--cgroup_v2_memory_max_path=/sys/fs/cgroup/memory.max
+--cgroup_v2_memory_current_path=/sys/fs/cgroup/memory.current

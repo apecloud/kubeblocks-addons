@@ -578,13 +578,7 @@ qdrant_configure_client() {
   export QDRANT_CURL_BIN
   JQ="${JQ:-/qdrant/tools/jq}"
 
-  if [ "${TLS_ENABLED:-}" = "true" ]; then
-    SCHEME="https"
-    CURL_TLS="-k"
-  else
-    SCHEME="http"
-    CURL_TLS=""
-  fi
+  qdrant_set_tls_variables
 }
 
 qdrant_select_control_endpoint() {

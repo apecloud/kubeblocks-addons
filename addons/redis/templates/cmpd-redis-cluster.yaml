@@ -24,7 +24,6 @@ spec:
   provider: kubeblocks
   description: An official v{{ .major }}.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
   serviceKind: redis-cluster
-  serviceVersion: {{ .serviceVersion }}
   minReadySeconds: 10
   podUpgradePolicy: ReCreate
   tls:
@@ -134,6 +133,10 @@ spec:
           optional: true
     - name: TLS_MOUNT_PATH
       value: {{ $.Values.tlsMountPath }}
+    - name: SERVICE_VERSION
+      valueFrom:
+        componentVarRef:
+          serviceVersion: Required
     ## the name of current cluster instance
     - name: CLUSTER_NAME
       valueFrom:

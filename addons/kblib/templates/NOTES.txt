@@ -1,0 +1,13 @@
+--------------------------------------------------------------------------------
+ENTERPRISE SOFTWARE — LICENSE NOTICE
+
+This Helm chart is part of KubeBlocks Enterprise Addons, proprietary software
+owned by ApeCloud Co., Ltd.
+
+A valid KubeBlocks Enterprise License Agreement is required to install and use
+this software. Unauthorized use, copying, or distribution is prohibited.
+
+  License terms : see the LICENSE file included with this chart
+  Licensing info : support@apecloud.com
+  Website        : https://www.apecloud.com
+--------------------------------------------------------------------------------

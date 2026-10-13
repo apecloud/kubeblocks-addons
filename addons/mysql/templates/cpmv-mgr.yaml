@@ -13,12 +13,13 @@ metadata:
     {{- include "mysql.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
+    # compDefs are name prefix patterns, chart-version agnostic
     - compDefs:
-        - {{ include "mysql.componentDefNameMGR80" . }}
+        - {{ include "mysql.componentDefPrefixMGR80" . }}
       releases:
         - 8.0.45
     - compDefs:
-        - {{ include "mysql.componentDefNameMGR84" . }}
+        - {{ include "mysql.componentDefPrefixMGR84" . }}
       releases:
         - 8.4.9
         - 8.4.10

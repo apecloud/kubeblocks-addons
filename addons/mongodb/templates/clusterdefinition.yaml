@@ -23,10 +23,6 @@ spec:
         - name: shard
           shardingDef: {{ include "mongodbShard.componentDefNamePrefix" . }}
       orders:
-        provision:
-          - config-server
-          - mongos
-          - shard
         terminate:
           - shard
           - mongos,config-server

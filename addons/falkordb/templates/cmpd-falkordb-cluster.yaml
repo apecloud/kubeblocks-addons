@@ -15,7 +15,6 @@ spec:
   provider: kubeblocks
   description: An official v{{ .major }}.0 FalkorDB Cluster(distributed implementation of FalkorDB) component definition for Kubernetes
   serviceKind: falkordb-cluster
-  serviceVersion: {{ .serviceVersion }}
   minReadySeconds: 10
   podUpgradePolicy: ReCreate
   tls:
