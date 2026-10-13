@@ -51,6 +51,7 @@ customSecretNamespace: ""
 ## if set false, customSecretName/customSecretNamespace is used when they are set, otherwise KubeBlocks generates
 ## a random password for the default user
 useEmptyDefaultPassword: false
+defaultPassword: ""
 
 ## @param twemproxy.enable
 ## @param sentinel.cpu
@@ -116,6 +117,7 @@ redisCluster:
   ## if set false, redisCluster.customSecretName/customSecretNamespace is used when they are set, otherwise it falls
   ## back to the top level useEmptyDefaultPassword, and finally KubeBlocks generates a random password
   useEmptyDefaultPassword: false
+  defaultPassword: ""
 
 extra:
   disableExporter: true

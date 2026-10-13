@@ -22,20 +22,20 @@ random password. It is configured per component, and each component reads its ow
                                 one when it is false
 To provide the password with your own secret instead, set customSecretName / customSecretNamespace.
 */}}
-{{- define "redis-cluster.emptyPasswordEnabled" -}}
-{{- if .Values.useEmptyDefaultPassword }}true{{- end -}}
+{{- define "redis-cluster.customPasswordEnabled" -}}
+{{- if or .Values.useEmptyDefaultPassword (not (empty .Values.defaultPassword)) }}true{{- end -}}
 {{- end }}
 
-{{- define "redis-cluster.emptyPasswordSecretName" -}}
+{{- define "redis-cluster.customPasswordSecretName" -}}
 {{ printf "%s-custom-default-password" (include "kblib.clusterName" .) }}
 {{- end }}
 
-{{- define "redis-cluster.shardEmptyPasswordEnabled" -}}
-{{- if .Values.redisCluster.useEmptyDefaultPassword }}true{{- end -}}
+{{- define "redis-cluster.shardCustomPasswordEnabled" -}}
+{{- if or .Values.redisCluster.useEmptyDefaultPassword (not (empty .Values.redisCluster.defaultPassword)) }}true{{- end -}}
 {{- end }}
 
-{{- define "redis-cluster.shardEmptyPasswordSecretName" -}}
-{{ printf "%s-shard-custom-default-password" (include "kblib.clusterName" .) }}
+{{- define "redis-cluster.shardCustomPasswordSecretName" -}}
+{{ printf "%s-shard-default" (include "kblib.clusterName" .) }}
 {{- end }}
 
 {{/*
@@ -77,9 +77,9 @@ Define redis cluster shardingSpec with ComponentDefinition.
     serviceVersion: {{ .Values.version }}
     systemAccounts:
     - name: default
-      {{- if eq (include "redis-cluster.shardEmptyPasswordEnabled" .) "true" }}
+      {{- if eq (include "redis-cluster.shardCustomPasswordEnabled" .) "true" }}
       secretRef:
-        name: {{ include "redis-cluster.shardEmptyPasswordSecretName" . }}
+        name: {{ include "redis-cluster.shardCustomPasswordSecretName" . }}
         namespace: {{ .Release.Namespace }}
       {{- else if and .Values.redisCluster.customSecretName .Values.redisCluster.customSecretNamespace }}
       secretRef:
@@ -147,11 +147,11 @@ Define redis ComponentSpec with ComponentDefinition.
     value: "true"
   {{- end }}
   serviceVersion: {{ .Values.version }}
-  {{- if eq (include "redis-cluster.emptyPasswordEnabled" .) "true" }}
+  {{- if eq (include "redis-cluster.customPasswordEnabled" .) "true" }}
   systemAccounts:
     - name: default
       secretRef:
-        name: {{ include "redis-cluster.emptyPasswordSecretName" . }}
+        name: {{ include "redis-cluster.customPasswordSecretName" . }}
         namespace: {{ .Release.Namespace }}
   {{- else if and .Values.customSecretName .Values.customSecretNamespace }}
   systemAccounts:
@@ -206,11 +206,11 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   {{- end }}
   {{- end }}
   serviceVersion: {{ .Values.version }}
-  {{- if eq (include "redis-cluster.emptyPasswordEnabled" .) "true" }}
+  {{- if eq (include "redis-cluster.customPasswordEnabled" .) "true" }}
   systemAccounts:
     - name: default
       secretRef:
-        name: {{ include "redis-cluster.emptyPasswordSecretName" . }}
+        name: {{ include "redis-cluster.customPasswordSecretName" . }}
         namespace: {{ .Release.Namespace }}
   {{- else if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
   systemAccounts:
