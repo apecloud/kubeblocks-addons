@@ -13,29 +13,31 @@ issuer:
 {{- end }}
 
 {{/*
-If useEmptyDefaultPassword is true, the chart renders a secret holding the empty password for the
-default system account of a component and refers to it, instead of letting KubeBlocks generate a
-random password. It is configured per component, and each component reads its own secret:
-  * the redis component      -> useEmptyDefaultPassword
-  * the redis-sentinel       -> sentinel.useEmptyDefaultPassword
-  * the shard (mode cluster) -> redisCluster.useEmptyDefaultPassword, falling back to the top level
-                                one when it is false
-To provide the password with your own secret instead, set customSecretName / customSecretNamespace.
+The chart renders a secret holding the password of the default system account of a component and
+refers to it, instead of letting KubeBlocks generate a random password. It is configured per
+component, and each component reads its own secret:
+  * the redis component      -> useEmptyDefaultPassword / defaultPassword
+  * the redis-sentinel       -> the same top level values (it shares the secret of the redis component)
+  * the shard (mode cluster) -> redisCluster.useEmptyDefaultPassword / redisCluster.defaultPassword
+
+The secret is rendered when useEmptyDefaultPassword is true (the empty password, takes precedence
+over defaultPassword) or when defaultPassword is not empty. To provide the password with your own
+secret instead, set customSecretName / customSecretNamespace.
 */}}
-{{- define "redis-cluster.emptyPasswordEnabled" -}}
-{{- if .Values.useEmptyDefaultPassword }}true{{- end -}}
+{{- define "redis-cluster.customPasswordEnabled" -}}
+{{- if or .Values.useEmptyDefaultPassword (not (empty .Values.defaultPassword)) }}true{{- end -}}
 {{- end }}
 
-{{- define "redis-cluster.emptyPasswordSecretName" -}}
+{{- define "redis-cluster.customPasswordSecretName" -}}
 {{ printf "%s-custom-default-password" (include "kblib.clusterName" .) }}
 {{- end }}
 
-{{- define "redis-cluster.shardEmptyPasswordEnabled" -}}
-{{- if .Values.redisCluster.useEmptyDefaultPassword }}true{{- end -}}
+{{- define "redis-cluster.shardCustomPasswordEnabled" -}}
+{{- if or .Values.redisCluster.useEmptyDefaultPassword (not (empty .Values.redisCluster.defaultPassword)) }}true{{- end -}}
 {{- end }}
 
-{{- define "redis-cluster.shardEmptyPasswordSecretName" -}}
-{{ printf "%s-shard-custom-default-password" (include "kblib.clusterName" .) }}
+{{- define "redis-cluster.shardCustomPasswordSecretName" -}}
+{{ printf "%s-shard-default" (include "kblib.clusterName" .) }}
 {{- end }}
 
 {{/*
@@ -77,9 +79,9 @@ Define redis cluster shardingSpec with ComponentDefinition.
     serviceVersion: {{ .Values.version }}
     systemAccounts:
     - name: default
-      {{- if eq (include "redis-cluster.shardEmptyPasswordEnabled" .) "true" }}
+      {{- if eq (include "redis-cluster.shardCustomPasswordEnabled" .) "true" }}
       secretRef:
-        name: {{ include "redis-cluster.shardEmptyPasswordSecretName" . }}
+        name: {{ include "redis-cluster.shardCustomPasswordSecretName" . }}
         namespace: {{ .Release.Namespace }}
       {{- else if and .Values.redisCluster.customSecretName .Values.redisCluster.customSecretNamespace }}
       secretRef:
@@ -157,11 +159,11 @@ Define redis ComponentSpec with ComponentDefinition.
     configMap:
       name: {{ include "kblib.clusterName" . }}-redis-redis-replication-config
   {{- end }}
-  {{- if eq (include "redis-cluster.emptyPasswordEnabled" .) "true" }}
+  {{- if eq (include "redis-cluster.customPasswordEnabled" .) "true" }}
   systemAccounts:
     - name: default
       secretRef:
-        name: {{ include "redis-cluster.emptyPasswordSecretName" . }}
+        name: {{ include "redis-cluster.customPasswordSecretName" . }}
         namespace: {{ .Release.Namespace }}
   {{- else if and .Values.customSecretName .Values.customSecretNamespace }}
   systemAccounts:
@@ -216,11 +218,11 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   {{- end }}
   {{- end }}
   serviceVersion: {{ .Values.version }}
-  {{- if eq (include "redis-cluster.emptyPasswordEnabled" .) "true" }}
+  {{- if eq (include "redis-cluster.customPasswordEnabled" .) "true" }}
   systemAccounts:
     - name: default
       secretRef:
-        name: {{ include "redis-cluster.emptyPasswordSecretName" . }}
+        name: {{ include "redis-cluster.customPasswordSecretName" . }}
         namespace: {{ .Release.Namespace }}
   {{- else if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
   systemAccounts:
