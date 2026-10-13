@@ -87,9 +87,16 @@
     },
     "useEmptyDefaultPassword": {
       "title": "use the empty password for the Redis default user",
-      "description": "if set true, the chart renders a secret named '<cluster name>-custom-default-password' holding the empty password and refers to it as the default system account of the redis component; if set false, customSecretName/customSecretNamespace is used when they are set, otherwise KubeBlocks generates a random password for the default user",
+      "description": "if set true, the chart renders a secret named '<cluster name>-custom-default-password' holding the empty password and refers to it as the default system account of the redis component, and defaultPassword is ignored; if neither useEmptyDefaultPassword nor defaultPassword is set, customSecretName/customSecretNamespace is used when they are set, otherwise KubeBlocks generates a random password for the default user",
       "type": "boolean",
       "default": false
+    },
+    "defaultPassword": {
+      "title": "the custom password of the Redis default user",
+      "description": "the chart renders it into the secret named '<cluster name>-custom-default-password' and refers to it as the default system account of the redis component; it is ignored when useEmptyDefaultPassword is true",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
     },
     "twemproxy": {
       "title": "The redis twemproxy component",
@@ -148,12 +155,6 @@
           "description": "the secret must contain keys named 'username' and 'password'",
           "type": "string",
           "default": ""
-        },
-        "useEmptyDefaultPassword": {
-          "title": "use the empty password for the Redis Sentinel default user",
-          "description": "if set true, the chart renders a secret named '<cluster name>-sentinel-custom-default' holding the empty password and refers to it as the default system account of the redis-sentinel component; if set false, sentinel.customSecretName/sentinel.customSecretNamespace is used when they are set, otherwise KubeBlocks generates a random password for the sentinel default user",
-          "type": "boolean",
-          "default": false
         },
         "enabled": {
           "description":"Whether have sentinel component, default is true",
@@ -227,9 +228,16 @@
         },
         "useEmptyDefaultPassword": {
           "title": "use the empty password for the Redis Cluster shard default user",
-          "description": "if set true, the chart renders a secret named '<cluster name>-shard-default' holding the empty password and refers to it as the default system account of the shard components; if set false, redisCluster.customSecretName/redisCluster.customSecretNamespace is used when they are set, otherwise it falls back to the top level useEmptyDefaultPassword, and KubeBlocks generates a random password when that is false too",
+          "description": "if set true, the chart renders a secret named '<cluster name>-shard-custom-default-password' holding the empty password and refers to it as the default system account of the shard components, and redisCluster.defaultPassword is ignored; if neither redisCluster.useEmptyDefaultPassword nor redisCluster.defaultPassword is set, redisCluster.customSecretName/redisCluster.customSecretNamespace is used when they are set, otherwise KubeBlocks generates a random password for the shard default user",
           "type": "boolean",
           "default": false
+        },
+        "defaultPassword": {
+          "title": "the custom password of the shard default user",
+          "description": "the chart renders it into the secret named '<cluster name>-shard-custom-default-password' and refers to it as the default system account of the shard components; it is ignored when redisCluster.useEmptyDefaultPassword is true",
+          "type": "string",
+          "maxLength": 64,
+          "default": ""
         }
       }
     }
