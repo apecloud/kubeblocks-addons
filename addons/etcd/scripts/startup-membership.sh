@@ -40,10 +40,17 @@ registered_initial_cluster() {
     }'
 }
 
+# etcd's getRemotePeerURLs sorts the URLs from initial-cluster, independently
+# of Pod order and of the order in which the cluster mapping was generated.
+initial_cluster_peer_endpoints() {
+  printf '%s\n' "$1" | tr ',' '\n' |
+    awk -F '=' -v name="$CURRENT_POD_NAME" '$1 != name { print $2 }' |
+    LC_ALL=C sort -u | paste -sd, -
+}
+
 wait_for_member_registration() {
-  local state endpoints="" fqdn pod endpoint own_peer members initial_cluster
-  local first_endpoint
-  local deadline remaining request_timeout expected_cluster
+  local state endpoints own_peer members initial_cluster bootstrap_endpoints
+  local deadline remaining expected_cluster
   local last_members="<not observed>" query_error=""
   state=$(parse_config_value initial-cluster-state "$default_conf")
   [ "$state" = existing ] || return 0
@@ -54,14 +61,7 @@ wait_for_member_registration() {
 
   own_peer=$(parse_config_value initial-advertise-peer-urls "$default_conf")
   expected_cluster=$(parse_config_value initial-cluster "$default_conf")
-  local peers
-  IFS=',' read -ra peers <<< "$PEER_FQDNS"
-  for fqdn in "${peers[@]}"; do
-    pod="${fqdn%%.*}"
-    [ "$pod" = "$CURRENT_POD_NAME" ] && continue
-    endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$pod" "$fqdn")
-    endpoints="${endpoints:+$endpoints,}$(get_protocol initial-advertise-peer-urls)://$endpoint:2380"
-  done
+  endpoints=$(initial_cluster_peer_endpoints "$expected_cluster")
   if [ -z "$endpoints" ]; then
     log "Last observed membership: <query not attempted: no remote peer>"
     error_exit "No existing peer available for startup registration check"
@@ -72,27 +72,27 @@ wait_for_member_registration() {
   deadline=$((SECONDS + 120))
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS))
-    request_timeout=5
-    [ "$remaining" -lt 5 ] && request_timeout="$remaining"
-    if members=$(read_peer_members "$endpoints" "$request_timeout"); then
+    if members=$(read_peer_members "$endpoints" "$remaining"); then
       last_members="${members:-<(empty)>}"
       query_error=""
       if initial_cluster=$(registered_initial_cluster "$members" "$own_peer" "$expected_cluster"); then
-        sed -i.bak "s|^initial-cluster:.*|initial-cluster: $initial_cluster|" "$default_conf"
-        rm -f "$default_conf.bak"
-        log "Startup registration confirmed; initial-cluster=$initial_cluster"
-        return 0
+        bootstrap_endpoints=$(initial_cluster_peer_endpoints "$initial_cluster")
+        if [ -n "$bootstrap_endpoints" ] && [ "$bootstrap_endpoints" = "$endpoints" ]; then
+          sed -i.bak "s|^initial-cluster:.*|initial-cluster: $initial_cluster|" "$default_conf"
+          rm -f "$default_conf.bak"
+          log "Startup registration confirmed; initial-cluster=$initial_cluster"
+          return 0
+        fi
+        # Membership may contain peers absent from the original Pod mapping.
+        # Recheck using the exact URLs etcd will query from the new config.
+        endpoints="$bootstrap_endpoints"
       fi
     else
       query_error=" (query failed)"
     fi
     log "Startup registration not ready; waiting for a consistent member list"
-    # A peer can expose a valid but stale local snapshot. Rotate the order so
-    # retries eventually consult every peer instead of retrying the same one.
-    first_endpoint="${endpoints%%,*}"
-    if [[ "$endpoints" == *,* ]]; then
-      endpoints="${endpoints#*,},$first_endpoint"
-    fi
+    # A responsive stale peer is also the one etcd will select on bootstrap.
+    # Keep waiting for it; rotating to a fresher peer only hides the race.
     [ "$SECONDS" -ge "$deadline" ] || sleep 1
   done
   log "Last observed membership$query_error: $(printf '%s\n' "$last_members" | awk 'NR <= 20 { print substr($0, 1, 512) }')"

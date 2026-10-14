@@ -60,6 +60,21 @@ Describe 'Etcd quorum-independent peer membership'
     The output should include 'etcd-1'
   End
 
+  It 'caps each peer request at the engine bootstrap timeout'
+    curl() {
+      echo "$*" >&2
+      case "$*" in
+        *etcd-0:2380*) return 28;;
+        *) echo '[{"id":1,"peerURLs":["http://etcd-1:2380"],"name":"etcd-1"}]';;
+      esac
+    }
+    When call read_peer_members http://etcd-0:2380,http://etcd-1:2380 120
+    The status should be success
+    The output should include 'etcd-1'
+    The stderr should include '--max-time 10 http://etcd-0:2380/members'
+    The stderr should include '--max-time 10 http://etcd-1:2380/members'
+  End
+
   It 'fails closed when peer TLS credentials are missing'
     TLS_MOUNT_PATH=/nonexistent-etcd-test-tls
     When call read_peer_members https://etcd-0:2380 5

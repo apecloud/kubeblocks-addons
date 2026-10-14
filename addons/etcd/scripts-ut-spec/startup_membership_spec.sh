@@ -15,7 +15,7 @@ Describe 'Etcd startup registration barrier'
     PEER_FQDNS=etcd-0.headless,etcd-3.headless
     PEER_ENDPOINT=''
     scenario=present
-    printf '%s\n' 'initial-cluster-state: existing' 'initial-advertise-peer-urls: http://etcd-3.headless:2380' 'initial-cluster: stale=from-pod-list' > "$default_conf"
+    printf '%s\n' 'initial-cluster-state: existing' 'initial-advertise-peer-urls: http://etcd-3.headless:2380' 'initial-cluster: stale=http://etcd-0.headless:2380,etcd-3=http://etcd-3.headless:2380' > "$default_conf"
     parse_config_value() { grep "^$1:" "$2" | cut -d: -f2- | xargs; }
     log() { echo "$1"; }
     error_exit() { echo "$1"; return 1; }
@@ -24,7 +24,7 @@ Describe 'Etcd startup registration barrier'
     read_peer_members() {
       echo QUERY >> "$test_dir/queries"
       [ "$1" = http://etcd-0.headless:2380 ] || return 2
-      [ "$2" = 5 ] || return 2
+      [ "$2" -gt 0 ] && [ "$2" -le 120 ] || return 2
       case "$scenario" in
         unavailable) return 1;;
         empty) return 0;;
@@ -66,43 +66,92 @@ Describe 'Etcd startup registration barrier'
     The output should include 'registration confirmed'
   End
 
-  Context 'fallback from an unusable first peer'
-    Parameters
-      stale
-      stalled
-    End
-    It 'queries the healthy peer on the next round and starts successfully'
-      # Exercise the real HTTP query helper together with the startup loop.
+  Context 'etcd bootstrap peer selection'
+    setup_http() {
       . ../scripts/peer-members.sh
-      scenario="$1"
-      PEER_FQDNS=etcd-0.headless,etcd-1.headless,etcd-3.headless
+      # Deliberately reverse the config order; etcd sorts URLs before querying.
+      sed -i.bak 's|^initial-cluster:.*|initial-cluster: etcd-1=http://etcd-1.headless:2380,etcd-0=http://etcd-0.headless:2380,etcd-3=http://etcd-3.headless:2380|' "$default_conf"
+      fresh='[{"id":1,"name":"etcd-0","peerURLs":["http://etcd-0.headless:2380"]},{"id":2,"name":"etcd-1","peerURLs":["http://etcd-1.headless:2380"]},{"id":3,"peerURLs":["http://etcd-3.headless:2380"]}]'
+      stale='[{"id":1,"name":"etcd-0","peerURLs":["http://etcd-0.headless:2380"]},{"id":2,"name":"etcd-1","peerURLs":["http://etcd-1.headless:2380"]}]'
       curl() {
         local url="${@: -1}"
         echo "$url" >> "$test_dir/requests"
         case "$url" in
           http://etcd-0.headless:2380/members)
-            if [ "$scenario" = stalled ]; then
-              # Consume the full query budget, as curl --max-time would.
-              command sleep 5
-              return 28
-            fi
-            echo '[{"id":"1","name":"etcd-0","peerURLs":["http://etcd-0.headless:2380"]}]'
+            case "$scenario" in
+              unavailable) return 7;;
+              stalled) return 28;;
+              stale) echo "$stale";;
+              *) echo "$fresh";;
+            esac
             ;;
-          http://etcd-1.headless:2380/members)
-            echo '[{"id":"1","name":"etcd-0","peerURLs":["http://etcd-0.headless:2380"]},{"id":"2","name":"etcd-1","peerURLs":["http://etcd-1.headless:2380"]},{"id":"3","peerURLs":["http://etcd-3.headless:2380"]}]'
-            ;;
+          http://etcd-1.headless:2380/members) echo "$fresh";;
           *) return 1;;
         esac
       }
-      # Bound a broken implementation without relying on subshell mutations.
+    }
+    BeforeEach setup_http
+
+    It 'waits for the first responsive peer to apply registration'
+      scenario=stale
+      sleep() { scenario=present; SECONDS=$((SECONDS + 60)); }
+      When call wait_for_member_registration
+      The status should be success
+      The output should include 'not ready'
+      The output should include 'registration confirmed'
+      The contents of file "$test_dir/requests" should eq 'http://etcd-0.headless:2380/members
+http://etcd-0.headless:2380/members'
+      The contents of file "$default_conf" should include 'etcd-3=http://etcd-3.headless:2380'
+    End
+
+    It 'does not bypass a persistently stale peer to accept a fresher snapshot'
+      scenario=stale
       sleep() { SECONDS=$((SECONDS + 60)); }
+      When call wait_for_member_registration
+      The status should be failure
+      The output should include 'Timed out waiting'
+      The output should not include 'registration confirmed'
+      The contents of file "$test_dir/requests" should eq 'http://etcd-0.headless:2380/members
+http://etcd-0.headless:2380/members'
+    End
+
+    Context 'a peer without a usable HTTP response'
+      Parameters
+        unavailable
+        stalled
+      End
+      It 'falls back within the same round without changing peer order'
+        scenario="$1"
+        When call wait_for_member_registration
+        The status should be success
+        The output should include 'registration confirmed'
+        The contents of file "$test_dir/requests" should eq 'http://etcd-0.headless:2380/members
+http://etcd-1.headless:2380/members'
+      End
+    End
+
+    It 'rechecks peers introduced by the discovered initial-cluster mapping'
+      sed -i.bak 's|^initial-cluster:.*|initial-cluster: etcd-1=http://etcd-1.headless:2380,etcd-3=http://etcd-3.headless:2380|' "$default_conf"
+      scenario=stale
+      sleep() {
+        if [ -e "$test_dir/rechecked" ]; then scenario=present; fi
+        touch "$test_dir/rechecked"
+        SECONDS=$((SECONDS + 40))
+      }
       When call wait_for_member_registration
       The status should be success
       The output should include 'registration confirmed'
-      The contents of file "$test_dir/requests" should eq 'http://etcd-0.headless:2380/members
-http://etcd-1.headless:2380/members'
-      The contents of file "$default_conf" should include 'etcd-3=http://etcd-3.headless:2380'
+      The contents of file "$test_dir/requests" should eq 'http://etcd-1.headless:2380/members
+http://etcd-0.headless:2380/members
+http://etcd-0.headless:2380/members'
     End
+  End
+
+  It 'uses configured peer URLs in byte order, including LoadBalancer endpoints'
+    mapping='etcd-0=https://10.0.0.2:2380,etcd-3=https://10.0.0.3:2380,etcd-1=https://10.0.0.10:2380'
+    When call initial_cluster_peer_endpoints "$mapping"
+    The status should be success
+    The output should eq 'https://10.0.0.10:2380,https://10.0.0.2:2380'
   End
 
   It 'bypasses the barrier for an initial new cluster'
@@ -127,7 +176,7 @@ http://etcd-1.headless:2380/members'
     The status should be failure
     The output should include 'Timed out waiting'
     The output should include 'Last observed membership (query failed): <not observed>'
-    The contents of file "$default_conf" should include 'stale=from-pod-list'
+    The contents of file "$default_conf" should include 'stale=http://etcd-0.headless:2380'
   End
 
   Context 'startup timeout diagnostics'
@@ -145,7 +194,7 @@ http://etcd-1.headless:2380/members'
   End
 
   It 'rejects an existing-mode join with no remote peer'
-    PEER_FQDNS=etcd-3.headless
+    sed -i.bak 's|^initial-cluster:.*|initial-cluster: etcd-3=http://etcd-3.headless:2380|' "$default_conf"
     When call wait_for_member_registration
     The status should be failure
     The output should include 'No existing peer'
