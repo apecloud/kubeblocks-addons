@@ -61,4 +61,10 @@ valkey-9|16|8|0|MixedCases"
     The stdout should eq "valkey-sentinel-8|16|8|0|MixedCases
 valkey-sentinel-9|16|8|0|MixedCases"
   End
+
+  It "renders explicit password generation for the sharded component"
+    When call rendered_password_policies cmpd-valkey-cluster.yaml
+    The status should be success
+    The stdout should eq "valkey-cluster-9|16|8|0|MixedCases"
+  End
 End
