@@ -21,7 +21,8 @@ KubeBlocks supports creating a **shared-nothing** StarRocks cluster.
 
 | Major Versions | Description |
 |----------------|-------------|
-| 3.3.x          | 3.3.0, 3.3.2|
+| 3.2.x          | 3.2.2 |
+| 3.3.x          | 3.3.0, 3.3.22 |
 
 ## Prerequisites
 
@@ -72,7 +73,7 @@ spec:
     - name: fe # for fronetent component
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.3.0,3.2.2]
+      # Valid options are: [3.3.22,3.3.0,3.2.2]
       serviceVersion: 3.3.0
       # NOTE: Set `replicas` to 3 in production env.
       replicas: 3
@@ -103,7 +104,7 @@ spec:
     - name: be # for backend component
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.3.0,3.2.2]
+      # Valid options are: [3.3.22,3.3.0,3.2.2]
       serviceVersion: 3.3.0
       replicas: 2
       resources:
