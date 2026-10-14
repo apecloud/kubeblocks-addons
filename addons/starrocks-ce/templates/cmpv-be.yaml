@@ -13,6 +13,7 @@ spec:
     releases:
     - 3.2.2
     - 3.3.0
+    - 3.3.22
   releases:
   - name: 3.2.2
     serviceVersion: 3.2.2
@@ -22,3 +23,7 @@ spec:
     serviceVersion: 3.3.0
     images:
       be: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:3.3.0
+  - name: 3.3.22
+    serviceVersion: 3.3.22
+    images:
+      be: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:3.3.22
