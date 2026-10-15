@@ -1,0 +1,7 @@
+.DS_Store
+.git/
+.gitignore
+tests/
+*.swp
+*.tmp
+exporter/
