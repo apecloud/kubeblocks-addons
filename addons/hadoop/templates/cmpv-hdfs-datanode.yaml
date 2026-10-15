@@ -1,0 +1,22 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hdfs-datanode
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - v3.3.4
+      compDefs:
+        - hdfs-datanode
+        - hdfs-datanode-standalone
+  releases:
+    - name: v3.3.4
+      serviceVersion: v3.3.4
+      images:
+        hadoop-common: {{ include "hadoop.commonImage" . | quote }}
+        hdfs-datanode: {{ include "hadoop.dataNodeImage" . | quote }}
+        jmx-exporter: {{ include "hadoop.jmxExporterImage" . | quote }}
