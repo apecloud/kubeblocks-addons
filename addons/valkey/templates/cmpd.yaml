@@ -158,7 +158,7 @@ spec:
   systemAccounts:
     - name: default
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 16
         numDigits: 8
         numSymbols: 0
