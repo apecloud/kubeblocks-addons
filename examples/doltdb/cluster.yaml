@@ -1,0 +1,33 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: doltdb-cluster
+  namespace: demo
+spec:
+  # Valid options are: [DoNotTerminate, Delete, WipeOut]
+  terminationPolicy: Delete
+  clusterDef: doltdb
+  topology: standalone
+  componentSpecs:
+    - name: doltdb
+      serviceVersion: "2.1.10"
+      replicas: 1
+      env:
+        - name: DOLT_DATABASE
+          value: testdb
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: "1"
+          memory: 1Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
