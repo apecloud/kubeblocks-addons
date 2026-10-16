@@ -145,7 +145,7 @@ function universal_sed {
 }
 
 function fail {
-  message="$myname[$$]: $1"
+  message="${myname}[$$]: $1"
   >&2 echo "$message"
   exit 1
 }
@@ -237,7 +237,7 @@ function detect_leader_api {
     leader_api="$(normalize_orchestrator_api $orchestrator_api)"
     return
   fi
-  for api in ${apis[@]} ; do
+  for api in "${apis[@]}" ; do
     api=$(normalize_orchestrator_api $api)
     leader_check=$(curl ${curl_auth_params} -m 1 -s -o /dev/null -w "%{http_code}" "${api}/leader-check")
     if [ "$leader_check" == "200" ] ; then
@@ -246,7 +246,7 @@ function detect_leader_api {
     fi
   done
   # Cannot find leader directly. Maybe our config is wrong. But, perhaps one of the nodes can route us?
-  for api in ${apis[@]} ; do
+  for api in "${apis[@]}" ; do
     api=$(normalize_orchestrator_api $api)
     leader_check=$(curl ${curl_auth_params} -m 1 -s -o /dev/null -w "%{http_code}" "${api}/routed-leader-check")
     if [ "$leader_check" == "200" ] ; then
