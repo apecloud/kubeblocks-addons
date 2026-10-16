@@ -141,7 +141,16 @@ Describe "Valkey post-restore Sentinel contract"
   It "never issues sentinel commands on the credential-less path"
     # The no-credential branch must only call verify_replication_converged;
     # any SENTINEL command there would fail with NOAUTH.
-    When call grep -F "verify_replication_converged || exit 1" "${script_file}"
+    When call grep -F "verify_replication_converged" "${script_file}"
+    The status should be success
+    The stdout should include "verify_replication_converged"
+  End
+
+  It "always verifies data replication after optional Sentinel registration"
+    final_convergence_gate() {
+      tail -n 20 "${script_file}" | grep -F "verify_replication_converged"
+    }
+    When call final_convergence_gate
     The status should be success
     The stdout should include "verify_replication_converged"
   End
@@ -155,6 +164,90 @@ Describe "post-restore-sentinel behavioral tests"
     convergence_interval=0
   }
   BeforeAll "init"
+
+  Describe "build_sentinel_target_list()"
+    It "rejects duplicate explicit Sentinel targets"
+      SENTINEL_POD_FQDN_LIST="s0.h.ns.svc,s0.h.ns.svc,s1.h.ns.svc"
+      When call build_sentinel_target_list
+      The status should be failure
+      The stderr should include "duplicate target"
+    End
+
+    It "rejects empty explicit Sentinel targets"
+      SENTINEL_POD_FQDN_LIST="s0.h.ns.svc,,s1.h.ns.svc"
+      When call build_sentinel_target_list
+      The status should be failure
+      The stderr should include "empty target"
+    End
+  End
+
+  Describe "register_sentinels_with_credentials()"
+    It "replaces a stale same-name monitor and verifies the new endpoint"
+      sentinel_fqdn_list=(s0.h.ns.svc)
+      expected_sentinel_count=1
+      primary_fqdn="valkey-0.h.ns.svc"
+      data_port=6379
+      master_name="cluster-valkey"
+      DP_DB_PASSWORD=""
+      sentinel_calls=$(mktemp)
+      sentinel_reads=$(mktemp)
+      printf '0\n' > "${sentinel_reads}"
+      getent() { printf '10.0.0.10 %s\n' "$2"; }
+      mock_sentinel_cli() {
+        printf '%s\n' "$*" >> "${sentinel_calls}"
+        case "$*" in
+          *PING*) echo PONG ;;
+          *get-master-addr-by-name*)
+            count=$(cat "${sentinel_reads}")
+            count=$((count + 1))
+            printf '%s\n' "${count}" > "${sentinel_reads}"
+            if [ "${count}" -eq 1 ]; then
+              printf '10.0.0.99\n6379\n'
+            else
+              printf '10.0.0.10\n6379\n'
+            fi
+            ;;
+          *) echo OK ;;
+        esac
+      }
+      sentinel_cli_base=(mock_sentinel_cli)
+      _replace_wrapper() {
+        register_sentinels_with_credentials
+        rc=$?
+        grep -F "SENTINEL remove cluster-valkey" "${sentinel_calls}"
+        grep -F "SENTINEL monitor cluster-valkey valkey-0.h.ns.svc 6379 1" "${sentinel_calls}"
+        rm -f "${sentinel_calls}" "${sentinel_reads}"
+        return "${rc}"
+      }
+      When call _replace_wrapper
+      The status should be success
+      The stdout should include "SENTINEL remove"
+      The stdout should include "SENTINEL monitor"
+    End
+  End
+
+  Describe "post_restore_main()"
+    It "does not let credentialed Sentinel registration waive data convergence"
+      SENTINEL_PASSWORD="sentinel-secret"
+      detect_tls_args() { _tls_args=(); }
+      derive_target_context() { return 0; }
+      discover_primary() {
+        primary_fqdn="valkey-0.h.ns.svc"
+        reachable_data_fqdns=(a b c)
+        return 0
+      }
+      build_sentinel_target_list() { return 0; }
+      register_sentinels_with_credentials() { echo "registration-ok"; }
+      verify_replication_converged() {
+        echo "convergence-failed" >&2
+        return 1
+      }
+      When call post_restore_main
+      The status should be failure
+      The stdout should include "registration-ok"
+      The stderr should include "convergence-failed"
+    End
+  End
 
   Describe "verify_replication_converged()"
     It "succeeds when the primary is master with all expected replicas attached"

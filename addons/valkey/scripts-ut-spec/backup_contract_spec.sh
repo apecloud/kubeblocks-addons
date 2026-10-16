@@ -34,4 +34,11 @@ Describe "Valkey backup contract"
     When call grep -F 'tar -cvf - ./ ' "${script_file}"
     The status should be failure
   End
+  It "embeds cluster-meta with engine-truth shard count in cluster mode"
+    When call grep -E 'cluster_enabled|source_shards=|cluster-meta' "${script_file}"
+    The status should be success
+    The stdout should include "cluster_enabled"
+    The stdout should include "source_shards="
+    The stdout should include "cluster-meta"
+  End
 End
