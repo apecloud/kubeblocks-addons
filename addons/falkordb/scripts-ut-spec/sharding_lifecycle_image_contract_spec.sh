@@ -41,6 +41,12 @@ Describe "FalkorDB sharding lifecycle image contract"
     The output should not include "image:"
   End
 
+  It "allows the same-name ShardingDefinition lifecycle spec to upgrade"
+    When call render_sharding_definition
+    The status should be success
+    The output should include 'apps.kubeblocks.io/skip-immutable-check: "true"'
+  End
+
   It "keeps lifecycle action images versioned by ComponentVersion"
     When call render_cluster_component_version
     The status should be success
