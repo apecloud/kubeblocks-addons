@@ -10,6 +10,11 @@ spec:
   provider: Community
   description: YashanDB is a new database system completely independently designed and developed by SICS.
   serviceKind: {{ .Chart.Name }}
+  {{- if .Values.ha.fixedAddress.enabled }}
+  # 2026-06-23 Reason: yasboot primary-standby deployment needs every fixed-address peer pod reachable before node1 can complete; Purpose: avoid OrderedReady deadlock on empty-PVC HA bootstrap.
+  # Time: 2026-06-23.
+  podManagementPolicy: Parallel
+  {{- end }}
   volumes:
     - name: data
   services:
@@ -17,14 +22,36 @@ spec:
       spec:
         ports:
           - name: yashandb
-            port: 1688
+            port: {{ ternary (.Values.ha.fixedAddress.dbPort | default 2688) 1688 .Values.ha.fixedAddress.enabled }}
             targetPort: yashandb
   configs:
-    - name: yashandb-configs
+    # 2026-07-06 Reason: ParametersDefinition binds by ComponentDefinition config entry name; Purpose: keep the config entry and parameter chain on one shared helper.
+    # 2026-07-14 Reason: the KB main/1.2+ parameters chain requires the config
+    # entry to be externalManaged with a file-level reconfigure exec that
+    # receives the changed key/value pair as "$1"/"$2" from
+    # ActionRequest.Arguments (docs/addon-api/ pd-to-cmpd migration guide).
+    # The earlier lifecycleActions.reconfigure scanned the whole ambient
+    # environment, which could apply zero changes with rc=0 and rewrite
+    # install.ini from unrelated container env vars such as NODE_ID.
+    # Purpose: bind the parameter chain on the CRD-supported main/1.2+ path;
+    # this chart no longer claims 1.0.x compatibility (see Chart.yaml).
+    - name: {{ include "yashandb.configEntryName" . }}
       template: {{ include "yashandb.configTplName" . }}
-      volumeName: yashandb-configs
+      volumeName: {{ include "yashandb.configEntryName" . }}
       namespace: {{ .Release.Namespace }}
       restartOnFileChange: true
+      externalManaged: true
+      reconfigure:
+        exec:
+          targetPodSelector: All
+          container: yashandb-container
+          command:
+            - /usr/bin/env
+            - bash
+            - -c
+            # 2026-06-23 Reason: ConfigMap-mounted scripts are read-only and not executable in the live cluster; Purpose: invoke the updater through bash so reconfigure does not fail with Permission denied.
+            - bash /home/yashan/kbscripts/update-parameter.sh "$1" "$2"
+            - --
   scripts:
     - name: yashandb-scripts
       template: {{ include "yashandb.scriptsTplName" . }}
@@ -35,9 +62,77 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
+  # 2026-06-03 Reason: reserve the KubeBlocks monitoring contract for a vendor-provided YashanDB exporter; Purpose: expose scrape metadata without claiming the placeholder exporter is production-ready.
+  exporter:
+    containerName: yashandb-exporter
+    scrapePath: {{ .Values.metrics.scrapePath }}
+    scrapePort: http-metrics
+  # 2026-06-02 Reason: declare the YashanDB roles returned by check_role.sh; Purpose: let KubeBlocks label primary and standby pods before native switchover requests are accepted.
+  roles:
+    - name: primary
+      updatePriority: 2
+      participatesInQuorum: false
+      # 2026-06-17 Reason: KubeBlocks 1.0.2 CRD in this validation cluster rejects spec.roles.isExclusive; Purpose: keep role metadata compatible with the installed CRD while preserving primary/secondary role names.
+    - name: secondary
+      updatePriority: 1
+      participatesInQuorum: false
+  lifecycleActions:
+    # 2026-07-14 Reason: reconfigure moved to the config entry's file-level
+    # reconfigure exec above (KB main/1.2+ contract); the earlier claim that
+    # externalManaged breaks provisioning described KB 1.0.x CRD pruning, and
+    # this chart now declares >=1.2.0 where the field is served.
+    # 2026-06-02 Reason: wire YashanDB DATABASE_ROLE into KubeBlocks roleProbe; Purpose: map PRIMARY/STANDBY to primary/secondary labels for services and switchover prechecks.
+    roleProbe:
+      periodSeconds: 10
+      failureThreshold: 3
+      exec:
+        # 2026-06-17 Reason: KubeBlocks 1.0.2 executes lifecycle probes from kbagent even when exec.container is set; Purpose: run kbagent with the YashanDB image so bash and database client dependencies are available.
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        # 2026-06-17 Reason: kbagent reuses the target container volume mounts but not its env vars; Purpose: provide the script environment needed to locate the mounted YASDB home.
+        env:
+          - name: WORK_DIR
+            value: /home/yashan
+          - name: YASDB_MOUNT_HOME
+            value: /home/yashan/mydb
+        # 2026-06-17 Reason: kbagent sidecar does not mount YashanDB scripts or provide bash by default; Purpose: reuse the database container mounts for role detection.
+        container: yashandb-container
+        command:
+          - /usr/bin/env
+          - bash
+          - /home/yashan/kbscripts/check_role.sh
+    # 2026-06-02 Reason: expose the approved standby-side switchover script through KubeBlocks lifecycleActions; Purpose: support OpsRequest Switchover when instanceName targets a secondary pod.
+    switchover:
+      exec:
+        # 2026-06-17 Reason: KubeBlocks 1.0.2 executes lifecycle actions from kbagent even when exec.container is set; Purpose: run kbagent with the YashanDB image so switchover dependencies are available.
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        # 2026-06-17 Reason: kbagent reuses the target container volume mounts but not its env vars; Purpose: provide the script environment needed to locate the mounted YASDB home.
+        env:
+          - name: WORK_DIR
+            value: /home/yashan
+          - name: YASDB_MOUNT_HOME
+            value: /home/yashan/mydb
+        # 2026-06-17 Reason: switchover.sh depends on mounted YashanDB scripts and yasql; Purpose: reuse the database container mounts for switchover execution.
+        container: yashandb-container
+        command:
+          - /usr/bin/env
+          - bash
+          - /home/yashan/kbscripts/switchover.sh
   runtime:
-    # hostNetwork: true
-    # dnsPolicy: ClusterFirstWithHostNet
+    {{- if .Values.ha.fixedAddress.enabled }}
+    # 2026-06-22 Reason: the validated YashanDB HA proof binds yasboot metadata to stable node IPs; Purpose: enable fixed-address HA only when the operator explicitly accepts hostNetwork scheduling constraints.
+    hostNetwork: true
+    dnsPolicy: ClusterFirstWithHostNet
+    {{- end }}
+    {{- if .Values.metrics.enabled }}
+    volumes:
+      - name: exporter-config-source
+        configMap:
+          name: {{ include "yashandb.metricsConfigName" . }}
+      - name: exporter-config-work
+        emptyDir: {}
+      - name: exporter-metrics-work
+        emptyDir: {}
+    {{- end }}
     initContainers:
       - name: volume-permissions
         imagePullPolicy: {{ default "IfNotPresent" .Values.busyboxImage.pullPolicy }}
@@ -54,6 +149,17 @@ spec:
     containers:
       - name: yashandb-container
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        {{- if .Values.ha.fixedAddress.enabled }}
+        # 2026-06-23 Reason: fixed-address HA depends on a yasboot-capable image whose own entrypoint starts sshd/yasboot-managed processes; Purpose: avoid forcing the standalone install.sh path that creates independent primary databases.
+        # Time: 2026-06-23.
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+        command:
+          - /usr/bin/env
+          - bash
+          - /home/yashan/kbscripts/fixed-ha-bootstrap.sh
+        {{- else }}
         securityContext:
           allowPrivilegeEscalation: false
           runAsUser: 1000
@@ -61,22 +167,111 @@ spec:
         command:
           - /bin/sh
           - /home/yashan/kbscripts/install.sh
+        {{- end }}
+        # 2026-06-02 Reason: add user-approved SQL readiness probe without making transient SQL failures restart the database; Purpose: expose readiness only after YASDB answers the lightweight instance status query.
+        readinessProbe:
+          exec:
+            command:
+              - /usr/bin/env
+              - bash
+              - /home/yashan/kbscripts/check_alive.sh
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
         volumeMounts:
           - mountPath: /home/yashan/mydb
             name: data
           - mountPath: /home/yashan/kbconfigs
-            name: yashandb-configs
+            name: {{ include "yashandb.configEntryName" . }}
           - mountPath: /home/yashan/kbscripts
             name: yashandb-scripts
         ports:
+          {{- if .Values.ha.fixedAddress.enabled }}
+          - containerPort: {{ .Values.ha.fixedAddress.sshPort | default 3222 }}
+            name: ssh
+          - containerPort: {{ .Values.ha.fixedAddress.omPort | default 2675 }}
+            name: om
+          - containerPort: {{ .Values.ha.fixedAddress.agentPort | default 2676 }}
+            name: agent
+          - containerPort: {{ .Values.ha.fixedAddress.dbPort | default 2688 }}
+            name: yashandb
+          - containerPort: {{ .Values.ha.fixedAddress.replicationPort | default 2689 }}
+            name: repl
+          {{- else }}
           - containerPort: 1688
             name: yashandb
+          {{- end }}
         env:
           - name: WORK_DIR
             value: /home/yashan
           - name: YASDB_MOUNT_HOME
             value: /home/yashan/mydb
         workingDir: /home/yashan/
+      {{- if .Values.metrics.enabled }}
+      - name: yashandb-exporter
+        # 2026-06-24 Reason: YCM 23.5.13.3 provides the concrete arm64 exporter binary and YAML config contract; Purpose: run the real exporter image as an opt-in sidecar with writable runtime config.
+        imagePullPolicy: {{ default "IfNotPresent" .Values.metrics.image.pullPolicy }}
+        command:
+          - /bin/sh
+          - -ec
+          - |
+            # 2026-06-24 Reason: exporter locks and may rewrite yasdbpasswd.yml during startup; Purpose: copy ConfigMap/Secret-derived source data into writable emptyDir files before launching.
+            # Time: 2026-06-24.
+            if [ -z "${EXPORTER_DB_PASSWORD:-}" ]; then
+              echo "passwordSecretName must be set when metrics.enabled=true"
+              exit 1
+            fi
+
+            cp /opt/yashandb_exporter/config-src/yashandb-targets.yml /opt/yashandb_exporter/config/yashandb-targets.yml
+            cat > /opt/yashandb_exporter/config/yasdbpasswd.yml <<EOF
+            defaultOpsUsername: ${EXPORTER_DB_USER}
+            defaultOpsPassword: ${EXPORTER_DB_PASSWORD}
+            opsUsers:
+              ${EXPORTER_TARGET_NAME}:
+                opsUsername: ${EXPORTER_DB_USER}
+                opsPassword: ${EXPORTER_DB_PASSWORD}
+                clusterName: ${EXPORTER_TARGET_NAME}
+            EOF
+            chmod 600 /opt/yashandb_exporter/config/yasdbpasswd.yml
+
+            cp -R /opt/yashandb_exporter/metrics/. /opt/yashandb_exporter/metrics-work/
+            {{- if has "swap" .Values.metrics.compat.disabledMetrics }}
+            # 2026-06-24 Reason: the bundled 23.5.13.3 SE swap metric references FREE_SWAP_BLOCKS, which failed in live validation; Purpose: keep scrape success until a version-aware metric pack is supplied.
+            # Time: 2026-06-24.
+            awk '/^  - name: swap$/{exit} {print}' /opt/yashandb_exporter/metrics/default-se-metrics.yml > /opt/yashandb_exporter/metrics-work/default-se-metrics.yml
+            {{- end }}
+
+            exec yashandb_exporter --web.listen-address=:${EXPORTER_WEB_PORT} --log.level=${EXPORTER_LOG_LEVEL} {{- range .Values.metrics.extraArgs }} {{ . }}{{- end }}
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
+        volumeMounts:
+          - name: exporter-config-source
+            mountPath: /opt/yashandb_exporter/config-src
+            readOnly: true
+          - name: exporter-config-work
+            mountPath: /opt/yashandb_exporter/config
+          - name: exporter-metrics-work
+            mountPath: /opt/yashandb_exporter/metrics-work
+        env:
+          - name: EXPORTER_WEB_PORT
+            value: "{{ .Values.metrics.service.port }}"
+          - name: EXPORTER_LOG_LEVEL
+            value: {{ .Values.metrics.logLevel | quote }}
+          - name: EXPORTER_TARGET_NAME
+            value: {{ .Values.metrics.target.name | quote }}
+          - name: EXPORTER_DB_USER
+            value: {{ .Values.metrics.auth.username | quote }}
+          - name: EXPORTER_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ required "metrics.auth.passwordSecretName must be set when metrics.enabled=true" .Values.metrics.auth.passwordSecretName | quote }}
+                key: {{ .Values.metrics.auth.passwordSecretKey | quote }}
+          {{- with .Values.metrics.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+      {{- end }}
   vars:
     - name: PHY_MEMORY
       valueFrom:
