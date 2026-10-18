@@ -7,7 +7,8 @@ run-name: mirror SeaweedFS 4.48 to ACR
 
 env:
   SOURCE_IMAGE: docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
-  DESTINATION_IMAGE: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/seaweedfs:4.48
+  ACR_DESTINATION_IMAGE: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/seaweedfs:4.48
+  DOCKERHUB_DESTINATION_IMAGE: docker.io/apecloud/seaweedfs:4.48
   EXPECTED_DIGEST: sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
 
 jobs:
@@ -36,21 +37,37 @@ jobs:
             --password-stdin "$ACR_REGISTRY"
           skopeo copy --all --retry-times 3 \
             "docker://${SOURCE_IMAGE}" \
-            "docker://${DESTINATION_IMAGE}"
+            "docker://${ACR_DESTINATION_IMAGE}"
 
-      - name: Verify the ACR manifest digest
+      - name: Copy SeaweedFS 4.48 to Docker Hub with Skopeo
+        env:
+          DOCKERHUB_REGISTRY: docker.io
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKER_REGISTRY_USER }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
         run: |
           set -euo pipefail
-          raw_manifest="$(mktemp)"
-          trap 'rm -f "$raw_manifest"' EXIT
-          skopeo inspect --raw "docker://${DESTINATION_IMAGE}" > "$raw_manifest"
-          actual_digest="sha256:$(sha256sum "$raw_manifest" | cut -d' ' -f1)"
-          echo "ACR manifest digest: ${actual_digest}"
-          test "$actual_digest" = "$EXPECTED_DIGEST"
-          jq -e '
-            if .manifests then
-              any(.manifests[]; .platform.os == "linux" and .platform.architecture == "amd64")
-            else
-              .os == "linux" and .architecture == "amd64"
-            end
-          ' "$raw_manifest" >/dev/null
+          printf '%s' "$DOCKERHUB_PASSWORD" | skopeo login \
+            --username "$DOCKERHUB_USERNAME" \
+            --password-stdin "$DOCKERHUB_REGISTRY"
+          skopeo copy --all --retry-times 3 \
+            "docker://${SOURCE_IMAGE}" \
+            "docker://${DOCKERHUB_DESTINATION_IMAGE}"
+
+      - name: Verify the ACR and Docker Hub manifest digests
+        run: |
+          set -euo pipefail
+          for destination in "$ACR_DESTINATION_IMAGE" "$DOCKERHUB_DESTINATION_IMAGE"; do
+            raw_manifest="$(mktemp)"
+            skopeo inspect --raw "docker://${destination}" > "$raw_manifest"
+            actual_digest="sha256:$(sha256sum "$raw_manifest" | cut -d' ' -f1)"
+            echo "${destination} manifest digest: ${actual_digest}"
+            test "$actual_digest" = "$EXPECTED_DIGEST"
+            jq -e '
+              if .manifests then
+                any(.manifests[]; .platform.os == "linux" and .platform.architecture == "amd64")
+              else
+                .os == "linux" and .architecture == "amd64"
+              end
+            ' "$raw_manifest" >/dev/null
+            rm -f "$raw_manifest"
+          done
