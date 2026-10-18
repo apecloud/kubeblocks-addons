@@ -11,7 +11,7 @@ spec:
   topology: {{ .Values.topology }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
-  {{- range $kind := list "master" "volume" "filer" "s3" }}
+  {{- range $kind := list "master" "volume" "filer" "s3" "admin" }}
   {{- $settings := index $.Values $kind }}
     - name: {{ $kind }}
       serviceVersion: {{ $.Values.serviceVersion | quote }}
@@ -20,6 +20,8 @@ spec:
       {{- else if eq $kind "volume" }}
       replicas: {{ ternary (int $settings.replicas) 1 (eq $.Values.topology "distributed") }}
       {{- else if eq $kind "filer" }}
+      replicas: 1
+      {{- else if eq $kind "admin" }}
       replicas: 1
       {{- else }}
       replicas: {{ $settings.replicas }}

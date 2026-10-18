@@ -17,7 +17,7 @@ KubeBlocks 与 kubeblocks-addons 的 `release-1.0` 当前没有 SeaweedFS addon�
 
 设计遵守 [addon-api 契约](https://github.com/apecloud/kubeblocks-addon-docs/tree/96f3ec13e76daac8c08a98f7adbd23f3f9535f61/docs/addon-api)：01 工作边界、02 组件、03 拓扑、04 版本、05 生命周期、06 服务和变量、07 账号、10 运维、12a/12b 验收。特别是：不能仅凭 Pod Ready 宣称业务可用；不能把数据迁移藏进 memberLeave；没有运行证据的能力必须注明未验证。
 
-上游证据：`weed/command/{master,volume,filer,s3}.go` 定义四类进程参数；`docker/filer.toml` 使用 LevelDB2；`weed/s3api/auth_credentials.go` 从 AWS 两个环境变量创建管理身份；`weed/server/raft_server_handlers.go` 给出 master 状态接口。
+上游证据：`weed/command/{master,volume,filer,s3,admin}.go` 定义五类进程参数；`docker/filer.toml` 使用 LevelDB2；`weed/s3api/auth_credentials.go` 从 AWS 两个环境变量创建管理身份；`weed/server/raft_server_handlers.go` 给出 master 状态接口。
 
 ## 组件与拓扑
 
@@ -27,8 +27,9 @@ KubeBlocks 与 kubeblocks-addons 的 `release-1.0` 当前没有 SeaweedFS addon�
 | volume（对象数据） | `/data/volume` | 固定 1 副本 | 至少 2 副本，示例 3 副本，可扩出；禁止直接缩入 |
 | filer（目录、桶和对象元数据） | `/data/filer` 的 LevelDB2 | 固定 1 副本 | 固定 1 副本 |
 | s3（客户端入口） | 无状态 | 1～32 副本 | 1～32 副本，示例 2 副本 |
+| admin（管理界面与维护任务） | `/data/admin` | 固定 1 副本 | 固定 1 副本 |
 
-默认 topology 为 `standalone`，适合先验证最小链路。`distributed` 表示拆分并增加 master、volume、S3 实例；由于 filer 仍为单副本，不称为完整 HA。两种拓扑用独立的 master/volume ComponentDefinition 固定副本边界；filer、S3 共享定义。
+默认 topology 为 `standalone`，适合先验证最小链路。`distributed` 表示拆分并增加 master、volume、S3 实例；由于 filer 和 admin 仍为单副本，不称为完整 HA。两种拓扑用独立的 master/volume ComponentDefinition 固定副本边界；filer、S3、admin 共享定义。
 
 对象数据副本策略：standalone 为 `000`（单份），distributed 为 `001`（同机架内两个不同 volume server 各存一份）。分布式示例要求 volume Pod 分散到不同 Kubernetes 节点，但首版不承诺跨可用区容灾。扩出增加新数据的容量，不自动均衡旧数据。
 
@@ -36,7 +37,7 @@ KubeBlocks 与 kubeblocks-addons 的 `release-1.0` 当前没有 SeaweedFS addon�
 
 ## 主要实现
 
-- `addons/seaweedfs`：Chart、values/schema、六个 ComponentDefinition、一个 ClusterDefinition、版本资源、脚本与 filer 配置模板、README、代码级测试。
+- `addons/seaweedfs`：Chart、values/schema、七个 ComponentDefinition、一个 ClusterDefinition、版本资源、脚本与 filer 配置模板、README、代码级测试。
 - `addons-cluster/seaweedfs`：创建集群的 chart，暴露拓扑、资源和 PVC 参数，并校验固定副本约束。
 - `examples/seaweedfs`：两种创建拓扑、Restart、Stop/Start、VerticalScaling、VolumeExpansion、S3 扩缩容、volume 扩出样例。
 - 仅使用 KubeBlocks 1.0 已存在的字段，不引入额外 operator、自制选主协议或业务 Pod 的 Kubernetes 写权限。

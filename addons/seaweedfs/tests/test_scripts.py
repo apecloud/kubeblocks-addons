@@ -72,7 +72,7 @@ class ScriptsTest(unittest.TestCase):
         self.assertIn("-max=0\n", result.stdout)
 
     def test_missing_master_list_stops_volume_and_filer(self):
-        for name in ["start-volume.sh", "start-filer.sh"]:
+        for name in ["start-volume.sh", "start-filer.sh", "start-admin.sh"]:
             result = self.run_script(name, SEAWEEDFS_MASTER_FQDNS="")
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(result.stdout, "")
@@ -81,6 +81,13 @@ class ScriptsTest(unittest.TestCase):
         result = self.run_script("start-filer.sh")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(f"-defaultStoreDir={self.env['SEAWEEDFS_DATA_DIR']}\n", result.stdout)
+
+    def test_admin_uses_all_masters_and_persistent_store(self):
+        result = self.run_script("start-admin.sh", WEED_ADMIN_USER="admin",
+                                 WEED_ADMIN_PASSWORD="fixture-password")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("-master=demo-master-2.m.ns.svc.corp:9333,demo-master-7.m.ns.svc.corp:9333,demo-master-11.m.ns.svc.corp:9333\n", result.stdout)
+        self.assertIn(f"-dataDir={self.env['SEAWEEDFS_DATA_DIR']}\n", result.stdout)
 
     def test_s3_fails_closed_without_both_credentials(self):
         for changes in [{}, {"AWS_ACCESS_KEY_ID": "fixture-user"}, {"AWS_SECRET_ACCESS_KEY": "fixture-secret"}]:

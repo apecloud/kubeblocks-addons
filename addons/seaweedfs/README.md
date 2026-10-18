@@ -1,6 +1,6 @@
 # SeaweedFS
 
-SeaweedFS is an object store with separate master, volume, filer and S3 services. This addon targets **KubeBlocks 1.0** and supports SeaweedFS **4.47** and **4.48** (`serviceVersion: "4.47.0"` or `"4.48.0"`). The 4.48 candidate is the default for the A/B acceptance run; 4.47 remains selectable through the version matrix. The [Chinese design](DESIGN.zh-CN.md) explains the component boundaries and validation plan.
+SeaweedFS is an object store with separate master, volume, filer, S3 and admin services. This addon targets **KubeBlocks 1.0** and supports SeaweedFS **4.47** and **4.48** (`serviceVersion: "4.47.0"` or `"4.48.0"`). The 4.48 candidate is the default for the A/B acceptance run; 4.47 remains selectable through the version matrix. The [Chinese design](DESIGN.zh-CN.md) explains the component boundaries and validation plan.
 
 This is an initial implementation. Offline script, chart and KubeBlocks 1.0 schema checks are available; live acceptance is still required. Neither topology is claimed to be production ready.
 

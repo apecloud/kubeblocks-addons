@@ -97,3 +97,27 @@ spec:
       images:
         s3: {{ printf "%s/%s:%s" $.Values.image.registry $.Values.image.repository .tag }}
   {{- end }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: seaweedfs-admin
+  labels:
+    {{- include "seaweedfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "seaweedfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "admin") }}
+      releases:
+      {{- range .Values.versions }}
+        - {{ printf "seaweedfs-%s" .version }}
+      {{- end }}
+  releases:
+  {{- range .Values.versions }}
+    - name: {{ printf "seaweedfs-%s" .version }}
+      serviceVersion: {{ .version | quote }}
+      images:
+        admin: {{ printf "%s/%s:%s" $.Values.image.registry $.Values.image.repository .tag }}
+  {{- end }}
