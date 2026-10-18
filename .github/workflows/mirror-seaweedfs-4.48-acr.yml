@@ -27,8 +27,8 @@ jobs:
       - name: Copy SeaweedFS 4.48 with Skopeo
         env:
           ACR_REGISTRY: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+          ACR_USERNAME: ${{ secrets.ALIYUN_REGISTRY_USER }}
+          ACR_PASSWORD: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
         run: |
           set -euo pipefail
           printf '%s' "$ACR_PASSWORD" | skopeo login \
