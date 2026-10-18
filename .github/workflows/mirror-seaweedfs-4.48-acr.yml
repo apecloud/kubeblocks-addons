@@ -9,7 +9,6 @@ env:
   SOURCE_IMAGE: docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
   DESTINATION_IMAGE: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/seaweedfs:4.48
   EXPECTED_DIGEST: sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
-  REGISTRY_AUTH_FILE: ${{ runner.temp }}/acr-auth.json
 
 jobs:
   mirror:
@@ -27,6 +26,8 @@ jobs:
 
       - name: Log in to ACR
         uses: redhat-actions/podman-login@v1
+        env:
+          REGISTRY_AUTH_FILE: ${{ runner.temp }}/acr-auth.json
         with:
           registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
           username: ${{ secrets.ACR_USERNAME }}
@@ -35,6 +36,8 @@ jobs:
 
       - name: Copy SeaweedFS 4.48 with Skopeo
         uses: coscene-io/skopeo-copy-action@7f0ef05844d5e4ccb87bdb558d57ecf623605238
+        env:
+          REGISTRY_AUTH_FILE: ${{ runner.temp }}/acr-auth.json
         with:
           src-image: ${{ env.SOURCE_IMAGE }}
           src-creds: ''
@@ -42,6 +45,8 @@ jobs:
           dst-creds: ''
 
       - name: Verify the ACR manifest digest
+        env:
+          REGISTRY_AUTH_FILE: ${{ runner.temp }}/acr-auth.json
         run: |
           set -euo pipefail
           raw_manifest="$(mktemp)"
