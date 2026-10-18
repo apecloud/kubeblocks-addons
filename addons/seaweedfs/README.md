@@ -1,6 +1,6 @@
 # SeaweedFS
 
-SeaweedFS is an object store with separate master, volume, filer and S3 services. This addon targets **KubeBlocks 1.0** and SeaweedFS **4.47** (`serviceVersion: "4.47.0"`). The [Chinese design](DESIGN.zh-CN.md) explains the component boundaries and validation plan.
+SeaweedFS is an object store with separate master, volume, filer and S3 services. This addon targets **KubeBlocks 1.0** and supports SeaweedFS **4.47** and **4.48** (`serviceVersion: "4.47.0"` or `"4.48.0"`). The default remains 4.47 until the 4.48 A/B acceptance run completes. The [Chinese design](DESIGN.zh-CN.md) explains the component boundaries and validation plan.
 
 This is an initial implementation. Offline script, chart and KubeBlocks 1.0 schema checks are available; live acceptance is still required. Neither topology is claimed to be production ready.
 
@@ -91,7 +91,7 @@ Creation/update order is master → volume → filer → s3; termination is the 
 
 ## Configuration and runtime inputs
 
-`image.registry` and `image.repository` support equivalent mirrors. The supported tag is fixed at `4.47`; changing the tag/version requires a reviewed version matrix. `volumeSizeLimitMB` defaults to 1024 MiB per SeaweedFS volume file, independently of PVC capacity. The volume server derives its maximum volume count from disk space (`-max=0`). Do not change a cluster-wide definition's setting for running instances without a separately validated migration.
+`image.registry` and `image.repository` support equivalent mirrors. The supported tags are `4.47` and `4.48`; `serviceVersion` must be the corresponding semantic version (`4.47.0` or `4.48.0`). The default remains `4.47` until the 4.48 A/B acceptance run completes. Changing the tag/version requires a reviewed version matrix. `volumeSizeLimitMB` defaults to 1024 MiB per SeaweedFS volume file, independently of PVC capacity. The volume server derives its maximum volume count from disk space (`-max=0`). Do not change a cluster-wide definition's setting for running instances without a separately validated migration.
 
 Startup scripts use these explicit input contracts:
 

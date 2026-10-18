@@ -130,9 +130,12 @@ class ChartsTest(unittest.TestCase):
                                     self.assertIn(ref["port"]["name"], {p["name"] for p in service["spec"]["ports"]})
 
     def test_every_version_maps_runtime_and_action_images(self):
+        expected = {"seaweedfs-4.47.0": ("4.47.0", "4.47"),
+                    "seaweedfs-4.48.0": ("4.48.0", "4.48")}
         covered = set()
         for version in self.cmpvs:
             releases = {r["name"]: r for r in version["spec"]["releases"]}
+            self.assertEqual(set(releases), set(expected))
             for rule in version["spec"]["compatibilityRules"]:
                 for name in rule["compDefs"]:
                     covered.add(name)
@@ -141,7 +144,9 @@ class ChartsTest(unittest.TestCase):
                     needed |= {key for key, action in spec.get("lifecycleActions", {}).items() if "exec" in action}
                     for release in rule["releases"]:
                         self.assertEqual(set(releases[release]["images"]), needed)
-                        self.assertEqual(releases[release]["serviceVersion"], "4.47.0")
+                        service_version, tag = expected[release]
+                        self.assertEqual(releases[release]["serviceVersion"], service_version)
+                        self.assertEqual(set(releases[release]["images"].values()), {f"docker.io/chrislusf/seaweedfs:{tag}"})
         self.assertEqual(covered, set(self.cmpds))
 
     def test_definition_names_are_independent_of_install_namespace(self):
@@ -174,7 +179,24 @@ class ChartsTest(unittest.TestCase):
                     self.assertEqual(action["exec"]["image"], expected)
             if d["kind"] == "ComponentVersion":
                 for release in d["spec"]["releases"]:
-                    self.assertEqual(set(release["images"].values()), {expected})
+                    tag = release["serviceVersion"].removesuffix(".0")
+                    self.assertEqual(set(release["images"].values()), {f"{expected.rsplit(':', 1)[0]}:{tag}"})
+
+    def test_448_version_override_reaches_all_execution_images_and_cluster(self):
+        docs = render(ADDON, "--set", "image.tag=4.48", "--set", "serviceVersion=4.48.0")
+        expected = "docker.io/chrislusf/seaweedfs:4.48"
+        for d in docs:
+            if d["kind"] == "ComponentDefinition":
+                for c in d["spec"]["runtime"]["containers"]:
+                    self.assertEqual(c["image"], expected)
+                for action in d["spec"].get("lifecycleActions", {}).values():
+                    self.assertEqual(action["exec"]["image"], expected)
+            if d["kind"] == "ComponentVersion":
+                release = next(item for item in d["spec"]["releases"] if item["serviceVersion"] == "4.48.0")
+                self.assertEqual(set(release["images"].values()), {expected})
+        cluster = render(CLUSTER, "--set", "serviceVersion=4.48.0")
+        for component in cluster[0]["spec"]["componentSpecs"]:
+            self.assertEqual(component["serviceVersion"], "4.48.0")
 
     def test_unsafe_or_unimplemented_values_are_rejected(self):
         for chart, value in [(CLUSTER, "topology=ha"), (CLUSTER, "volume.replicas=1"),

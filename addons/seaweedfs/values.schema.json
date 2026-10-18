@@ -4,6 +4,7 @@
   "required": [
     "image",
     "serviceVersion",
+    "versions",
     "volumeSizeLimitMB"
   ],
   "properties": {
@@ -27,7 +28,8 @@
         "tag": {
           "type": "string",
           "enum": [
-            "4.47"
+            "4.47",
+            "4.48"
           ]
         },
         "pullPolicy": {
@@ -42,8 +44,37 @@
     "serviceVersion": {
       "type": "string",
       "enum": [
-        "4.47.0"
+        "4.47.0",
+        "4.48.0"
       ]
+    },
+    "versions": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "version",
+          "tag"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": [
+              "4.47.0",
+              "4.48.0"
+            ]
+          },
+          "tag": {
+            "type": "string",
+            "enum": [
+              "4.47",
+              "4.48"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "volumeSizeLimitMB": {
       "type": "integer",

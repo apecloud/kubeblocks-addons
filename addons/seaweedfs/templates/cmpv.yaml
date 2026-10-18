@@ -12,13 +12,17 @@ spec:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-standalone") }}
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "master-distributed") }}
       releases:
-        - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+      {{- range .Values.versions }}
+        - {{ printf "seaweedfs-%s" .version }}
+      {{- end }}
   releases:
-    - name: {{ printf "seaweedfs-%s" .Values.serviceVersion }}
-      serviceVersion: {{ .Values.serviceVersion | quote }}
+  {{- range .Values.versions }}
+    - name: {{ printf "seaweedfs-%s" .version }}
+      serviceVersion: {{ .version | quote }}
       images:
-        master: {{ include "seaweedfs.image" . }}
-        roleProbe: {{ include "seaweedfs.image" . }}
+        master: {{ printf "%s/%s:%s" $.Values.image.registry $.Values.image.repository .tag }}
+        roleProbe: {{ printf "%s/%s:%s" $.Values.image.registry $.Values.image.repository .tag }}
+  {{- end }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
@@ -34,13 +38,17 @@ spec:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-standalone") }}
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "volume-distributed") }}
       releases:
-        - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+      {{- range .Values.versions }}
+        - {{ printf "seaweedfs-%s" .version }}
+      {{- end }}
   releases:
-    - name: {{ printf "seaweedfs-%s" .Values.serviceVersion }}
-      serviceVersion: {{ .Values.serviceVersion | quote }}
+  {{- range .Values.versions }}
+    - name: {{ printf "seaweedfs-%s" .version }}
+      serviceVersion: {{ .version | quote }}
       images:
-        volume: {{ include "seaweedfs.image" . }}
-        memberLeave: {{ include "seaweedfs.image" . }}
+        volume: {{ printf "%s/%s:%s" $.Values.image.registry $.Values.image.repository .tag }}
+        memberLeave: {{ printf "%s/%s:%s" $.Values.image.registry $.Values.image.repository .tag }}
+  {{- end }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
@@ -55,12 +63,16 @@ spec:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "filer") }}
       releases:
-        - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+      {{- range .Values.versions }}
+        - {{ printf "seaweedfs-%s" .version }}
+      {{- end }}
   releases:
-    - name: {{ printf "seaweedfs-%s" .Values.serviceVersion }}
-      serviceVersion: {{ .Values.serviceVersion | quote }}
+  {{- range .Values.versions }}
+    - name: {{ printf "seaweedfs-%s" .version }}
+      serviceVersion: {{ .version | quote }}
       images:
-        filer: {{ include "seaweedfs.image" . }}
+        filer: {{ printf "%s/%s:%s" $.Values.image.registry $.Values.image.repository .tag }}
+  {{- end }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
@@ -75,9 +87,13 @@ spec:
     - compDefs:
         - {{ include "seaweedfs.cmpdName" (dict "root" . "component" "s3") }}
       releases:
-        - {{ printf "seaweedfs-%s" .Values.serviceVersion }}
+      {{- range .Values.versions }}
+        - {{ printf "seaweedfs-%s" .version }}
+      {{- end }}
   releases:
-    - name: {{ printf "seaweedfs-%s" .Values.serviceVersion }}
-      serviceVersion: {{ .Values.serviceVersion | quote }}
+  {{- range .Values.versions }}
+    - name: {{ printf "seaweedfs-%s" .version }}
+      serviceVersion: {{ .version | quote }}
       images:
-        s3: {{ include "seaweedfs.image" . }}
+        s3: {{ printf "%s/%s:%s" $.Values.image.registry $.Values.image.repository .tag }}
+  {{- end }}

@@ -19,7 +19,8 @@
     "serviceVersion": {
       "type": "string",
       "enum": [
-        "4.47.0"
+        "4.47.0",
+        "4.48.0"
       ]
     },
     "storageClassName": {

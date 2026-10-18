@@ -7,6 +7,14 @@ image:
 # KubeBlocks requires a semantic serviceVersion; the upstream image tag is 4.47.
 serviceVersion: "4.47.0"
 
+# ComponentVersion releases exposed by this addon. Keep the default above on
+# the already-tested baseline until the 4.48 A/B acceptance run completes.
+versions:
+  - version: "4.47.0"
+    tag: "4.47"
+  - version: "4.48.0"
+    tag: "4.48"
+
 # Each SeaweedFS volume file is capped at 1 GiB; -max=0 derives the file count
 # from free disk capacity. This is distinct from the Kubernetes PVC capacity.
 volumeSizeLimitMB: 1024
