@@ -13,7 +13,7 @@ KubeBlocks 与 kubeblocks-addons 的 `release-1.0` 当前没有 SeaweedFS addon�
 | KubeBlocks | release-1.0 / `7129ad3dc49aeb9edbd0a714e3ad11f1837ac6e8` | API、CRD 与后续测试目标 |
 | kubeblocks-addons | release-1.0 / `3c873a8b541d80972d2533fefe8ee745eee1bf11` | 实现基线；参考 `addons/minio` |
 | RustFS 参考 | main / `2865430cb8783646c98c61f67d1381b760a0c476` | 参考账号、脚本挂载、版本映射、危险缩容拒绝；不将 main 合入 1.0 |
-| SeaweedFS | `4.47` / `c5073360007d28385a33426a42ac3e4ec504c5a3`；新增 `4.48` | 4.47 为当前基线；4.48 已加入版本映射，需完成同条件 A/B 实测后再宣称通过 |
+| SeaweedFS | `4.47` / `c5073360007d28385a33426a42ac3e4ec504c5a3`；新增 `4.48` | 4.48 为本次 A/B 候选默认值；4.47 保留在版本映射中，需完成同条件 A/B 实测后再宣称通过 |
 
 设计遵守 [addon-api 契约](https://github.com/apecloud/kubeblocks-addon-docs/tree/96f3ec13e76daac8c08a98f7adbd23f3f9535f61/docs/addon-api)：01 工作边界、02 组件、03 拓扑、04 版本、05 生命周期、06 服务和变量、07 账号、10 运维、12a/12b 验收。特别是：不能仅凭 Pod Ready 宣称业务可用；不能把数据迁移藏进 memberLeave；没有运行证据的能力必须注明未验证。
 
@@ -41,7 +41,7 @@ KubeBlocks 与 kubeblocks-addons 的 `release-1.0` 当前没有 SeaweedFS addon�
 - `examples/seaweedfs`：两种创建拓扑、Restart、Stop/Start、VerticalScaling、VolumeExpansion、S3 扩缩容、volume 扩出样例。
 - 仅使用 KubeBlocks 1.0 已存在的字段，不引入额外 operator、自制选主协议或业务 Pod 的 Kubernetes 写权限。
 
-所有 definition 名称、脚本和配置名称通过带 seaweedfs 前缀的 helper 生成。脚本与配置带 chart 版本，避免新 chart 悄悄替换旧 definition 对应的启动逻辑。ComponentVersion 为每类定义映射同一个明确的 SeaweedFS 镜像 tag；支持的版本映射为 `4.47.0`/`4.47` 和 `4.48.0`/`4.48`，默认仍为 4.47，直到 4.48 A/B 实测完成。
+所有 definition 名称、脚本和配置名称通过带 seaweedfs 前缀的 helper 生成。脚本与配置带 chart 版本，避免新 chart 悄悄替换旧 definition 对应的启动逻辑。ComponentVersion 为每类定义映射同一个明确的 SeaweedFS 镜像 tag；支持的版本映射为 `4.47.0`/`4.47` 和 `4.48.0`/`4.48`，本次 A/B 候选默认使用 4.48。
 
 ## 核心流程
 

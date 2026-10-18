@@ -97,7 +97,7 @@ class ChartsTest(unittest.TestCase):
                 if "exec" in action:
                     self.assertIn(action["exec"]["container"], containers)
                     self.assertIn(Path(action["exec"]["command"][-1]).name, mounted["scripts"])
-                    self.assertTrue(action["exec"]["image"].endswith(":4.47"))
+                    self.assertTrue(action["exec"]["image"].endswith(":4.48"))
             for service in spec["services"]:
                 self.assertTrue({p["targetPort"] for p in service["spec"]["ports"]} <= container_ports)
             accounts = {a["name"] for a in spec.get("systemAccounts", [])}
@@ -170,7 +170,7 @@ class ChartsTest(unittest.TestCase):
 
     def test_registry_override_reaches_all_execution_images(self):
         docs = render(ADDON, "--set", "image.registry=registry.example.org", "--set", "image.repository=mirror/seaweedfs")
-        expected = "registry.example.org/mirror/seaweedfs:4.47"
+        expected = "registry.example.org/mirror/seaweedfs:4.48"
         for d in docs:
             if d["kind"] == "ComponentDefinition":
                 for c in d["spec"]["runtime"]["containers"]:

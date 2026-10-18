@@ -1,14 +1,14 @@
 image:
   registry: docker.io
   repository: chrislusf/seaweedfs
-  tag: "4.47"
+  tag: "4.48"
   pullPolicy: IfNotPresent
 
-# KubeBlocks requires a semantic serviceVersion; the upstream image tag is 4.47.
-serviceVersion: "4.47.0"
+# KubeBlocks requires a semantic serviceVersion; the upstream image tag is 4.48.
+serviceVersion: "4.48.0"
 
-# ComponentVersion releases exposed by this addon. Keep the default above on
-# the already-tested baseline until the 4.48 A/B acceptance run completes.
+# ComponentVersion releases exposed by this addon. The 4.48 candidate is the
+# default for the A/B acceptance run; the 4.47 release remains selectable.
 versions:
   - version: "4.47.0"
     tag: "4.47"

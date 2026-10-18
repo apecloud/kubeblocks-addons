@@ -1,7 +1,7 @@
 # standalone: one master and one volume; distributed: three masters and
 # at least two volumes. The filer remains a single persistent metadata store.
 topology: standalone
-serviceVersion: "4.47.0"
+serviceVersion: "4.48.0"
 storageClassName: ""
 
 master:

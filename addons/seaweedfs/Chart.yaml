@@ -2,7 +2,7 @@ apiVersion: v2
 name: seaweedfs
 description: SeaweedFS distributed object storage with an S3-compatible gateway
 version: 1.0.0
-appVersion: "4.47"
+appVersion: "4.48"
 keywords: [storage, object-storage, S3, seaweedfs]
 home: https://seaweedfs.com
 sources:
