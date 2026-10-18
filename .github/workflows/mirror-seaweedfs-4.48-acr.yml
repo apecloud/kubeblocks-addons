@@ -24,20 +24,19 @@ jobs:
           sudo apt-get install --yes jq skopeo
           skopeo --version
 
-      - name: Log in to ACR
-        uses: redhat-actions/podman-login@v1
-        with:
-          registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
-
       - name: Copy SeaweedFS 4.48 with Skopeo
-        uses: coscene-io/skopeo-copy-action@7f0ef05844d5e4ccb87bdb558d57ecf623605238
-        with:
-          src-image: ${{ env.SOURCE_IMAGE }}
-          src-creds: ''
-          dst-image: ${{ env.DESTINATION_IMAGE }}
-          dst-creds: ''
+        env:
+          ACR_REGISTRY: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ACR_PASSWORD" | skopeo login \
+            --username "$ACR_USERNAME" \
+            --password-stdin "$ACR_REGISTRY"
+          skopeo copy --all --retry-times 3 \
+            "docker://${SOURCE_IMAGE}" \
+            "docker://${DESTINATION_IMAGE}"
 
       - name: Verify the ACR manifest digest
         run: |
