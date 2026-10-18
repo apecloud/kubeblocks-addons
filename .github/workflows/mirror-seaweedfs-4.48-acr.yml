@@ -1,0 +1,59 @@
+name: Mirror SeaweedFS 4.48 to ACR
+
+on:
+  workflow_dispatch:
+
+run-name: mirror SeaweedFS 4.48 to ACR
+
+env:
+  SOURCE_IMAGE: docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  DESTINATION_IMAGE: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/seaweedfs:4.48
+  EXPECTED_DIGEST: sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  REGISTRY_AUTH_FILE: ${{ runner.temp }}/acr-auth.json
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Install Skopeo and jq
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes jq skopeo
+          skopeo --version
+
+      - name: Log in to ACR
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+          auth_file_path: ${{ runner.temp }}/acr-auth.json
+
+      - name: Copy SeaweedFS 4.48 with Skopeo
+        uses: coscene-io/skopeo-copy-action@7f0ef05844d5e4ccb87bdb558d57ecf623605238
+        with:
+          src-image: ${{ env.SOURCE_IMAGE }}
+          src-creds: ''
+          dst-image: ${{ env.DESTINATION_IMAGE }}
+          dst-creds: ''
+
+      - name: Verify the ACR manifest digest
+        run: |
+          set -euo pipefail
+          raw_manifest="$(mktemp)"
+          trap 'rm -f "$raw_manifest"' EXIT
+          skopeo inspect --raw "docker://${DESTINATION_IMAGE}" > "$raw_manifest"
+          actual_digest="sha256:$(sha256sum "$raw_manifest" | cut -d' ' -f1)"
+          echo "ACR manifest digest: ${actual_digest}"
+          test "$actual_digest" = "$EXPECTED_DIGEST"
+          jq -e '
+            if .manifests then
+              any(.manifests[]; .platform.os == "linux" and .platform.architecture == "amd64")
+            else
+              .os == "linux" and .architecture == "amd64"
+            end
+          ' "$raw_manifest" >/dev/null
