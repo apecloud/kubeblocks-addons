@@ -37,6 +37,13 @@ requests:
 ##
 storage: 20
 
+## @param defaultPassword Initial password for the PostgreSQL postgres superuser.
+## A non-empty value creates a Secret referenced by the postgres system account.
+## When empty, KubeBlocks generates a random password. This is only for initialization,
+## not for rotating the password of an existing cluster.
+## systemAccountSecret.postgres takes precedence when both are specified.
+defaultPassword: ""
+
 ## @param pgbouncer.enabled Include the PgBouncer component in the Cluster.
 ## @param pgbouncer.replicas PgBouncer replicas; zero keeps the component inactive.
 ## @param pgbouncer.version Service version; empty lets KubeBlocks select it.
