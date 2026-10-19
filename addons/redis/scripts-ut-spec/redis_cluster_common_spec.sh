@@ -137,6 +137,44 @@ Describe "Redis Cluster Common Bash Script Tests"
       The status should be failure
       The stderr should include "Failed to get cluster nodes info in get_cluster_id"
     End
+
+    It "returns only the first id when one pod has several stale ids in the cluster"
+      get_cluster_nodes_info() {
+        echo "oldid1 172.0.0.3:6379@16379 master - 0 1590000000000 3 connected"$'\n'"oldid2 172.0.0.3:6379@16379 master - 0 1590000000000 4 connected"$'\n'"node1 172.0.0.1:6379@16379 myself,master - 0 1590000000000 1 connected 0-5460"
+        return 0
+      }
+
+      When call get_cluster_id "172.0.0.1" "6379" "172.0.0.3:6379"
+      The status should be success
+      # a multi-line id makes "cluster forget <id>" fail with "wrong number of arguments"
+      The output should eq "oldid1"
+    End
+  End
+
+  Describe "get_cluster_ids()"
+    It "returns every stale id of the same pod"
+      get_cluster_nodes_info() {
+        echo "oldid2 172.0.0.3:6379@16379 master - 0 1590000000000 3 connected"$'\n'"oldid1 172.0.0.3:6379@16379 master - 0 1590000000000 4 connected"$'\n'"node1 172.0.0.1:6379@16379 myself,master - 0 1590000000000 1 connected 0-5460"
+        return 0
+      }
+
+      When call get_cluster_ids "172.0.0.1" "6379" "172.0.0.3:6379"
+      The status should be success
+      The line 1 of output should eq "oldid1"
+      The line 2 of output should eq "oldid2"
+      The lines of output should eq 2
+    End
+
+    It "returns 1 when failed to get cluster nodes info"
+      get_cluster_nodes_info() {
+        echo "Error"
+        return 1
+      }
+
+      When call get_cluster_ids "172.0.0.1" "6379" "172.0.0.3:6379"
+      The status should be failure
+      The stderr should include "Failed to get cluster nodes info in get_cluster_ids"
+    End
   End
 
   Describe "fix_cluster_slots()"
@@ -300,8 +338,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         primary_nodes="172.0.0.1:6379 172.0.0.2:6379"
 
         When call build_redis_cluster_create_command "$primary_nodes"
-        The output should eq "redis-cli  --cluster create 172.0.0.1:6379 172.0.0.2:6379 --cluster-yes"
-        The stderr should include "initialize cluster command: redis-cli  --cluster create 172.0.0.1:6379 172.0.0.2:6379 --cluster-yes"
+        The output should eq "timeout 120 redis-cli  --cluster create 172.0.0.1:6379 172.0.0.2:6379 --cluster-yes"
+        The stderr should include "initialize cluster command: timeout 120 redis-cli  --cluster create 172.0.0.1:6379 172.0.0.2:6379 --cluster-yes"
       End
     End
 
@@ -320,8 +358,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         primary_nodes="172.0.0.1:6379 172.0.0.2:6379"
 
         When call build_redis_cluster_create_command "$primary_nodes"
-        The output should eq "redis-cli  --cluster create 172.0.0.1:6379 172.0.0.2:6379 -a password --cluster-yes"
-        The stderr should include "initialize cluster command: redis-cli  --cluster create 172.0.0.1:6379 172.0.0.2:6379 -a ******** --cluster-yes"
+        The output should eq "timeout 120 redis-cli  --cluster create 172.0.0.1:6379 172.0.0.2:6379 -a password --cluster-yes"
+        The stderr should include "initialize cluster command: timeout 120 redis-cli  --cluster create 172.0.0.1:6379 172.0.0.2:6379 -a ******** --cluster-yes"
       End
     End
   End
@@ -334,8 +372,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         mapping_primary_cluster_id="node1"
 
         When call build_secondary_replicated_command "$secondary_endpoint_with_port" "$mapping_primary_endpoint_with_port" "$mapping_primary_cluster_id"
-        The output should eq "redis-cli  --cluster add-node 172.0.0.3:6379 172.0.0.1:6379 --cluster-slave --cluster-master-id node1"
-        The stderr should include "initialize cluster secondary add-node command: redis-cli  --cluster add-node 172.0.0.3:6379 172.0.0.1:6379 --cluster-slave --cluster-master-id node1"
+        The output should eq "timeout 120 redis-cli  --cluster add-node 172.0.0.3:6379 172.0.0.1:6379 --cluster-slave --cluster-master-id node1"
+        The stderr should include "initialize cluster secondary add-node command: timeout 120 redis-cli  --cluster add-node 172.0.0.3:6379 172.0.0.1:6379 --cluster-slave --cluster-master-id node1"
       End
     End
 
@@ -356,8 +394,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         mapping_primary_cluster_id="node1"
 
         When call build_secondary_replicated_command "$secondary_endpoint_with_port" "$mapping_primary_endpoint_with_port" "$mapping_primary_cluster_id"
-        The output should eq "redis-cli  --cluster add-node 172.0.0.3:6379 172.0.0.1:6379 --cluster-slave --cluster-master-id node1 -a password"
-        The stderr should include "initialize cluster secondary add-node command: redis-cli  --cluster add-node 172.0.0.3:6379 172.0.0.1:6379 --cluster-slave --cluster-master-id node1 -a ********"
+        The output should eq "timeout 120 redis-cli  --cluster add-node 172.0.0.3:6379 172.0.0.1:6379 --cluster-slave --cluster-master-id node1 -a password"
+        The stderr should include "initialize cluster secondary add-node command: timeout 120 redis-cli  --cluster add-node 172.0.0.3:6379 172.0.0.1:6379 --cluster-slave --cluster-master-id node1 -a ********"
       End
     End
   End
@@ -369,8 +407,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         exist_available_node="172.0.0.2:6379"
 
         When call build_scale_out_shard_primary_join_command "$scale_out_shard_default_primary_endpoint_with_port" "$exist_available_node"
-        The output should eq "redis-cli  --cluster add-node 172.0.0.4:6379 172.0.0.2:6379"
-        The stderr should include "scale out shard primary add-node command: redis-cli  --cluster add-node 172.0.0.4:6379 172.0.0.2:6379"
+        The output should eq "timeout 120 redis-cli  --cluster add-node 172.0.0.4:6379 172.0.0.2:6379"
+        The stderr should include "scale out shard primary add-node command: timeout 120 redis-cli  --cluster add-node 172.0.0.4:6379 172.0.0.2:6379"
       End
     End
 
@@ -390,8 +428,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         exist_available_node="172.0.0.2:6379"
 
         When call build_scale_out_shard_primary_join_command "$scale_out_shard_default_primary_endpoint_with_port" "$exist_available_node"
-        The output should eq "redis-cli  --cluster add-node 172.0.0.4:6379 172.0.0.2:6379 -a password"
-        The stderr should include "scale out shard primary add-node command: redis-cli  --cluster add-node 172.0.0.4:6379 172.0.0.2:6379 -a ********"
+        The output should eq "timeout 120 redis-cli  --cluster add-node 172.0.0.4:6379 172.0.0.2:6379 -a password"
+        The stderr should include "scale out shard primary add-node command: timeout 120 redis-cli  --cluster add-node 172.0.0.4:6379 172.0.0.2:6379 -a ********"
       End
     End
   End
@@ -404,8 +442,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         slots_per_shard="5461"
 
         When call build_reshard_command "$primary_node_with_port" "$mapping_primary_cluster_id" "$slots_per_shard"
-        The output should eq "redis-cli  --cluster reshard 172.0.0.1:6379 --cluster-from all --cluster-to node1 --cluster-slots 5461 --cluster-yes"
-        The stderr should include "scale out shard reshard command: redis-cli  --cluster reshard 172.0.0.1:6379 --cluster-from all --cluster-to node1 --cluster-slots 5461 --cluster-yes"
+        The output should eq "timeout 1800 redis-cli  --cluster reshard 172.0.0.1:6379 --cluster-from all --cluster-to node1 --cluster-slots 5461 --cluster-yes"
+        The stderr should include "scale out shard reshard command: timeout 1800 redis-cli  --cluster reshard 172.0.0.1:6379 --cluster-from all --cluster-to node1 --cluster-slots 5461 --cluster-yes"
       End
     End
 
@@ -426,8 +464,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         slots_per_shard="5461"
 
         When call build_reshard_command "$primary_node_with_port" "$mapping_primary_cluster_id" "$slots_per_shard"
-        The output should eq "redis-cli  --cluster reshard 172.0.0.1:6379 --cluster-from all --cluster-to node1 --cluster-slots 5461 -a password --cluster-yes"
-        The stderr should include "scale out shard reshard command: redis-cli  --cluster reshard 172.0.0.1:6379 --cluster-from all --cluster-to node1 --cluster-slots 5461 -a ******** --cluster-yes"
+        The output should eq "timeout 1800 redis-cli  --cluster reshard 172.0.0.1:6379 --cluster-from all --cluster-to node1 --cluster-slots 5461 -a password --cluster-yes"
+        The stderr should include "scale out shard reshard command: timeout 1800 redis-cli  --cluster reshard 172.0.0.1:6379 --cluster-from all --cluster-to node1 --cluster-slots 5461 -a ******** --cluster-yes"
       End
     End
   End
@@ -439,8 +477,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         node_cluster_id="node1"
 
         When call build_rebalance_to_zero_command "$node_with_port" "$node_cluster_id"
-        The output should eq "redis-cli  --cluster rebalance 172.0.0.1:6379 --cluster-weight node1=0 --cluster-yes "
-        The stderr should include "set current component slot to 0 by rebalance command: redis-cli  --cluster rebalance 172.0.0.1:6379 --cluster-weight node1=0 --cluster-yes"
+        The output should eq "timeout 1800 redis-cli  --cluster rebalance 172.0.0.1:6379 --cluster-weight node1=0 --cluster-yes "
+        The stderr should include "set current component slot to 0 by rebalance command: timeout 1800 redis-cli  --cluster rebalance 172.0.0.1:6379 --cluster-weight node1=0 --cluster-yes"
       End
     End
 
@@ -460,8 +498,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         node_cluster_id="node1"
 
         When call build_rebalance_to_zero_command "$node_with_port" "$node_cluster_id"
-        The output should eq "redis-cli  --cluster rebalance 172.0.0.1:6379 --cluster-weight node1=0 --cluster-yes -a password"
-        The stderr should include "set current component slot to 0 by rebalance command: redis-cli  --cluster rebalance 172.0.0.1:6379 --cluster-weight node1=0 --cluster-yes -a ********"
+        The output should eq "timeout 1800 redis-cli  --cluster rebalance 172.0.0.1:6379 --cluster-weight node1=0 --cluster-yes -a password"
+        The stderr should include "set current component slot to 0 by rebalance command: timeout 1800 redis-cli  --cluster rebalance 172.0.0.1:6379 --cluster-weight node1=0 --cluster-yes -a ********"
       End
     End
   End
@@ -483,8 +521,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         node_to_del_cluster_id="node1"
 
         When call build_del_node_command "$available_node" "$node_to_del_cluster_id"
-        The output should eq "redis-cli  --cluster del-node 172.0.0.2:6379 node1 -p 6379"
-        The stderr should include "del node command: redis-cli  --cluster del-node 172.0.0.2:6379 node1 -p 6379"
+        The output should eq "timeout 120 redis-cli  --cluster del-node 172.0.0.2:6379 node1 -p 6379"
+        The stderr should include "del node command: timeout 120 redis-cli  --cluster del-node 172.0.0.2:6379 node1 -p 6379"
       End
     End
 
@@ -506,8 +544,8 @@ Describe "Redis Cluster Common Bash Script Tests"
         node_to_del_cluster_id="node1"
 
         When call build_del_node_command "$available_node" "$node_to_del_cluster_id"
-        The output should eq "redis-cli  --cluster del-node 172.0.0.2:6379 node1 -p 6379 -a password"
-        The stderr should include "del node command: redis-cli  --cluster del-node 172.0.0.2:6379 node1 -p 6379 -a ********"
+        The output should eq "timeout 120 redis-cli  --cluster del-node 172.0.0.2:6379 node1 -p 6379 -a password"
+        The stderr should include "del node command: timeout 120 redis-cli  --cluster del-node 172.0.0.2:6379 node1 -p 6379 -a ********"
       End
     End
   End
@@ -547,6 +585,109 @@ Describe "Redis Cluster Common Bash Script Tests"
         The output should eq "redis-cli  -h localhost -p 1000 -a password acl save"
         The stderr should include "acl save command: redis-cli  -h localhost -p 1000 -a ******** acl save"
       End
+    End
+  End
+
+  Describe "forget_cluster_node()"
+    setup() {
+      export REDIS_DEFAULT_PASSWORD=""
+      export REDIS_CLI_TLS_CMD=""
+      export service_port="6379"
+    }
+    Before "setup"
+
+    un_setup() {
+      unset REDIS_DEFAULT_PASSWORD
+      unset REDIS_CLI_TLS_CMD
+      unset service_port
+    }
+    After "un_setup"
+
+    It "fans the forget command out to every node of the cluster"
+      redis-cli() {
+        # $1..$n: -p 6379 --cluster call <endpoint> cluster forget <id>
+        echo "OK"
+      }
+
+      When call forget_cluster_node "172.0.0.1:6379" "oldid1"
+      The status should be success
+      The output should include "forget node command: timeout 120 redis-cli  -p 6379 --cluster call 172.0.0.1:6379 cluster forget oldid1"
+    End
+
+    It "reports a failure when redis rejects the node id"
+      redis-cli() {
+        echo "ERR wrong number of arguments for 'cluster|forget' command" >&2
+        return 1
+      }
+
+      When call forget_cluster_node "172.0.0.1:6379" "oldid1 oldid2"
+      The status should be failure
+      The stdout should include "forget node command: timeout 120 redis-cli"
+      The stderr should include "Failed to forget node oldid1 oldid2"
+    End
+
+    It "does nothing when there is no node id to forget"
+      When call forget_cluster_node "172.0.0.1:6379" ""
+      The status should be success
+      The stdout should eq ""
+    End
+  End
+
+  Describe "forget_fail_node_when_cluster_is_ok()"
+    setup() {
+      export REDIS_DEFAULT_PASSWORD=""
+      export REDIS_CLI_TLS_CMD=""
+      export service_port="6379"
+      forget_calls_file="$SHELLSPEC_TMPBASE/forget_calls.log"
+      rm -f "$forget_calls_file"
+      forget_cluster_node() {
+        echo "$2" >> "$forget_calls_file"
+        return 0
+      }
+    }
+    Before "setup"
+
+    It "forgets nodes whose flags contain fail"
+      get_cluster_info_with_retry() {
+        echo "cluster_state:ok"
+      }
+      get_cluster_nodes_info() {
+        echo "node1 172.0.0.1:6379@16379 myself,master - 0 1590000000000 1 connected 0-5460"$'\n'"dead1 172.0.0.2:6379@16379 master,fail - 0 1590000000000 2 connected"$'\n'"dead2 172.0.0.3:6379@16379 slave,fail - 0 1590000000000 3 connected"
+      }
+
+      When call forget_fail_node_when_cluster_is_ok "172.0.0.1" "6379"
+      The status should be success
+      The stdout should include "Forgetting failed node dead1 (master,fail)"
+      The contents of file "$forget_calls_file" should include "dead1"
+      The contents of file "$forget_calls_file" should include "dead2"
+      The contents of file "$forget_calls_file" should not include "node1"
+    End
+
+    It "does not forget a node in the pfail state"
+      get_cluster_info_with_retry() {
+        echo "cluster_state:ok"
+      }
+      get_cluster_nodes_info() {
+        echo "node1 172.0.0.1:6379@16379 myself,master - 0 1590000000000 1 connected 0-5460"$'\n'"maybe 172.0.0.2:6379@16379 slave,fail? - 0 1590000000000 2 connected"
+      }
+
+      When call forget_fail_node_when_cluster_is_ok "172.0.0.1" "6379"
+      The status should be success
+      The path "$forget_calls_file" should not be exist
+    End
+
+    It "skips when the cluster state is not ok"
+      get_cluster_info_with_retry() {
+        echo "cluster_state:fail"
+      }
+      get_cluster_nodes_info() {
+        echo "dead1 172.0.0.2:6379@16379 master,fail - 0 1590000000000 2 connected"
+      }
+
+      When call forget_fail_node_when_cluster_is_ok "172.0.0.1" "6379"
+      The status should be success
+      The stdout should include "Cluster state is not ok, skip forget fail node"
+      The path "$forget_calls_file" should not be exist
     End
   End
 End

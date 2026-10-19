@@ -468,6 +468,11 @@ Describe "Redis Cluster Server Start Bash Script Tests"
   End
 
   Describe "scale_redis_cluster_replica()"
+    # The fail-node cleanup talks to a real cluster, it has its own case in the common spec.
+    forget_fail_node_when_cluster_is_ok() {
+      return 0
+    }
+
     Context "when redis server is not ready"
       check_redis_server_ready_with_retry() {
         return 1
@@ -636,6 +641,279 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         When run scale_redis_cluster_replica
         The status should be success
         The stdout should include "Node redis-shard-sxj-1 is successfully added to the cluster."
+      End
+    End
+
+    Context "when a rebuild-instance has several stale node ids in the cluster"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        current_comp_primary_node+=("10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379")
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 1
+      }
+
+      get_cluster_id_with_retry() {
+        echo "4958e6dca033cd1b321922508553fab869a29d"
+      }
+
+      # The rebuilt pod kept two identities in the cluster: the first lookup returns both
+      # of them, the verification lookup right after the forget returns nothing.
+      get_cluster_ids_with_retry() {
+        if [ ! -f "$stale_ids_returned_file" ]; then
+          touch "$stale_ids_returned_file"
+          printf 'oldid1\noldid2\n'
+        fi
+        return 0
+      }
+
+      forget_cluster_node() {
+        echo "$2" >> "$forgotten_ids_file"
+        return 0
+      }
+
+      is_rebuild_instance() {
+        return 0
+      }
+
+      remove_rebuild_instance_flag() {
+        :
+      }
+
+      secondary_replicated_to_primary() {
+        echo "OK"
+        return 0
+      }
+
+      check_node_in_cluster() {
+        return 0
+      }
+
+      get_cluster_announce_ip_with_retry() {
+        echo "10.42.0.227"
+      }
+
+      send_cluster_meet_with_retry() {
+        return 0
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export network_mode="default"
+        export service_port="6379"
+        export current_node_host_info="redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export ut_mode="true"
+        export SHELLSPEC_TMPBASE="${SHELLSPEC_TMPBASE:-/tmp}"
+        stale_ids_returned_file="$SHELLSPEC_TMPBASE/redis_rebuild_stale_ids_returned"
+        forgotten_ids_file="$SHELLSPEC_TMPBASE/redis_rebuild_forgotten_ids"
+        rm -f "$stale_ids_returned_file" "$forgotten_ids_file"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_POD_NAME
+        unset network_mode
+        unset service_port
+        unset current_node_host_info
+        unset ut_mode
+        rm -f "$stale_ids_returned_file" "$forgotten_ids_file"
+      }
+      After "un_setup"
+
+      It "forgets every stale node id before joining the cluster"
+        When run scale_redis_cluster_replica
+        The status should be success
+        The stdout should include "Forgetting stale node id oldid1"
+        The stdout should include "Forgetting stale node id oldid2"
+        The contents of file "$forgotten_ids_file" should include "oldid1"
+        The contents of file "$forgotten_ids_file" should include "oldid2"
+        The stdout should include "successfully added to the cluster"
+      End
+    End
+
+    Context "when the stale node ids cannot be forgotten"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        current_comp_primary_node+=("10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379")
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 1
+      }
+
+      get_cluster_id_with_retry() {
+        echo "4958e6dca033cd1b321922508553fab869a29d"
+      }
+
+      # the id never disappears, so the startup has to give up instead of calling add-node
+      get_cluster_ids_with_retry() {
+        echo "oldid1"
+        return 0
+      }
+
+      forget_cluster_node() {
+        return 0
+      }
+
+      is_rebuild_instance() {
+        return 0
+      }
+
+      secondary_replicated_to_primary() {
+        echo "should not be called"
+        return 1
+      }
+
+      shutdown_redis_server() {
+        echo "shutdown called"
+        return 0
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export network_mode="default"
+        export service_port="6379"
+        export current_node_host_info="redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export ut_mode="true"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_POD_NAME
+        unset network_mode
+        unset service_port
+        unset current_node_host_info
+        unset ut_mode
+      }
+      After "un_setup"
+
+      It "shuts redis down and retries instead of joining the cluster"
+        When run scale_redis_cluster_replica
+        The status should be failure
+        The stdout should include "Stale node ids [oldid1]"
+        The stderr should include "Failed to forget the stale node ids"
+        The stdout should include "shutdown called"
+        The stdout should not include "should not be called"
+      End
+    End
+
+    Context "when a rebuild-instance has no stale node id in the cluster"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        current_comp_primary_node+=("10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379")
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 1
+      }
+
+      get_cluster_id_with_retry() {
+        echo "4958e6dca033cd1b321922508553fab869a29d"
+      }
+
+      get_cluster_ids_with_retry() {
+        return 0
+      }
+
+      forget_cluster_node() {
+        echo "should not be called"
+        return 0
+      }
+
+      is_rebuild_instance() {
+        return 0
+      }
+
+      remove_rebuild_instance_flag() {
+        :
+      }
+
+      secondary_replicated_to_primary() {
+        echo "OK"
+        return 0
+      }
+
+      check_node_in_cluster() {
+        return 0
+      }
+
+      get_cluster_announce_ip_with_retry() {
+        echo "10.42.0.227"
+      }
+
+      send_cluster_meet_with_retry() {
+        return 0
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export network_mode="default"
+        export service_port="6379"
+        export current_node_host_info="redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export ut_mode="true"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_POD_NAME
+        unset network_mode
+        unset service_port
+        unset current_node_host_info
+        unset ut_mode
+      }
+      After "un_setup"
+
+      It "skips the forget and joins the cluster directly"
+        When run scale_redis_cluster_replica
+        The status should be success
+        The stdout should include "No stale node id of redis-shard-sxj-1.redis-shard-sxj-headless.default.svc is found in the cluster"
+        The stdout should not include "should not be called"
       End
     End
 
