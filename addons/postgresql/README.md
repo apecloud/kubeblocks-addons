@@ -2,6 +2,72 @@
 
 PostgreSQL (Postgres) is an open source object-relational database known for reliability and data integrity. ACID-compliant, it supports foreign keys, joins, views, triggers and stored procedures.
 
+## Default role Services
+
+Every PostgreSQL component provides the existing `postgresql` primary Service and
+an internal `postgresql-ro` Service (`<cluster>-postgresql-ro`) selecting ready
+`secondary` instances on port 5432. KubeBlocks owns both Services and maintains
+their selectors, including release-phase isolation on controllers that support
+stable/canary components. Pgpool and other clients can reference `postgresql-ro`
+through a cluster ServiceRef; deleting a proxy does not remove this Service.
+
+A standalone component also has the RO Service, with no endpoints while it has
+no secondary instances. It does not fall back to primary or filter replicas by
+replay delay. Existing TCP sessions are not migrated during role changes.
+
+### Upgrading an existing backend
+
+Installing a newer Addon does not by itself replace the ComponentDefinition
+already selected by an existing component. Publish these changed definitions
+under a new Chart version; do not overwrite an installed immutable definition.
+The target definition and its ComponentVersion must support the backend's
+current PostgreSQL major and exact service version.
+
+KBE's current UI/API kernel upgrade sends only `serviceVersion`; it does not
+expose a definition-only upgrade or guarantee a change of ComponentDefinition.
+An administrator must explicitly select the new definition through a native
+KubeBlocks Upgrade OpsRequest. Use the same explicit kubeconfig and namespace
+for the request and all verification. Schedule the operation for a maintenance
+window because changing the definition may roll PostgreSQL Pods.
+
+Replace every placeholder below with the existing backend identity and the exact
+released definition containing `services[name=postgresql-ro]`:
+
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: enable-postgresql-ro
+  namespace: <backend-namespace>
+spec:
+  clusterName: <backend-cluster>
+  type: Upgrade
+  upgrade:
+    components:
+      - componentName: postgresql
+        componentDefinitionName: postgresql-<current-major>-<released-chart-version-with-ro>
+```
+
+Omit `serviceVersion` to retain the current kernel version. After applying the
+request through `kubectl --kubeconfig <kubeconfig> --namespace <backend-namespace>
+apply -f <request-file>`, verify all of these postconditions before creating Pgpool:
+
+- The OpsRequest phase is `Succeed`, and the PostgreSQL Cluster/component return
+  to `Running` with their latest generation observed.
+- Both `Cluster.spec.componentSpecs[name=postgresql].componentDef` and the active
+  `Component.spec.compDef` equal the requested definition; the service version
+  remains unchanged. A successful kernel-only upgrade is insufficient.
+- `<backend-cluster>-postgresql-ro` exists as an internal ClusterIP Service,
+  selects `secondary` instances, and has `publishNotReadyAddresses` unset/false.
+  Its owner is the PostgreSQL component, with release-phase isolation maintained
+  by KubeBlocks. Check ready EndpointSlice addresses when standby instances exist.
+
+Do not edit installed definitions or recreate the database to add this entry.
+A standalone backend can have an empty RO endpoint set; Pgpool uses only primary.
+This native request is outside the current KBE UI/API task workflow. Real
+old-instance upgrades must be validated on the intended controller and released
+Addon versions before customer rollout.
+
 ## Features In KubeBlocks
 
 ### Lifecycle Management

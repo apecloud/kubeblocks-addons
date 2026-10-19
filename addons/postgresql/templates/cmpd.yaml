@@ -34,6 +34,14 @@ spec:
             port: 5432
             targetPort: tcp-postgresql
       roleSelector: primary
+    - name: postgresql-ro
+      serviceName: ro
+      spec:
+        ports:
+          - name: tcp-postgresql
+            port: 5432
+            targetPort: tcp-postgresql
+      roleSelector: secondary
   updateStrategy: BestEffortParallel
   podManagementPolicy: Parallel
   volumes:

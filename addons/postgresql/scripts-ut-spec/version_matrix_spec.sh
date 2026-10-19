@@ -68,6 +68,24 @@ Describe "PostgreSQL version matrix contract"
     render_chart | grep -c "$pattern" || true
   }
 
+  postgresql_role_services_contract() {
+    render_chart | RUBYOPT=-W0 ruby -ryaml -e '
+      definitions = YAML.load_stream(ARGF.read).compact.select do |doc|
+        doc["kind"] == "ComponentDefinition" && doc.dig("spec", "serviceKind") == "postgresql"
+      end
+      abort if definitions.empty?
+      definitions.each do |definition|
+        services = definition.dig("spec", "services")
+        abort unless services.map { |service| service["name"] } == %w[postgresql postgresql-ro]
+        primary, readonly = services
+        abort unless primary["roleSelector"] == "primary" && primary["serviceName"] == "postgresql"
+        abort unless readonly["roleSelector"] == "secondary" && readonly["serviceName"] == "ro"
+        abort unless readonly["spec"] == {"ports" => [{"name" => "tcp-postgresql", "port" => 5432, "targetPort" => "tcp-postgresql"}]}
+      end
+      puts "ok"
+    '
+  }
+
   pgbouncer_component_contract() {
     render_chart | RUBYOPT=-W0 ruby -ryaml -e '
       documents = YAML.load_stream(ARGF.read).compact
@@ -391,6 +409,12 @@ EOF
     When call chart_version "$(chart_dir)"
     The status should eq 0
     The output should eq "1.0.6"
+  End
+
+  It "provides primary and ready-secondary Services for every PostgreSQL major"
+    When call postgresql_role_services_contract
+    The status should eq 0
+    The output should eq "ok"
   End
 
   It "keeps the cluster chart version aligned at 1.0.6"
