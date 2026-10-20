@@ -6,7 +6,7 @@ Describe "MySQL system account passwordConfig identity contract"
   }
 
   expected_chart_version() {
-    printf '%s' "1.2.0-alpha.1"
+    printf '%s' "1.2.0-alpha.0"
   }
 
   cmpd_templates() {
@@ -23,14 +23,14 @@ Describe "MySQL system account passwordConfig identity contract"
 
   expected_cmpd_names() {
     printf '%s\n' \
-      "mysql-5.7-1.2.0-alpha.1" \
-      "mysql-8.0-1.2.0-alpha.1" \
-      "mysql-8.4-1.2.0-alpha.1" \
-      "mysql-mgr-8.0-1.2.0-alpha.1" \
-      "mysql-mgr-8.4-1.2.0-alpha.1" \
-      "mysql-orc-5.7-1.2.0-alpha.1" \
-      "mysql-orc-8.0-1.2.0-alpha.1" \
-      "proxysql-mysql-1.2.0-alpha.1"
+      "mysql-5.7-1.2.0-alpha.0" \
+      "mysql-8.0-1.2.0-alpha.0" \
+      "mysql-8.4-1.2.0-alpha.0" \
+      "mysql-mgr-8.0-1.2.0-alpha.0" \
+      "mysql-mgr-8.4-1.2.0-alpha.0" \
+      "mysql-orc-5.7-1.2.0-alpha.0" \
+      "mysql-orc-8.0-1.2.0-alpha.0" \
+      "proxysql-mysql-1.2.0-alpha.0"
   }
 
   render_template() {
@@ -70,16 +70,16 @@ Describe "MySQL system account passwordConfig identity contract"
     [ "$names" = "$expected" ]
   }
 
-  It "bumps the MySQL chart identity to 1.2.0-alpha.1"
+  It "keeps the MySQL chart identity at 1.2.0-alpha.0"
     When call assert_chart_version
     The status should be success
-    The output should include "chart_version=1.2.0-alpha.1"
+    The output should include "chart_version=1.2.0-alpha.0"
   End
 
-  It "renders eight new CMPD identities with passwordConfig and no passwordGenerationPolicy"
+  It "preserves eight CMPD identities with passwordConfig and no passwordGenerationPolicy"
     When call assert_cmpd_identities_and_password_config
     The status should be success
-    The output should include "mysql-8.0-1.2.0-alpha.1"
-    The output should include "proxysql-mysql-1.2.0-alpha.1"
+    The output should include "mysql-8.0-1.2.0-alpha.0"
+    The output should include "proxysql-mysql-1.2.0-alpha.0"
   End
 End
