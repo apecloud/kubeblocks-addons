@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034
+# shellcheck disable=SC2034,SC2154
 
 if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
   echo "valkey_switchover_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
@@ -13,6 +13,7 @@ generate_common_library $common_library_file
 
 Describe "Valkey Switchover Bash Script Tests"
   Include $common_library_file
+  Include ../scripts/sentinel-endpoint.sh
   Include ../scripts/switchover.sh
 
   init() {
@@ -97,6 +98,14 @@ Describe "Valkey Switchover Bash Script Tests"
         The stdout should include "-h valkey-0.headless.default.svc.cluster.local"
         The stdout should include "-p 6379"
         The stdout should not include " -a "
+      End
+
+      It "uses an explicitly supplied external endpoint port"
+        When call _build_cli_as_string "10.0.0.23" "31003"
+        The status should be success
+        The stdout should include "-h 10.0.0.23"
+        The stdout should include "-p 31003"
+        The stdout should not include "-p 6379"
       End
     End
 
@@ -369,15 +378,25 @@ Describe "Valkey Switchover Bash Script Tests"
     After "teardown"
 
     Context "when candidate is already master (idempotent — target state achieved)"
-      It "returns success immediately without calling execute_sentinel_failover"
+      It "returns success only after Sentinel authority and old-primary demotion converge"
         valkey-cli() {
           printf 'role:master\n'
         }
+        sentinel_switchover_converged() { return 0; }
         execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
         When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
         The status should be success
-        The stderr should include "already master"
-        The stderr should include "idempotent"
+        The stderr should include "Sentinel-authoritative"
+        The stdout should not include "SHOULD_NOT_BE_CALLED"
+      End
+
+      It "fails when the candidate only self-reports master"
+        get_role() { echo "master"; }
+        sentinel_switchover_converged() { return 1; }
+        execute_sentinel_failover() { echo "SHOULD_NOT_BE_CALLED"; }
+        When call switchover_with_sentinel "valkey-1.headless.default.svc.cluster.local"
+        The status should be failure
+        The stderr should include "old-primary demotion are not converged"
         The stdout should not include "SHOULD_NOT_BE_CALLED"
       End
     End
@@ -552,6 +571,7 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when another replica still has priority 1"
       It "returns failure before FAILOVER can be issued"
+        export SENTINEL_PRIORITY_CONFIRM_BUDGET=1
         valkey-cli() {
           printf 'name\nvalkey-1.headless.default.svc.cluster.local:6379\nslave-priority\n1\nname\nvalkey-2.headless.default.svc.cluster.local:6379\nslave-priority\n1\n'
         }
@@ -605,13 +625,11 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when expected candidate becomes master before timeout"
       It "returns success and prints confirmation"
-        get_role() {
-          case "$1" in
-            *"valkey-1"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
+        sentinel_switchover_converged() {
+          SENTINEL_CONFIRMED_MASTER="valkey-1.headless.default.svc.cluster.local"
+          return 0
         }
-        When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" ""
+        When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "New primary confirmed"
         The stdout should include "valkey-1"
@@ -621,11 +639,9 @@ Describe "Valkey Switchover Bash Script Tests"
     Context "when fresh expected candidate is absent from stale VALKEY_POD_FQDN_LIST"
       It "still confirms the candidate by appending the action-time FQDN"
         export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
-        get_role() {
-          case "$1" in
-            *"valkey-3"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
+        sentinel_switchover_converged() {
+          SENTINEL_CONFIRMED_MASTER="valkey-3.headless.default.svc.cluster.local"
+          return 0
         }
         When call wait_for_new_master "valkey-3.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
         The status should be success
@@ -655,12 +671,9 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when exclude_fqdn matches the current master (old master still reporting master)"
       It "skips the excluded FQDN and returns success when a different node becomes master"
-        get_role() {
-          case "$1" in
-            *"valkey-0"*) echo "master" ;;
-            *"valkey-1"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
+        sentinel_switchover_converged() {
+          SENTINEL_CONFIRMED_MASTER="valkey-1.headless.default.svc.cluster.local"
+          return 0
         }
         # valkey-0 is old master (excluded), valkey-1 is new master
         When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
@@ -671,11 +684,9 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when expected_fqdn is empty — any new master is acceptable"
       It "returns success as soon as any non-excluded node reports master"
-        get_role() {
-          case "$1" in
-            *"valkey-2"*) echo "master" ;;
-            *) echo "slave" ;;
-          esac
+        sentinel_switchover_converged() {
+          SENTINEL_CONFIRMED_MASTER="valkey-2.headless.default.svc.cluster.local"
+          return 0
         }
         When call wait_for_new_master "" "valkey-0.headless.default.svc.cluster.local"
         The status should be success
@@ -685,18 +696,265 @@ Describe "Valkey Switchover Bash Script Tests"
 
     Context "when the wrong pod becomes master (not the expected candidate)"
       It "does not return success for the wrong master — keeps waiting, returns success only for expected"
-        get_role() {
-          case "$1" in
-            *"valkey-2"*) echo "master" ;;   # wrong pod is master
-            *"valkey-1"*) echo "master" ;;   # expected pod also master (will match)
-            *) echo "slave" ;;
-          esac
+        authority_calls=0
+        sentinel_switchover_converged() {
+          authority_calls=$((authority_calls + 1))
+          [ "${authority_calls}" -ge 2 ] || return 1
+          SENTINEL_CONFIRMED_MASTER="valkey-1.headless.default.svc.cluster.local"
+          return 0
         }
         # valkey-1 is expected; valkey-2 is also master but should be skipped
         When call wait_for_new_master "valkey-1.headless.default.svc.cluster.local" "valkey-0.headless.default.svc.cluster.local"
         The status should be success
         The stdout should include "valkey-1"
       End
+    End
+  End
+
+  Describe "Sentinel-authoritative switchover confirmation"
+    authority_env() {
+      export VALKEY_COMPONENT_NAME="mycluster-valkey"
+      export SENTINEL_POD_FQDN_LIST="sentinel-0,sentinel-1,sentinel-2"
+      export SENTINEL_SERVICE_PORT=26379
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local,valkey-2.headless.default.svc.cluster.local"
+      export KB_SWITCHOVER_CURRENT_FQDN="valkey-0.headless.default.svc.cluster.local"
+    }
+    Before "authority_env"
+
+    It "accepts only when a configured-endpoint majority names the candidate and the old primary is a slave"
+      sentinel_cli_for() { _sentinel_cli=(mock_master_addr "$1"); }
+      mock_master_addr() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf 'valkey-1.headless.default.svc.cluster.local\n6379\n' ;;
+          *) printf 'valkey-2.headless.default.svc.cluster.local\n6379\n' ;;
+        esac
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-1*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-1.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "maps a strict NodePort Sentinel majority back to the internal candidate identity"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001,valkey-advertised-2:31002"
+      sentinel_cli_for() { _sentinel_cli=(mock_nodeport_master "$1"); }
+      mock_nodeport_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf '10.0.0.21\n31001\n' ;;
+          *) printf '10.0.0.22\n31002\n' ;;
+        esac
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-1*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-1.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "maps a strict LoadBalancer Sentinel majority back to the internal candidate identity"
+      export VALKEY_LB_ADVERTISED_PORT="valkey-lb-advertised-0:6379,valkey-lb-advertised-1:6379,valkey-lb-advertised-2:6379"
+      export VALKEY_LB_ADVERTISED_HOST="valkey-lb-advertised-0:lb-0.example.com,valkey-lb-advertised-1:lb-1.example.com,valkey-lb-advertised-2:lb-2.example.com"
+      sentinel_cli_for() { _sentinel_cli=(mock_load_balancer_master "$1"); }
+      mock_load_balancer_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf 'lb-1.example.com\n6379\n' ;;
+          *) printf 'lb-2.example.com\n6379\n' ;;
+        esac
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-1*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-1.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "includes a targeted scale-out candidate that is absent from the creation-time roster"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export KB_SWITCHOVER_CANDIDATE_FQDN="valkey-3.headless.default.svc.cluster.local"
+      sentinel_cli_for() { _sentinel_cli=(mock_scale_out_master "$1"); }
+      mock_scale_out_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf 'valkey-3.headless.default.svc.cluster.local\n6379\n' ;;
+          *) printf 'valkey-1.headless.default.svc.cluster.local\n6379\n' ;;
+        esac
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-3*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-3.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "maps a fresh candidate NodePort through its action-time announce readback"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001"
+      export KB_SWITCHOVER_CANDIDATE_FQDN="valkey-3.headless.default.svc.cluster.local"
+      sentinel_cli_for() { _sentinel_cli=(mock_fresh_nodeport_master "$1"); }
+      mock_fresh_nodeport_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf '10.0.0.23\n31003\n' ;;
+          *) printf '10.0.0.21\n31001\n' ;;
+        esac
+      }
+      read_action_candidate_announced_endpoint() {
+        [ "$1" = "valkey-3.headless.default.svc.cluster.local" ] || return 1
+        printf '10.0.0.23\n31003\n'
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+          valkey-3*) echo master ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-3.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "confirms an untargeted failover through the exact new NodePort endpoint"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001"
+      unset KB_SWITCHOVER_CANDIDATE_FQDN
+      sentinel_cli_for() { _sentinel_cli=(mock_untargeted_nodeport_master "$1"); }
+      mock_untargeted_nodeport_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf '10.0.0.23\n31003\n' ;;
+          *) printf '10.0.0.21\n31001\n' ;;
+        esac
+      }
+      get_role_at_endpoint() {
+        [ "$1" = "10.0.0.23" ] && [ "$2" = "31003" ] || return 1
+        echo master
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "confirms an untargeted failover through the exact new LoadBalancer endpoint"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_LB_ADVERTISED_PORT="valkey-lb-advertised-0:6379,valkey-lb-advertised-1:6379"
+      export VALKEY_LB_ADVERTISED_HOST="valkey-lb-advertised-0:lb-0.example.com,valkey-lb-advertised-1:lb-1.example.com"
+      unset KB_SWITCHOVER_CANDIDATE_FQDN
+      sentinel_cli_for() { _sentinel_cli=(mock_untargeted_load_balancer_master "$1"); }
+      mock_untargeted_load_balancer_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf 'lb-3.example.com\n6379\n' ;;
+          *) printf 'lb-1.example.com\n6379\n' ;;
+        esac
+      }
+      get_role_at_endpoint() {
+        [ "$1" = "lb-3.example.com" ] && [ "$2" = "6379" ] || return 1
+        echo master
+      }
+      get_role() {
+        case "$1" in
+          valkey-0*) echo slave ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be success
+    End
+
+    It "counts different ports on the same external host as different Sentinel votes"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001"
+      sentinel_cli_for() { _sentinel_cli=(mock_split_external_ports "$1"); }
+      mock_split_external_ports() {
+        case "$1" in
+          sentinel-0) printf '10.0.0.23\n31003\n' ;;
+          sentinel-1) printf '10.0.0.23\n31004\n' ;;
+          *) return 1 ;;
+        esac
+      }
+      When call sentinel_master_host "allow-external"
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
+    End
+
+    It "does not accept an unmapped external endpoint for targeted switchover"
+      export VALKEY_POD_FQDN_LIST="valkey-0.headless.default.svc.cluster.local,valkey-1.headless.default.svc.cluster.local"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31000,valkey-advertised-1:31001"
+      unset KB_SWITCHOVER_CANDIDATE_FQDN
+      sentinel_cli_for() { _sentinel_cli=(mock_unmapped_targeted_master "$1"); }
+      mock_unmapped_targeted_master() {
+        case "$1" in
+          sentinel-0|sentinel-1) printf '10.0.0.23\n31003\n' ;;
+          *) printf '10.0.0.21\n31001\n' ;;
+        esac
+      }
+      When call sentinel_switchover_converged \
+        "valkey-3.headless.default.svc.cluster.local" \
+        "valkey-0.headless.default.svc.cluster.local"
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
+    End
+
+    It "rejects an ambiguous NodePort-to-roster mapping instead of counting the vote"
+      export VALKEY_ADVERTISED_PORT="valkey-advertised-0:31001,valkey-advertised-1:31001"
+      sentinel_cli_for() { _sentinel_cli=(mock_ambiguous_nodeport); }
+      mock_ambiguous_nodeport() { printf '10.0.0.21\n31001\n'; }
+      When call sentinel_master_host
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
+    End
+
+    It "rejects an ambiguous LoadBalancer-host-to-roster mapping instead of counting the vote"
+      export VALKEY_LB_ADVERTISED_PORT="valkey-lb-advertised-0:6379,valkey-lb-advertised-1:6379"
+      export VALKEY_LB_ADVERTISED_HOST="valkey-lb-advertised-0:shared.example.com,valkey-lb-advertised-1:shared.example.com"
+      sentinel_cli_for() { _sentinel_cli=(mock_ambiguous_load_balancer); }
+      mock_ambiguous_load_balancer() { printf 'shared.example.com\n6379\n'; }
+      When call sentinel_master_host
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
+    End
+
+    It "rejects duplicate Sentinel endpoints instead of counting duplicate votes"
+      export SENTINEL_POD_FQDN_LIST="sentinel-0,sentinel-0,sentinel-0"
+      When call sentinel_master_host
+      The status should be failure
+      The stderr should include "duplicate Sentinel endpoint"
+    End
+
+    It "rejects a reachable-only minority view"
+      sentinel_cli_for() { _sentinel_cli=(mock_minority "$1"); }
+      mock_minority() {
+        [ "$1" = "sentinel-0" ] || return 1
+        printf 'valkey-1.headless.default.svc.cluster.local\n6379\n'
+      }
+      When call sentinel_master_host
+      The status should be failure
+      The stderr should include "no configured-endpoint majority"
     End
   End
 
@@ -937,7 +1195,7 @@ Describe "Valkey Switchover Bash Script Tests"
     End
 
     It "does not leave manual confirmation failures as best-effort success"
-      When call grep -F "wait_until_master \"${target_fqdn}\" 10 || true" "${switchover_script}"
+      When call grep -F 'wait_until_master "${target_fqdn}" 10 || true' "${switchover_script}"
       The status should be failure
     End
   End

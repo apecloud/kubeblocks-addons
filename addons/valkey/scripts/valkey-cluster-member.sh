@@ -1,0 +1,444 @@
+#!/bin/bash
+# valkey-cluster-member.sh — intra-shard replica join/leave for Valkey
+# Cluster (sharding) mode. Phase C of issue #3021 (issue #3037).
+#
+# Modes:
+#   --join    attach KB_JOIN_MEMBER_POD_FQDN as a replica of this shard's
+#             current master (engine node id resolved fresh)
+#   --leave   remove KB_LEAVE_MEMBER_POD_FQDN from the cluster; when the
+#             leaving pod is the CURRENT master, fail over to another
+#             in-shard replica first and only delete after the shard's
+#             slots are owned by the new master
+#
+# Same single-shot discipline as the manage script: positive observation or
+# classified non-zero exit; topology re-read every invocation; identity is
+# always the engine node id.
+
+# shellcheck disable=SC2034
+ut_mode="false"
+test || __() {
+  # when running in non-unit test mode, set the options "set -ex".
+  set -ex;
+}
+
+set -e
+
+port="${SERVICE_PORT:-6379}"
+LEAVE_FAILOVER_BUDGET="${LEAVE_FAILOVER_BUDGET:-30}"
+
+load_common_library() {
+  # shellcheck source=/dev/null
+  source /scripts/common.sh
+}
+
+# Stable classification for every non-zero exit (aligned with
+# valkey-cluster-manage.sh): classify <phase> <retry_safe:yes|no> <detail...>
+classify() {
+  local phase="$1" retry_safe="$2"; shift 2
+  echo "action=valkey-cluster-member phase=${phase} retry_safe=${retry_safe} detail=$*" >&2
+}
+
+build_cli() {
+  local host="${1}"
+  _cli=(valkey-cli --no-auth-warning -h "${host}" -p "${port}")
+  [ -n "${VALKEY_DEFAULT_PASSWORD:-}" ] && _cli+=(-a "${VALKEY_DEFAULT_PASSWORD}")
+  if [ -n "${VALKEY_CLI_TLS_ARGS:-}" ]; then
+    # shellcheck disable=SC2206
+    _cli+=(${VALKEY_CLI_TLS_ARGS})
+  fi
+}
+
+build_cluster_cli() {
+  _ccli=(valkey-cli --no-auth-warning)
+  [ -n "${VALKEY_DEFAULT_PASSWORD:-}" ] && _ccli+=(-a "${VALKEY_DEFAULT_PASSWORD}")
+  if [ -n "${VALKEY_CLI_TLS_ARGS:-}" ]; then
+    # shellcheck disable=SC2206
+    _ccli+=(${VALKEY_CLI_TLS_ARGS})
+  fi
+}
+
+# Vantage for cluster-view reads: first in-shard pod that (a) is NOT the
+# operation target (a target's local view can false-close join/leave —
+# review blocker), (b) answers PING, and (c) provably belongs to a FORMED
+# cluster (state ok). Never an identity, only a viewpoint.
+shard_vantage() {
+  local exclude="${1:-}" fqdn state
+  for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
+    [ -n "${exclude}" ] && [ "${fqdn}" = "${exclude}" ] && continue
+    build_cli "${fqdn}"
+    "${_cli[@]}" PING 2>/dev/null | grep -q PONG || continue
+    state=$("${_cli[@]}" CLUSTER INFO 2>/dev/null | grep "^cluster_state:" | tr -d '\r' | cut -d: -f2)
+    if [ "${state}" = "ok" ]; then
+      echo "${fqdn}"
+      return 0
+    fi
+  done
+  classify vantage yes "no non-target in-shard pod with cluster_state:ok — cannot read a trustworthy cluster view"
+  return 1
+}
+
+shard_master_line() {
+  local via="${1}" fqdn pattern="" nodes masters count
+  for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$'); do
+    pattern="${pattern:+${pattern}|}${fqdn}"
+  done
+  build_cli "${via}"
+  nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r') || return 1
+  masters=$(printf '%s\n' "${nodes}" | grep -E "${pattern}" | awk '
+    $3 ~ /(^|,)master(,|$)/ &&
+    $3 !~ /(^|,)(fail|handshake|noaddr)(,|$)/ &&
+    $8 == "connected" {
+      owns_slot=0
+      for (i=9; i<=NF; i++) {
+        if ($i ~ /^[0-9]+(-[0-9]+)?$/) owns_slot=1
+      }
+      if (owns_slot) print
+    }
+  ')
+  count=$(printf '%s\n' "${masters}" | grep -c .)
+  [ "${count}" -eq 1 ] || {
+    classify join-master yes "shard view has ${count} healthy connected slot-owning masters, expected exactly 1"
+    return 1
+  }
+  printf '%s\n' "${masters}"
+}
+
+node_line_of() {
+  local via="${1}" target="${2}"
+  build_cli "${via}"
+  "${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | grep -F "${target}" | head -1
+}
+
+member_join() {
+  local target="${KB_JOIN_MEMBER_POD_FQDN:-}"
+  if [ -z "${target}" ]; then
+    classify env-contract no "KB_JOIN_MEMBER_POD_FQDN is required for --join"
+    exit 1
+  fi
+  local via master_line master_id target_line out
+  via=$(shard_vantage "${target}") || exit 1
+  master_line=$(shard_master_line "${via}")
+  if [ -z "${master_line}" ]; then
+    classify join-no-master no "shard has no master in cluster view — refusing to attach a replica blind"
+    exit 1
+  fi
+  master_id=$(echo "${master_line}" | awk '{print $1}')
+
+  if join_confirmed "${via}" "${target}" "${master_id}"; then
+    master_line=$(shard_master_line "${via}")
+    if [ -z "${master_line}" ] || [ "$(echo "${master_line}" | awk '{print $1}')" != "${master_id}" ]; then
+      classify join-master-drift yes "shard master changed while confirming ${target}; retry against a fresh master"
+      exit 1
+    fi
+    echo "member ${target} already a replica of this shard's master — join already effective."
+    exit 0
+  fi
+  target_line=$(node_line_of "${via}" "${target}")
+  if [ -z "${target_line}" ]; then
+    # existing-node argument is the vantage FQDN: any cluster member works,
+    # and reusing ${via} avoids parsing the master's announced address out
+    # of CLUSTER NODES (fresh-eyes review: that parse was IPv4-only —
+    # cut -d: -f1 mangles an IPv6 announce address).
+    build_cluster_cli
+    if ! out=$("${_ccli[@]}" --cluster add-node "${target}:${port}" "${via}:${port}" --cluster-slave --cluster-master-id "${master_id}" 2>&1); then
+      # add-node is multi-command and can fail after MEET committed. Re-read
+      # before classifying so the next invocation can repair a partial join.
+      target_line=$(node_line_of "${via}" "${target}")
+      if [ -z "${target_line}" ]; then
+        classify join-add-node yes "add-node --cluster-slave for ${target} failed before membership became visible: ${out}"
+        exit 1
+      fi
+    fi
+  fi
+  if ! join_confirmed "${via}" "${target}" "${master_id}"; then
+    repair_existing_join "${via}" "${target}" "${master_id}" || exit 1
+    if ! join_confirmed "${via}" "${target}" "${master_id}"; then
+      classify join-confirm yes "${target} repair issued but correct replica binding is not yet visible from the non-target cluster view"
+      exit 1
+    fi
+  fi
+  master_line=$(shard_master_line "${via}")
+  if [ -z "${master_line}" ] || [ "$(echo "${master_line}" | awk '{print $1}')" != "${master_id}" ]; then
+    classify join-master-drift yes "shard master changed while joining ${target}; retry against a fresh master"
+    exit 1
+  fi
+  echo "member ${target} joined shard as replica of ${master_id}."
+  exit 0
+}
+
+# Converge an add-node that partially committed or attached the target to the
+# wrong parent. A slot-owning master is never converted because that would
+# orphan its slots; all other role repairs are issued on the target itself.
+repair_existing_join() {
+  local via="${1}" target="${2}" master_id="${3}" line self_line flags link_state slots out
+  line=$(node_line_of "${via}" "${target}")
+  if [ -z "${line}" ]; then
+    classify join-repair yes "${target} disappeared from the non-target cluster view before repair"
+    return 1
+  fi
+  flags=$(echo "${line}" | awk '{print $3}')
+  link_state=$(echo "${line}" | awk '{print $8}')
+  case ",${flags}," in
+    *,fail,*|*,handshake,*|*,noaddr,*)
+      classify join-repair yes "${target} is not in a repairable connected state (${flags})"
+      return 1 ;;
+  esac
+  if [ "${link_state}" != "connected" ]; then
+    classify join-repair yes "${target} is not connected in the cluster view (${link_state})"
+    return 1
+  fi
+
+  build_cli "${target}"
+  if ! "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+    classify join-repair yes "${target} is visible but not reachable for CLUSTER REPLICATE"
+    return 1
+  fi
+  self_line=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/ {print; exit}')
+  if [ -z "${self_line}" ]; then
+    classify join-repair yes "${target} has no readable myself line"
+    return 1
+  fi
+  flags=$(echo "${self_line}" | awk '{print $3}')
+  slots=$(echo "${self_line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')
+  if echo "${flags}" | grep -q master && [ -n "${slots}" ]; then
+    classify join-repair no "${target} still owns slots — refusing to convert it into a replica"
+    return 1
+  fi
+  if ! echo "${flags}" | grep -Eq '(^|,)(master|slave)(,|$)'; then
+    classify join-repair yes "${target} has no repairable master/slave role (${flags})"
+    return 1
+  fi
+  out=$("${_cli[@]}" CLUSTER REPLICATE "${master_id}" 2>&1) || {
+    classify join-repair yes "CLUSTER REPLICATE ${master_id} on ${target} failed: ${out}"
+    return 1
+  }
+  case "${out}" in
+    OK*) return 0 ;;
+    *) classify join-repair yes "CLUSTER REPLICATE ${master_id} on ${target} returned: ${out}"; return 1 ;;
+  esac
+}
+
+# Positive join fact: from a NON-TARGET vantage, the target's node line must
+# carry the slave flag AND reference this shard's master id (visibility
+# alone is not membership — review blocker).
+join_confirmed() {
+  local via="${1}" target="${2}" master_id="${3}" line flags
+  line=$(node_line_of "${via}" "${target}")
+  [ -z "${line}" ] && return 1
+  flags=$(echo "${line}" | awk '{print $3}')
+  case ",${flags}," in
+    *,fail,*|*,handshake,*|*,noaddr,*) return 1 ;;
+  esac
+  echo "${flags}" | grep -q slave || return 1
+  [ "$(echo "${line}" | awk '{print $8}')" = "connected" ] || return 1
+  [ "$(echo "${line}" | awk '{print $4}')" = "${master_id}" ]
+}
+
+member_leave() {
+  local target="${KB_LEAVE_MEMBER_POD_FQDN:-}"
+  if [ -z "${target}" ]; then
+    classify env-contract no "KB_LEAVE_MEMBER_POD_FQDN is required for --leave"
+    exit 1
+  fi
+  local via target_line
+  via=$(shard_vantage "${target}") || exit 1
+  target_line=$(node_line_of "${via}" "${target}")
+  if [ -n "${target_line}" ] && echo "${target_line}" | awk '{print $3}' | grep -q master; then
+    demote_master_before_leave "${via}" "${target}" || exit 1
+  fi
+  # No early "already effective" return: a vantage that cannot see the
+  # target proves nothing about OTHER remaining pods' tables (review
+  # blocker — same class as shardRemove's already-removed hole). Every
+  # leave, present or absent, goes through the purge + absence proof.
+  purge_member_from_cluster "${target}" || exit 1
+  echo "member ${target} removed from cluster (reset, forgotten, absence-proven)."
+  exit 0
+}
+
+# Residue-free member removal, same contract as the manage script's
+# purge_shard_from_cluster: collect old ids (target's own MYID pre-reset
+# + UNION of fqdn-matching lines from every remaining pod), destroy the
+# leaving node's identity, FORGET every old id on every remaining pod,
+# then prove BOTH old fqdn and old ids absent from every remaining pod.
+purge_member_from_cluster() {
+  local target="${1}" remaining host ids="" id nodes out
+  remaining=$(all_cluster_pods_except "${target}") || return 1
+  if [ -z "${remaining}" ]; then
+    classify env-contract no "ALL_SHARDS_POD_FQDN_MAP roster empty — cannot purge ${target} cluster-wide (no fallback)"
+    return 1
+  fi
+
+  build_cli "${target}"
+  if ! "${_cli[@]}" PING 2>/dev/null | grep -q PONG; then
+    classify leave-reset yes "${target} is unreachable — old cluster identity cannot be destroyed"
+    return 1
+  fi
+  prove_reset_safe leave-orphan-guard "${target}" || return 1
+  id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r')
+  if [ -z "${id}" ]; then
+    classify leave-reset yes "CLUSTER MYID unreadable from ${target}"
+    return 1
+  fi
+  ids="${ids} ${id}"
+  for host in ${remaining}; do
+    build_cli "${host}"
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+    ids="${ids} $(echo "${nodes}" | grep -F "${target}" | awk '{print $1}')"
+  done
+  ids=$(echo "${ids}" | tr ' ' '\n' | grep -v '^$' | sort -u)
+
+  build_cli "${target}"
+  prove_reset_safe leave-reset "${target}" || return 1
+  "${_cli[@]}" FLUSHALL >/dev/null 2>&1 || true  # refused on replicas (harmless)
+  "${_cli[@]}" CLUSTER RESET HARD >/dev/null 2>&1 || {
+    classify leave-reset yes "CLUSTER RESET HARD on ${target} failed"
+    return 1
+  }
+
+  for host in ${remaining}; do
+    build_cli "${host}"
+    for id in ${ids}; do
+      out=$("${_cli[@]}" CLUSTER FORGET "${id}" 2>&1) || true
+      case "${out}" in
+        OK*|*"Unknown node"*) ;;
+        *) classify leave-forget yes "FORGET ${id} on ${host} failed: ${out}"; return 1 ;;
+      esac
+    done
+  done
+
+  local residue
+  for host in ${remaining}; do
+    build_cli "${host}"
+    nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r')
+    residue=$(echo "${nodes}" | grep -F "${target}" || true)
+    for id in ${ids}; do
+      residue="${residue}$(echo "${nodes}" | awk -v i="${id}" '$1==i')"
+    done
+    if [ -n "${residue}" ]; then
+      classify leave-confirm yes "${target} residue (old fqdn or old id) still visible from ${host}"
+      return 1
+    fi
+  done
+  return 0
+}
+
+# Fresh engine-truth gate for FLUSHALL/RESET HARD. Missing or malformed
+# topology is never equivalent to a slotless node.
+prove_reset_safe() {
+  local phase="${1}" target="${2}" nodes line_count line flags slots
+  nodes=$("${_cli[@]}" CLUSTER NODES 2>/dev/null) || {
+    classify "${phase}" yes "cannot read CLUSTER NODES from ${target} at reset commit"
+    return 1
+  }
+  nodes=$(printf '%s\n' "${nodes}" | tr -d '\r')
+  line_count=$(printf '%s\n' "${nodes}" | awk '$3 ~ /(^|,)myself(,|$)/ {count++} END {print count+0}')
+  if [ "${line_count}" -ne 1 ]; then
+    classify "${phase}" yes "${target} has ${line_count} readable myself lines at reset commit"
+    return 1
+  fi
+  line=$(printf '%s\n' "${nodes}" | awk '$3 ~ /(^|,)myself(,|$)/ {print}')
+  if ! printf '%s\n' "${line}" | awk 'NF >= 8 && $3 ~ /(^|,)(master|slave)(,|$)/ {ok=1} END {exit ok ? 0 : 1}'; then
+    classify "${phase}" yes "${target} has a malformed myself line at reset commit"
+    return 1
+  fi
+  flags=$(printf '%s\n' "${line}" | awk '{print $3}')
+  slots=$(printf '%s\n' "${line}" | awk '{for(i=9;i<=NF;i++) printf "%s", $i}')
+  if [ -n "${slots}" ]; then
+    classify "${phase}" yes "${target} still advertises slot state at reset commit (flags=${flags})"
+    return 1
+  fi
+  return 0
+}
+
+# Every pod of every shard (KB roster env), excluding one FQDN. The
+# leaving node lives in EVERY node table, so FORGET must sweep them all.
+# DNS existence check; getent-less images degrade to "resolvable" so
+# behavior falls back to the strict defer path, never a weaker proof.
+host_resolves() {
+  command -v getent >/dev/null 2>&1 || return 0
+  getent hosts "${1}" >/dev/null 2>&1
+}
+
+# CONSUMPTION CONTRACT (fresh-eyes review M1, aligned with the manage
+# script's each_shard_fqdn_list): callers MUST materialize the output
+# ($(...) with an rc check) — a process-substitution consumer would discard
+# the exit status and a broken roster env would silently WEAKEN the FORGET
+# sweep and absence proof. Empty roster vars and a zero-var env hard-fail.
+all_cluster_pods_except() {
+  local except="${1}" shard_line fqdns fqdn roster
+  roster=$(parse_shard_fqdn_map) || return 1
+  while read -r shard_line; do
+    fqdns="${shard_line#* }"
+    for fqdn in $(echo "${fqdns}" | tr ',' '\n' | grep -v '^$'); do
+      [ "${fqdn}" = "${except}" ] && continue
+      if ! host_resolves "${fqdn}"; then
+        classify leave-roster yes "roster host ${fqdn} DNS unresolved; permanent departure is not proven"
+        return 1
+      fi
+      echo "${fqdn}"
+    done
+  done <<< "${roster}"
+}
+
+# The leaving pod is the shard's current master: promote another in-shard
+# replica via CLUSTER FAILOVER and positively confirm the mastership moved
+# before allowing deletion (slots must never be orphaned).
+demote_master_before_leave() {
+  local via="${1}" leaving="${2}" fqdn role out waited=0
+  local promoted="" leaving_id myline flags parent
+  # CANDIDATE CONTRACT (fresh-eyes review M3): a promotion candidate must
+  # be a replica OF THE LEAVING MASTER — "any in-shard pod flagged slave"
+  # would CLUSTER FAILOVER a mis-bound replica (present-but-wrong-parent is
+  # an acknowledged reachable state, see ensure_replica_bound) and fail
+  # over ANOTHER shard. Same hard line as the switchover script's
+  # candidate_replicates_this_shard.
+  build_cli "${leaving}"
+  leaving_id=$("${_cli[@]}" CLUSTER MYID 2>/dev/null | tr -d '\r\n')
+  if [ -z "${leaving_id}" ]; then
+    classify leave-myid yes "CLUSTER MYID unreadable from leaving master ${leaving}"
+    return 1
+  fi
+  for fqdn in $(echo "${CURRENT_SHARD_POD_FQDN_LIST}" | tr ',' '\n' | grep -v '^$' | sort); do
+    [ "${fqdn}" = "${leaving}" ] && continue
+    build_cli "${fqdn}"
+    myline=$("${_cli[@]}" CLUSTER NODES 2>/dev/null | tr -d '\r' | awk '$3 ~ /myself/ {print; exit}')
+    flags=$(echo "${myline}" | awk '{print $3}')
+    parent=$(echo "${myline}" | awk '{print $4}')
+    if echo "${flags}" | grep -q slave && [ "${parent}" = "${leaving_id}" ]; then
+      promoted="${fqdn}"
+      break
+    fi
+  done
+  if [ -z "${promoted}" ]; then
+    classify leave-orphan-guard no "leaving pod is the shard master and no in-shard replica of it exists — refusing leave (would orphan slots)"
+    return 1
+  fi
+  build_cli "${promoted}"
+  out=$("${_cli[@]}" CLUSTER FAILOVER 2>&1) || {
+    classify leave-failover no "CLUSTER FAILOVER on ${promoted} failed: ${out}"
+    return 1
+  }
+  while [ "${waited}" -lt "${LEAVE_FAILOVER_BUDGET}" ]; do
+    if shard_master_line "${via}" | grep -qF "${promoted}"; then
+      echo "mastership moved to ${promoted}; leaving pod is now a replica."
+      return 0
+    fi
+    sleep_when_ut_mode_false 1
+    waited=$((waited + 1))
+  done
+  classify leave-failover-confirm yes "mastership did not move within ${LEAVE_FAILOVER_BUDGET}s — refusing to delete the master"
+  return 1
+}
+
+# This is magic for shellspec ut framework, do not modify!
+${__SOURCED__:+false} : || return 0
+
+source /scripts/valkey-cluster-roster.sh
+load_common_library
+case "${1:-}" in
+  --join)  member_join ;;
+  --leave) member_leave ;;
+  *)
+    echo "usage: $0 --join | --leave" >&2
+    exit 1 ;;
+esac

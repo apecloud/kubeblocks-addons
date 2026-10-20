@@ -177,13 +177,32 @@ _sentinel_cli() {
 
 calculate_sentinel_monitor_quorum() {
   local sentinel_fqdns_raw=()
+  local sentinel_fqdns_unique=()
   local sentinel_count=0
   local sentinel_fqdn
   local sentinel_monitor_quorum
 
   IFS=',' read -ra sentinel_fqdns_raw <<< "${SENTINEL_POD_FQDN_LIST:-}"
+  case ",${SENTINEL_POD_FQDN_LIST:-}," in
+    *",,"*)
+      echo "ERROR: SENTINEL_POD_FQDN_LIST contains an empty target." >&2
+      return 1
+      ;;
+  esac
   for sentinel_fqdn in "${sentinel_fqdns_raw[@]}"; do
-    [ -n "${sentinel_fqdn}" ] && sentinel_count=$((sentinel_count + 1))
+    [ -n "${sentinel_fqdn}" ] || {
+      echo "ERROR: SENTINEL_POD_FQDN_LIST contains an empty target." >&2
+      return 1
+    }
+    local existing_fqdn
+    for existing_fqdn in "${sentinel_fqdns_unique[@]}"; do
+      if [ "${existing_fqdn}" = "${sentinel_fqdn}" ]; then
+        echo "ERROR: SENTINEL_POD_FQDN_LIST contains duplicate target '${sentinel_fqdn}'." >&2
+        return 1
+      fi
+    done
+    sentinel_fqdns_unique+=("${sentinel_fqdn}")
+    sentinel_count=$((sentinel_count + 1))
   done
 
   if [ "${sentinel_count}" -eq 0 ]; then
