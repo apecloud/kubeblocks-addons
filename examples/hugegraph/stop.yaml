@@ -1,0 +1,10 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: hugegraph-stop
+  namespace: demo
+spec:
+  clusterName: hugegraph-cluster
+  type: Stop
+  stop:
+    - componentName: server

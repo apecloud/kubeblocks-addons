@@ -1,0 +1,5 @@
+HugeGraph {{ .Values.version }} standalone cluster {{ include "kblib.clusterName" . }} has been submitted.
+
+HTTP service port: 8080
+Gremlin service port: 8182
+System account Secret: {{ include "kblib.clusterName" . }}-server-account-admin

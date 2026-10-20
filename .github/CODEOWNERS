@@ -22,6 +22,9 @@ addons-cluster/etcd/ @loomt @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-
 addons/greptimedb/ @GreptimeTeam @sh2 @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/greptimedb/ @GreptimeTeam @sh2 @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/hugegraph/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/hugegraph/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/influxdb/ @cjc7373 @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/influxdb/ @cjc7373 @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
