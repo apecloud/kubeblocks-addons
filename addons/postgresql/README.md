@@ -619,6 +619,17 @@ kbcli cluster explain-config pg-cluster # kbcli is a command line tool to intera
 
 KubeBlocks supports multiple backup methods for PostgreSQL cluster, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc.
 
+The default backup account is the system-managed `kbadmin` superuser. WAL-G and
+backup metadata queries use the `postgres` database; a database named `kbadmin` is not required.
+The `postgres` role remains the bootstrap account.
+
+Upgrading this template does not migrate existing accounts or backup data. Existing
+BackupPolicy credentials may be retained or synchronized from the template,
+depending on the target and the policy's synchronization settings. Before upgrading,
+ensure that `kbadmin` is provisioned and its account Secret matches the database
+password. A credential change can restart continuous backup Pods and temporarily
+delay WAL uploads; monitor archiving and available WAL storage during the upgrade.
+
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `pg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `pg-cluster-postgresql-backup-schedule` in this case.
 
 We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create full backup and continuous backup for the cluster.
