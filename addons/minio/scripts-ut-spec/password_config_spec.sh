@@ -54,16 +54,17 @@ kind: ConfigMap
 metadata:
   name: minio-compatibility-test
 data:
-  {{- range $version := list "1.0.0" "1.1.0-beta.8" "1.1.0-beta.9" "1.1.0" "1.2.0-alpha.0" "1.2.0" }}
+  {{- range $version := list "1.0.0" "1.0.2" "1.1.0" "1.1.9" "1.2.0" "1.2.1" "1.3.0" }}
   {{ $version | quote }}: {{ semverCompare $.Values.supported $version | quote }}
   {{- end }}
 YAML
     supported=$(ruby -ryaml -e 'puts YAML.load_file(ARGV[0]).fetch("annotations").fetch("addon.kubeblocks.io/kubeblocks-version")' "$(chart_path)/Chart.yaml") || return
     helm template minio-compatibility-test "$contract_dir" --set-string "supported=$supported" | ruby -ryaml -e '
       versions = YAML.load_stream(STDIN.read).compact.first.fetch("data")
-      # v1.1.0-beta.9 is the first published v1 CRD accepting passwordConfig.
+      # Check stable releases here. The addon controller normalizes constraints
+      # for prerelease runtimes; raw semverCompare does not model that behavior.
       versions.each do |version, accepted|
-        expected = %w[1.0.0 1.1.0-beta.8].include?(version) ? "false" : "true"
+        expected = %w[1.0.0 1.0.2 1.1.0 1.1.9].include?(version) ? "false" : "true"
         abort "unexpected compatibility for #{version}: #{accepted}" unless accepted == expected
       end
     '
@@ -79,7 +80,7 @@ YAML
     The status should be success
   End
 
-  It "excludes KubeBlocks versions whose v1 CRD cannot accept passwordConfig"
+  It "limits supported stable KubeBlocks versions to 1.2 or later"
     When call check_supported_kubeblocks_versions
     The status should be success
   End
