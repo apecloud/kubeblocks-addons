@@ -24,13 +24,26 @@ TiDB is an open-source, cloud-native, distributed, MySQL-Compatible database for
 - Kubernetes cluster >= v1.21
 - `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- KubeBlocks >= 1.2.0 installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - TiDB Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 - Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
   ```bash
   kubectl create ns demo
   ```
+
+## System account passwords
+
+The `root` and `kbadmin` accounts use `passwordConfig`, preserving the existing
+16-character password policy: 5 digits, no symbols, and mixed-case letters.
+The addon retains its KubeBlocks `>=1.2.0` compatibility requirement.
+
+This correction keeps the chart version and ComponentDefinition names unchanged.
+It applies when creating the corrected definitions; it is not an in-place
+migration of an existing definition with the legacy account configuration.
+KubeBlocks makes `spec.systemAccounts` immutable, so a Helm upgrade cannot replace
+that field on an existing same-name ComponentDefinition. Existing Components and
+account Secrets are not migrated or rotated by this change.
 
 ## Examples
 
