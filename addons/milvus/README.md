@@ -39,6 +39,15 @@ Milvus is an open source (Apache-2.0 licensed) vector database built to power em
 |----------|
 | 2.3.2 |
 
+### Proxy password configuration upgrade
+
+The proxy root account uses `passwordConfig`. ComponentDefinition names follow
+`Chart.yaml`'s `version` through `.Chart.Version`; the chart version is bumped
+when changing immutable account fields so the existing definitions are retained.
+Existing proxy Components use the new definition only after a KubeBlocks
+`Upgrade` OpsRequest selects it. Use the proxy ComponentDefinition name rendered
+by the installed chart as the upgrade target.
+
 ## Prerequisites
 
 - Kubernetes cluster >= v1.21
