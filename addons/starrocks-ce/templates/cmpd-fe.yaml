@@ -54,7 +54,7 @@ spec:
   systemAccounts:
   - name: root
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 10
       numDigits: 5
       numSymbols: 0

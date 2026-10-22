@@ -21,7 +21,7 @@ Describe "MySQL MGR version support contract"
       document = YAML.safe_load(STDIN.read, aliases: true)
       rules = document.fetch("spec").fetch("compatibilityRules").map do |rule|
         comp_defs = rule.fetch("compDefs")
-        major = %w[8.0 8.4].find { |version| comp_defs.any? { |name| name == "mysql-mgr-#{version}" || name.start_with?("mysql-mgr-#{version}-") } }
+        major = %w[8.0 8.4].find { |version| comp_defs.any? { |name| name == "mysql-mgr-#{version}" } }
         raise "unexpected MGR compatibility rule: #{comp_defs.join(",")}" unless major
         "#{major}=#{rule.fetch("releases").sort.join(",")}"
       end
