@@ -30,13 +30,33 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 - Kubernetes cluster >= v1.21
 - `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- KubeBlocks >= 1.2.0 installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - RabbitMQ Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 - Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
   ```bash
   kubectl create ns demo
   ```
+
+## Addon compatibility and upgrades
+
+Chart 1.2.0-alpha.1 targets KubeBlocks 1.2 and later, as declared by its
+`addon.kubeblocks.io/kubeblocks-version: ">=1.2.0"` annotation. This constraint
+describes support for the whole addon, not just the availability of a password
+field. The addon controller also admits KubeBlocks 1.2 prereleases under this
+constraint. Upgrade KubeBlocks before installing this chart on older clusters.
+
+The root account uses `passwordConfig` to generate a 16-character password with
+8 digits, no symbols, and mixed-case letters. The deprecated
+`passwordGenerationPolicy` field is no longer emitted.
+
+This field correction keeps both chart versions at 1.2.0-alpha.1 and retains the
+`rabbitmq-1.2.0-alpha.1` ComponentDefinition name. It does not create a new
+definition for migrating existing Components. If that definition already exists
+with the old account schema, this correction does not provide an in-place
+upgrade path for its immutable system accounts. The definition retains its
+`helm.sh/resource-policy: keep` annotation; existing account Secrets are not
+repaired and running RabbitMQ credentials are not rotated by this change.
 
 ## Examples
 
