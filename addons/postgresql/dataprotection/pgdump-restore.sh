@@ -49,19 +49,29 @@ if [ -n "$schemas" ]; then
   done
 fi
 
-# Handle table selection
+# Handle table selection.
+# pg_restore's -t matches the archive tag exactly and does not accept a schema
+# qualified name (unlike pg_dump's -t, which takes schema-qualified patterns),
+# so "schema.table" is translated into "-t table" plus "-n schema". Passing the
+# qualified name through would silently match nothing and restore no data.
 if [ -n "$tables" ]; then
   schemas_to_create=""
   for table in $(echo "$tables" | tr ',' '\n'); do
-     params="$params -t $table"
-     schema=$(echo "$table" | cut -d'.' -f1)
-     if [ -n "$schema" ] && [ "$schema" != "$table" ]; then
-       if ! echo "$schemas_to_create" | grep -v "^$schema$" > /dev/null 2>&1; then
-         schemas_to_create="$schemas_to_create"$'\n'"$schema"
-       fi
+     [ -z "$table" ] && continue
+     if [ "$table" == "${table#*.}" ]; then
+       params="$params -t $table"
+     else
+       params="$params -t ${table#*.}"
+       schemas_to_create="$schemas_to_create"$'\n'"${table%%.*}"
      fi
   done
+  params="$params --strict-names"
   for schema in $(echo "$schemas_to_create" | grep -v '^$' | sort -u); do
+    # scope the table filter to the schema the table was given with, unless that
+    # schema is already selected by the schemas parameter
+    if ! echo ",$schemas," | grep -qF ",$schema,"; then
+      params="$params -n $schema"
+    fi
     if [ -n "$database" ]; then
       $psql_cmd -d $database -Atc "create schema if not exists $schema" || echo "Failed to create schema $schema"
     fi

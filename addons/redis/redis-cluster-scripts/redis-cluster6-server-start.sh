@@ -404,18 +404,48 @@ scale_redis_cluster_replica() {
   status=$?
   if is_empty "$primary_node_cluster_id" || [ $status -ne 0 ]; then
     echo "Failed to get the cluster id of the primary node $primary_node_endpoint_with_port, sleep 30s for waiting next pod to start" >&2
-    sleep 30
+    sleep_when_ut_mode_false 30
     shutdown_redis_server "$service_port"
     exit 1
   fi
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
   if is_rebuild_instance; then
-    echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
-    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$redis_announce_host_value")
-    if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
-      redis-cli $REDIS_CLI_TLS_CMD -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
-    else
-      redis-cli $REDIS_CLI_TLS_CMD -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
+    echo "Current instance is a rebuild-instance, forget all the stale node ids of ${redis_announce_host_value} in the cluster firstly."
+    if ! node_ids=$(get_cluster_ids_with_retry "$primary_node_endpoint" "$primary_node_port" "$redis_announce_host_value"); then
+      echo "Failed to get the cluster ids of ${redis_announce_host_value}, shutdown redis server to retry" >&2
+      shutdown_redis_server "$service_port"
+      exit 1
+    fi
+    if is_empty "$node_ids"; then
+      echo "No stale node id of ${redis_announce_host_value} is found in the cluster, continue to add the instance."
+    fi
+    for node_id in $node_ids; do
+      echo "Forgetting stale node id ${node_id} of ${redis_announce_host_value} from the cluster."
+      forget_cluster_node "$primary_node_endpoint_with_port" "$node_id" "$service_port" || true
+    done
+    # The forget above is best effort, some nodes of the cluster may be unreachable.
+    # Verify it instead of blindly calling add-node afterwards: a leftover id makes
+    # `cluster add-node` fail, and a stale unreachable node makes it block forever.
+    forgotten=false
+    for attempt in 1 2 3 4 5; do
+      sleep_when_ut_mode_false 2
+      if ! leftover_node_ids=$(get_cluster_ids_with_retry "$primary_node_endpoint" "$primary_node_port" "$redis_announce_host_value"); then
+        echo "Failed to get the cluster ids of ${redis_announce_host_value}, shutdown redis server to retry" >&2
+        continue
+      fi
+      if is_empty "$leftover_node_ids"; then
+        forgotten=true
+        break
+      fi
+      echo "Stale node ids [${leftover_node_ids}] of ${redis_announce_host_value} still exist, forget them again (attempt ${attempt})."
+      for node_id in $leftover_node_ids; do
+        forget_cluster_node "$primary_node_endpoint_with_port" "$node_id" "$service_port" || true
+      done
+    done
+    if [ "$forgotten" != "true" ]; then
+      echo "Failed to forget the stale node ids of ${redis_announce_host_value}, shutdown redis server to retry" >&2
+      shutdown_redis_server "$service_port"
+      exit 1
     fi
   fi
   current_node_with_port="$redis_announce_host_value:$service_port"
