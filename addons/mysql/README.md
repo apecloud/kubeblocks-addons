@@ -24,12 +24,11 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 | 8.0 | 8.0.45, 8.0.46 |
 | 8.4 | 8.4.9, 8.4.10 |
 
-MySQL 8.0.46 with MGR is temporarily unsupported because of an upstream Group Replication defect
+MySQL 8.0.46 can be explicitly selected for MGR validation, but has a known upstream Group Replication defect
 ([MySQL issue #696](https://github.com/mysql/mysql-server/issues/696)) that can abort the server in
-the IP allowlist path. Support will be restored after an upstream-fixed image passes addon validation.
-Existing MGR users who explicitly selected 8.0.46 should set `serviceVersion: 8.0.45` before their next
-reconcile or upgrade; the MGR 8.0 default now resolves explicitly to 8.0.45. MySQL 8.4.9 and 8.4.10
-also remain available for MGR. Other MySQL 8.0.46 topologies remain supported, including standalone,
+the IP allowlist rejection path. Selecting this version does not mean that the defect has been fixed.
+For existing deployments, the MGR 8.0 default remains 8.0.45. MySQL 8.4.9 and 8.4.10 also remain
+available for MGR. Other MySQL 8.0.46 topologies remain supported, including standalone,
 replication, and Orchestrator deployments.
 
 ## Prerequisites
