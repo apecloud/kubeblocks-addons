@@ -169,10 +169,12 @@ Define milvus mixcoord component definition regex pattern
 {{- end -}}
 
 {{/*
-Define milvus proxy component definition name
+Define milvus proxy component definition name. passwordConfig changes the
+immutable system-account schema, so keep the chart version stable for the
+other Milvus definitions but publish the proxy under a new identity.
 */}}
 {{- define "milvus-proxy.cmpdName" -}}
-milvus-proxy-{{ .Chart.Version }}
+milvus-proxy-1.2.0-alpha.2
 {{- end -}}
 
 {{/*

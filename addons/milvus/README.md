@@ -39,6 +39,16 @@ Milvus is an open source (Apache-2.0 licensed) vector database built to power em
 |----------|
 | 2.3.2 |
 
+### Proxy ComponentDefinition identity
+
+The proxy account schema uses `passwordConfig`, which is immutable in a
+ComponentDefinition. The chart therefore publishes the proxy as
+`milvus-proxy-1.2.0-alpha.2` while retaining the other `1.2.0-alpha.1`
+definitions. Do not edit `milvus-proxy-1.2.0-alpha.1` in place or bypass the
+KubeBlocks immutable check. Existing proxy Components must be transitioned
+through the supported KubeBlocks upgrade flow before they use the new
+definition.
+
 ## Prerequisites
 
 - Kubernetes cluster >= v1.21
