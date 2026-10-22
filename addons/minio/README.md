@@ -21,13 +21,25 @@ Minio is a high performance open source relational database management system th
 - Kubernetes cluster >= v1.21
 - `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- KubeBlocks >= 1.1.0-beta.9 installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Minio Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 - Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
   ```bash
   kubectl create ns demo
   ```
+
+## Addon upgrades
+
+Chart 1.2.0-alpha.1 uses `passwordConfig` for the root account, which requires
+KubeBlocks 1.1.0-beta.9 or later. Upgrade KubeBlocks before installing this chart
+on older clusters.
+
+The chart creates `minio-1.2.0-alpha.1` instead of changing the immutable
+system accounts of `minio-1.2.0-alpha.0`. The previous ComponentDefinition is
+retained by its `helm.sh/resource-policy: keep` annotation, and the
+ComponentVersion remains compatible with both definitions. An addon upgrade
+does not migrate existing Components or rotate their root credentials.
 
 ## Examples
 
