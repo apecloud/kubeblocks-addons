@@ -32,8 +32,14 @@ Define postgresql ComponentSpec with ComponentDefinition.
           {{- else }}
           value: "{{ .Values.mode }}"
           {{- end }}
-      {{- if and .Values.systemAccountSecret (not (empty .Values.systemAccountSecret)) }}
+      {{- if or .Values.systemAccountSecret (not (empty .Values.defaultPassword)) }}
       systemAccounts:
+        {{- if and (not (empty .Values.defaultPassword)) (not (hasKey (.Values.systemAccountSecret | default dict) "postgres")) }}
+        - name: postgres
+          secretRef:
+            name: {{ include "postgresql-cluster.customPasswordSecretName" . }}
+            namespace: {{ .Release.Namespace }}
+        {{- end }}
         {{- range $accountName, $secretRef := .Values.systemAccountSecret }}
         - name: {{ $accountName }}
           secretRef:
@@ -86,4 +92,9 @@ Define postgresql componentName
 */}}
 {{- define "postgresql-cluster.component-name" -}}
 postgresql
+{{- end }}
+
+{{/* Name of the Secret holding the initial postgres password. */}}
+{{- define "postgresql-cluster.customPasswordSecretName" -}}
+{{ printf "%s-custom-default-password" (include "kblib.clusterName" .) }}
 {{- end }}

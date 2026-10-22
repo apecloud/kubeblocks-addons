@@ -111,14 +111,17 @@ spec:
           valueFrom:
             envRef:
               envName: IS_REDIS5
+        - name: CLUSTER_DOMAIN
+          valueFrom:
+            envRef:
+              envName: CLUSTER_DOMAIN
+        - name: CUSTOM_SENTINEL_MASTER_NAME
+          valueFrom:
+            envRef:
+              envName: CUSTOM_SENTINEL_MASTER_NAME
   parametersSchema:
     openAPIV3Schema:
       properties:
-        CUSTOM_SENTINEL_MASTER_NAME:
-          description: |
-            CUSTOM_SENTINEL_MASTER_NAME is the master name to be registered in redis sentinel.
-            If not set, the redis component name will be used as the master name.
-          type: string
         REBUILD_SENTINEL_POD_NAME:
           description: |
             REBUILD_SENTINEL_POD_NAME is the sentinel pod name to be rebuilt.
@@ -157,3 +160,4 @@ spec:
                   {{- include "kblib.envs.env_exists" $ | nindent 18 }}
                   COMMON_SH_EOF
                   {{- .Files.Get "scripts/redis-register-to-sentinel.sh" | nindent 18 }}
+                  {{- .Files.Get "scripts/redis-sentinel-sync-acl.sh" | nindent 18 }}
