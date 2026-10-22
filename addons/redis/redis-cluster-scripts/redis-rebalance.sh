@@ -36,8 +36,14 @@ do_rebalance() {
   local node_endpoint="$1"
   local auth_args="$2"
   echo "rebalance redis cluster slots via node: $node_endpoint"
+  # rebalance walks every node of the cluster, so a stale unreachable node would block
+  # the ops forever. Keep the data movement budget generous but bounded.
+  local timeout_prefix=""
+  if command -v timeout >/dev/null 2>&1; then
+    timeout_prefix="timeout ${CLUSTER_DATA_OPERATION_TIMEOUT:-1800}"
+  fi
   # shellcheck disable=SC2086
-  redis-cli $REDIS_CLI_TLS_CMD --cluster rebalance "$node_endpoint" --cluster-use-empty-masters --cluster-yes $auth_args
+  $timeout_prefix redis-cli $REDIS_CLI_TLS_CMD --cluster rebalance "$node_endpoint" --cluster-use-empty-masters --cluster-yes $auth_args
 }
 
 # This is magic for shellspec ut framework.
