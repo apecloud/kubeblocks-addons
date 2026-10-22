@@ -39,15 +39,14 @@ Milvus is an open source (Apache-2.0 licensed) vector database built to power em
 |----------|
 | 2.3.2 |
 
-### Proxy ComponentDefinition identity
+### Proxy password configuration upgrade
 
-The proxy account schema uses `passwordConfig`, which is immutable in a
-ComponentDefinition. The chart therefore publishes the proxy as
-`milvus-proxy-1.2.0-alpha.2` while retaining the other `1.2.0-alpha.1`
-definitions. Do not edit `milvus-proxy-1.2.0-alpha.1` in place or bypass the
-KubeBlocks immutable check. Existing proxy Components must be transitioned
-through the supported KubeBlocks upgrade flow before they use the new
-definition.
+The proxy root account uses `passwordConfig`. ComponentDefinition names follow
+`Chart.yaml`'s `version` through `.Chart.Version`; the chart version is bumped
+when changing immutable account fields so the existing definitions are retained.
+Existing proxy Components use the new definition only after a KubeBlocks
+`Upgrade` OpsRequest selects it. Use the proxy ComponentDefinition name rendered
+by the installed chart as the upgrade target.
 
 ## Prerequisites
 
