@@ -591,6 +591,8 @@ Describe "Redis Cluster Common Bash Script Tests"
       export REDIS_DEFAULT_PASSWORD=""
       export REDIS_CLI_TLS_CMD=""
       export service_port="6379"
+      export redis_cli_calls_file="$SHELLSPEC_TMPBASE/forget-redis-cli.calls"
+      : > "$redis_cli_calls_file"
     }
     Before "setup"
 
@@ -598,36 +600,47 @@ Describe "Redis Cluster Common Bash Script Tests"
       unset REDIS_DEFAULT_PASSWORD
       unset REDIS_CLI_TLS_CMD
       unset service_port
+      rm -f "$redis_cli_calls_file"
+      unset redis_cli_calls_file
     }
     After "un_setup"
 
     It "fans the forget command out to every node of the cluster"
-      redis-cli() {
-        # $1..$n: -p 6379 --cluster call <endpoint> cluster forget <id>
+      # timeout launches an executable, so a shell-function mock is not visible.
+      Mock redis-cli
+        printf '%s\n' "$*" >> "$redis_cli_calls_file"
         echo "OK"
-      }
+      End
 
       When call forget_cluster_node "172.0.0.1:6379" "oldid1"
       The status should be success
       The output should include "forget node command: timeout 120 redis-cli  -p 6379 --cluster call 172.0.0.1:6379 cluster forget oldid1"
+      The contents of file "$redis_cli_calls_file" should eq "-p 6379 --cluster call 172.0.0.1:6379 cluster forget oldid1"
     End
 
     It "reports a failure when redis rejects the node id"
-      redis-cli() {
+      Mock redis-cli
+        printf '%s\n' "$*" >> "$redis_cli_calls_file"
         echo "ERR wrong number of arguments for 'cluster|forget' command" >&2
-        return 1
-      }
+        exit 1
+      End
 
       When call forget_cluster_node "172.0.0.1:6379" "oldid1 oldid2"
       The status should be failure
       The stdout should include "forget node command: timeout 120 redis-cli"
       The stderr should include "Failed to forget node oldid1 oldid2"
+      The contents of file "$redis_cli_calls_file" should eq "-p 6379 --cluster call 172.0.0.1:6379 cluster forget oldid1 oldid2"
     End
 
     It "does nothing when there is no node id to forget"
+      Mock redis-cli
+        printf '%s\n' "$*" >> "$redis_cli_calls_file"
+      End
+
       When call forget_cluster_node "172.0.0.1:6379" ""
       The status should be success
       The stdout should eq ""
+      The contents of file "$redis_cli_calls_file" should eq ""
     End
   End
 
