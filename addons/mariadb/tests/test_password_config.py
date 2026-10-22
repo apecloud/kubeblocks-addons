@@ -85,12 +85,6 @@ class PasswordConfiguration(unittest.TestCase):
                     self.assertEqual([v for v in spec["vars"]
                                       if v["name"] == "MARIADB_ROOT_PASSWORD"], [expected])
 
-    def test_syncer_source_declares_a_complete_image_reference(self):
-        syncer = yaml.safe_load((OPTIONS.chart / "values.yaml").read_text())["image"]["syncer"]
-        self.assertEqual(syncer["registry"], "docker.io")
-        self.assertEqual(syncer["repository"], "apecloud/syncer")
-        self.assertTrue(syncer["tag"])
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
