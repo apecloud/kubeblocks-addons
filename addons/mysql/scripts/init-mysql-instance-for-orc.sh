@@ -195,6 +195,32 @@ EOF
   mysql_note "CHANGE MASTER successful for $master_host."
 }
 
+# An alias can be missing after a takeover performed by an older addon. Resolve
+# through known members before treating pod zero as a new cluster. This lookup
+# and alias repair must never run the initial primary's RESET SLAVE statements.
+find_cluster_master() {
+  local master peer
+  if master=$(/scripts/orchestrator-client -c which-cluster-master -alias "${CLUSTER_NAME}") &&
+      [[ -n "$master" && "$master" != "null" ]]; then
+    printf '%s\n' "$master"
+    return 0
+  fi
+
+  local peers
+  IFS=',' read -r -a peers <<< "${MYSQL_POD_FQDN_LIST}"
+  for peer in "${peers[@]}"; do
+    [[ -n "$peer" ]] || continue
+    if master=$(/scripts/orchestrator-client -c which-cluster-master -i "$peer" 2>/dev/null) &&
+        [[ -n "$master" && "$master" != "null" ]]; then
+      /scripts/orchestrator-client -c set-cluster-alias -i "$peer" \
+        -alias "${CLUSTER_NAME}" >&2 || mysql_warn "Could not repair cluster alias; using instance topology"
+      printf '%s\n' "$master"
+      return 0
+    fi
+  done
+  return 1
+}
+
 setup_master_slave() {
   mysql_note "setup_master_slave"
 
@@ -204,7 +230,7 @@ setup_master_slave() {
 
   start_time=$(date +%s)
 
-  master_info=$(/scripts/orchestrator-client -c which-cluster-master -alias "${CLUSTER_NAME}")
+  master_info=$(find_cluster_master) || master_info=""
 
   while [ -z "$master_info" ]; do
     mysql_note "Waiting for master info..."
@@ -226,7 +252,7 @@ setup_master_slave() {
 
     sleep 5
     mysql_note "Checking topology info."
-    master_info=$(/scripts/orchestrator-client -c which-cluster-master -alias "${CLUSTER_NAME}")
+    master_info=$(find_cluster_master) || master_info=""
   done
 
   mysql_note "  Master info: $master_info"
@@ -258,7 +284,9 @@ setup_master_slave() {
     sleep 5
     attempt=$((attempt + 1))
 
-    /scripts/orchestrator-client -c discover -i "${master_from_orc}" 2>/dev/null || true
+    # A scaled-in instance may have been forgotten; rediscover this replica
+    # explicitly rather than relying on discovery of an already-known primary.
+    /scripts/orchestrator-client -c discover -i "${POD_NAME}" 2>/dev/null || true
   done
   return 0
 }

@@ -145,7 +145,7 @@ function universal_sed {
 }
 
 function fail {
-  message="$myname[$$]: $1"
+  message="${myname}[$$]: $1"
   >&2 echo "$message"
   exit 1
 }
@@ -237,7 +237,7 @@ function detect_leader_api {
     leader_api="$(normalize_orchestrator_api $orchestrator_api)"
     return
   fi
-  for api in ${apis[@]} ; do
+  for api in "${apis[@]}" ; do
     api=$(normalize_orchestrator_api $api)
     leader_check=$(curl ${curl_auth_params} -m 1 -s -o /dev/null -w "%{http_code}" "${api}/leader-check")
     if [ "$leader_check" == "200" ] ; then
@@ -246,7 +246,7 @@ function detect_leader_api {
     fi
   done
   # Cannot find leader directly. Maybe our config is wrong. But, perhaps one of the nodes can route us?
-  for api in ${apis[@]} ; do
+  for api in "${apis[@]}" ; do
     api=$(normalize_orchestrator_api $api)
     leader_check=$(curl ${curl_auth_params} -m 1 -s -o /dev/null -w "%{http_code}" "${api}/routed-leader-check")
     if [ "$leader_check" == "200" ] ; then
@@ -259,7 +259,7 @@ function detect_leader_api {
 
 function urlencode {
   uri="$1"
-  echo "$uri" | jq -s -R -r @uri | tr -d '\n'
+  printf '%s' "$uri" | jq -s -R -r @uri | tr -d '\n'
 }
 
 function api {
@@ -536,6 +536,19 @@ function which_cluster_alias {
   assert_nonempty "instance|alias" "${alias:-$instance}"
   api "cluster-info/${alias:-$instance}"
   print_response | jq -r '.ClusterAlias'
+}
+
+# Persist the override against the current topology identity, not the old primary.
+function set_cluster_alias {
+  assert_nonempty "instance" "$instance"
+  assert_nonempty "alias" "$alias"
+  api "cluster-info/$instance"
+  local cluster_name
+  cluster_name=$(print_response | jq -r '.ClusterName // empty')
+  assert_nonempty "cluster name" "$cluster_name"
+  api "set-cluster-alias/$(urlencode "$cluster_name")?alias=$(urlencode "$alias")"
+  print_response | jq -e '.Code == "OK"' >/dev/null || fail "Could not persist cluster alias"
+  print_response
 }
 
 function which_cluster_master {
@@ -936,6 +949,7 @@ function run_command {
     "which-broken-replicas") which_broken_replicas ;;           # Output the fully-qualified hostname:port list of broken replicas of a given instance
     "which-cluster-instances") which_cluster_instances ;;       # Output the list of instances participating in same cluster as given instance
     "which-cluster") which_cluster ;;                           # Output the name of the cluster an instance belongs to, or error if unknown to orchestrator
+    "set-cluster-alias") set_cluster_alias ;;                   # Persist the alias for the cluster containing the instance
     "which-cluster-alias") which_cluster_alias ;;               # Output the alias of the cluster an instance belongs to, or error if unknown to orchestrator
     "which-cluster-master") which_cluster_master ;;             # Output the name of a writable master in given cluster
     "all-clusters-masters") all_clusters_masters ;;             # List of writeable masters, one per cluster
