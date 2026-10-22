@@ -18,7 +18,7 @@ spec:
   systemAccounts:
     - name: root
       initAccount: true
-      passwordConfig:
+      passwordGenerationPolicy:
         length: 16
         numDigits: 8
         letterCase: MixedCases
