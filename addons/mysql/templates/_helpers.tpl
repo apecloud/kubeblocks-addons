@@ -108,7 +108,7 @@ volumes:
 systemAccounts:
   - name: root
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 10
       numDigits: 5
       numSymbols: 0
@@ -116,7 +116,7 @@ systemAccounts:
   - name: kbadmin
     statement:
       create: select 1;
-    passwordGenerationPolicy: &defaultPasswordGenerationPolicy
+    passwordConfig: &defaultPasswordConfig
       length: 16
       numDigits: 8
       numSymbols: 0
@@ -124,23 +124,23 @@ systemAccounts:
   - name: kbdataprotection
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+    passwordConfig: *defaultPasswordConfig
   - name: kbprobe
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+    passwordConfig: *defaultPasswordConfig
   - name: kbmonitoring
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+    passwordConfig: *defaultPasswordConfig
   - name: kbreplicator
     statement:
       create: select 1;
-    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+    passwordConfig: *defaultPasswordConfig
   - name: proxysql
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+    passwordConfig: *defaultPasswordConfig
 vars:
   - name: CLUSTER_NAME
     valueFrom:
