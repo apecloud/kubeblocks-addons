@@ -4,7 +4,7 @@ set -e
 #
 # KubeBlocks injects:
 #   KB_ACCOUNT_NAME      - logical account name (e.g., "default")
-#   KB_ACCOUNT_PASSWORD  - generated password (from passwordGenerationPolicy)
+#   KB_ACCOUNT_PASSWORD  - generated password (from passwordConfig)
 #   KB_ACCOUNT_STATEMENT - the command to execute (ACL SETUSER ...)
 #
 # With targetPodSelector: All, KubeBlocks runs this on every pod.
