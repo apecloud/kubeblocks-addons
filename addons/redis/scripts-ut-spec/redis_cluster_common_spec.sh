@@ -616,6 +616,7 @@ Describe "Redis Cluster Common Bash Script Tests"
       The status should be success
       The output should include "forget node command: timeout 120 redis-cli  -p 6379 --cluster call 172.0.0.1:6379 cluster forget oldid1"
       The contents of file "$redis_cli_calls_file" should eq "-p 6379 --cluster call 172.0.0.1:6379 cluster forget oldid1"
+      The output should include "OK"
     End
 
     It "reports a failure when redis rejects the node id"
