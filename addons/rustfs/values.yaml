@@ -27,4 +27,4 @@ certsPath: "/etc/rustfs/certs/"
 
 ## kblib required values
 extra:
-  keepResource: false
+  keepResource: true
