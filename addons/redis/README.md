@@ -31,13 +31,30 @@ Redis is an open source (BSD licensed), in-memory data structure store, used as 
 - Kubernetes cluster >= v1.21
 - `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- KubeBlocks >= 1.2.0 installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Redis Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 - Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
   ```bash
   kubectl create ns demo
   ```
+
+## Addon upgrades
+
+Chart 1.2.0-alpha.1 targets KubeBlocks 1.2 and later and uses `passwordConfig`
+for the default accounts in Redis, Redis Cluster and Sentinel. Upgrade
+KubeBlocks before installing this chart on older clusters.
+
+The chart creates new versioned ComponentDefinitions, for example
+`redis-7-1.2.0-alpha.1`, instead of updating the system accounts of
+`redis-7-1.2.0-alpha.0`. Previous definitions and script ConfigMaps are retained
+by their `helm.sh/resource-policy: keep` annotations. ComponentVersions remain
+compatible with both old and new definitions. Twemproxy and script ConfigMap
+names also follow the new chart version.
+
+An addon upgrade does not migrate existing Components or rotate their
+credentials. The default account password policy remains unchanged: 10
+characters, including 5 digits, no symbols and mixed-case letters.
 
 ## Examples
 
