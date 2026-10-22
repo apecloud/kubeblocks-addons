@@ -2,6 +2,12 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
+    "defaultPassword": {
+      "title": "Initial password for the PostgreSQL postgres superuser",
+      "description": "A non-empty value is stored in '<cluster name>-custom-default-password' and referenced by the postgres system account. When empty, KubeBlocks generates a random password. Only used for initialization, not password rotation. systemAccountSecret.postgres takes precedence when both are specified.",
+      "type": "string",
+      "default": ""
+    },
     "version": {
       "title": "Version",
       "description": "service version.",

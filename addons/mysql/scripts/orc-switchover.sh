@@ -15,6 +15,20 @@ mysql_error() {
   exit 1
 }
 
+persist_cluster_alias() {
+  # Graceful takeover moves cluster_alias but v3.2.6 leaves cluster_alias_override
+  # attached to the old primary. Persist it for the new topology before returning.
+  for attempt in 1 2 3 4 5 6; do
+    # Use the chart client: the tools image may still bundle an older client.
+    if /scripts/orchestrator-client -c set-cluster-alias \
+        -i "${KB_SWITCHOVER_CURRENT_NAME}" -alias "${CLUSTER_NAME}"; then
+      return 0
+    fi
+    sleep 5
+  done
+  mysql_error "Switchover completed, but failed to persist the cluster alias"
+}
+
 # Check pod role
 if [[ "$KB_SWITCHOVER_ROLE" != "primary" ]]; then
   mysql_note "Switchover not triggered for non-primary role, skipping."
@@ -28,7 +42,8 @@ if [ -z "$master_from_orc" ]; then
 fi
 
 if [ "${KB_SWITCHOVER_CURRENT_NAME}" != "${master_from_orc%%:*}" ]; then
-  mysql_note "Current instance is not the master, skipping."
+  mysql_note "Current instance is not the master, ensuring the cluster alias."
+  persist_cluster_alias
   exit 0
 fi
 
@@ -57,3 +72,5 @@ fi
 if [ $exit_code -ne 0 ]; then
   mysql_error "Switchover command failed with exit code: ${result}"
 fi
+
+persist_cluster_alias
