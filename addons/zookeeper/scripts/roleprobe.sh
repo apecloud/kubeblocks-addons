@@ -1,29 +1,48 @@
 #!/bin/bash
 
+set -o pipefail
+
 get_zk_mode_from_script() {
   $ZOOBINDIR/zkServer.sh status
 }
 
 get_zookeeper_mode() {
+  local stat mode
   if command -v nc >/dev/null 2>&1; then
-    local stat
-    stat=$(echo srvr | nc 127.0.0.1 2181 | grep Mode)
-    echo "$stat" | awk '{print $2}'
+    if ! stat=$(echo srvr | nc 127.0.0.1 2181 | grep '^Mode:'); then
+      return 1
+    fi
   else
-    local stat
-    stat=$(get_zk_mode_from_script)
-    echo "$stat" | grep "Mode:" | awk '{print $2}'
+    if ! stat=$(get_zk_mode_from_script | grep '^Mode:'); then
+      return 1
+    fi
   fi
+
+  mode=$(echo "$stat" | awk '{print $2}')
+  case "$mode" in
+    standalone|leader|follower|observer)
+      printf "%s" "$mode"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 get_zk_role() {
   local mode
-  mode=$(get_zookeeper_mode)
-  if [[ "$mode" == "standalone" ]]; then
-    printf "leader"
-  else
-    printf "%s" "$mode"
-  fi
+  mode=$(get_zookeeper_mode) || return 1
+  case "$mode" in
+    standalone)
+      printf "leader"
+      ;;
+    leader|follower|observer)
+      printf "%s" "$mode"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 # This is magic for shellspec ut framework.
