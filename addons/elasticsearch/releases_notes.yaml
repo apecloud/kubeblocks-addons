@@ -1,4 +1,9 @@
 releases:
+  - version: "1.2.0-alpha.1"
+    status: "alpha"
+    notes:
+      - "Add an isolated Elasticsearch and Kibana 9.3.2 create-only slice"
+      - "Fail closed when required versioned plugins are missing or incompatible"
   - version: "1.0.1"
     released_at: "2025-09-11"
     status: "stable"
