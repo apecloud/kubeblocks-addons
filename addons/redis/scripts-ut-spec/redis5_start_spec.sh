@@ -531,5 +531,83 @@ Describe "Redis5 Start Bash Script Tests"
         The stdout should include "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
       End
     End
+
+    Context "when sentinel is configured but no sentinel returns primary info"
+      setup() {
+        export REDIS_DATA_DIR="./redis5-data"
+        export SENTINEL_COMPONENT_NAME="redis-sentinel"
+        export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless,sentinel-1.redis-sentinel-headless"
+        mkdir -p "$REDIS_DATA_DIR"
+        echo "persisted" > "$REDIS_DATA_DIR/dump.rdb"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset SENTINEL_COMPONENT_NAME
+        unset SENTINEL_POD_FQDN_LIST
+        unset REDIS_DATA_DIR
+        rm -rf ./redis5-data
+      }
+      After "un_setup"
+
+      It "fails closed instead of falling back to default primary when Redis data exists"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() {
+          echo "10.0.0.1 $2"
+        }
+        retry_get_master_addr_by_name_from_sentinel() {
+          return 1
+        }
+        get_default_initialize_primary_node() {
+          echo "SHOULD_NOT_FALLBACK"
+        }
+        When run init_or_get_primary_from_redis_sentinel
+        The status should be failure
+        The stdout should include "Failed to retrieve primary info from sentinel: sentinel-0.redis-sentinel-headless"
+        The stdout should include "Failed to retrieve primary info from sentinel: sentinel-1.redis-sentinel-headless"
+        The stdout should include "Error: no primary node found from all redis sentinels and Redis data already exists; refusing to use default primary while sentinel is configured."
+        The stdout should not include "SHOULD_NOT_FALLBACK"
+      End
+    End
+
+    Context "when no sentinel returns primary info before first bootstrap"
+      setup() {
+        service_port="6379"
+        export REDIS_POD_NAME_LIST="redis-1,redis-0"
+        export REDIS_POD_FQDN_LIST="redis-1.redis-headless.default,redis-0.redis-headless.default"
+        export REDIS_DATA_DIR="./redis5-data-empty"
+        export SENTINEL_COMPONENT_NAME="redis-sentinel"
+        export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless"
+        mkdir -p "$REDIS_DATA_DIR"
+        echo "placeholder" > "$REDIS_DATA_DIR/users.acl"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset REDIS_POD_NAME_LIST
+        unset REDIS_POD_FQDN_LIST
+        unset REDIS_DATA_DIR
+        unset SENTINEL_COMPONENT_NAME
+        unset SENTINEL_POD_FQDN_LIST
+        unset service_port
+        rm -rf ./redis5-data-empty
+      }
+      After "un_setup"
+
+      It "allows default primary fallback for first bootstrap"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        getent() {
+          echo "10.0.0.1 $2"
+        }
+        retry_get_master_addr_by_name_from_sentinel() {
+          return 1
+        }
+        When call init_or_get_primary_from_redis_sentinel
+        The status should be success
+        The stdout should include "no primary node found from all redis sentinels and Redis data dir is empty, use default primary node for first bootstrap."
+        The variable primary should eq "redis-0.redis-headless.default"
+        The variable primary_port should eq "6379"
+      End
+    End
   End
 End

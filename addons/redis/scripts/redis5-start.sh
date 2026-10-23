@@ -156,10 +156,15 @@ init_or_get_primary_from_redis_sentinel() {
     fi
   done
 
-  # if there is no primary node found, use the default primary node
+  # if sentinel is configured but no sentinel can provide primary info, only
+  # allow default-primary fallback before Redis has persisted data.
   echo "get all primary info from redis sentinel master_count_map: ${master_count_map[*]}"
   if [ ${#master_count_map[@]} -eq 0 ]; then
-    echo "no primary node found from all redis sentinels, use default primary node."
+    if redis_data_dir_has_existing_data; then
+      echo "Error: no primary node found from all redis sentinels and Redis data already exists; refusing to use default primary while sentinel is configured."
+      exit 1
+    fi
+    echo "no primary node found from all redis sentinels and Redis data dir is empty, use default primary node for first bootstrap."
     get_default_initialize_primary_node
     return
   fi
@@ -173,6 +178,20 @@ init_or_get_primary_from_redis_sentinel() {
       primary_port=$(echo $host_port | cut -d: -f2)
     fi
   done
+}
+
+redis_data_dir_has_existing_data() {
+  local data_dir="${REDIS_DATA_DIR:-/data}"
+  local existing_data
+
+  [ -d "$data_dir" ] || return 1
+  existing_data=$(find "$data_dir" -mindepth 1 -maxdepth 1 \
+    ! -name "users.acl" \
+    ! -name "users.acl.bak" \
+    ! -name ".fixed_pod_ip_enabled" \
+    ! -name ".kb_redis_start_initialized" \
+    -print -quit 2>/dev/null)
+  [ -n "$existing_data" ]
 }
 
 build_sentinel_get_master_addr_by_name_command() {
