@@ -29,14 +29,40 @@ pooled endpoint on 6432 while the Cluster keeps the same topology.
 |---------------|-------------|
 | 12            | 12.14.0, 12.14.1, 12.15.0, 12.22.0 |
 | 13            | 13.23.0 |
-| 14            | 14.7.2, 14.8.0, 14.18.0, 14.23.0 |
-| 15            | 15.7.0, 15.13.0, 15.18.0 |
-| 16            | 16.4.0, 16.9.0, 16.14.0 |
-| 17            | 17.5.0, 17.10.0 |
-| 18            | 18.1.0, 18.4.0 |
+| 14            | 14.7.2, 14.8.0, 14.18.0, 14.23.0, 14.24.0 |
+| 15            | 15.7.0, 15.13.0, 15.18.0, 15.19.0 |
+| 16            | 16.4.0, 16.9.0, 16.14.0, 16.15.0 |
+| 17            | 17.5.0, 17.10.0, 17.11.0 |
+| 18            | 18.1.0, 18.4.0, 18.6.0 |
 
 PostgreSQL 13 reached upstream end of life on November 13, 2025. Version 13.23.0
 is its final patch and is provided for compatibility; plan an upgrade to a supported major.
+
+
+### Extensions in the latest minor versions
+
+Images for 14.24.0, 15.19.0, 16.15.0, 17.11.0 and 18.6.0 include pgvector
+0.8.7 and zhparser 2.4 (upstream commit
+`2e995c4df672563992b4d7a147b8fa2d0d4cda6c`) with SCWS 1.2.3 and its bundled
+dictionary. Existing image tags are unchanged.
+
+After updating the cluster image, connect to each application database as an
+administrator to install the extensions, or update an existing vector extension:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+ALTER EXTENSION vector UPDATE TO '0.8.7';
+CREATE EXTENSION zhparser;
+CREATE TEXT SEARCH CONFIGURATION chinese (PARSER = zhparser);
+ALTER TEXT SEARCH CONFIGURATION chinese ADD MAPPING FOR n,v,a,i,e,l WITH simple;
+SELECT to_tsvector('chinese', '数据库支持中文全文检索');
+```
+
+These PostgreSQL minor releases restrict logical decoding through
+`output_plugin_libraries`. The default permits `pgoutput` and `test_decoding`.
+Before upgrading a cluster that uses another output plugin, explicitly configure
+its trusted plugin list for the target version. Do not set this new parameter on
+older minor versions that do not recognize it.
 
 ## Prerequisites
 
@@ -86,7 +112,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,15.7.0,15.13.0,15.18.0,16.4.0,16.9.0,16.14.0,17.5.0,17.10.0,18.1.0,18.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,14.24.0,15.7.0,15.13.0,15.18.0,15.19.0,16.4.0,16.9.0,16.14.0,16.15.0,17.5.0,17.10.0,17.11.0,18.1.0,18.4.0,18.6.0]
       serviceVersion: "14.7.2"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
@@ -154,7 +180,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,15.7.0,15.13.0,15.18.0,16.4.0,16.9.0,16.14.0,17.5.0,17.10.0,18.1.0,18.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,14.24.0,15.7.0,15.13.0,15.18.0,15.19.0,16.4.0,16.9.0,16.14.0,16.15.0,17.5.0,17.10.0,17.11.0,18.1.0,18.4.0,18.6.0]
       serviceVersion: "14.7.2"
 ```
 
@@ -168,7 +194,7 @@ And the expected output is like:
 
 ```bash
 NAME         VERSIONS                                                                                    STATUS      AGE
-postgresql   18.4.0,18.1.0,17.10.0,17.5.0,16.14.0,16.9.0,16.4.0,15.18.0,15.13.0,15.7.0,14.23.0,14.18.0,14.8.0,14.7.2,13.23.0,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
+postgresql   18.4.0,18.6.0,18.1.0,17.10.0,17.11.0,17.5.0,16.14.0,16.15.0,16.9.0,16.4.0,15.18.0,15.19.0,15.13.0,15.7.0,14.23.0,14.24.0,14.18.0,14.8.0,14.7.2,13.23.0,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
 ```
 
 ### PgBouncer connection pool
@@ -1342,7 +1368,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,15.7.0,15.13.0,15.18.0,16.4.0,16.9.0,16.14.0,17.5.0,17.10.0,18.1.0,18.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,14.24.0,15.7.0,15.13.0,15.18.0,15.19.0,16.4.0,16.9.0,16.14.0,16.15.0,17.5.0,17.10.0,17.11.0,18.1.0,18.4.0,18.6.0]
       serviceVersion: "14.7.2"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.

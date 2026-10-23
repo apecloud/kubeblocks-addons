@@ -20,6 +20,32 @@ Describe "PostgreSQL version matrix contract"
     awk '$1 == "version:" { print $2; exit }' "$1/Chart.yaml"
   }
 
+  minor_versions_contract() {
+    render_chart | RUBYOPT=-W0 ruby -ryaml -e '
+      documents = YAML.load_stream(ARGF.read).compact
+      component_version = documents.find { |doc| doc["kind"] == "ComponentVersion" && doc.dig("metadata", "name") == "postgresql" }
+      releases = component_version.fetch("spec").fetch("releases")
+      versions = releases.map { |release| release.fetch("serviceVersion") }
+      abort "duplicate service version" unless versions.uniq == versions
+      %w[12.22.0 13.23.0 14.23.0 15.18.0 16.14.0 17.10.0 18.4.0].each do |version|
+        abort "missing existing #{version}" unless versions.include?(version)
+      end
+      %w[14.24 15.19 16.15 17.11 18.6].each do |version|
+        service_version = "#{version}.0"
+        release = releases.find { |entry| entry["serviceVersion"] == service_version }
+        abort "missing #{service_version}" unless release
+        %w[postgresql switchover accountProvision].each do |container|
+          abort "wrong #{container} image" unless release.dig("images", container) == "docker.io/apecloud/spilo:#{version}"
+        end
+        definition = documents.find { |doc| doc["kind"] == "ComponentDefinition" && doc.dig("spec", "serviceVersion") == service_version }
+        abort "missing default definition for #{service_version}" unless definition
+        rule = component_version.dig("spec", "compatibilityRules").find { |entry| entry.fetch("releases").include?(service_version) }
+        abort "wrong major compatibility" unless rule && rule.fetch("compDefs").all? { |name| name.start_with?("postgresql-#{version.split(".").first}-") }
+      end
+      puts "ok"
+    '
+  }
+
   pgbouncer_cluster_chart_contract() {
     helm dependency build "$(cluster_chart_dir)" --skip-refresh >/dev/null || return
     RUBYOPT=-W0 ruby -ryaml -ropen3 -e '
@@ -77,12 +103,12 @@ Describe "PostgreSQL version matrix contract"
       replication = topologies.first
       abort unless replication["components"] == [
         {"name" => "postgresql", "compDef" => "postgresql-"},
-        {"name" => "pgbouncer", "compDef" => "pgbouncer-1.0.6"}
+        {"name" => "pgbouncer", "compDef" => "pgbouncer-1.0.7"}
       ]
 
       definitions = documents.select { |document| document["kind"] == "ComponentDefinition" }
-      postgres = definitions.find { |definition| definition.dig("metadata", "name") == "postgresql-14-1.0.6" }
-      pgbouncer = definitions.find { |definition| definition.dig("metadata", "name") == "pgbouncer-1.0.6" }
+      postgres = definitions.find { |definition| definition.dig("metadata", "name") == "postgresql-14-1.0.7" }
+      pgbouncer = definitions.find { |definition| definition.dig("metadata", "name") == "pgbouncer-1.0.7" }
       abort unless pgbouncer.dig("spec", "replicasLimit") == {"minReplicas" => 0, "maxReplicas" => 64}
       abort unless pgbouncer.dig("spec", "serviceVersion") == "1.25.2"
       abort unless pgbouncer.dig("spec", "services", 0, "spec", "ports", 0, "port") == 6432
@@ -108,16 +134,16 @@ Describe "PostgreSQL version matrix contract"
       postgres_containers = postgres.dig("spec", "runtime", "containers").map { |container| container["name"] }
       abort if postgres_containers.include?("pgbouncer")
       postgres_pcr = documents.find do |document|
-        document["kind"] == "ParamConfigRenderer" && document.dig("metadata", "name") == "postgresql14-pcr-1.0.6"
+        document["kind"] == "ParamConfigRenderer" && document.dig("metadata", "name") == "postgresql14-pcr-1.0.7"
       end
       abort unless postgres_pcr.dig("spec", "configs").map { |config| config["name"] } == ["postgresql.conf"]
       pgbouncer_pcr = documents.find do |document|
         document["kind"] == "ParamConfigRenderer" &&
-          document.dig("metadata", "name") == "pgbouncer-pcr-1.0.6"
+          document.dig("metadata", "name") == "pgbouncer-pcr-1.0.7"
       end
-      abort unless pgbouncer_pcr.dig("spec", "componentDef") == "pgbouncer-1.0.6"
+      abort unless pgbouncer_pcr.dig("spec", "componentDef") == "pgbouncer-1.0.7"
       abort unless pgbouncer_pcr.dig("spec", "serviceVersion") == "1.25.2"
-      abort unless pgbouncer_pcr.dig("spec", "parametersDefs") == ["pgbouncer-pd-1.0.6"]
+      abort unless pgbouncer_pcr.dig("spec", "parametersDefs") == ["pgbouncer-pd-1.0.7"]
       pgbouncer_format = pgbouncer_pcr.dig("spec", "configs", 0)
       abort unless pgbouncer_format["name"] == "pgbouncer.ini"
       abort unless pgbouncer_format.dig("fileFormatConfig", "format") == "ini"
@@ -125,7 +151,7 @@ Describe "PostgreSQL version matrix contract"
 
       pgbouncer_pd = documents.find do |document|
         document["kind"] == "ParametersDefinition" &&
-          document.dig("metadata", "name") == "pgbouncer-pd-1.0.6"
+          document.dig("metadata", "name") == "pgbouncer-pd-1.0.7"
       end
       exposed = %w[
         pool_mode max_client_conn default_pool_size min_pool_size
@@ -189,7 +215,7 @@ Describe "PostgreSQL version matrix contract"
       ]
       pgbouncer_config = documents.find do |document|
         document["kind"] == "ConfigMap" &&
-          document.dig("metadata", "name") == "pgbouncer-configuration-1.0.6"
+          document.dig("metadata", "name") == "pgbouncer-configuration-1.0.7"
       end.dig("data", "pgbouncer.ini")
       abort unless pgbouncer_config.lines.any? { |line| line.match?(/^\s*listen_addr\s*=\s*\*\s*$/) }
       abort unless pgbouncer_config.lines.any? { |line| line.match?(/^\s*client_tls_sslmode\s*=\s*disable\s*$/) }
@@ -209,7 +235,7 @@ Describe "PostgreSQL version matrix contract"
       abort unless pgbouncer_config.include?("max_user_connections = 80")
       abort if pgbouncer_config.lines.any? { |line| line.match?(/^\s*logfile\s*=\s*\/dev\/stderr\s*$/) }
       main_config = documents.find do |document|
-        document["kind"] == "ConfigMap" && document.dig("metadata", "name") == "pgbouncer-configuration-1.0.6"
+        document["kind"] == "ConfigMap" && document.dig("metadata", "name") == "pgbouncer-configuration-1.0.7"
       end
       abort unless main_config["data"].keys == ["pgbouncer.ini"]
       abort if documents.any? do |document|
@@ -279,7 +305,7 @@ Describe "PostgreSQL version matrix contract"
         abort unless version.dig("spec", "releases").map { |release| release["name"] } == ["1.25.2", "1.25.2-test"]
         abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.25.2"
         abort unless version.dig("spec", "releases", 1, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.25.2-test"
-        definition = documents.find { |document| document["kind"] == "ComponentDefinition" && document.dig("metadata", "name") == "pgbouncer-1.0.6" }
+        definition = documents.find { |document| document["kind"] == "ComponentDefinition" && document.dig("metadata", "name") == "pgbouncer-1.0.7" }
         abort unless definition.dig("spec", "serviceVersion") == "1.25.2-test"
         abort unless definition.dig("spec", "runtime", "containers", 0, "imagePullPolicy") == "Always"
         puts "ok"
@@ -387,16 +413,22 @@ EOF
     fi
   }
 
-  It "advances the definition chart version to 1.0.6"
+  It "advances the definition chart version to 1.0.7"
     When call chart_version "$(chart_dir)"
     The status should eq 0
-    The output should eq "1.0.6"
+    The output should eq "1.0.7"
   End
 
-  It "keeps the cluster chart version aligned at 1.0.6"
+  It "publishes the latest PostgreSQL 14-18 minors and preserves existing versions"
+    When call minor_versions_contract
+    The status should eq 0
+    The output should eq "ok"
+  End
+
+  It "keeps the cluster chart version aligned at 1.0.7"
     When call chart_version "$(cluster_chart_dir)"
     The status should eq 0
-    The output should eq "1.0.6"
+    The output should eq "1.0.7"
   End
 
   It "keeps one replication topology and adds a zero-capable PgBouncer component"
@@ -435,7 +467,7 @@ EOF
   End
 
   It "publishes the PostgreSQL 13 immutable ComponentDefinition identity"
-    When call render_count '^  name: postgresql-13-1.0.6$'
+    When call render_count '^  name: postgresql-13-1.0.7$'
     The status should eq 0
     The output should eq "1"
   End
