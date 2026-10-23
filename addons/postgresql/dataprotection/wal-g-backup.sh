@@ -89,7 +89,7 @@ fi
 
 # 1. do full backup
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
-PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt
+PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} PGDATABASE=postgres wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt
 
 echo "switch wal log"
 PSQL="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -p ${DP_DB_PORT} -d postgres"
