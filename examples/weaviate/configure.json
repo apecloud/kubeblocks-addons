@@ -1,0 +1,7 @@
+[
+  {
+    "op": "replace",
+    "path": "/spec/componentSpecs/0/configs/0/variables/query_defaults_limit",
+    "value": "150"
+  }
+]

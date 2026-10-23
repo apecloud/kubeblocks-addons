@@ -7,9 +7,10 @@ mkdir -p $MONGODB_ROOT/logs
 export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 
 . "/scripts/mongodb-common.sh"
+prepare_mongodb_tls || exit 1
 
 cfg_server_endpoints="$(generate_endpoints "$CFG_SERVER_POD_FQDN_LIST" "$CFG_SERVER_INTERNAL_PORT")"
-process="mongos --bind_ip_all --port $MONGOS_PORT --configdb $CFG_SERVER_REPLICA_SET_NAME/$cfg_server_endpoints --config /etc/mongodb/mongos.conf"
+process="mongos --bind_ip_all --port $MONGOS_PORT --configdb $CFG_SERVER_REPLICA_SET_NAME/$cfg_server_endpoints --config /etc/mongodb/mongos.conf $(mongodb_tls_server_options)"
 
 boot_or_enter_restore "$process"
 

@@ -30,6 +30,8 @@
 
 	"cluster-require-full-coverage"?: string & "yes" | "no"
 
+	"cluster-migration-barrier": int | *99999
+
 	"cluster-allow-reads-when-down"?: string & "yes" | "no"
 
 	"cluster-node-timeout": int | *0
@@ -388,7 +390,7 @@
 
     "repl-diskless-sync-max-replicas": int | *0
 
-    "repl-diskless-load": string & "disabled" | "disabled" | "on-empty-db" | *"disabled"
+    "repl-diskless-load": string & "disabled" | "swapdb" | "on-empty-db" | *"disabled"
 
     "oom-score-adj": string & "yes" | "no" | "absolute" | "relative" | *"no"
 

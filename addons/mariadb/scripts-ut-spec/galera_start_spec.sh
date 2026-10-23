@@ -15,7 +15,8 @@ Describe "galera-start.sh"
   cleanup() {
     rm -rf "${TEST_DIR}"
     unset DATA_DIR POD_NAME MARIADB_ROOT_USER MARIADB_ROOT_PASSWORD PEER_FQDNS
-    unset GALERA_PRIMARY_PEER_WAIT_SECONDS GALERA_BOOTSTRAP_DEFER_REASON
+    unset GALERA_PRIMARY_PEER_WAIT_SECONDS GALERA_BOOTSTRAP_DEFER_REASON GALERA_PEER_OBSERVATION
+    unset GALERA_PRIOR_GRACEFUL_SHUTDOWN
   }
   AfterEach "cleanup"
 
@@ -75,18 +76,240 @@ EOF
       The contents of file "${TEST_DIR}/timeout.args" should include "--ssl=0"
       The contents of file "${TEST_DIR}/timeout.args" should include "-P3306"
     End
+
+    It "treats a port-open-but-unqueryable peer as possibly-alive (fail closed against split-brain)"
+      # Port 3306 open, but the wsrep status query returns nothing (auth error
+      # / SST / load). This must NOT be read as "no peer" — a live Primary we
+      # cannot read would let this node bootstrap a second Primary.
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;      # port open
+          *" mariadb "*) return 0 ;;      # query "runs" but prints no status
+        esac
+        return 1
+      }
+      sleep() { :; }
+
+      When call _any_peer_alive
+      The status should be success
+      The output should include "unreadable after retries"
+    End
+
+    It "skips a peer that gives a clean non-Primary answer"
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;
+          *" mariadb "*) printf "wsrep_cluster_status\tnon-Primary\n"; return 0 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive
+      The status should be failure
+      The output should include "not Primary, skipping"
+    End
+
+    It "treats a TCP timeout as uncertain instead of proof that the peer is absent"
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive
+      The status should be success
+      The output should include "reachability is uncertain"
+      The variable GALERA_PEER_OBSERVATION should equal "uncertain"
+    End
+
+    It "treats an immediate TCP failure as uncertain instead of proof that the peer is absent"
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 1 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive
+      The status should be success
+      The output should include "reachability is uncertain"
+      The variable GALERA_PEER_OBSERVATION should equal "uncertain"
+    End
+
+    It "keeps scanning after an uncertain peer and prefers a later explicit Primary"
+      PEER_FQDNS="uncertain-peer,primary-peer"
+      timeout() {
+        case "$*" in
+          *"/dev/tcp/uncertain-peer/3306"*) return 124 ;;
+          *"/dev/tcp/primary-peer/3306"*) return 0 ;;
+          *" mariadb "*"-h primary-peer "*) printf "wsrep_cluster_status\tPrimary\n"; return 0 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive quiet
+      The status should be success
+      The variable GALERA_PEER_OBSERVATION should equal "primary"
+      The output should include "primary-peer is alive with wsrep_cluster_status=Primary"
+    End
+
+    It "keeps the same Primary result when the explicit Primary is listed first"
+      PEER_FQDNS="primary-peer,uncertain-peer"
+      timeout() {
+        case "$*" in
+          *"/dev/tcp/uncertain-peer/3306"*) return 124 ;;
+          *"/dev/tcp/primary-peer/3306"*) return 0 ;;
+          *" mariadb "*"-h primary-peer "*) printf "wsrep_cluster_status\tPrimary\n"; return 0 ;;
+        esac
+        return 1
+      }
+
+      When call _any_peer_alive quiet
+      The status should be success
+      The variable GALERA_PEER_OBSERVATION should equal "primary"
+      The output should include "primary-peer is alive with wsrep_cluster_status=Primary"
+    End
+
+    It "keeps scanning after unreadable SQL status and prefers a later explicit Primary"
+      PEER_FQDNS="unreadable-peer,primary-peer"
+      timeout() {
+        case "$*" in
+          *"/dev/tcp/unreadable-peer/3306"*|*"/dev/tcp/primary-peer/3306"*) return 0 ;;
+          *" mariadb "*"-h unreadable-peer "*) return 0 ;;
+          *" mariadb "*"-h primary-peer "*) printf "wsrep_cluster_status\tPrimary\n"; return 0 ;;
+        esac
+        return 1
+      }
+      sleep() { :; }
+
+      When call _any_peer_alive quiet
+      The status should be success
+      The variable GALERA_PEER_OBSERVATION should equal "primary"
+      The output should include "primary-peer is alive with wsrep_cluster_status=Primary"
+    End
   End
 
   Describe "_wait_for_primary_peer()"
-    It "defers non-pod-0 join when no Primary peer appears within the bounded window"
+    It "returns success only for an immediate explicit Primary observation"
       GALERA_PRIMARY_PEER_WAIT_SECONDS=0
-      _any_peer_alive() {
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;
+          *" mariadb "*) printf "wsrep_cluster_status\tPrimary\n"; return 0 ;;
+        esac
+        return 1
+      }
+
+      When call _wait_for_primary_peer
+      The status should be success
+      The output should include "wsrep_cluster_status=Primary"
+    End
+
+    It "defers when an empty peer list yields an uncertain rc=0 observation"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      PEER_FQDNS=""
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "defers when the immediate observation is explicitly non-Primary"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;
+          *" mariadb "*) printf "wsrep_cluster_status\tnon-Primary\n"; return 0 ;;
+        esac
         return 1
       }
 
       When call _wait_for_primary_peer
       The status should be failure
       The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "defers when the direct peer probe times out"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "defers when the direct peer probe is refused"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 1 ;;
+        esac
+        return 1
+      }
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "defers when SQL status remains unreadable on an open peer"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=0
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 0 ;;
+          *" mariadb "*) return 0 ;;
+        esac
+        return 1
+      }
+      sleep() { :; }
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should include "Deferring join to avoid forming a separate non-Primary Galera partition"
+    End
+
+    It "does not collapse an uncertain retry rc=0 into Primary success"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=3
+      wait_probe_count=0
+      sleep() { :; }
+      _any_peer_alive() {
+        wait_probe_count=$((wait_probe_count + 1))
+        if [ "${wait_probe_count}" -eq 1 ]; then
+          GALERA_PEER_OBSERVATION="non-primary"
+          return 1
+        fi
+        GALERA_PEER_OBSERVATION="uncertain"
+        return 0
+      }
+
+      When call _wait_for_primary_peer
+      The status should be failure
+      The output should not include "Found peer with Primary component"
+    End
+
+    It "returns success when a bounded retry explicitly observes Primary"
+      GALERA_PRIMARY_PEER_WAIT_SECONDS=3
+      wait_probe_count=0
+      sleep() { :; }
+      _any_peer_alive() {
+        wait_probe_count=$((wait_probe_count + 1))
+        if [ "${wait_probe_count}" -eq 1 ]; then
+          GALERA_PEER_OBSERVATION="non-primary"
+          return 1
+        fi
+        GALERA_PEER_OBSERVATION="primary"
+        return 0
+      }
+
+      When call _wait_for_primary_peer
+      The status should be success
+      The output should include "Found peer with Primary component after 3s"
     End
   End
 
@@ -121,6 +344,55 @@ EOF
       The output should include "grastate.dat: safe_to_bootstrap=1"
     End
 
+    It "defers a safe-marked node when peer reachability is uncertain"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 9 1
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Peer state is uncertain"
+      The variable GALERA_BOOTSTRAP_DEFER_REASON should include "peer reachability uncertain"
+    End
+
+    It "bootstraps the Galera-elected safe node after this PVC completed the prior graceful shutdown"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 9 1
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be success
+      The output should include "safe_to_bootstrap=1 and prior graceful-shutdown marker present"
+      The variable GALERA_BOOTSTRAP_DEFER_REASON should be undefined
+    End
+
+    It "does not let a prior graceful-shutdown marker override safe_to_bootstrap=0"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 9 0
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should not include "will bootstrap"
+    End
+
     It "allows non-pod-0 bootstrap when Galera marks it safe after clean shutdown"
       POD_NAME="mdb-galera-mariadb-1"
       write_grastate 9 1
@@ -133,7 +405,7 @@ EOF
       The output should include "grastate.dat: safe_to_bootstrap=1"
     End
 
-    It "keeps fresh seqno=-1 bootstrap single-owner on pod-0"
+    It "keeps fresh (seqno=-1, safe_to_bootstrap=1) bootstrap single-owner on pod-0"
       POD_NAME="mdb-galera-mariadb-0"
       write_grastate -1 1
       _any_peer_alive() {
@@ -142,10 +414,10 @@ EOF
 
       When call should_bootstrap
       The status should be success
-      The output should include "Fresh grastate.dat seqno=-1, pod-0 will bootstrap"
+      The output should include "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1, pod-0 will bootstrap"
     End
 
-    It "prevents non-pod-0 fresh seqno=-1 bootstrap"
+    It "prevents non-pod-0 fresh (seqno=-1, safe_to_bootstrap=1) bootstrap"
       POD_NAME="mdb-galera-mariadb-1"
       write_grastate -1 1
       _any_peer_alive() {
@@ -154,8 +426,57 @@ EOF
 
       When call should_bootstrap
       The status should be failure
-      The output should include "Fresh grastate.dat seqno=-1"
+      The output should include "Fresh grastate.dat seqno=-1 safe_to_bootstrap=1"
       The output should include "will wait for pod-0 bootstrap"
+    End
+
+    It "refuses pod-0 bootstrap on a hard-crash grastate (seqno=-1, safe_to_bootstrap=0)"
+      # A running node killed by OOM/power-loss/SIGKILL leaves seqno=-1 but
+      # safe_to_bootstrap=0 — indistinguishable from a fresh PVC by seqno
+      # alone. pod-0 must NOT blind-bootstrap possibly-stale data; it defers
+      # to the fail-closed crash-recovery path.
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate -1 0
+      _any_peer_alive() {
+        return 1
+      }
+      mariadbd() {
+        printf "WSREP: Recovered position: 631a68d0-7697-11f1-923e-42be04dfa95f:44\n"
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Refusing automatic Galera crash recovery bootstrap"
+      The variable GALERA_BOOTSTRAP_DEFER_REASON should include "latest seqno"
+    End
+
+    It "prevents non-pod-0 hard-crash (seqno=-1, safe_to_bootstrap=0) bootstrap"
+      POD_NAME="mdb-galera-mariadb-1"
+      write_grastate -1 0
+      _any_peer_alive() {
+        return 1
+      }
+
+      When call should_bootstrap
+      The status should be failure
+    End
+
+    It "does not treat a malformed safe_to_bootstrap value as safe (anchored match)"
+      # A torn/corrupt write leaving 'safe_to_bootstrap: 10' must NOT satisfy
+      # the safe=1 guard via substring match; pod-0 defers rather than
+      # bootstrapping possibly-stale data.
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 7 10
+      _any_peer_alive() {
+        return 1
+      }
+      mariadbd() {
+        printf "WSREP: Recovered position: 631a68d0-7697-11f1-923e-42be04dfa95f:7\n"
+      }
+
+      When call should_bootstrap
+      The status should be failure
+      The output should include "Refusing automatic Galera crash recovery bootstrap"
     End
   End
 
@@ -197,6 +518,242 @@ EOF
       '
       The status should be success
       The output should equal "OK"
+    End
+  End
+
+  Describe "graceful-shutdown self-heal guard"
+    # Behavioral test: with the shutdown marker present the self-heal helper
+    # must NOT kill mariadbd (0 kills); without it, it must kill (>=1). Stub the
+    # pid lookup and the actual signal so we count kill attempts.
+    setup_guard() {
+      GUARD_DIR="$(mktemp -d)"
+      export DATA_DIR="${GUARD_DIR}"
+      KILL_COUNT_FILE="${GUARD_DIR}/kills"
+      : > "${KILL_COUNT_FILE}"
+      _mariadbd_pids() { echo 4242; }
+      kill() { printf 'x' >> "${KILL_COUNT_FILE}"; }
+      sleep() { :; }
+    }
+    cleanup_guard() { rm -rf "${GUARD_DIR}"; unset DATA_DIR; }
+    BeforeEach setup_guard
+    AfterEach cleanup_guard
+
+    It "does not kill mariadbd while a graceful shutdown is in progress"
+      touch "${DATA_DIR}/.galera-shutting-down"
+
+      When call _restart_mariadbd_for_self_heal "test-reason"
+      The status should be success
+      The output should include "graceful shutdown in progress"
+      The contents of file "${KILL_COUNT_FILE}" should equal ""
+    End
+
+    It "kills mariadbd when no graceful shutdown is in progress"
+      When call _restart_mariadbd_for_self_heal "test-reason"
+      The status should be success
+      The output should include "SIGTERM"
+      The contents of file "${KILL_COUNT_FILE}" should not equal ""
+    End
+
+    # The watcher may clear stale role/liveness state, but it must preserve the
+    # retry-pending bootstrap authority until this process has positively
+    # observed itself Synced in a Primary component. Otherwise an entrypoint or
+    # MariaDB failure after exec consumes the only retryable proof of the
+    # orderly shutdown and recreates the full-stop deadlock.
+    It "clears stale role/synced markers without consuming shutdown evidence"
+      touch "${DATA_DIR}/.galera-synced"
+      touch "${DATA_DIR}/.galera-role"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
+
+      When call _clear_stale_markers_on_start
+      The status should be success
+      The path "${DATA_DIR}/.galera-synced" should not be exist
+      The path "${DATA_DIR}/.galera-role" should not be exist
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+    End
+
+    It "atomically promotes the prior shutdown marker into retry-pending bootstrap authority"
+      touch "${DATA_DIR}/.galera-shutting-down"
+
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "1"
+      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+    End
+
+    It "recaptures retry-pending bootstrap authority after an earlier launch failure"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
+
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "1"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+    End
+
+    It "collapses a retried preStop marker while preserving retry-pending authority"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
+      touch "${DATA_DIR}/.galera-shutting-down"
+
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "1"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+      The path "${DATA_DIR}/.galera-shutting-down" should not be exist
+    End
+
+    It "fails closed when a retried preStop marker cannot be collapsed"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
+      touch "${DATA_DIR}/.galera-shutting-down"
+      rm() { return 1; }
+
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be failure
+      The stderr should include "could not collapse duplicate graceful-shutdown marker"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+      The path "${DATA_DIR}/.galera-shutting-down" should be exist
+    End
+
+    It "records no prior graceful shutdown when the marker is absent"
+      When call _capture_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
+    End
+
+    It "preserves retry-pending authority across a failed launch and re-elects on the next container attempt"
+      POD_NAME="mdb-galera-mariadb-0"
+      write_grastate 9 1
+      touch "${DATA_DIR}/.galera-shutting-down"
+      timeout() {
+        case "$*" in
+          *" bash -c "*) return 124 ;;
+        esac
+        return 1
+      }
+      capture_elect_fail_and_retry() {
+        _capture_prior_graceful_shutdown_evidence && should_bootstrap || return 1
+        [ -e "${DATA_DIR}/.galera-bootstrap-pending" ] || return 1
+        GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
+        _capture_prior_graceful_shutdown_evidence && should_bootstrap
+      }
+
+      When call capture_elect_fail_and_retry
+      The status should be success
+      The output should include "safe_to_bootstrap=1 and prior graceful-shutdown marker present"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+    End
+
+    It "completes retry-pending authority after positive Primary convergence"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+
+      When call _complete_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should not be exist
+    End
+
+    It "fails closed when retry-pending authority disappears before convergence"
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+
+      When call _complete_prior_graceful_shutdown_evidence
+      The status should be failure
+      The stderr should include "disappeared before Primary convergence"
+    End
+
+    It "retries later when converged authority cannot yet be removed"
+      touch "${DATA_DIR}/.galera-bootstrap-pending"
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=1
+      rm() { return 1; }
+
+      When call _complete_prior_graceful_shutdown_evidence
+      The status should be failure
+      The stderr should include "could not complete"
+      The path "${DATA_DIR}/.galera-bootstrap-pending" should be exist
+    End
+
+    It "leaves the filesystem untouched when no prior marker was captured"
+      GALERA_PRIOR_GRACEFUL_SHUTDOWN=0
+
+      When call _complete_prior_graceful_shutdown_evidence
+      The status should be success
+      The variable GALERA_PRIOR_GRACEFUL_SHUTDOWN should equal "0"
+    End
+
+    It "keeps retry authority through both exec call sites and completes it only in the Primary watcher branch"
+      When run sh -c '
+        f="$(printf "%s/addons/mariadb/scripts/galera-start.sh" "'"${SHELLSPEC_CWD:?}"'")"
+        capture=$(grep -n "^  _capture_prior_graceful_shutdown_evidence$" "$f" | tail -1 | cut -d: -f1)
+        election=$(grep -n "^  if should_bootstrap; then$" "$f" | tail -1 | cut -d: -f1)
+        primary=$(grep -n "if \[ \"\${STATE}\" = \"4\" \] && \[ \"\${CLUSTER_STATUS}\" = \"Primary\" \]; then" "$f" | head -1 | cut -d: -f1)
+        complete=$(grep -n "^        _complete_prior_graceful_shutdown_evidence" "$f" | head -1 | cut -d: -f1)
+        exec_first=$(grep -n "^[[:space:]]*exec docker-entrypoint.sh mariadbd" "$f" | head -1 | cut -d: -f1)
+        exec_last=$(grep -n "^[[:space:]]*exec docker-entrypoint.sh mariadbd" "$f" | tail -1 | cut -d: -f1)
+        test -n "$capture" && test -n "$election" \
+          && test -n "$primary" && test -n "$complete" \
+          && test -n "$exec_first" && test -n "$exec_last" \
+          && test "$capture" -lt "$primary" \
+          && test "$primary" -lt "$complete" \
+          && test "$complete" -lt "$election" \
+          && test "$election" -lt "$exec_first" \
+          && test "$exec_first" -lt "$exec_last" \
+          && ! sed -n "/local bootstrap_mode=0/,\$p" "$f" | grep -q "_complete_prior_graceful_shutdown_evidence"
+      '
+      The status should be success
+    End
+  End
+
+  Describe "wsrep_sst_auth is not persisted (H11)"
+    # rsync SST does not use wsrep_sst_auth; writing it to DATA_DIR (a
+    # needSnapshot volume) leaked the plaintext root password into snapshots.
+
+    It "does not write wsrep_sst_auth to any file"
+      When run sh -c "grep -nE 'wsrep_sst_auth=.*>|> +\"?\\\$?\\{?sst_conf' \"$(script_file)\" || true"
+      The status should be success
+      The output should equal ""
+    End
+
+    It "does not load a defaults-extra-file for SST auth"
+      When run sh -c "grep -F 'defaults-extra-file=' \"$(script_file)\" | grep -F 'sst' || true"
+      The status should be success
+      The output should equal ""
+    End
+
+    It "removes any stale .galera-sst-auth.cnf left by a previous chart version"
+      When call script_contains "rm -f \"\${DATA_DIR}/.galera-sst-auth.cnf\""
+      The status should be success
+      The output should include ".galera-sst-auth.cnf"
+    End
+
+    It "deletes an existing stale credential and verifies absence"
+      printf '%s\n' "wsrep_sst_auth=root:secret" > "${DATA_DIR}/.galera-sst-auth.cnf"
+
+      When call remove_stale_galera_sst_auth
+      The status should be success
+      The path "${DATA_DIR}/.galera-sst-auth.cnf" should not be exist
+    End
+
+    It "fails startup when deletion of the stale credential fails"
+      printf '%s\n' "wsrep_sst_auth=root:secret" > "${DATA_DIR}/.galera-sst-auth.cnf"
+      rm() {
+        return 1
+      }
+
+      When call remove_stale_galera_sst_auth
+      The status should be failure
+      The stderr should include "failed to delete stale SST credential"
+      The path "${DATA_DIR}/.galera-sst-auth.cnf" should be exist
+    End
+
+    It "fails startup when deletion reports success but readback still finds the credential"
+      printf '%s\n' "wsrep_sst_auth=root:secret" > "${DATA_DIR}/.galera-sst-auth.cnf"
+      rm() {
+        return 0
+      }
+
+      When call remove_stale_galera_sst_auth
+      The status should be failure
+      The stderr should include "still exists after deletion"
+      The path "${DATA_DIR}/.galera-sst-auth.cnf" should be exist
     End
   End
 End

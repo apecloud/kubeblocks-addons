@@ -1,8 +1,8 @@
 apiVersion: v2
 description: RustFS S3-compatible high-performance distributed object storage
 name: rustfs-cluster
-version: 0.1.0
-appVersion: "1.0.0-beta.8"
+version: 0.1.1
+appVersion: "1.0.0-beta.10"
 type: application
 keywords:
   - storage

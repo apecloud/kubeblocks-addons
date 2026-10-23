@@ -18,4 +18,5 @@ spec:
     - releases:
         - rocketmq-4.9.6
       compDefs:
-        - {{ include "rocketmq.compDefRocketMQNameSrv4" . }}
+        # name prefix pattern, chart-version agnostic
+        - {{ include "rocketmq-namesrv.cmpdPrefixPattern" . }}

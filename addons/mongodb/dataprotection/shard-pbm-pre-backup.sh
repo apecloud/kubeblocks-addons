@@ -2,20 +2,15 @@
 set -e
 set -o pipefail
 
-client_path=$(whereis mongosh | awk '{print $2}')
-CLIENT="mongosh"
-if [ -z "$client_path" ]; then
-    CLIENT="mongo"
-fi
-CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_USER -p $MONGODB_PASSWORD --quiet --eval"
+CLIENT=$(get_mongodb_client_name)
+# shellcheck disable=SC2034
+CLUSTER_MONGO="$CLIENT $(mongodb_tls_client_options "$CLIENT") --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_USER -p $MONGODB_PASSWORD --quiet --eval"
 
 # Wait for the mongos process to be ready
 MAX_RETRIES=300
 retry_count=0
-set +e
 while [ $retry_count -lt $MAX_RETRIES ]; do
-    result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })" 2>/dev/null)
-    if [[ "$result" == *"ok"* ]]; then
+    if mongodb_command_json "db.adminCommand({ ping: 1 })" >/dev/null; then
         echo "INFO: Mongos is ready."
         break
     fi
@@ -23,7 +18,6 @@ while [ $retry_count -lt $MAX_RETRIES ]; do
     retry_count=$((retry_count+1))
     sleep 2
 done
-set -e
 
 if [ $retry_count -eq $MAX_RETRIES ]; then
     echo "ERROR: Mongos failed to become ready after $MAX_RETRIES attempts." >&2
@@ -34,12 +28,18 @@ check_shard_exists() {
     # check if the shard exists in the config database
     local shardsvr_name=$1
     local shard_exists
-    shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$shardsvr_name\" })")
-    if [ -n "$shard_exists" ]; then
-        return 0 # true
-    else
-        return 1
+    if ! shard_exists=$(mongodb_query_json "db.getSiblingDB(\"config\").shards.findOne({ _id: \"$shardsvr_name\" }) !== null"); then
+        echo "ERROR: Failed to check if shard $shardsvr_name exists." >&2
+        exit 1
     fi
+    case "$shard_exists" in
+        true) return 0 ;;
+        false) return 1 ;;
+        *)
+            echo "ERROR: Invalid shard existence result: $shard_exists" >&2
+            exit 1
+            ;;
+    esac
 }
 
 # Check if sharding is ready
@@ -47,7 +47,7 @@ IFS="." read -r -a shardsvr_array <<< "$MONGODB_SHARD_REPLICA_SET_NAME_LIST"
 shardsvr_count=${#shardsvr_array[@]}
 for i in "${!shardsvr_array[@]}"; do
     # Get the part before "@" in new_shardsvr_array
-    if [ $shardsvr_count -gt 1 ]; then
+    if [ "$shardsvr_count" -gt 1 ]; then
         shard_name="$CLUSTER_NAME-${shardsvr_array[i]%%@*}"
     else
         shard_name="${shardsvr_array[i]%%,*}"

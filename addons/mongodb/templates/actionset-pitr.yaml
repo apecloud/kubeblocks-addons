@@ -21,6 +21,7 @@ spec:
       - -c
       - |
         set -e;
+        {{- .Files.Get "scripts/mongodb-client.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/common-scripts-for-archive-oplog.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/mongo-pitr-backup.sh" | nindent 8 }}
   restore:
@@ -33,5 +34,6 @@ spec:
         - -c
         - |
           set -e;
+          {{- .Files.Get "scripts/mongodb-client.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/common-scripts-for-archive-oplog.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/mongo-pitr-restore.sh" | nindent 10 }}

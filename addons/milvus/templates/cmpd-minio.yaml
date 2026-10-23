@@ -12,20 +12,24 @@ spec:
   serviceKind: milvus-minio
   serviceVersion: 8.0.17
   systemAccounts:
-    - name: admin
+    - name: root
       initAccount: true
-      passwordConfig: {}
+      passwordConfig:
+        length: 16
+        numDigits: 4
+        numSymbols: 0
+        letterCase: MixedCases
   vars:
-    - name: MINIO_ACCESS_KEY
+    - name: MINIO_ROOT_USER
       valueFrom:
         credentialVarRef:
-          name: admin
+          name: root
           optional: false
           username: Required
-    - name: MINIO_SECRET_KEY
+    - name: MINIO_ROOT_PASSWORD
       valueFrom:
         credentialVarRef:
-          name: admin
+          name: root
           optional: false
           password: Required
   volumes:
@@ -35,7 +39,7 @@ spec:
     initContainers:
       - name: volume-permissions
         image: {{ .Values.images.ostools.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.ostools.repository }}:{{ .Values.images.ostools.tag }}
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         command:
           - /bin/bash
           - -ec
@@ -49,7 +53,7 @@ spec:
     containers:
       - name: minio
         image: {{ .Values.images.minio.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.minio.repository }}:{{ .Values.images.minio.tag }}
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         command:
           - /bin/sh
           - -ce

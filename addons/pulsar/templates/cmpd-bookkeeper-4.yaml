@@ -54,6 +54,10 @@ spec:
       valueFrom:
         resourceVarRef:
           memoryLimit: Required
+    - name: SERVICE_VERSION
+      valueFrom:
+        componentVarRef:
+          serviceVersion: Required
   lifecycleActions:
     memberLeave:
       exec:

@@ -1,3 +1,6 @@
+# Copyright ApeCloud Co., Ltd. All Rights Reserved.
+# SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+
 # This is a library helm chart for KubeBlocks. It is not intended to be installed on its own.
 # This chart is used to define common templates, shell scripts that can be used by other charts.
 
@@ -15,3 +18,6 @@ description: A Library Helm chart used for building the foundation of common uti
 type: library
 version: 0.1.0
 appVersion: "0.1.0"
+
+annotations:
+  licenses: LicenseRef-KubeBlocks-Enterprise

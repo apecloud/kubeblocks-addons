@@ -647,8 +647,9 @@
 	// Whether mysqld was locked in memory with --memlock.log_error
 	locked_in_memory?: string & "OFF" | "ON" | *"OFF"
 
-	// Whether the binary log is enabled.
-	log_bin?: string & "OFF" | "ON"
+	// Binary log basename/path (--log-bin). SHOW VARIABLES reports ON/OFF,
+	// but my.cnf uses a file path like /var/lib/mysql/binlog/mysql-bin.
+	log_bin?: string
 
 	// Holds the base name and path for the binary log files, which can be set with the --log-bin server option.
 	log_bin_basename?: string
@@ -1098,6 +1099,9 @@
 
   // Enable parallel execution on the slave of all uncommitted threads already in the prepare phase, without violating consistency.
   slave_preserve_commit_order?: string & "0" | "1" | "OFF" | "ON"
+
+	// Enables or disables the Performance Schema
+	performance_schema: string & "OFF" | "ON" | *"OFF"
 
 	// The number of seconds the slave SQL thread waits for activity on the replication queue before checking for more events.
   performance_schema_digests_size?: int & >=-1 & <=1048576

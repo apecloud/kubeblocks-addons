@@ -20,6 +20,7 @@ data:
     DATA_VOLUME={{ .Values.dataMountPath }}
     {{- .Files.Get "scripts/mongodb-mongos-setup.sh" | nindent 4 }}
   mongodb-common.sh: |-
+    {{- .Files.Get "scripts/mongodb-client.sh" | nindent 4 }}
     {{- .Files.Get "scripts/mongodb-common.sh" | nindent 4 }}
   mongodb-member-leave.sh: |-
     {{- .Files.Get "scripts/mongodb-member-leave.sh" | nindent 4 }}

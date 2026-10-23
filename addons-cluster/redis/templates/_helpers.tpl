@@ -13,6 +13,32 @@ issuer:
 {{- end }}
 
 {{/*
+If useEmptyDefaultPassword is true, the chart renders a secret holding the empty password for the
+default system account of a component and refers to it, instead of letting KubeBlocks generate a
+random password. It is configured per component, and each component reads its own secret:
+  * the redis component      -> useEmptyDefaultPassword
+  * the redis-sentinel       -> sentinel.useEmptyDefaultPassword
+  * the shard (mode cluster) -> redisCluster.useEmptyDefaultPassword, falling back to the top level
+                                one when it is false
+To provide the password with your own secret instead, set customSecretName / customSecretNamespace.
+*/}}
+{{- define "redis-cluster.customPasswordEnabled" -}}
+{{- if or .Values.useEmptyDefaultPassword (not (empty .Values.defaultPassword)) }}true{{- end -}}
+{{- end }}
+
+{{- define "redis-cluster.customPasswordSecretName" -}}
+{{ printf "%s-custom-default-password" (include "kblib.clusterName" .) }}
+{{- end }}
+
+{{- define "redis-cluster.shardCustomPasswordEnabled" -}}
+{{- if or .Values.redisCluster.useEmptyDefaultPassword (not (empty .Values.redisCluster.defaultPassword)) }}true{{- end -}}
+{{- end }}
+
+{{- define "redis-cluster.shardCustomPasswordSecretName" -}}
+{{ printf "%s-shard-default" (include "kblib.clusterName" .) }}
+{{- end }}
+
+{{/*
 Define redis cluster shardingSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.shardingSpec" }}
@@ -51,7 +77,11 @@ Define redis cluster shardingSpec with ComponentDefinition.
     serviceVersion: {{ .Values.version }}
     systemAccounts:
     - name: default
-      {{- if and .Values.redisCluster.customSecretName .Values.redisCluster.customSecretNamespace }}
+      {{- if eq (include "redis-cluster.shardCustomPasswordEnabled" .) "true" }}
+      secretRef:
+        name: {{ include "redis-cluster.shardCustomPasswordSecretName" . }}
+        namespace: {{ .Release.Namespace }}
+      {{- else if and .Values.redisCluster.customSecretName .Values.redisCluster.customSecretNamespace }}
       secretRef:
         name: {{ .Values.redisCluster.customSecretName }}
         namespace: {{ .Values.redisCluster.customSecretNamespace }}
@@ -84,6 +114,7 @@ Define redis ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.componentSpec" }}
 - name: redis
+  componentDef: redis-{{ (split "." .Values.version)._0 }}
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
   {{- include "redis-cluster.exporter" . | indent 2 }}
   {{- if .Values.podAntiAffinityEnabled }}
@@ -116,7 +147,13 @@ Define redis ComponentSpec with ComponentDefinition.
     value: "true"
   {{- end }}
   serviceVersion: {{ .Values.version }}
-  {{- if and .Values.customSecretName .Values.customSecretNamespace }}
+  {{- if eq (include "redis-cluster.customPasswordEnabled" .) "true" }}
+  systemAccounts:
+    - name: default
+      secretRef:
+        name: {{ include "redis-cluster.customPasswordSecretName" . }}
+        namespace: {{ .Release.Namespace }}
+  {{- else if and .Values.customSecretName .Values.customSecretNamespace }}
   systemAccounts:
     - name: default
       secretRef:
@@ -133,6 +170,7 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.sentinelComponentSpec" }}
 - name: redis-sentinel
+  componentDef: redis-sentinel
   {{- include "redis-cluster.tls" . | indent 2 }}
   replicas: {{ .Values.sentinel.replicas }}
   {{- if .Values.podAntiAffinityEnabled }}
@@ -148,6 +186,10 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   env:
   - name: FIXED_POD_IP_ENABLED
     value: "true"
+  {{- if .Values.sentinel.customMasterName }}
+  - name: CUSTOM_SENTINEL_MASTER_NAME
+    value: {{ .Values.sentinel.customMasterName }}
+  {{- end }}
   {{- end }}
   {{- if and .Values.loadBalancerEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) (not .Values.nodePortEnabled) (hasPrefix "5." .Values.version) }}
   services:
@@ -158,9 +200,19 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   env:
   - name: LOAD_BALANCER_ENABLED
     value: "true"
+  {{- if .Values.sentinel.customMasterName }}
+  - name: CUSTOM_SENTINEL_MASTER_NAME
+    value: {{ .Values.sentinel.customMasterName }}
+  {{- end }}
   {{- end }}
   serviceVersion: {{ .Values.version }}
-  {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
+  {{- if eq (include "redis-cluster.customPasswordEnabled" .) "true" }}
+  systemAccounts:
+    - name: default
+      secretRef:
+        name: {{ include "redis-cluster.customPasswordSecretName" . }}
+        namespace: {{ .Release.Namespace }}
+  {{- else if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
   systemAccounts:
     - name: default
       secretRef:

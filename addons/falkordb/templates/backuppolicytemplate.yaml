@@ -15,18 +15,42 @@ spec:
   backupMethods:
     - name: datafile
       snapshotVolumes: false
-      actionSetName: falkordb-physical-br
+      actionSetName: falkordb-physical-br-v2
       targetVolumes:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+      env:
+        - name: FALKORDB_IMAGE
+          valueFrom:
+            versionMapping:
+              {{- $repository := printf "%s/%s" (.Values.image.registry | default "docker.io") .Values.image.repository }}
+              {{- range .Values.falkordbVersions }}
+              {{- range .mirrorVersions }}
+              - serviceVersions:
+                  - {{ .version }}
+                mappedValue: {{ $repository }}:{{ .imageTag }}
+              {{- end }}
+              {{- end }}
     - name: aof
       snapshotVolumes: false
-      actionSetName: falkordb-for-pitr
+      actionSetName: falkordb-for-pitr-v2
       targetVolumes:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+      env:
+        - name: FALKORDB_IMAGE
+          valueFrom:
+            versionMapping:
+              {{- $repository := printf "%s/%s" (.Values.image.registry | default "docker.io") .Values.image.repository }}
+              {{- range .Values.falkordbVersions }}
+              {{- range .mirrorVersions }}
+              - serviceVersions:
+                  - {{ .version }}
+                mappedValue: {{ $repository }}:{{ .imageTag }}
+              {{- end }}
+              {{- end }}
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:

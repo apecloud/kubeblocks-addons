@@ -224,20 +224,21 @@ s3:
   use_custom_storage_class: false # S3_USE_CUSTOM_STORAGE_CLASS
   storage_class: STANDARD # S3_STORAGE_CLASS, by default allow only from list https://github.com/aws/aws-sdk-go-v2/blob/main/service/s3/types/enums.go#L787-L799
   concurrency: 1 # S3_CONCURRENCY
-  max_parts_count: 4000 # S3_MAX_PARTS_COUNT, number of parts for S3 multipart uploads
+  max_parts_count: 2000 # S3_MAX_PARTS_COUNT, number of parts for S3 multipart uploads
   allow_multipart_download: false # S3_ALLOW_MULTIPART_DOWNLOAD, allow faster multipart download speed, but will require additional disk space, download_concurrency * part size in worst case
   checksum_algorithm: "" # S3_CHECKSUM_ALGORITHM, use it when you use object lock which allow to avoid delete keys from bucket until some timeout after creation, use CRC32 as fastest
   object_labels: {} # S3_OBJECT_LABELS, allow setup metadata for each object during upload, use {macro_name} from system.macros and {backupName} for current backup name The format for this env variable is "key1:value1,key2:value2". For YAML please continue using map syntax
   custom_storage_class_map: {} # S3_CUSTOM_STORAGE_CLASS_MAP, allow setup storage class depending on the backup name regexp pattern, format nameRegexp > className
   request_payer: "" # S3_REQUEST_PAYER, define who will pay to request, look https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html for details, possible values requester, if empty then bucket owner
   debug: false # S3_DEBUG
+  retry_mode: adaptive
 EOF
 	export CLICKHOUSE_BACKUP_CONFIG="$clickhouse_backup_config"
 }
 
 function getToolConfigValue() {
-	local var=$1
-	cat "$toolConfig" | grep "$var" | awk '{print $NF}'
+    local var=$1
+    cat $toolConfig | grep "${var}[[:space:]]*=" | awk '{print $NF}'
 }
 
 function configure_clickhouse_backup_custom_storage_if_encrypted() {
@@ -390,32 +391,13 @@ function set_clickhouse_backup_config_env() {
 		exit 1
 	fi
 
-	local provider=""
-	local access_key_id=""
-	local secret_access_key=""
-	local region=""
-	local endpoint=""
-	local bucket=""
-
-	IFS=$'\n'
-	for line in $(cat ${toolConfig}); do
-		line=$(eval echo $line)
-		if [[ $line == "access_key_id"* ]]; then
-			access_key_id=$(getToolConfigValue "$line")
-		elif [[ $line == "secret_access_key"* ]]; then
-			secret_access_key=$(getToolConfigValue "$line")
-		elif [[ $line == "region"* ]]; then
-			region=$(getToolConfigValue "$line")
-		elif [[ $line == "endpoint"* ]]; then
-			endpoint=$(getToolConfigValue "$line")
-		elif [[ $line == "root"* ]]; then
-			bucket=$(getToolConfigValue "$line")
-		elif [[ $line == "chunk_size"* ]]; then
-			chunk_size=$(getToolConfigValue "$line")
-		elif [[ $line == "provider"* ]]; then
-			provider=$(getToolConfigValue "$line")
-		fi
-	done
+	local provider=$(getToolConfigValue "provider")
+	local access_key_id=$(getToolConfigValue "access_key_id")
+	local secret_access_key=$(getToolConfigValue "secret_access_key")
+	local region=$(getToolConfigValue "region")
+	local endpoint=$(getToolConfigValue "endpoint")
+	local bucket=$(getToolConfigValue "root")
+	local chunk_size=$(getToolConfigValue "chunk_size")
 
 	if [[ ! $endpoint =~ ^https?:// ]]; then
 		endpoint="https://${endpoint}"
@@ -442,7 +424,9 @@ function set_clickhouse_backup_config_env() {
 	else
 		echo "Unsupported provider: $provider"
 	fi
-
+  if [ "$region" = "=" ]; then
+    region="us-east-1"
+  fi
 	export S3_ACCESS_KEY="${access_key_id}"
 	export S3_SECRET_KEY="${secret_access_key}"
 	export S3_REGION="${region}"

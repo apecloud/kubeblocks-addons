@@ -705,7 +705,7 @@
 
     "repl-diskless-sync-max-replicas": int | *0
 
-    "repl-diskless-load": string & "disabled" | "disabled" | "on-empty-db" | *"disabled"
+    "repl-diskless-load": string & "disabled" | "swapdb" | "on-empty-db" | *"disabled"
 
     "oom-score-adj": string & "yes" | "no" | "absolute" | "relative" | *"no"
 

@@ -31,7 +31,7 @@ Orchestrator is a MySQL high availability and replication management tool, runs 
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Orchestrator cluster has two modes: *raft* and *share-backend*.
 

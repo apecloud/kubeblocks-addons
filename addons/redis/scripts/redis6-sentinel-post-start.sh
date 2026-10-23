@@ -6,6 +6,7 @@ test || __() {
   set -e;
 }
 
+
 acl_set_user_for_redis6_sentinel() {
   set -e
   # set default user password and replication user password
@@ -22,4 +23,9 @@ acl_set_user_for_redis6_sentinel() {
 
 ${__SOURCED__:+false} : || return 0
 
+
+if [[ "$SERVICE_VERSION" == 6.0* ]]; then
+  echo "redis sentinel version is 6.0, skip user and password configuration."
+  exit 0
+fi
 acl_set_user_for_redis6_sentinel

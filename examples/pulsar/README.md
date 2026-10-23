@@ -301,7 +301,7 @@ spec:
 By default, Pulsar does not expose any service to the external network. If you want to expose the service to the external network, you can enable the NodePort service.
 
 ```yaml
-kubectl apply -f examples/pulsar/cluster-nodeport.yaml
+kubectl apply -f examples/pulsar/cluster-node-port.yaml
 ```
 
 The key difference are:

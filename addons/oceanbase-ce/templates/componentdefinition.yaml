@@ -183,6 +183,10 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /scripts
+          - name: oceanbase-config
+            mountPath: /kb-config
+          - name: oceanbase-sysvars
+            mountPath: /opt/oceanbase/sysvars
           - name: kb-tools
             mountPath: /kb_tools
           - name: metricslog

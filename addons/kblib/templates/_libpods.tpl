@@ -1,3 +1,8 @@
+{{- /*
+Copyright ApeCloud Co., Ltd. All Rights Reserved.
+SPDX-License-Identifier: LicenseRef-KubeBlocks-Enterprise
+*/}}
+
 {{/*
 Library of pods related functions implemented in Bash. Currently, the following functions are available:
 - get_pod_list_from_env: Get the list of pods from the provided environment variable.

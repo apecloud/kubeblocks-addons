@@ -73,6 +73,57 @@ Describe "Pulsar Start Broker Bash Script Tests"
     End
   End
 
+  Describe "initialize_loadbalancer_config()"
+    It "selects the current broker LB IP and uses the Service port"
+      POD_NAME="broker-1"
+      ADVERTISED_HOST="broker-advertised-listener-0:192.0.2.10,broker-advertised-listener-1:192.0.2.11"
+      ADVERTISED_PORT_PULSAR="broker-advertised-listener-1:30650"
+
+      When call initialize_loadbalancer_config
+      The variable PULSAR_PREFIX_advertisedListeners should equal "cluster:pulsar://192.0.2.11:6650"
+      The output should include "set PULSAR_PREFIX_advertisedListeners=cluster:pulsar://192.0.2.11:6650"
+      The status should be success
+    End
+
+    It "supports LB hostnames"
+      POD_NAME="broker-0"
+      ADVERTISED_HOST="broker-advertised-listener-0:broker.example.com"
+
+      When call initialize_loadbalancer_config
+      The variable PULSAR_PREFIX_advertisedListeners should equal "cluster:pulsar://broker.example.com:6650"
+      The output should include "set PULSAR_PREFIX_advertisedListeners=cluster:pulsar://broker.example.com:6650"
+      The status should be success
+    End
+
+    It "brackets IPv6 LB addresses"
+      POD_NAME="broker-0"
+      ADVERTISED_HOST="broker-advertised-listener-0:2001:db8::1"
+
+      When call initialize_loadbalancer_config
+      The variable PULSAR_PREFIX_advertisedListeners should equal "cluster:pulsar://[2001:db8::1]:6650"
+      The output should include "set PULSAR_PREFIX_advertisedListeners=cluster:pulsar://[2001:db8::1]:6650"
+      The status should be success
+    End
+
+    It "fails when the current broker has no LB address"
+      POD_NAME="broker-1"
+      ADVERTISED_HOST="broker-advertised-listener-0:192.0.2.10"
+
+      When run initialize_loadbalancer_config
+      The output should include "No LoadBalancer address found"
+      The status should be failure
+    End
+
+    It "fails when LB addresses are empty"
+      POD_NAME="broker-0"
+      ADVERTISED_HOST=""
+
+      When run initialize_loadbalancer_config
+      The output should include "No LoadBalancer address found"
+      The status should be failure
+    End
+  End
+
   Describe "merge_configuration_files()"
     It "merges configuration files successfully"
       /kb-scripts/merge_pulsar_config.py() {

@@ -28,13 +28,28 @@ KubeBlocks supports creating a **shared-nothing** StarRocks cluster.
 - Kubernetes cluster >= v1.21
 - `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- KubeBlocks >= 1.2.0 installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - StarRocks-CE Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 - Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
   ```bash
   kubectl create ns demo
   ```
+
+## Password configuration compatibility
+
+This addon targets KubeBlocks 1.2 and later and uses `passwordConfig` for the
+FE root account: 10 characters, 5 digits, no symbols, and mixed-case letters.
+The compatibility annotation applies to the whole addon; the addon controller
+also admits KubeBlocks 1.2 prereleases under the `>=1.2.0` constraint.
+
+The chart remains `1.2.0-alpha.0`, including the ComponentDefinition name
+`starrocks-ce-fe-1.2.0-alpha.0`. This corrects password generation for fresh
+installations. It is not an in-place migration of a previously installed
+definition that used `passwordGenerationPolicy`: KubeBlocks treats
+`systemAccounts` as immutable and may mark that definition `Unavailable` when
+the spec changes. Existing installations need a separately planned definition
+migration; this change does not rotate existing root credentials.
 
 ## Examples
 
@@ -404,7 +419,7 @@ It sets up the `PodMonitor` to monitor this StarRocks cluster and scrapes the me
 
 ##### Access the Grafana Dashboard
 
-Login to the Grafana dashboard and import the dashboard provided in this example `./examples/starrocks-ce/dashboard/starrocks.json`.
+Login to the Grafana dashboard and import the dashboard provided in this example `./examples/starrocks-ce/grafana/starrocks.json`.
 
 You may refer to following links for more information:
 - StarRocks Overview provided by StarRocks team: [StarRocks Overview](https://github.com/StarRocks/starrocks/blob/main/extra/grafana/kubernetes/StarRocks-Overview-kubernetes-3.0.json)

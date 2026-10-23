@@ -1,5 +1,5 @@
 #!/bin/bash
-set -exo pipefail
+set -eo pipefail
 
 # Downloads full backup + ancestor incremental backups before restore
 # Supports: standalone (single node) and cluster (multi-shard) topologies, each typology only can use its backup

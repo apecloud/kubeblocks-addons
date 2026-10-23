@@ -40,7 +40,6 @@ immutableParameters:
   - log_file_mode
   - logging_collector
   - log_line_prefix
-  - log_timezone
   - log_truncate_on_rotation
   - port
   - rds.max_tcp_buffers

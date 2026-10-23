@@ -960,7 +960,7 @@ EOF
 
     It "Chart.yaml literal version is current (alpha.26 - replication merged topology)"
       chart_yaml="${SHELLSPEC_CWD:?}/addons/mariadb/Chart.yaml"
-      When call grep -c '^version: 1.2.0-alpha.26$' "${chart_yaml}"
+      When call grep -c '^version: 1.2.0-alpha.31$' "${chart_yaml}"
       The output should equal "1"
     End
 
@@ -3231,7 +3231,7 @@ EOF
       # kept in sync with latest chart version.
       When call grep -E "^version:" "${CHART_FILE}"
       The status should be success
-      The output should equal "version: 1.2.0-alpha.26"
+      The output should equal "version: 1.2.0-alpha.31"
     End
 
     It "alpha.65 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged; this bump is packaging-contract only)"
@@ -3292,7 +3292,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.26"
+        The output should equal "version: 1.2.0-alpha.31"
       End
 
       It "alpha.66 v1: Chart.yaml appVersion still 11.4.10 (mariadb engine version unchanged) [contract-no-regression]"
@@ -3508,7 +3508,7 @@ EOF
         # version.
         When call grep -E "^version:" "${CHART_FILE}"
         The status should be success
-        The output should equal "version: 1.2.0-alpha.26"
+        The output should equal "version: 1.2.0-alpha.31"
       End
     End
 

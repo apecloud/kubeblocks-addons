@@ -26,21 +26,17 @@
 
 	"client-query-buffer-limit": int & >=1048576 & <=1073741824 | *1073741824
 
-	"close-on-replica-write"?: string & "yes" | "no"
-
 	"cluster-enabled"?: string & "yes" | "no"
 
 	"cluster-require-full-coverage"?: string & "yes" | "no"
 
 	databases: int & >=1 & <=10000 | *16
 
-	"hash-max-listpack-entries": int | *512
+	"hash-max-ziplist-entries": int | *512
 
-	"hash-max-listpack-value": int | *64
+	"hash-max-ziplist-value": int | *64
 
 	"hll-sparse-max-bytes": int & >=1 & <=16000 | *3000
-
-	"latency-tracking"?: string & "yes" | "no"
 
 	"lazyfree-lazy-eviction"?: string & "yes" | "no"
 
@@ -54,11 +50,9 @@
 
 	"list-compress-depth": int | *0
 
-	"list-max-listpack-size": int | *-2
+	"list-max-ziplist-size": int | *-2
 
 	"lua-time-limit": int & >=0 | *5000
-
-	"busy-reply-threshold": int | *5000
 
 	maxclients: int & >=1 & <=65000 | *65000
 
@@ -82,8 +76,6 @@
 
 	"repl-backlog-ttl": int | *3600
 
-	"replica-allow-chaining"?: string & "yes" | "no"
-
 	"replica-ignore-maxmemory"?: string & "yes" | "no"
 
 	"replica-lazy-flush"?: string & "yes" | "no"
@@ -104,11 +96,9 @@
 
 	timeout: int | *0
 
-	"tracking-table-max-keys": int & >=1 & <=100000000 | *1000000
+	"zset-max-ziplist-entries": int | *128
 
-	"zset-max-listpack-entries": int | *128
-
-	"zset-max-listpack-value": int | *64
+	"zset-max-ziplist-value": int | *64
 
 	"protected-mode"?: string & "yes" | "no"
 
@@ -241,15 +231,9 @@
 
     "always-show-logo": string & "yes" | "no" | *"yes"
 
-    "set-proc-title": string & "yes" | "no" | *"yes"
-
-    "proc-title-template": string | *"{title} {listen-addr} {server-mode}"
-
     "rdbcompression": string & "yes" | "no" | *"yes"
 
     "rdbchecksum": string & "yes" | "no" | *"yes"
-
-    "rdb-del-sync-files": string & "yes" | "no" | *"no"
 
     "replica-serve-stale-data": string & "yes" | "no" | *"yes"
 
@@ -258,16 +242,6 @@
     "repl-diskless-sync":string & "yes" | "no" | *"yes"
 
     "repl-diskless-sync-delay": int | *5
-
-    "repl-diskless-sync-max-replicas": int | *0
-
-    "repl-diskless-load": string & "disabled" | "disabled" | "on-empty-db" | *"disabled"
-
-    "oom-score-adj": string & "yes" | "no" | "absolute" | "relative" | *"no"
-
-    "oom-score-adj-values": string | *"0 200 800"
-
-    "disable-thp": string & "yes" | "no" | *"yes"
 
     "no-appendfsync-on-rewrite": string & "yes" | "no" | *"no"
 

@@ -27,7 +27,13 @@ staticParameters:
   - --enable_authorize
   - --enable_space_level_metrics
   - --max_sessions_per_ip_per_user
+  - --memory_tracker_limit_ratio
+  - --memory_tracker_untracked_reserved_memory_mb
   - --containerized
+  - --cgroup_v2_controllers
+  - --cgroup_v2_memory_stat_path
+  - --cgroup_v2_memory_max_path
+  - --cgroup_v2_memory_current_path
 
 dynamicParameters:
   - --minloglevel
@@ -55,6 +61,5 @@ immutableParameters:
   - --ws_http_port
   - --ws_meta_http_port
   - --auth_type
-  - --enable_experimental_feature
   - --enable_data_balance
   - --local_config

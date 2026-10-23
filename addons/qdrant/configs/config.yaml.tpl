@@ -100,6 +100,60 @@ storage:
     # Custom M param for hnsw graph built for payload index. If not set, default M will be used.
     payload_m: null
 
+  # Default parameters for collections
+  collection:
+    # Number of replicas of each shard that network tries to maintain
+    {{ if index . "default_replication_factor" }}
+    replication_factor: {{ int .default_replication_factor }}
+    {{ else }}
+      {{ if gt (int .COMP_REPLICA_COUNT) 1 }}
+    replication_factor: 2
+      {{ else }}
+    replication_factor: 1
+      {{ end }}
+    {{ end }}
+
+    # How many replicas should apply the operation for us to consider it successful
+    #write_consistency_factor: 1
+
+    # Default parameters for vectors.
+    #vectors:
+      # Memory placement of the vector storage: cold or cached.
+      # Overrides the deprecated `on_disk` flag if both are set.
+      # memory: null
+
+    # shard_number_per_node: 1
+
+    # Default quantization configuration.
+    # More info: https://qdrant.tech/documentation/manage-data/quantization
+    quantization: null
+
+    # Default strict mode parameters for newly created collections.
+    #strict_mode:
+      # Whether strict mode is enabled for a collection or not.
+      #enabled: false
+
+      # Max allowed `limit` parameter for all APIs that don't have their own max limit.
+      #max_query_limit: null
+
+      # Max allowed `timeout` parameter.
+      #max_timeout: null
+
+      # Allow usage of unindexed fields in retrieval based (eg. search) filters.
+      #unindexed_filtering_retrieve: null
+
+      # Allow usage of unindexed fields in filtered updates (eg. delete by payload).
+      #unindexed_filtering_update: null
+
+      # Max HNSW value allowed in search parameters.
+      #search_max_hnsw_ef: null
+
+      # Whether exact search is allowed or not.
+      #search_allow_exact: null
+
+      # Max oversampling value allowed in search.
+      #search_max_oversampling: null
+
 service:
 
   # Maximum size of POST data in a single request in megabytes

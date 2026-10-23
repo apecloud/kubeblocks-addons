@@ -1,12 +1,12 @@
 #!/bin/bash
-export MONGODB_URI="mongodb://${MONGODB_ROOT_USER}:${MONGODB_ROOT_PASSWORD}@${DP_DB_HOST}:${DP_DB_PORT}/?authSource=admin&replicaSet=${CLUSTER_COMPONENT_NAME}"
+export MONGODB_URI="mongodb://${MONGODB_ROOT_USER}:${MONGODB_ROOT_PASSWORD}@${DP_DB_HOST}:${DP_DB_PORT}/?authSource=admin&replicaSet=${CLUSTER_COMPONENT_NAME}$(mongodb_tls_uri_options)"
 # use datasafed and default config
 export WALG_DATASAFED_CONFIG=""
 export WALG_COMPRESSION_METHOD=zstd
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
-export CLIENT=`which mongosh ||echo mongo`
-command="$CLIENT admin -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --port ${DP_DB_PORT} --host ${DP_DB_HOST} --authenticationDatabase admin --quiet --eval"
+CLIENT=$(get_mongodb_client_name)
+command="$CLIENT $(mongodb_tls_client_options "$CLIENT") admin -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --port ${DP_DB_PORT} --host ${DP_DB_HOST} --authenticationDatabase admin --quiet --eval"
 
 DP_log "grant apply op role"
 ${command} 'db.createRole({role: "internalUseOnlyOplogRestore", privileges:[{resource: {anyResource:true}, actions: ["anyAction"]}],roles: []});db.grantRolesToUser("root",[{role: "internalUseOnlyOplogRestore",db: "admin" }]);'

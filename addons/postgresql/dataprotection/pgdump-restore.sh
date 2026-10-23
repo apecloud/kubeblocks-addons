@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
@@ -8,16 +9,32 @@ psql_cmd="psql -h ${DP_DB_HOST} -U ${POSTGRES_USER} -p ${DP_DB_PORT}"
 mkdir -p $BACKUP_DIR
 trap "[ -d $BACKUP_DIR ] && rm -rf $BACKUP_DIR" EXIT
 
+function remote_file_exists() {
+    local out=$(datasafed list $1)
+    if [ "${out}" == "$1" ]; then
+        echo "true"
+        return
+    fi
+    echo "false"
+}
+
+if [ $(remote_file_exists "${DP_BACKUP_NAME}.tar") != "true" ]; then
+  echo "ERROR: backup file ${DP_BACKUP_NAME}.tar not found in the backup repository, cannot restore" >&2
+  exit 1
+fi
+
 datasafed pull "${DP_BACKUP_NAME}.tar" - | tar -xf - -C $BACKUP_DIR
 
-# Set default values
 # Set default values
 if [ -z "$jobs" ]; then
   jobs=4
 fi
 
 # Build pg_dump parameters
-params="-j $jobs -Fd -v -C -d postgres"
+# Roles are not dumped by pg_dump; the target cluster (e.g. a freshly
+# restored one) usually does not have the roles referenced by ownership and
+# ACL statements, so skip restoring owners and privileges altogether.
+params="-j $jobs -Fd -v -d postgres --no-owner --no-privileges"
 if [ -n "$database" ]; then
     $psql_cmd -d postgres -Atc "create database $database" || echo "Failed to create database $database"
 fi
@@ -30,29 +47,35 @@ if [ -n "$schemas" ]; then
         $psql_cmd -d $database -Atc "create schema if not exists $schema" || echo "Failed to create schema $schema"
      fi
   done
-  params="$params --no-owner --no-privileges"
 fi
 
-# Handle table selection
+# Handle table selection.
+# pg_restore's -t matches the archive tag exactly and does not accept a schema
+# qualified name (unlike pg_dump's -t, which takes schema-qualified patterns),
+# so "schema.table" is translated into "-t table" plus "-n schema". Passing the
+# qualified name through would silently match nothing and restore no data.
 if [ -n "$tables" ]; then
   schemas_to_create=""
   for table in $(echo "$tables" | tr ',' '\n'); do
-     params="$params -t $table"
-     schema=$(echo "$table" | cut -d'.' -f1)
-     if [ -n "$schema" ] && [ "$schema" != "$table" ]; then
-       if ! echo "$schemas_to_create" | grep -v "^$schema$" > /dev/null 2>&1; then
-         schemas_to_create="$schemas_to_create"$'\n'"$schema"
-       fi
+     [ -z "$table" ] && continue
+     if [ "$table" == "${table#*.}" ]; then
+       params="$params -t $table"
+     else
+       params="$params -t ${table#*.}"
+       schemas_to_create="$schemas_to_create"$'\n'"${table%%.*}"
      fi
   done
+  params="$params --strict-names"
   for schema in $(echo "$schemas_to_create" | grep -v '^$' | sort -u); do
+    # scope the table filter to the schema the table was given with, unless that
+    # schema is already selected by the schemas parameter
+    if ! echo ",$schemas," | grep -qF ",$schema,"; then
+      params="$params -n $schema"
+    fi
     if [ -n "$database" ]; then
       $psql_cmd -d $database -Atc "create schema if not exists $schema" || echo "Failed to create schema $schema"
     fi
   done
-  if [ -z "$schemas" ]; then
-    params="$params --no-owner --no-privileges"
-  fi
 fi
 
 # Handle schema only
@@ -63,18 +86,47 @@ fi
 if [ "$conflict_policy" == "DROP" ]; then
   params="$params --clean --if-exists"
 elif [ "$conflict_policy" == "FAIL" ]; then
-  params="$params --exit-on-error"
+  params="$params --exit-on-error -C"
 else
   set +e
+  params="$params -C"
 fi
 
 echo "parameters: $params"
 
-# Download and restore
-pg_restore -h ${DP_DB_HOST} -U ${POSTGRES_USER} -p ${DP_DB_PORT} ${params} $BACKUP_DIR 2> >(tee /tmp/pg_restore.log >&2)
-exit_code=$?
-if [ -f /tmp/pg_restore.log ] && grep "pg_restore: warning: errors ignored on restore" /tmp/pg_restore.log ; then
-  exit_code=0
+# Restore; capture the exit code explicitly instead of letting set -e abort,
+# so the conflict policy can decide how ignored errors are reported.
+# stderr goes through a synchronous tee (not an async process substitution),
+# so /tmp/pg_restore.log is guaranteed complete before it is grepped below.
+exec 3>&1
+set +e
+pg_restore -h ${DP_DB_HOST} -U ${POSTGRES_USER} -p ${DP_DB_PORT} ${params} $BACKUP_DIR 2>&1 1>&3 | tee /tmp/pg_restore.log >&2
+exit_code=${PIPESTATUS[0]}
+set -e
+exec 3>&-
+# Without --exit-on-error pg_restore continues past per-object errors and
+# exits 1 with "errors ignored on restore". Only the non-FAIL policies may
+# treat that as success, and only when every error is a benign conflict with
+# the existing target database: objects already present ("already exists",
+# "multiple primary keys"), or the database in use so its DROP fails. Under
+# the default CONTINUE policy (conflict_policy unset or CONTINUE) rows that
+# already exist are expected, so duplicate-key COPY errors are tolerated as
+# well; the DROP policy keeps failing on them. Missing objects and permission
+# problems must always fail.
+if [ "$exit_code" -ne 0 ] && [ "$conflict_policy" != "FAIL" ] && [ -f /tmp/pg_restore.log ] \
+    && grep -q "pg_restore: warning: errors ignored on restore" /tmp/pg_restore.log; then
+  benign_pattern="already exists|multiple primary keys for table|is being accessed by other users"
+  if [ "$conflict_policy" != "DROP" ]; then
+    benign_pattern="$benign_pattern|duplicate key value violates unique constraint"
+  fi
+  total_errors=$(grep -c "^pg_restore: error:" /tmp/pg_restore.log || true)
+  existing_errors=$(grep "^pg_restore: error:" /tmp/pg_restore.log | grep -cE "$benign_pattern" || true)
+  if [ "$total_errors" -gt 0 ] && [ "$total_errors" = "$existing_errors" ]; then
+    echo "pg_restore reported only benign conflicts; treating as success under conflict_policy=${conflict_policy:-CONTINUE}"
+    exit_code=0
+  else
+    echo "pg_restore reported non-conflict errors; failing restore" >&2
+    grep "^pg_restore: error:" /tmp/pg_restore.log | grep -vE "$benign_pattern" >&2 || true
+  fi
 fi
-exit $exit_code
-
+exit "$exit_code"

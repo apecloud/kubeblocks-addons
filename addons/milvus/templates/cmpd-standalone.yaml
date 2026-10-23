@@ -38,14 +38,14 @@ spec:
       valueFrom:
         credentialVarRef:
           compDef: {{ include "milvus-minio.cmpdRegexpPattern" . }}
-          name: admin
+          name: root
           optional: false
           username: Required
     - name: MINIO_SECRET_KEY
       valueFrom:
         credentialVarRef:
           compDef: {{ include "milvus-minio.cmpdRegexpPattern" . }}
-          name: admin
+          name: root
           optional: false
           password: Required
   volumes:

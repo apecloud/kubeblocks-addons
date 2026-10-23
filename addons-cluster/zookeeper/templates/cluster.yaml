@@ -15,6 +15,12 @@ spec:
       serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
+      {{- if .Values.loadBalancerEnabled }}
+      services:
+        - name: lb-advertised
+          serviceType: LoadBalancer
+          podService: true
+      {{- end }}
       env:
         - name: ZOOKEEPER_IMAGE_VERSION
           value: "{{ .Values.version }}"

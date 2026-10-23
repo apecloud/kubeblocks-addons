@@ -31,7 +31,13 @@ staticParameters:
   - --num_worker_threads
   - --max_concurrent_subtasks
   - --max_edge_returned_per_vertex
+  - --memory_tracker_limit_ratio
+  - --memory_tracker_untracked_reserved_memory_mb
   - --containerized
+  - --cgroup_v2_controllers
+  - --cgroup_v2_memory_stat_path
+  - --cgroup_v2_memory_max_path
+  - --cgroup_v2_memory_current_path
 
 dynamicParameters:
   - --v

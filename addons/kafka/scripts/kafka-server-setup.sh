@@ -147,6 +147,8 @@ extract_ordinal_from_object_name() {
 
 parse_advertised_svc_if_exist() {
   local pod_name="${MY_POD_NAME}"
+  advertised_svc_host_value=""
+  advertised_svc_port_value=""
 
   if [ "${KB_BROKER_DIRECT_POD_ACCESS}" == "true" ]; then
     echo "KB_BROKER_DIRECT_POD_ACCESS is true, skip parse advertised svc from BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT."
@@ -154,6 +156,10 @@ parse_advertised_svc_if_exist() {
   fi
 
   if [[ -z "${BROKER_ADVERTISED_PORT}" ]]; then
+    if [[ "${BROKER_ADVERTISED_SERVICE_TYPE}" == "LoadBalancer" ]]; then
+      echo "Error: LoadBalancer advertised service ports are missing." >&2
+      return 1
+    fi
     echo "Environment variable BROKER_ADVERTISED_PORT not found. Ignoring."
     return 0
   fi
@@ -174,6 +180,32 @@ parse_advertised_svc_if_exist() {
       echo "Found matching svcName and port for podName '$pod_name', BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       advertised_svc_port_value="$port"
       advertised_svc_host_value="$MY_POD_HOST_IP"
+      if [[ "${BROKER_ADVERTISED_SERVICE_TYPE}" == "LoadBalancer" ]]; then
+        local entry lb_host=""
+        local -a advertised_hosts
+        IFS=',' read -ra advertised_hosts <<< "${BROKER_ADVERTISED_HOST}"
+        for entry in "${advertised_hosts[@]}"; do
+          if [[ "$entry" == *:* && "${entry%%:*}" == "$svc_name" ]]; then
+            lb_host="${entry#*:}"
+            break
+          fi
+        done
+        if [[ -z "$lb_host" ]]; then
+          echo "Error: LoadBalancer ingress not found for service '$svc_name'." >&2
+          return 1
+        fi
+        advertised_svc_host_value="$lb_host"
+        # serviceVarRef.port may return the LB's nodePort; clients use the
+        # advertised-listener Service port defined in the ComponentDefinition.
+        advertised_svc_port_value="9092"
+      elif [[ "${BROKER_ADVERTISED_SERVICE_TYPE}" == "ClusterIP" ]] ||
+           [[ -z "${BROKER_ADVERTISED_SERVICE_TYPE}" && "$port" == "9092" ]]; then
+        advertised_svc_host_value=""
+      fi
+      # Kafka listener URLs require brackets around IPv6 literals.
+      if [[ "$advertised_svc_host_value" == *:* && "$advertised_svc_host_value" != \[*\] ]]; then
+        advertised_svc_host_value="[$advertised_svc_host_value]"
+      fi
       found=true
       break
     fi
@@ -207,11 +239,10 @@ set_cfg_metadata() {
       return 1
     fi
 
-    # Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
-    if [ -n "$advertised_svc_host_value" ] && [ -n "$advertised_svc_port_value" ] && [ "$advertised_svc_port_value" != "9092" ]; then
-      # enable NodePort, use node ip + mapped port as client connection
-      nodeport_domain="${advertised_svc_host_value}:${advertised_svc_port_value}"
-      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${nodeport_domain}"
+    if [ -n "$advertised_svc_host_value" ] && [ -n "$advertised_svc_port_value" ]; then
+      # Use the per-broker external endpoint for NodePort or LoadBalancer.
+      advertised_endpoint="${advertised_svc_host_value}:${advertised_svc_port_value}"
+      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${advertised_endpoint}"
       echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
     elif [ "${KB_BROKER_DIRECT_POD_ACCESS}" == "true" ]; then
       export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${MY_POD_IP}:9092"

@@ -28,6 +28,14 @@ load_common_library() {
   source "${common_library_file}"
 }
 
+# Redis 6.0 sentinel does not recognize the global `sentinel sentinel-user/pass`
+# statements nor the `ignore-warnings` directive (both added in Redis 6.2).
+# Redis 6.0 only supports the per-master `sentinel auth-user/auth-pass`, which
+# is configured by redis-register-to-sentinel.sh / redis-sentinel-member-join.sh.
+is_redis_version_6_0() {
+  [[ "$SERVICE_VERSION" == 6.0* ]]
+}
+
 redis_sentinel_conf_dir="/data/sentinel"
 redis_sentinel_real_conf="/data/sentinel/redis-sentinel.conf"
 
@@ -173,20 +181,30 @@ build_redis_sentinel_conf() {
     echo "redis sentinel use current pod fqdn: $current_pod_fqdn to announce"
     {
       echo "sentinel announce-ip $current_pod_fqdn"
-      echo "sentinel resolve-hostnames yes"
-      echo "sentinel announce-hostnames yes"
+      if ! is_redis_version_6_0; then
+        echo "sentinel resolve-hostnames yes"
+        echo "sentinel announce-hostnames yes"
+      fi
     } >> $redis_sentinel_real_conf
   fi
   unset_xtrace_when_ut_mode_false
   if [ -n "$SENTINEL_PASSWORD" ]; then
-    {
-      echo "sentinel sentinel-user $SENTINEL_USER"
-      echo "sentinel sentinel-pass $SENTINEL_PASSWORD"
-    } >> $redis_sentinel_real_conf
+    if ! is_redis_version_6_0; then
+      {
+        echo "sentinel sentinel-user $SENTINEL_USER"
+        echo "sentinel sentinel-pass $SENTINEL_PASSWORD"
+      } >> $redis_sentinel_real_conf
+    else
+      {
+        echo "requirepass $SENTINEL_PASSWORD"
+      } >> $redis_sentinel_real_conf
+    fi
   fi
   set_xtrace_when_ut_mode_false
   echo "aclfile /data/users.acl">> $redis_sentinel_real_conf
-  echo "ignore-warnings ARM64-COW-BUG" >> $redis_sentinel_real_conf
+  if ! is_redis_version_6_0; then
+    echo "ignore-warnings ARM64-COW-BUG" >> $redis_sentinel_real_conf
+  fi
   if [ "$TLS_ENABLED" == "true" ]; then
     {
       echo "tls-cert-file ${TLS_MOUNT_PATH}/tls.crt"

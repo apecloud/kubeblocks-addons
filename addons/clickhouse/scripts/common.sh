@@ -1,6 +1,6 @@
 #!/bin/bash
 export RETRY_ATTEMPTS=3
-export SLEEP_INTERVAL=5
+export SLEEP_INTERVAL=2
 export TLS_MOUNT_PATH="/etc/pki/tls"
 export CLICKHOUSE_PORT="${CLICKHOUSE_TCP_PORT:-9000}"
 export CLICKHOUSE_HOST="${CLICKHOUSE_HOST:-localhost}"
@@ -42,6 +42,37 @@ function get_srvr() {
 	send_4lw "$host" "srvr"
 }
 
+# Resolve the clickhouse-keeper-client binary path.
+# Prefer the one bundled in the image; fall back to the copy in /shared-tools
+# (injected by the copy-keeper-client initContainer for legacy images that do
+# not ship clickhouse-keeper-client).
+function keeper_client_bin() {
+	if [[ -x /opt/bitnami/clickhouse/bin/clickhouse-keeper-client ]]; then
+		echo "/opt/bitnami/clickhouse/bin/clickhouse-keeper-client"
+	elif [[ -x /shared-tools/clickhouse-keeper-client ]]; then
+		echo "/shared-tools/clickhouse-keeper-client"
+	else
+		echo "ERROR: clickhouse-keeper-client not found" >&2
+		return 1
+	fi
+}
+
+# Whether the resolved keeper client knows --accept-invalid-certificate (25.10+).
+# Cached: the probe spawns the client once per script run at most.
+_keeper_client_accepts_invalid_cert=""
+function keeper_client_accepts_invalid_certificate() {
+	local client="$1"
+
+	if [[ -z "$_keeper_client_accepts_invalid_cert" ]]; then
+		if "$client" --help 2>&1 | grep -q -- "--accept-invalid-certificate"; then
+			_keeper_client_accepts_invalid_cert="yes"
+		else
+			_keeper_client_accepts_invalid_cert="no"
+		fi
+	fi
+	[[ "$_keeper_client_accepts_invalid_cert" == "yes" ]]
+}
+
 # Low-level keeper client execution with connection retry
 # Handles connection issues, timeouts, and transient network problems
 function keeper_run() {
@@ -53,21 +84,28 @@ function keeper_run() {
 		return 1
 	}
 
+	local keeper_client
+	keeper_client=$(keeper_client_bin) || return 1
+
 	for attempt in $(seq 1 $RETRY_ATTEMPTS); do
 		local output
+		local keeper_host="$host"
+		if [[ "${TLS_ENABLED:-false}" == "true" && "$host" != secure://* ]]; then
+			keeper_host="secure://$host"
+		fi
 		local keeper_args=(
 			--connection-timeout=15
 			--session-timeout=30
 			--operation-timeout=15
 			--history-file=/dev/null
-			-h "$host"
+			-h "$keeper_host"
 			-p "$CLICKHOUSE_KEEPER_PORT"
-			--query "$query"
 		)
-		if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
-			keeper_args+=(--tls-ca-file "$CLICKHOUSE_TLS_CA" --tls-cert-file "$CLICKHOUSE_TLS_CERT" --tls-key-file "$CLICKHOUSE_TLS_KEY")
+		if [[ "$keeper_host" == secure://* ]] && keeper_client_accepts_invalid_certificate "$keeper_client"; then
+			keeper_args+=(--accept-invalid-certificate)
 		fi
-		if output=$(/opt/bitnami/clickhouse/bin/clickhouse-keeper-client "${keeper_args[@]}" 2>&1); then
+		keeper_args+=(--query "$query")
+		if output=$("$keeper_client" "${keeper_args[@]}" 2>&1); then
 			if [[ "$output" != *"Coordination error"* ]] &&
 				[[ "$output" != *"Connection refused"* ]] &&
 				[[ "$output" != *"Timeout"* ]]; then
@@ -137,22 +175,25 @@ function get_zxid() {
 	echo "$zxid"
 }
 
-# Get keeper node mode by keeper
+# Get keeper node mode by keeper.
+# Reads `srvr` over the addon's own TLS-aware 4lw path: the keeper client's own
+# four-letter-word mode opens a plain StreamSocket with the raw `-h` value, so it
+# cannot be used together with the "secure://" host prefix that carries TLS.
 function get_mode_by_keeper() {
-	local mode=$(keeper_run "$1" "srvr" | grep Mode)
+	local mode=$(get_srvr "$1" | grep Mode)
 	echo "$mode" | awk '{print $2}'
 }
 
 # Get mode with retry to tolerate some network failures
 function get_mode_with_retry() {
 	local host="$1"
-	for _ in {1..5}; do
+	for _ in {1..3}; do
 		local mode
 		if mode=$(get_mode "$host") && [[ -n "$mode" ]]; then
 			echo "$mode"
 			return 0
 		fi
-		sleep 6
+		sleep 2
 	done
 	return 1
 }
@@ -181,4 +222,56 @@ function extract_ordinal_from_pod_name() {
 	local pod_name="$1"
 	[[ -z "$pod_name" ]] && return 1
 	echo "${pod_name##*-}"
+}
+
+# Create the ZooKeeper root path (chroot) before ClickHouse starts.
+# ClickHouse does NOT create the configured <root> automatically: it fails
+# startup with "ZooKeeper root doesn't exist" if the node is missing.
+# Uses clickhouse-keeper-client (bundled in the bitnami image) against the
+# external ZooKeeper client port (2181), idempotently creating the root node.
+#
+# Args:
+#   $1: zookeeper endpoint list (comma separated, host:port), e.g. zk-0.zk-hl:2181,zk-1.zk-hl:2181
+#   $2: root path, e.g. /clickhouse_cluster_a
+function zk_create_root() {
+	local endpoints="$1"
+	local root_path="$2"
+
+	[[ -z "$endpoints" || -z "$root_path" ]] && {
+		echo "ERROR: zk_create_root requires endpoints and root_path" >&2
+		return 1
+	}
+
+	local keeper_client
+	keeper_client=$(keeper_client_bin) || return 1
+
+	IFS=',' read -ra endpoint_list <<<"$endpoints"
+	for endpoint in "${endpoint_list[@]}"; do
+		local host="$endpoint"
+		local port="2181"
+		if [[ "$endpoint" == *":"* ]]; then
+			host="${endpoint%:*}"
+			port="${endpoint##*:}"
+		fi
+		local output
+		output=$("$keeper_client" \
+			--connection-timeout=15 \
+			--session-timeout=30 \
+			--operation-timeout=15 \
+			--history-file=/dev/null \
+			-h "$host" \
+			-p "$port" \
+			--query "create '$root_path' \"''\"" 2>&1)
+		if [[ -z "$output" ]];then
+			echo "INFO: ZooKeeper root '$root_path' is ready (via $host:$port)"
+			return 0
+		fi
+		if [[ "$output" == *"NODEEXISTS"* || "$output" == *"Node exists"* ]]; then
+			echo "INFO: ZooKeeper root '$root_path' already exists (via $host:$port)"
+			return 0
+		fi
+		echo "WARN: Failed to create root '$root_path' via $host:$port: $output" >&2
+	done
+	echo "ERROR: Failed to create ZooKeeper root '$root_path' on any endpoint" >&2
+	return 1
 }

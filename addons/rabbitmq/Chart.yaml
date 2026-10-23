@@ -21,7 +21,7 @@ maintainers:
     url: https://github.com/xuriwuyun
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.2.0"
   addon.kubeblocks.io/model: "message"
   addon.kubeblocks.io/provider: "community"
 

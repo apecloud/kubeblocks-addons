@@ -1,0 +1,160 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: falkordb-physical-br-v2
+  labels:
+    clusterdefinition.kubeblocks.io/name: falkordb
+    {{- include "falkordb.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: DP_DB_PORT
+      value: "6379"
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: $(FALKORDB_IMAGE)
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    prepareData:
+      image: $(FALKORDB_IMAGE)
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/restore.sh" | nindent 8 }}
+    postReady:
+    - job:
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
+        image: $(FALKORDB_IMAGE)
+        onError: Fail
+        runOnTargetPodNode: true
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: falkordb-cluster-br-v2
+  labels:
+    clusterdefinition.kubeblocks.io/name: falkordb-cluster
+    {{- include "falkordb.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: DP_DB_PORT
+      value: "6379"
+    - name: MODE
+      value: "cluster"
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: $(FALKORDB_IMAGE)
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    prepareData:
+      image: $(FALKORDB_IMAGE)
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/restore-cluster-users.sh" | nindent 8 }}
+    postReady:
+    - job:
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/wait-for-cluster-ready.sh" | nindent 10 }}
+        image: $(FALKORDB_IMAGE)
+        onError: Fail
+        runOnTargetPodNode: true
+    - job:
+        command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-cluster.sh" | nindent 10 }}
+        image: {{ include "apeDts.image" . }}
+        onError: Fail
+        runOnTargetPodNode: true
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: falkordb-for-pitr-v2
+  labels:
+    clusterdefinition.kubeblocks.io/name: falkordb
+    {{- include "falkordb.labels" . | nindent 4 }}
+spec:
+  backupType: Continuous
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: DP_DB_PORT
+      value: "6379"
+    - name: LOG_ARCHIVE_SECONDS
+      value: "3"
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: $(FALKORDB_IMAGE)
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        #!/bin/bash
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/pitr-backup.sh" | nindent 8 }}
+  restore:
+    prepareData:
+      image: $(FALKORDB_IMAGE)
+      command:
+      - bash
+      - -c
+      - |
+        #!/bin/bash
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/pitr-restore.sh" | nindent 8 }}
+    postReady:
+    - job:
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
+        image: $(FALKORDB_IMAGE)
+        onError: Fail
+        runOnTargetPodNode: true
+    baseBackupRequired: false
