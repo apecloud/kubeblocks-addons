@@ -1050,7 +1050,7 @@ System accounts for galera (root only; numSymbols=0 to avoid comment-char bug in
 systemAccounts:
   - name: root
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 10
       numDigits: 3
       numSymbols: 0
@@ -1064,7 +1064,7 @@ Phase A scope is DECLARATIVE ONLY. kb_internal_root and kb_replicator are declar
 
 DB-side runtime behavior is still owned by chart scripts: chart's `ensure_internal_local_admin` (cmpd-replication.yaml) and initdb (cmpd.yaml) continue to inline-create + maintain kb_internal_root and kb_replicator using `${MARIADB_ROOT_PASSWORD}`. The `kb_internal_root` @'%' allowlist is intentionally narrow: backup-required RELOAD/PROCESS, replication monitor/admin grants needed by syncer and mariabackup, narrow kubeblocks table grants, and SELECT mysql.user. `kb_replicator` remains REPLICATION SLAVE only.
 
-Phase A's only behavior delta is that KB controller now materializes a Secret per declared account and tracks `Component.status.conditions[SystemAccountProvision]`. The KB-managed Secret password is random (per passwordGenerationPolicy below) and INTENTIONALLY DIFFERENT from the DB-side password (= MARIADB_ROOT_PASSWORD). No external consumer reads these two Secrets in Phase A; alpha.110 also did not expose them.
+Phase A's only behavior delta is that KB controller now materializes a Secret per declared account and tracks `Component.status.conditions[SystemAccountProvision]`. The KB-managed Secret password is random (per passwordConfig below) and INTENTIONALLY DIFFERENT from the DB-side password (= MARIADB_ROOT_PASSWORD). No external consumer reads these two Secrets in Phase A; alpha.110 also did not expose them.
 
 Phase B (separate future PR) will switch the chart to source the kb_internal_root / kb_replicator password from these Secrets via `credentialVarRef`, define `statement.create` + `statement.update` for real KB-driven provision, and sweep all 16+ script call sites in `ensure_internal_local_admin`, `replication-roleprobe.sh`, and `replication-switchover.sh` to use `${KB_INTERNAL_ROOT_PASSWORD}` / `${KB_REPLICATOR_PASSWORD}` atomically. Phase B's full grant contract design is captured in the addon-side RFC catalog.
 */}}
@@ -1072,21 +1072,21 @@ Phase B (separate future PR) will switch the chart to source the kb_internal_roo
 systemAccounts:
   - name: root
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 10
       numDigits: 3
       numSymbols: 4
       letterCase: MixedCases
   - name: kb_internal_root
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 32
       numDigits: 8
       numSymbols: 0
       letterCase: MixedCases
   - name: kb_replicator
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 32
       numDigits: 8
       numSymbols: 0
@@ -1100,14 +1100,14 @@ System accounts for standalone topology (Phase A account-model RFC). Same declar
 systemAccounts:
   - name: root
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 10
       numDigits: 3
       numSymbols: 4
       letterCase: MixedCases
   - name: kb_internal_root
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 32
       numDigits: 8
       numSymbols: 0
