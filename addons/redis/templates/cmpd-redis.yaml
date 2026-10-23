@@ -95,7 +95,7 @@ spec:
   systemAccounts:
     - name: default
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 10
         numDigits: 5
         numSymbols: 0

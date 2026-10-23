@@ -77,7 +77,7 @@ client_contract=true"
     printf 'versions=%s,%s\n' "$addon_version" "$cluster_version"
 
     helm template milvus .. | ruby -ryaml -e '
-      documents = YAML.load_stream(ARGF.read).compact
+      documents = YAML.load_stream(STDIN.read).compact
       definitions = documents.select { |document| document["kind"] == "ComponentDefinition" }
       names = definitions.map { |definition| definition.dig("metadata", "name") }
       definition_names = names.grep(/milvus-(minio|standalone)-/).sort.join(",")
@@ -95,9 +95,9 @@ client_contract=true"
       binding_names = bindings.map { |name, pattern| "#{name}:#{pattern}" }.join(",")
       puts "parameter_definitions=#{binding_names}"
 
-      component_definitions = %w[
-        milvus-standalone-1.2.0-alpha.0
-        milvus-standalone-1.2.0-alpha.1
+      component_definitions = [
+        "milvus-standalone-1.2.0-alpha.0",
+        "milvus-standalone-#{ARGV.fetch(0)}"
       ]
       matrix = bindings.map do |name, pattern|
         matches = component_definitions.select { |component_definition| Regexp.new(pattern).match?(component_definition) }
@@ -105,7 +105,7 @@ client_contract=true"
         "#{name}:#{matches.first}"
       end
       puts "parameter_binding_matrix=#{matrix.join(",")}"
-    '
+    ' "$addon_version"
 
     helm dependency build ../../../addons-cluster/milvus >/dev/null
     helm template milvus-cluster ../../../addons-cluster/milvus --set mode=standalone | ruby -ryaml -e '
@@ -125,11 +125,13 @@ client_contract=true"
   }
 
   It "publishes immutable definitions and migrates existing components through Upgrade OpsRequest"
+    current_version=$(awk '$1 == "version:" { print $2; exit }' ../Chart.yaml)
+    current_pattern=$(printf '%s' "$current_version" | sed 's/\./[.]/g')
     When call render_upgrade_contract
-    The output should eq "versions=1.2.0-alpha.1,1.2.0-alpha.0
-definitions=milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1
-parameter_definitions=milvus-standalone-pd-1.2.0-alpha.0:^milvus-standalone-1[.]2[.]0-alpha[.]0$,milvus-standalone-pd-1.2.0-alpha.1:^milvus-standalone-1[.]2[.]0-alpha[.]1$
-parameter_binding_matrix=milvus-standalone-pd-1.2.0-alpha.0:milvus-standalone-1.2.0-alpha.0,milvus-standalone-pd-1.2.0-alpha.1:milvus-standalone-1.2.0-alpha.1
+    The output should eq "versions=$current_version,1.2.0-alpha.0
+definitions=milvus-minio-$current_version,milvus-standalone-$current_version
+parameter_definitions=milvus-standalone-pd-1.2.0-alpha.0:^milvus-standalone-1[.]2[.]0-alpha[.]0$,milvus-standalone-pd-$current_version:^milvus-standalone-$current_pattern$
+parameter_binding_matrix=milvus-standalone-pd-1.2.0-alpha.0:milvus-standalone-1.2.0-alpha.0,milvus-standalone-pd-$current_version:milvus-standalone-$current_version
 cluster_definition_api=topology
 migration=milvus-standalone-minio-root-migrate,Upgrade,precondition=600,force=false,milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1"
     The status should be success
