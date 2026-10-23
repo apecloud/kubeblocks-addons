@@ -17,9 +17,8 @@ Describe "RustFS password configuration compatibility"
       abort "expected one ComponentDefinition" unless definitions.length == 1
       definition = definitions.first
       name = definition.fetch("metadata").fetch("name")
-      old_name = "rustfs-0.1.2"
-      abort "must not overwrite immutable systemAccounts on #{old_name}" if name == old_name
-      abort "definition must be retained" unless definition.dig("metadata", "annotations", "helm.sh/resource-policy") == "keep"
+      abort "definition identity changed" unless name == "rustfs-0.1.2"
+      abort "default resource retention changed" if definition.dig("metadata", "annotations", "helm.sh/resource-policy")
 
       accounts = definition.fetch("spec").fetch("systemAccounts")
       expected = [{"name" => "root", "initAccount" => true, "passwordConfig" => {
@@ -32,9 +31,7 @@ Describe "RustFS password configuration compatibility"
       version.fetch("spec").fetch("releases").each do |release|
         patterns = rules.select { |rule| rule.fetch("releases").include?(release.fetch("name")) }
                         .flat_map { |rule| rule.fetch("compDefs") }
-        [old_name, name].each do |definition_name|
-          abort "release #{release.fetch("name")} excludes #{definition_name}" unless patterns.any? { |pattern| Regexp.new(pattern).match?(definition_name) }
-        end
+        abort "release #{release.fetch("name")} excludes #{name}" unless patterns.any? { |pattern| Regexp.new(pattern).match?(name) }
       end
     '
   }
@@ -70,39 +67,12 @@ YAML
     '
   )
 
-  check_legacy_retention_step() (
-    legacy_dir=$(mktemp -d) || return
-    trap 'rm -rf "$legacy_dir"' EXIT
-    cp -R "$(chart_path)/." "$legacy_dir/" || return
-    ruby -e '
-      chart, definition = ARGV
-      File.write(chart, File.read(chart).sub(/^version: .*$/, "version: 0.1.2"))
-      File.write(definition, File.read(definition).sub("passwordConfig:", "passwordGenerationPolicy:"))
-    ' "$legacy_dir/Chart.yaml" "$legacy_dir/templates/cmpd.yaml" || return
-    helm template rustfs "$legacy_dir" --set extra.keepResource=false >"$legacy_dir/before.yaml" || return
-    helm template rustfs "$legacy_dir" --is-upgrade --set extra.keepResource=true >"$legacy_dir/retained.yaml" || return
-    ruby -ryaml -e '
-      before, retained = ARGV.map do |path|
-        YAML.load_stream(File.read(path)).compact.find { |doc| doc["kind"] == "ComponentDefinition" }
-      end
-      abort "retention must not change immutable spec" unless before.fetch("spec") == retained.fetch("spec")
-      abort "legacy name changed" unless [before, retained].all? { |doc| doc.dig("metadata", "name") == "rustfs-0.1.2" }
-      abort "legacy fixture must start without retention" if before.dig("metadata", "annotations", "helm.sh/resource-policy")
-      abort "retention step failed" unless retained.dig("metadata", "annotations", "helm.sh/resource-policy") == "keep"
-    ' "$legacy_dir/before.yaml" "$legacy_dir/retained.yaml"
-  )
-
-  It "adds retention to the original chart without changing its immutable spec"
-    When call check_legacy_retention_step
-    The status should be success
-  End
-
-  It "installs the root password policy under a new retained definition"
+  It "renders passwordConfig with the existing definition identity and retention default"
     When call check_rendered_accounts
     The status should be success
   End
 
-  It "keeps old and new definitions compatible during addon upgrades"
+  It "preserves the definition identity and password policy in upgrade rendering"
     When call check_rendered_accounts --is-upgrade
     The status should be success
   End

@@ -162,7 +162,7 @@ Describe "RustFS beta.10 version pin"
   It "pins beta.10 consistently in both charts and the default release"
     When call read_source_versions
     The status should be success
-    The output should eq "0.1.3|0.1.1|1.0.0-beta.10|1.0.0-beta.10|1.0.0-beta.10|1.0.0-beta.10|1.0.0-beta.10|true"
+    The output should eq "0.1.2|0.1.1|1.0.0-beta.10|1.0.0-beta.10|1.0.0-beta.10|1.0.0-beta.10|1.0.0-beta.10|true"
   End
 
   It "renders the beta.10 service version and runtime and roleProbe images"
