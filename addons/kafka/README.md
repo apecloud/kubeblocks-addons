@@ -46,11 +46,7 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 
 ### Create
 
-Create a Kafka cluster with combined controller and broker components.
-For `combined_monitor`, `2Gi` memory is the recommended minimum for the
-`kafka-combine` component when broker, controller, exporter validation, and
-in-pod workload tools share the same pod memory budget; smaller limits are not
-recommended for this topology.
+Create a Kafka cluster with combined controller and broker components
 
 ```yaml
 # cat examples/kafka/cluster-combined.yaml
@@ -99,10 +95,10 @@ spec:
       resources:
         limits:
           cpu: "1"
-          memory: "2Gi"
+          memory: "1Gi"
         requests:
           cpu: "0.5"
-          memory: "2Gi"
+          memory: "0.5Gi"
       # Specifies a list of PersistentVolumeClaim templates that define the storage
       # requirements for the Component.
       volumeClaimTemplates:
