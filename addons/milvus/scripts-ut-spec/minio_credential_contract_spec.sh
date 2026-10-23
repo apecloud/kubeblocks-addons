@@ -16,7 +16,8 @@ Describe "Milvus embedded MinIO credential contract"
       abort "root system account not rendered" unless account
       puts "accounts=#{component.dig("spec", "systemAccounts").map { |item| item["name"] }.join(",")}"
 
-      policy = account["passwordGenerationPolicy"] || {}
+      abort "deprecated password policy still rendered" if account.key?("passwordGenerationPolicy")
+      policy = account.fetch("passwordConfig")
       puts "policy=#{policy.values_at("length", "numDigits", "numSymbols", "letterCase").join(",")}"
 
       vars = component.dig("spec", "vars").to_h { |item| [item["name"], item] }
@@ -136,4 +137,50 @@ cluster_definition_api=topology
 migration=milvus-standalone-minio-root-migrate,Upgrade,precondition=600,force=false,milvus-minio-1.2.0-alpha.1,milvus-standalone-1.2.0-alpha.1"
     The status should be success
   End
+
+  check_minio_identity() {
+    local chart="$1" version
+    shift
+    version=$(helm show chart "$chart" | ruby -ryaml -e 'puts YAML.safe_load(STDIN.read).fetch("version")') || return
+    helm template milvus "$chart" "$@" | ruby -ryaml -e '
+      document = YAML.load_stream(STDIN.read).compact.find do |doc|
+        doc["kind"] == "ComponentDefinition" && doc.dig("spec", "serviceKind") == "milvus-minio"
+      end
+      abort "embedded MinIO definition is missing" unless document
+      name = document.fetch("metadata").fetch("name")
+      # These published definitions use the previous immutable account schema.
+      old_names = (0..2).map { |revision| "milvus-minio-1.2.0-alpha.#{revision}" }
+      abort "must not overwrite a published account schema" if old_names.include?(name)
+      abort "identity must follow Chart.Version" unless name == "milvus-minio-#{ARGV.fetch(0)}"
+      abort "definition must be retained" unless document.dig("metadata", "annotations", "helm.sh/resource-policy") == "keep"
+      expected = [{"name" => "root", "initAccount" => true, "passwordConfig" => {
+        "length" => 16, "numDigits" => 4, "numSymbols" => 0, "letterCase" => "MixedCases"
+      }}]
+      abort "root account or password rules changed" unless document.dig("spec", "systemAccounts") == expected
+    ' "$version"
+  }
+
+  check_future_minio_identity() (
+    local contract_dir
+    contract_dir=$(mktemp -d) || return
+    trap 'rm -rf "$contract_dir"' EXIT
+    helm package .. --version 9.9.9-identity-test --destination "$contract_dir" >/dev/null || return
+    check_minio_identity "$contract_dir/milvus-9.9.9-identity-test.tgz"
+  )
+
+  It "installs the root passwordConfig under a new retained chart-versioned identity"
+    When call check_minio_identity ..
+    The status should be success
+  End
+
+  It "does not overwrite the old MinIO account schema during chart upgrade"
+    When call check_minio_identity .. --is-upgrade
+    The status should be success
+  End
+
+  It "follows later chart versions instead of freezing the MinIO identity"
+    When call check_future_minio_identity
+    The status should be success
+  End
+
 End
