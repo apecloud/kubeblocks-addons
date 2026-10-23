@@ -1,0 +1,11 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: doltdb-replication-restart
+  namespace: demo
+spec:
+  clusterName: doltdb-replication
+  type: Restart
+  timeoutSeconds: 300
+  restart:
+    - componentName: doltdb
