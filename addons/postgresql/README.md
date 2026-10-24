@@ -54,10 +54,13 @@ SELECT to_tsvector('chinese', '数据库支持中文全文检索');
 ```
 
 These PostgreSQL minor releases restrict logical decoding through
-`output_plugin_libraries`. The default permits `pgoutput` and `test_decoding`.
-Before upgrading a cluster that uses another output plugin, explicitly configure
-its trusted plugin list for the target version. Do not set this new parameter on
-older minor versions that do not recognize it.
+`output_plugin_libraries`. For 14.24+, 15.19+, 16.15+, 17.11+ and 18.6+, the Addon
+sets `pgoutput,test_decoding,wal2json,decoderbufs,pglogical,pglogical_output`, covering
+the output plugins installed in these images. The setting is reloadable and can
+be customized through the parameter schema. The default is gated by the resolved
+Component version; it is not rendered for older minor versions. Do not manually
+set it on older versions that do not recognize it. Before resuming CDC after an
+upgrade, verify the target configuration permits the plugins used by existing slots.
 
 ## Prerequisites
 
