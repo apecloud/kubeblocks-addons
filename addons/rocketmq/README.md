@@ -586,3 +586,38 @@ To access the RocketMQ Management console , you can port-forward the dashboard s
 kubectl port-forward svc/rocketmq-cluster-dashboard 18080:8080
 ```
 
+
+## System account password compatibility
+
+Chart `1.2.0-alpha.1` targets KubeBlocks 1.2 and later and renders
+`spec.systemAccounts[].passwordConfig`. It preserves the existing account names,
+initialization flags, provisioning statements, password policies and credential
+references. The chart version bump creates new ComponentDefinition names rather
+than changing the immutable account structure of an existing definition.
+ComponentVersion selectors continue to match the previous and new definitions.
+
+This is not an automatic migration or password rotation for existing clusters.
+Keep the definitions and Secrets referenced by existing Components; a chart update
+does not repair empty or invalid credentials created before this change. Verify
+that the installed operator and CRDs support the declared product line before use.
+The support annotation does not perform an online CRD check or promise support
+for KubeBlocks 1.0/1.1.
+
+Default `extra.keepResource: true` retains definitions during chart changes.
+Installations that disable retention must arrange preservation of definitions
+still used by existing Components before upgrading.
+
+The broker password seed expression is unchanged and follows the versioned broker
+definition name. Cluster-level account overrides remain in force. This change
+does not reconcile credentials across existing and newly created shards; verify
+shared credentials separately before switching an existing cluster's definitions.
+
+Offline regression checks render installation and upgrade manifests, cover custom
+registry/namespace and a later chart version, and verify every account policy,
+credential consumer, definition retention and old/new version selection:
+
+```bash
+helm dependency build addons/rocketmq
+helm lint addons/rocketmq
+shellspec --load-path shellspec addons/rocketmq/scripts-ut-spec/password_config_spec.sh
+```

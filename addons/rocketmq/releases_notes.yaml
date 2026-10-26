@@ -1,4 +1,13 @@
 releases:
+  - version: "1.2.0-alpha.1"
+    status: "alpha"
+    git_branch: "main"
+    notes:
+      - "Migrate system accounts to passwordConfig while preserving account policies and credential references."
+      - "Create new chart-versioned ComponentDefinitions for the immutable account interface."
+    breaking_changes:
+      - "Requires KubeBlocks 1.2 or later with matching operator and CRDs."
+      - "No automatic existing-cluster migration, password rotation or credential repair; see README.md."
   - version: "1.0.1"
     released_at: "2025-09-11"
     status: "stable"

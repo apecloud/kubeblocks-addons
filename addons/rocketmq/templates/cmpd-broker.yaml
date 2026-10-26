@@ -230,7 +230,7 @@ spec:
   systemAccounts:
     - name: rocketmq-admin
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 8
         numDigits: 6
         letterCase: MixedCases
