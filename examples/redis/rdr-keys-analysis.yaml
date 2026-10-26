@@ -1,0 +1,31 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-rdr-keys-analysis
+  #namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: leek1-97c49f9c9
+  type: Custom
+  custom:
+    opsDefinitionName: redis-rdr-keys-analysis
+    components:
+      - componentName: redis
+        parameters:
+          # Number of top big keys to report (1-500).
+          - name: TOP_N
+            value: "300"
+          # Ignore keys smaller than this size in the big-key-by-memory list.
+          - name: SIZE_FILTER
+            value: "0kb"
+          # Ignore keys with fewer elements in the big-key-by-element-count list.
+          - name: NUM_OF_ELEM_MIN
+            value: "3000"
+          # Key prefix separators for prefix analysis.
+          - name: SEPARATORS
+            value: ":;,_- "
+          # Maximum number of seconds to wait for BGSAVE.
+          - name: BGSAVE_TIMEOUT
+            value: "600"
+          - name: TASK_ID
+            value: "redis-rdr-keys-analysis"

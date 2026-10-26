@@ -805,6 +805,94 @@ spec:
 kubectl apply -f examples/redis/restore.yaml
 ```
 
+### Redis key analysis
+
+The `redis-rdr-keys-analysis` OpsDefinition uses [rdr](https://github.com/919927181/rdr) to analyze the keys stored in a Redis RDB snapshot. It:
+
+1. triggers `BGSAVE` on the target Redis pod;
+2. waits for the background save to finish;
+3. mounts the target pod's `data` volume in the analysis pod
+   (KubeBlocks schedules the analysis pod on the same node as the target pod);
+4. runs `rdr dump2file` against the freshly written RDB file;
+5. saves the JSON report to `/data/rdr-report.json` on the Redis data volume
+   and prints it to the analysis pod's stdout.
+
+The analysis runs on the RDB file and does not scan the online key space. By
+default the primary pod is analyzed; in cluster mode, the primary of one shard
+is analyzed per OpsRequest. Remove `role: primary` from the OpsDefinition's
+`podSelector` to analyze any available pod (for example, a replica) instead.
+
+```yaml
+# cat examples/redis/rdr-keys-analysis.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-rdr-keys-analysis
+  namespace: demo
+spec:
+  clusterName: redis-replication
+  type: Custom
+  custom:
+    opsDefinitionName: redis-rdr-keys-analysis
+    components:
+      - componentName: redis
+        parameters:
+          - name: TOP_N
+            value: "300"
+          - name: SIZE_FILTER
+            value: "0kb"
+          - name: NUM_OF_ELEM_MIN
+            value: "3000"
+          - name: BGSAVE_TIMEOUT
+            value: "600"
+```
+
+```bash
+kubectl apply -f examples/redis/rdr-keys-analysis.yaml
+
+# Wait for the OpsRequest to finish.
+kubectl get ops -n demo redis-rdr-keys-analysis -w
+
+# Print the analysis logs and the JSON report.
+# --tail=-1 is required: with a label selector kubectl defaults to the last 10 lines.
+kubectl logs -n demo --tail=-1 \
+  -l operations.kubeblocks.io/ops-name=redis-rdr-keys-analysis
+
+# Extract only the JSON report from the analysis pod log.
+kubectl logs -n demo --tail=-1 \
+  -l operations.kubeblocks.io/ops-name=redis-rdr-keys-analysis \
+  | sed -n '/^===== RDR JSON REPORT BEGIN =====$/,/^===== RDR JSON REPORT END =====$/p' \
+  | sed '1d;$d' > rdr-report.json
+
+# The report is also saved to the Redis data volume as /data/rdr-report.json.
+# Read it directly from the target Redis pod (it mounts the same PVC).
+# For a sharded cluster, replace "redis" with the shard component name.
+TARGET_POD=$(kubectl get ops -n demo redis-rdr-keys-analysis \
+  -o jsonpath='{.status.components.redis.progressDetails[0].actionTasks[0].targetPodName}')
+kubectl exec -n demo "${TARGET_POD}" -- cat /data/rdr-report.json > rdr-report.json
+
+# The analysis uses a Pod workload so the completed Pod (and its log) is kept
+# for report retrieval. Delete the OpsRequest to clean it up.
+kubectl delete ops -n demo redis-rdr-keys-analysis
+```
+
+The `rdr` image is configured with `rdrImage` in `values.yaml`. To build and
+push it, see [addons/redis/rdr/Dockerfile](./rdr/Dockerfile):
+
+```bash
+cd addons/redis/rdr
+
+# Build and push amd64 + arm64 in one command.
+# Multi-platform builds cannot be loaded locally, so --push is required.
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t apecloud-registry-vpc.cn-zhangjiakou.cr.aliyuncs.com/apecloud/rdr:1.1.9 \
+  --push .
+
+# Verify the multi-arch manifest.
+docker buildx imagetools inspect \
+  apecloud-registry-vpc.cn-zhangjiakou.cr.aliyuncs.com/apecloud/rdr:1.1.9
+```
+
 ### Expose
 
 Expose a cluster with a new endpoint

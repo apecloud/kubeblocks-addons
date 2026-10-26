@@ -180,6 +180,16 @@ dbctlImage:
   pullPolicy: IfNotPresent
   tag: 0.2.3
 
+# rdr (Redis Data Reveal) image used by the redis-rdr-keys-analysis OpsDefinition.
+# It is based on the Redis image and contains redis-cli, so it can trigger
+# BGSAVE and analyze the resulting RDB file. Refer: addons/redis/rdr/Dockerfile
+rdrImage:
+  # if the value of rdrImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
+  repository: apecloud/rdr
+  pullPolicy: IfNotPresent
+  tag: 1.1.9
+
 redisTwemproxyImage:
   # if the value of redisTwemproxyImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
   registry: ""
