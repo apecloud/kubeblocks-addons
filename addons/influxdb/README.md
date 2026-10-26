@@ -220,3 +220,47 @@ kubectl patch cluster -n demo influxdb-cluster -p '{"spec":{"terminationPolicy":
 
 kubectl delete cluster -n demo influxdb-cluster
 ```
+
+## System account password compatibility
+
+Chart `1.2.0-alpha.1` targets KubeBlocks 1.2 and later and renders
+`spec.systemAccounts[].passwordConfig`. It preserves the existing account names,
+initialization flags, provisioning statements, password policies and credential
+references. The chart version bump creates new ComponentDefinition names rather
+than changing the immutable account structure of an existing definition.
+ComponentVersion selectors continue to match the previous and new definitions.
+
+This is not an automatic migration or password rotation for existing clusters.
+Keep the definitions and Secrets referenced by existing Components; a chart update
+does not repair empty or invalid credentials created before this change. Verify
+that the installed operator and CRDs support the declared product line before use.
+The support annotation does not perform an online CRD check or promise support
+for KubeBlocks 1.0/1.1.
+
+Default `extra.keepResource: true` retains definitions during chart changes.
+Installations that disable retention must arrange preservation of definitions
+still used by existing Components before upgrading.
+
+Offline regression checks render installation and upgrade manifests, cover custom
+registry/namespace and a later chart version, and verify every account policy,
+credential consumer, definition retention and old/new version selection:
+
+```bash
+helm dependency build addons/influxdb
+helm lint addons/influxdb
+shellspec --load-path shellspec addons/influxdb/scripts-ut-spec/password_config_spec.sh
+```
+
+
+The fixed-name ParametersDefinitions continue to select both the retained
+`1.2.0-alpha.0` definitions and this chart's definitions. Their file and template
+mappings are unchanged, so retaining an old ComponentDefinition does not remove
+its parameter mapping. These selectors intentionally cover only those two
+definition identities; subsequent chart releases must preserve any additional
+identities that are still in use.
+
+InfluxDB also continues to render `influxdb-scripts-1.2.0-alpha.0` with its
+unchanged scripts. The old source remains in Helm's desired manifest even though
+the previous release had no retention annotation. Both old and new script
+sources now respect `extra.keepResource`; neither existing data/meta Components
+nor their source-template references are rewritten by this migration.

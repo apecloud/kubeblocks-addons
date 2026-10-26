@@ -30,16 +30,22 @@ data:
   influxdb.conf: |-
     {{- .Files.Get "config/influxdb-data-config.tpl" | nindent 4 }}
 
+{{- /* Keep the old source in the release manifest: adding keep only to the
+new name cannot protect the unannotated source in the previous Helm release. */}}
+{{- range $name := list "influxdb-scripts-1.2.0-alpha.0" (include "influxdb.cmScriptsName" .) | uniq }}
 ---
 # scripts
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "influxdb.cmScriptsName" . }}
+  name: {{ $name }}
   labels:
-    {{- include "influxdb.labels" . | nindent 4 }}
+    {{- include "influxdb.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "kblib.helm.resourcePolicy" $ | nindent 4 }}
 data:
-  {{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+  {{- range $path, $_ := $.Files.Glob "scripts/**" }}
   {{ $path | base }}: |-
   {{- $.Files.Get $path | nindent 4 }}
   {{- end }}
+{{- end }}

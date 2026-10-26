@@ -1,0 +1,7 @@
+{
+  "influxdb-pd": {
+    "componentDef": "influxdb-1.2.0-alpha.0",
+    "templateName": "influxdb-config",
+    "fileName": "config.toml"
+  }
+}
