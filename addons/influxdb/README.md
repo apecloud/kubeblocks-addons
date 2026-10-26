@@ -250,3 +250,17 @@ helm dependency build addons/influxdb
 helm lint addons/influxdb
 shellspec --load-path shellspec addons/influxdb/scripts-ut-spec/password_config_spec.sh
 ```
+
+
+The fixed-name ParametersDefinitions continue to select both the retained
+`1.2.0-alpha.0` definitions and this chart's definitions. Their file and template
+mappings are unchanged, so retaining an old ComponentDefinition does not remove
+its parameter mapping. These selectors intentionally cover only those two
+definition identities; subsequent chart releases must preserve any additional
+identities that are still in use.
+
+InfluxDB also continues to render `influxdb-scripts-1.2.0-alpha.0` with its
+unchanged scripts. The old source remains in Helm's desired manifest even though
+the previous release had no retention annotation. Both old and new script
+sources now respect `extra.keepResource`; neither existing data/meta Components
+nor their source-template references are rewritten by this migration.

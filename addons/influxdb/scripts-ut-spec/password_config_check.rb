@@ -34,3 +34,31 @@ expected.keys.each do |name|
   end
 end
 abort 'chart must not create or overwrite account Secrets' if docs.any? { |d| d['kind'] == 'Secret' }
+
+
+# The fixed-name parameter definitions must still resolve for retained Components.
+parameter_contracts = JSON.parse(File.read(File.join(__dir__, 'upgrade_parameters_expected.json')))
+parameters = docs.select { |d| d['kind'] == 'ParametersDefinition' }
+abort 'parameter definitions changed identity' unless parameters.map { |d| d.dig('metadata', 'name') }.sort == parameter_contracts.keys.sort
+parameter_contracts.each do |pd_name, contract|
+  pd = parameters.find { |d| d.dig('metadata', 'name') == pd_name }.fetch('spec')
+  %w[templateName fileName].each { |key| abort "#{pd_name}: changed #{key}" unless pd[key] == contract[key] }
+  old_name = contract.fetch('componentDef')
+  new_name = old_name.sub('1.2.0-alpha.0', version)
+  pattern = Regexp.new(pd.fetch('componentDef'))
+  [old_name, new_name].each { |name| abort "#{pd_name}: lost mapping for #{name}" unless pattern.match?(name) }
+  ['unrelated-' + old_name, old_name + '-other', old_name.sub('alpha.0', 'alphaX0')].each do |name|
+    abort "#{pd_name}: selector matches unrelated definition #{name}" if pattern.match?(name)
+  end
+end
+
+
+sources = docs.select { |d| d['kind'] == 'ConfigMap' }.to_h { |d| [d.dig('metadata', 'name'), d] }
+expected_scripts = Dir.glob(File.join(chart_path, 'scripts', '**', '*')).select { |f| File.file?(f) }.to_h do |file|
+  [File.basename(file), File.read(file).rstrip]
+end
+['influxdb-scripts-1.2.0-alpha.0', "influxdb-scripts-#{version}"].each do |name|
+  source = sources.fetch(name) { abort "missing scripts source #{name}" }
+  abort "changed script data #{name}" unless source.fetch('data') == expected_scripts
+  abort "scripts source not retained #{name}" unless source.dig('metadata', 'annotations', 'helm.sh/resource-policy') == 'keep'
+end

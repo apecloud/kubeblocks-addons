@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "influxdb.labels" . | nindent 4 }}
 spec:
-  componentDef: {{ include "influxdb.standalone.cmpdName" . }}
+  componentDef: {{ $name := include "influxdb.standalone.cmpdName" . }}{{ printf "^(%s|%s)$" (regexQuoteMeta ($name | trimSuffix (printf "-%s" .Chart.Version) | printf "%s-1.2.0-alpha.0")) (regexQuoteMeta $name) | quote }}
   templateName: influxdb-config
   fileName: config.toml
   fileFormatConfig:
