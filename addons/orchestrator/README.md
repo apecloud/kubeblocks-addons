@@ -408,3 +408,36 @@ kubectl delete cluster -n demo orchestrator-cluster
 
 [^1]: Shared Backend, <https://github.com/openark/orchestrator/blob/master/docs/deployment-shared-backend.md>
 [^2]: Raft, <https://github.com/openark/orchestrator/blob/master/docs/deployment-raft.md>
+
+## System account password compatibility
+
+Chart `1.2.0-alpha.1` targets KubeBlocks 1.2 and later and renders
+`spec.systemAccounts[].passwordConfig`. It preserves the existing account names,
+initialization flags, provisioning statements, password policies and credential
+references. The chart version bump creates new ComponentDefinition names rather
+than changing the immutable account structure of an existing definition.
+ComponentVersion selectors continue to match the previous and new definitions.
+
+This is not an automatic migration or password rotation for existing clusters.
+Keep the definitions and Secrets referenced by existing Components; a chart update
+does not repair empty or invalid credentials created before this change. Verify
+that the installed operator and CRDs support the declared product line before use.
+The support annotation does not perform an online CRD check or promise support
+for KubeBlocks 1.0/1.1.
+
+Earlier Orchestrator charts do not mark their ComponentDefinitions for Helm
+retention. Before updating an existing release, establish a migration plan that preserves
+its currently referenced definitions. Do not remove definitions in use to force
+an upgrade. The new definitions honor `extra.keepResource`, which is true by
+default; this does not retroactively protect resources recorded by older Helm
+releases. In-place upgrades of those releases have not been validated here.
+
+Offline regression checks render installation and upgrade manifests, cover custom
+registry/namespace and a later chart version, and verify every account policy,
+credential consumer, definition retention and old/new version selection:
+
+```bash
+helm dependency build addons/orchestrator
+helm lint addons/orchestrator
+shellspec --load-path shellspec addons/orchestrator/scripts-ut-spec/password_config_spec.sh
+```
