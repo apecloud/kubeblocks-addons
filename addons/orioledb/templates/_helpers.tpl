@@ -204,7 +204,7 @@ vars:
 systemAccounts:
   - name: postgres
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 10
       numDigits: 5
       numSymbols: 0
