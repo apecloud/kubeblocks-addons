@@ -39,6 +39,23 @@ There are two key components in the ClickHouse cluster:
 | 24             | 24.7.2, 24.8.3, 24.12.2   |
 | 25             | 25.4.4, 25.9.7            |
 
+## Password configuration compatibility
+
+This chart targets KubeBlocks >=1.2.0 with a CRD that supports
+`spec.systemAccounts[].passwordConfig`. Both ClickHouse Server definitions
+(the regular definition and the 22.x external-ZooKeeper variant) generate the
+`admin` initialization account with the existing policy: 10 characters,
+5 digits, no symbols, and mixed-case letters. Older CRDs that only recognize
+`passwordGenerationPolicy` are not supported by this migration.
+
+The chart version remains `1.2.0-alpha.1`; definition names and ComponentVersion
+selectors are unchanged. The two server definitions already carry
+`apps.kubeblocks.io/skip-immutable-check: "true"`; this change preserves that
+annotation rather than adding an upgrade bypass. Install and upgrade rendering
+are covered by regression tests, but those checks do not validate an upgrade
+of a running cluster. This change does not rotate or repair existing account
+Secrets; existing installations need separate credential and upgrade validation.
+
 ## Prerequisites
 
 - Kubernetes cluster >= v1.21
