@@ -132,13 +132,13 @@ spec:
   systemAccounts:
     - name: client
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 16
         numDigits: 8
         letterCase: MixedCases
     - name: admin
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 16
         numDigits: 8
         letterCase: MixedCases

@@ -42,6 +42,24 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
   kubectl create ns demo
   ```
 
+## System account password compatibility
+
+This chart requires KubeBlocks `>=1.2.0` with the `apps.kubeblocks.io/v1`
+ComponentDefinition schema and controller supporting `systemAccounts[].passwordConfig`.
+The `client` and `admin` initialization accounts in the combined KRaft, separate
+broker, and Kafka 2.x broker definitions use this field. Each retains the existing
+16-character, 8-digit, mixed-case policy; `numSymbols` remains omitted and defaults
+to zero. The legacy `passwordGenerationPolicy` field is no longer emitted.
+
+This migration keeps chart version `1.2.0-alpha.1.test.1`, resource names,
+ComponentVersion compatibility rules, and the existing immutable-check annotation
+unchanged. It does not rotate existing account Secrets or repair previously created
+credentials. Applying changes to an existing same-name ComponentDefinition depends
+on the installed KubeBlocks admission rules. Install and upgrade rendering are
+covered by offline tests; they do not establish a successful live upgrade or
+credential migration. Older KubeBlocks CRDs that only accept the legacy field are
+not supported by this chart.
+
 ## Examples
 
 ### Create
