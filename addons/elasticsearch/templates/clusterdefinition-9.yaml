@@ -1,0 +1,23 @@
+{{- if .Values.es9.enabled }}
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: elasticsearch-9
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotations:
+    {{- include "elasticsearch.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: single-node
+      components:
+        - name: mdit
+          compDef: {{ include "elasticsearch9.cmpdRegexPattern" . }}
+    - name: multi-node
+      default: true
+      components:
+        - name: master
+          compDef: {{ include "elasticsearchMaster9.cmpdRegexPattern" . }}
+        - name: dit
+          compDef: {{ include "elasticsearchData9.cmpdRegexPattern" . }}
+{{- end }}

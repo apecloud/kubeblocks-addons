@@ -66,15 +66,19 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{- define "elasticsearch.cmpdRegexPattern" -}}
-^elasticsearch-
+^elasticsearch(-master|-data)?-(6|7|8)-
+{{- end -}}
+
+{{- define "elasticsearchGeneric.cmpdRegexPattern" -}}
+^elasticsearch-(6|7|8)-
 {{- end -}}
 
 {{- define "elasticsearchMaster.cmpdRegexPattern" -}}
-^elasticsearch-master-
+^elasticsearch-master-(6|7|8)-
 {{- end -}}
 
 {{- define "elasticsearchData.cmpdRegexPattern" -}}
-^elasticsearch-data-
+^elasticsearch-data-(6|7|8)-
 {{- end -}}
 
 {{- define "elasticsearch6.cmpdName" -}}
