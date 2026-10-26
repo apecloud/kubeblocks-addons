@@ -30,7 +30,7 @@ spec:
   systemAccounts:
     - name: polardbx_root
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 16
         numDigits: 0
         numSymbols: 0
