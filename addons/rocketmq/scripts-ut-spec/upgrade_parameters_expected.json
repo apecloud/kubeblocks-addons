@@ -1,0 +1,7 @@
+{
+  "rocketmq-broker4-pd": {
+    "componentDef": "rocketmq-broker-4-1.2.0-alpha.0",
+    "templateName": "rocketmq-broker-config",
+    "fileName": "broker.conf"
+  }
+}
