@@ -44,7 +44,7 @@ spec:
   systemAccounts:
     - name: admin
       initAccount: true
-      passwordGenerationPolicy:
+      passwordConfig:
         length: 10
         numDigits: 3
         numSymbols: 4
