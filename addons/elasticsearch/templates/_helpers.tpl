@@ -257,14 +257,14 @@ services:
 systemAccounts:
 - name: elastic
   initAccount: true
-  passwordGenerationPolicy:
+  passwordConfig:
     length: 10
     numDigits: 5
     numSymbols: 0
     letterCase: MixedCases
 - name: kibana_system
   initAccount: true
-  passwordGenerationPolicy:
+  passwordConfig:
     length: 10
     numDigits: 5
     numSymbols: 0
