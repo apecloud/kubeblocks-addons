@@ -1,0 +1,157 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: redis-rdr-keys-analysis
+spec:
+  # Only Redis standalone/replication and Redis Cluster components are supported.
+  # The analysis image is independent of the Redis version, so no imageMappings
+  # are required.
+  componentInfos:
+    - componentDefinitionName: ^(redis|redis-cluster)-\d+.*$
+  podInfoExtractors:
+    - name: redis-rdr
+      podSelector:
+        # Analyze the primary Redis pod. In cluster mode this selects the
+        # primary of one shard. Remove `role` to analyze any available pod
+        # instead (for example, a replica, to avoid extra load on the primary).
+        role: primary
+        multiPodSelectionPolicy: All
+      env:
+        - name: CURRENT_POD_NAME
+          valueFrom:
+            envRef:
+              envName: CURRENT_POD_NAME
+        # Standalone/replication components expose REDIS_COMPONENT_NAME.
+        - name: REDIS_COMPONENT_NAME
+          optional: true
+          valueFrom:
+            envRef:
+              envName: REDIS_COMPONENT_NAME
+        # Cluster components expose CURRENT_SHARD_COMPONENT_NAME.
+        - name: CURRENT_SHARD_COMPONENT_NAME
+          optional: true
+          valueFrom:
+            envRef:
+              envName: CURRENT_SHARD_COMPONENT_NAME
+        - name: CLUSTER_NAMESPACE
+          valueFrom:
+            envRef:
+              envName: CLUSTER_NAMESPACE
+        - name: CLUSTER_DOMAIN
+          optional: true
+          valueFrom:
+            envRef:
+              envName: CLUSTER_DOMAIN
+        - name: SERVICE_PORT
+          valueFrom:
+            envRef:
+              envName: SERVICE_PORT
+        - name: REDIS_DEFAULT_USER
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_USER
+        - name: REDIS_DEFAULT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: REDIS_DEFAULT_PASSWORD
+        - name: REDIS_CLI_TLS_CMD
+          optional: true
+          valueFrom:
+            envRef:
+              envName: REDIS_CLI_TLS_CMD
+        # POD_FQDN is defined after the component-name vars above so Kubernetes
+        # can expand its $(VAR) references in the analysis container.
+        - name: POD_FQDN
+          optional: true
+          valueFrom:
+            envRef:
+              envName: POD_FQDN
+      # Mount the target Redis pod's data volume. KubeBlocks also pins the
+      # analysis pod to the target pod's node, which keeps RWO volumes usable.
+      # The mount must be read-write because the JSON report is saved to
+      # /data/rdr-report.json, where the target Redis pod can also read it.
+      volumeMounts:
+        - name: data
+          mountPath: /data
+          readOnly: false
+  parametersSchema:
+    openAPIV3Schema:
+      type: object
+      properties:
+        TOP_N:
+          description: Top N big keys by memory usage and by element count. Max is 500.
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 300
+        SIZE_FILTER:
+          description: Filter the big-key-by-memory list by size, e.g. 0kb, 10kb, 1mb.
+          type: string
+          default: "1mb"
+        NUM_OF_ELEM_MIN:
+          description: Minimum element count for the big-key-by-element-count list.
+          type: integer
+          minimum: 0
+          default: 3000
+        SEPARATORS:
+          description: Key prefix separators used by the prefix analysis.
+          type: string
+          default: ":;,_- "
+        TOP_PREFIX:
+          description: Top N key prefixes.
+          type: integer
+          minimum: 1
+          default: 100
+        PREFIX_SHRINK:
+          description: Prefix container shrink watermark.
+          type: integer
+          minimum: 1
+          default: 5000
+        PREFIX_MAX_CAPACITY:
+          description: Prefix container max capacity. Lower it on memory-constrained hosts.
+          type: integer
+          minimum: 1
+          default: 50000
+        BGSAVE_TIMEOUT:
+          description: Seconds to wait for BGSAVE to finish.
+          type: integer
+          minimum: 1
+          default: 600
+        GOGC:
+          description: Go GC percentage used by rdr. Increase it (e.g. 200-400) to reduce GC CPU usage at the cost of memory.
+          type: integer
+          minimum: 1
+          default: 200
+  actions:
+    - name: keys-analysis
+      parameters:
+        - TOP_N
+        - SIZE_FILTER
+        - NUM_OF_ELEM_MIN
+        - SEPARATORS
+        - TOP_PREFIX
+        - PREFIX_SHRINK
+        - PREFIX_MAX_CAPACITY
+        - BGSAVE_TIMEOUT
+        - GOGC
+      workload:
+        # Use a Pod (not a Job): KubeBlocks deletes Jobs as soon as the
+        # OpsRequest succeeds, which would make the JSON report in the pod log
+        # unreadable. A completed Pod is kept so the report can be retrieved.
+        type: Pod
+        podInfoExtractorName: redis-rdr
+        backoffLimit: 0
+        podSpec:
+          restartPolicy: Never
+          containers:
+            - name: rdr
+              image: {{ .Values.rdrImage.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.rdrImage.repository }}:{{ .Values.rdrImage.tag }}
+              imagePullPolicy: {{ .Values.rdrImage.pullPolicy | default "IfNotPresent" }}
+              env:
+                - name: DATA_DIR
+                  value: /data
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "rdr/rdr-analyze.sh" | nindent 18 }}
