@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
-  componentDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
+  componentDef: {{ $name := include "apecloud-mysql.cmpdNameApecloudMySQL" . }}{{ printf "^(%s|%s)$" (regexQuoteMeta ($name | trimSuffix (printf "-%s" .Chart.Version) | printf "%s-1.2.0-alpha.0")) (regexQuoteMeta $name) | quote }}
   templateName: mysql-consensusset-config
   fileName: my.cnf
   fileFormatConfig:

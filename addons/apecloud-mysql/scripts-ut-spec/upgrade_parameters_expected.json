@@ -1,0 +1,17 @@
+{
+  "apecloud-mysql-scale-vtgate-pd": {
+    "componentDef": "wescale-1.2.0-alpha.0",
+    "templateName": "vtgate-config",
+    "fileName": "vtgate.cnf"
+  },
+  "apecloud-mysql-scale-vttablet-pd": {
+    "componentDef": "apecloud-mysql-1.2.0-alpha.0",
+    "templateName": "vttablet-config",
+    "fileName": "vttablet.cnf"
+  },
+  "apecloud-mysql8.0-pd": {
+    "componentDef": "apecloud-mysql-1.2.0-alpha.0",
+    "templateName": "mysql-consensusset-config",
+    "fileName": "my.cnf"
+  }
+}
