@@ -1,0 +1,22 @@
+{
+  "vanilla-pg12-pd": {
+    "componentDef": "vanilla-postgresql-12-1.2.0-alpha.0",
+    "templateName": "vanilla-postgresql-configuration",
+    "fileName": "postgresql.conf"
+  },
+  "vanilla-pg14-pd": {
+    "componentDef": "vanilla-postgresql-14-1.2.0-alpha.0",
+    "templateName": "vanilla-postgresql-configuration",
+    "fileName": "postgresql.conf"
+  },
+  "vanilla-pg15-pd": {
+    "componentDef": "vanilla-postgresql-15-1.2.0-alpha.0",
+    "templateName": "vanilla-postgresql-configuration",
+    "fileName": "postgresql.conf"
+  },
+  "supabase-pg15-pd": {
+    "componentDef": "supabase-15-1.2.0-alpha.0",
+    "templateName": "supabase-postgresql-configuration",
+    "fileName": "postgresql.conf"
+  }
+}

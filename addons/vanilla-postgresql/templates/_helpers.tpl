@@ -378,7 +378,7 @@ lifecycleActions:
 systemAccounts:
   - name: {{ $rootAccount }}
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 10
       numDigits: 5
       numSymbols: 0
