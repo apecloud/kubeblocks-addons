@@ -621,3 +621,11 @@ helm dependency build addons/rocketmq
 helm lint addons/rocketmq
 shellspec --load-path shellspec addons/rocketmq/scripts-ut-spec/password_config_spec.sh
 ```
+
+
+The fixed-name ParametersDefinitions continue to select both the retained
+`1.2.0-alpha.0` definitions and this chart's definitions. Their file and template
+mappings are unchanged, so retaining an old ComponentDefinition does not remove
+its parameter mapping. These selectors intentionally cover only those two
+definition identities; subsequent chart releases must preserve any additional
+identities that are still in use.

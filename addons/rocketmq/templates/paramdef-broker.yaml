@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "rocketmq.labels" . | nindent 4 }}
 spec:
-  componentDef: {{ include "rocketmq.compDefRocketMQBroker4" . }}
+  componentDef: {{ $name := include "rocketmq.compDefRocketMQBroker4" . }}{{ printf "^(%s|%s)$" (regexQuoteMeta ($name | trimSuffix (printf "-%s" .Chart.Version) | printf "%s-1.2.0-alpha.0")) (regexQuoteMeta $name) | quote }}
   templateName: rocketmq-broker-config
   fileName: broker.conf
   fileFormatConfig:
