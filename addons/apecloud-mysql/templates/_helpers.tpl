@@ -101,7 +101,7 @@ scripts:
 systemAccounts:
   - name: root
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 16
       numDigits: 8
       numSymbols: 0
@@ -109,7 +109,7 @@ systemAccounts:
   - name: kbadmin
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT ALL PRIVILEGES ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy: &defaultPasswordGenerationPolicy
+    passwordConfig: &defaultPasswordGenerationPolicy
       length: 16
       numDigits: 8
       numSymbols: 0
@@ -117,19 +117,19 @@ systemAccounts:
   - name: kbdataprotection
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+    passwordConfig: *defaultPasswordGenerationPolicy
   - name: kbprobe
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+    passwordConfig: *defaultPasswordGenerationPolicy
   - name: kbmonitoring
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+    passwordConfig: *defaultPasswordGenerationPolicy
   - name: kbreplicator
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
-    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+    passwordConfig: *defaultPasswordGenerationPolicy
 tls:
   volumeName: tls
   mountPath: /etc/pki/tls
