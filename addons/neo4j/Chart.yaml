@@ -4,7 +4,7 @@ description: Neo4j is a highly scalable, robust native graph database.
 
 type: application
 
-version: 1.2.0-alpha.0
+version: 1.2.0-alpha.1
 
 appVersion: "5.26.5"
 
@@ -20,7 +20,7 @@ maintainers:
     url: https://github.com/xuriwuyun
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.2.0"
   addon.kubeblocks.io/model: "message"
   addon.kubeblocks.io/provider: "community"
 
