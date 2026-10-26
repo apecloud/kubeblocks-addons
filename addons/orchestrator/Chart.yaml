@@ -5,7 +5,7 @@ description: Orchestrator is a MySQL high availability and replication managemen
 
 type: application
 
-version: 1.2.0-alpha.0
+version: 1.2.0-alpha.1
 
 # This is the version number of the Orchestrator being deployed
 appVersion: "3.2.6"
@@ -22,7 +22,7 @@ sources:
 - https://github.com/apecloud/kubeblocks/
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">1.0.2"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.2.0"
   addon.kubeblocks.io/model: "HA"
   addon.kubeblocks.io/provider: "community"
 

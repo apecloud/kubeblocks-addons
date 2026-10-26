@@ -108,14 +108,14 @@ updateStrategy: BestEffortParallel
 systemAccounts:
   - name: meta
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 16
       numDigits: 8
       numSymbols: 0
       letterCase: MixedCases
   - name: orchestrator
     initAccount: true
-    passwordGenerationPolicy:
+    passwordConfig:
       length: 16
       numDigits: 8
       numSymbols: 0
