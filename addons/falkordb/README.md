@@ -30,13 +30,30 @@ FalkorDB is an open source (SSPL licensed) in-memory graph database based on Red
 - Kubernetes cluster >= v1.21
 - `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- KubeBlocks >= 1.2.0 installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - FalkorDB Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 - Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
   ```bash
   kubectl create ns demo
   ```
+
+### System Account Compatibility
+
+Chart `1.2.0-alpha.0` targets KubeBlocks 1.2 and later. The default accounts in
+the FalkorDB, Sentinel, and sharded FalkorDB ComponentDefinitions explicitly use
+`passwordConfig`; an omitted configuration means a passwordless account in the
+current KubeBlocks API. The existing rules are unchanged: length 10, 5 digits,
+no symbols, mixed-case letters, and the same seed for the sharded component.
+The ShardingDefinition continues to share the default account across shards.
+
+This field migration preserves the chart version and ComponentDefinition names.
+It does not rotate existing credentials or provide an in-place migration for
+stored ComponentDefinitions using `passwordGenerationPolicy`: system account
+configuration is immutable. Existing installations need a separately planned
+versioned-definition migration; rendering with `--is-upgrade` does not establish
+that an installed definition can be updated. KubeBlocks 1.1 and earlier are not
+supported by this chart.
 
 ## Examples
 
