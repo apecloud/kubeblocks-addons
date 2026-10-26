@@ -30,6 +30,21 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 | 7.x | 7.7.1,7.8.1,7.10.1,7.10.2 |
 | 8.x | 8.1.3, 8.8.2              |
 
+## Password configuration compatibility
+
+Chart `1.2.0-alpha.1` targets KubeBlocks main/1.2 with the matching
+`passwordConfig` CRD and operator. The `elastic` and `kibana_system` accounts
+keep their existing generated-password policy (10 characters, 5 digits, no
+symbols, mixed case). Although the new field also exists on release-1.1, this
+main-line chart declares support for KubeBlocks 1.2 and later; it does not
+claim compatibility with the 1.0/1.1 product lines.
+
+The chart version creates new versioned ComponentDefinitions; old definitions
+are retained by default (`extra.keepResource: true`). Existing clusters and
+account Secrets require a separate migration assessment. This change does not
+rotate or repair existing credentials, including empty passwords created with
+an incompatible CRD. See the [migration design and compatibility boundaries](docs/password-config-migration.md).
+
 ## Prerequisites
 
 - Kubernetes cluster >= v1.21

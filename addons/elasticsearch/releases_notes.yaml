@@ -1,4 +1,13 @@
 releases:
+  - version: "1.2.0-alpha.1"
+    status: "alpha"
+    notes:
+      - "Migrate elastic and kibana_system to passwordConfig without changing the generation policy."
+      - "Use new chart-versioned ComponentDefinitions; retain existing definitions by default."
+    git_branch: "main"
+    breaking_changes:
+      - "Requires the KubeBlocks main/1.2 passwordConfig API; this main-line chart no longer declares 1.0/1.1 compatibility."
+      - "No automatic existing-cluster migration or password repair; see docs/password-config-migration.md."
   - version: "1.0.1"
     released_at: "2025-09-11"
     status: "stable"
