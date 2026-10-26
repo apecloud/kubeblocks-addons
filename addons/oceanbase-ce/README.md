@@ -25,6 +25,24 @@ OceanBase Database is an enterprise-level native distributed database independen
 | 4.2.5           | OceanBase CE 4.2.5 LTS (`oceanbase/oceanbase-ce:4.2.5-lts`) |
 | 4.2.1           | OceanBase CE 4.2.1 LTS (`oceanbase/oceanbase-ce:4.2.1-lts`) |
 
+## KubeBlocks compatibility
+
+Chart `1.2.0-alpha.1` targets KubeBlocks 1.2 and later. The `root` initialization
+account uses `passwordConfig` with the existing generation rules: length 10,
+5 digits, 0 symbols, and mixed-case letters. In the current KubeBlocks API,
+omitting `passwordConfig` means a passwordless account; the removed
+`passwordGenerationPolicy` field does not request password generation.
+
+The chart version bump creates `oceanbase-ce-1.2.0-alpha.1`, so the changed
+immutable account configuration has a new ComponentDefinition identity.
+For an existing installation, retain the old definition while Components still
+reference it and plan their migration before upgrading the addon. The existing
+default `extra.keepResource: true` retains the definition with Helm's `keep`
+annotation; installations that disabled it need their own retention plan.
+This change does not provide an automatic credential migration or password
+rotation procedure.
+The release-1.0 and release-1.1 chart branches retain their own API contracts.
+
 ## Prerequisites
 
 - Kubernetes cluster >= v1.21
