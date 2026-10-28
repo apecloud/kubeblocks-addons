@@ -116,6 +116,7 @@ spec:
             envRef:
               envName: CLUSTER_DOMAIN
         - name: CUSTOM_SENTINEL_MASTER_NAME
+          optional: true
           valueFrom:
             envRef:
               envName: CUSTOM_SENTINEL_MASTER_NAME
