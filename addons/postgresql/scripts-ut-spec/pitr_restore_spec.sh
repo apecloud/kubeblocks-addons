@@ -29,7 +29,7 @@ Describe "dataprotection PITR restore"
       DATASAFED_LIST_DIR_20260817 DATASAFED_ROOT_LIST_EXIT \
       DATASAFED_DIR_LIST_EXIT DATASAFED_LIST_FAIL_PATH \
       DATASAFED_PULL_FAIL_OBJECT DATE_FAIL_VALUE \
-      PG_WALDUMP_FAIL_OBJECT 2>/dev/null || true
+      PG_WALDUMP_FAIL_OBJECT PG_WALDUMP_EARLY_OBJECT 2>/dev/null || true
 
     write_stubs
     build_concat
@@ -83,7 +83,11 @@ wal_name=${1##*/}
 if [ "$wal_name" = "${PG_WALDUMP_FAIL_OBJECT:-}" ]; then
   exit 46
 fi
-echo "rmgr: Transaction desc: COMMIT 2026-01-01 00:00:00 UTC; inval msgs"
+if [ "$wal_name" = "${PG_WALDUMP_EARLY_OBJECT:-}" ]; then
+  echo "rmgr: Transaction desc: COMMIT 2001-01-01 00:00:00; inval msgs"
+else
+  echo "rmgr: Transaction desc: COMMIT 2026-01-01 00:00:00 UTC; inval msgs"
+fi
 EOF
     # minimal GNU `date -d` emulation with canned epochs; the pair is chosen
     # so the 9-digit restore_time vs 10-digit commit epoch discriminates a
@@ -198,7 +202,7 @@ EOF
       export DP_RESTORE_TIME
       When run bash "${concat}"
       The status should eq 0
-      The output should include "exit when reaching the target time log."
+      The output should include "reached the target time"
       The output should include "done."
       The path "${CONF_DIR}/recovery.conf" should be exist
       The path "${DATA_DIR}.old" should be exist
@@ -312,6 +316,69 @@ EOF
       The result of function first_pulled_archive should eq "000000010000000000000002.zst"
     End
 
+    It "fetches late-uploaded older WAL across dates before applying the time cutoff"
+      export DATASAFED_LIST_ROOT="20260816/
+20260817/"
+      export DATASAFED_LIST_DIR_20260816="20260816/000000010000000000000003.zst"
+      export DATASAFED_LIST_DIR_20260817="20260817/000000010000000000000002.zst"
+      export PG_WALDUMP_EARLY_OBJECT="000000010000000000000002"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000002" "2001-01-01 00:00:00" true
+      The status should eq 0
+      The output should include "reached the target time"
+      The result of function first_pulled_archive should eq "20260817/000000010000000000000002.zst"
+      The path "${tmpdir}/dest/000000010000000000000002" should be exist
+      The path "${tmpdir}/dest/000000010000000000000003" should be exist
+    End
+
+    It "fetches history before the target cutoff and continues on later timelines"
+      export DATASAFED_LIST_ROOT="20260816/
+20260817/"
+      export DATASAFED_LIST_DIR_20260816="20260816/000000010000000000000002.zst"
+      export DATASAFED_LIST_DIR_20260817="20260817/00000002.history.zst
+20260817/000000020000000000000002.zst"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000002" "2001-01-01 00:00:00" true
+      The status should eq 0
+      The output should include "reached the target time"
+      The path "${tmpdir}/dest/00000002.history" should be exist
+      The path "${tmpdir}/dest/000000010000000000000002" should be exist
+      The path "${tmpdir}/dest/000000020000000000000002" should be exist
+    End
+
+    It "deduplicates WAL uploaded under multiple dates"
+      export DATASAFED_LIST_ROOT="20260817/
+20260816/"
+      export DATASAFED_LIST_DIR_20260816="20260816/000000010000000000000002.zst"
+      export DATASAFED_LIST_DIR_20260817="20260817/000000010000000000000002.zst"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000002" "2026-01-01 00:00:00" true
+      The status should eq 0
+      The output should include "copying"
+      The result of function call_log should include "datasafed pull -d zstd 20260816/"
+      The result of function call_log should not include "datasafed pull -d zstd 20260817/"
+    End
+
+    It "reports later-directory query errors even if an earlier WAL passes the target"
+      export DATASAFED_LIST_ROOT="20260816/
+20260817/"
+      export DATASAFED_LIST_DIR_20260816="20260816/000000010000000000000003.zst"
+      export DATASAFED_LIST_FAIL_PATH="20260817/"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000002" "2001-01-01 00:00:00" true
+      The status should be failure
+      The output should include "failed to list WAL archive directory 20260817/"
+    End
+
+    It "keeps non-PITR fetches on the starting timeline"
+      export DATASAFED_LIST_ROOT="20260816/"
+      export DATASAFED_LIST_DIR="000000010000000000000002.zst
+00000002.history.zst
+000000020000000000000002.zst"
+      When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000002" "2026-01-01 00:00:00" false
+      The status should eq 0
+      The output should include "copying"
+      The path "${tmpdir}/dest/000000010000000000000002" should be exist
+      The path "${tmpdir}/dest/00000002.history" should not be exist
+      The path "${tmpdir}/dest/000000020000000000000002" should not be exist
+    End
+
     It "ignores unrelated compressed objects before fetching WAL archives"
       export DATASAFED_LIST_ROOT="20260816/"
       export DATASAFED_LIST_DIR="000000010000000000000001metadata.zst
@@ -392,7 +459,7 @@ EOF
       # 1767225600 (10 digits). Lexicographic '>' says 1... < 9... and keeps
       # fetching; numeric -gt stops. This example fails on the old code.
       When call fetch-wal-log "${tmpdir}/dest" "000000010000000000000001" "2001-01-01 00:00:00" true
-      The output should include "exit when reaching the target time log."
+      The output should include "reached the target time"
     End
   End
 End
