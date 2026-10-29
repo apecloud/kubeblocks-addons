@@ -27,7 +27,10 @@ Describe "PostgreSQL version matrix contract"
         definition = documents.find { |doc| doc["kind"] == "ComponentDefinition" && doc.dig("spec", "serviceVersion") == service_version }
         abort "missing default definition for #{service_version}" unless definition
         rule = component_version.dig("spec", "compatibilityRules").find { |entry| entry.fetch("releases").include?(service_version) }
-        abort "wrong major compatibility" unless rule && rule.fetch("compDefs").all? { |name| name.start_with?("postgresql-#{version.split(".").first}-") }
+        major = version.split(".").first
+        backend_pattern = /\Apostgresql-(?:(?:direct|pooler)-)?#{major}-/
+        abort "wrong major compatibility" unless rule && !rule.fetch("compDefs").empty? &&
+          rule.fetch("compDefs").all? { |name| backend_pattern.match?(name) }
       end
       puts "ok"
     '
