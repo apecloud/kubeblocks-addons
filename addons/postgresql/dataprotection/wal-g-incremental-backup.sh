@@ -50,19 +50,35 @@ function config_wal_g() {
 
 function getWalGSentinelInfo() {
   local sentinelFile=${1}
-  local out=$(datasafed list ${sentinelFile})
-  if [ "${out}" == "${sentinelFile}" ]; then
-     datasafed pull "${sentinelFile}" ${sentinelFile}
-     echo "$(cat ${sentinelFile})"
-     return
+  local out
+  local value
+  if ! out=$(datasafed list "${sentinelFile}"); then
+    echo "ERROR: failed to list parent WAL-G sentinel ${sentinelFile}" >&2
+    return 1
   fi
+  if [ "${out}" != "${sentinelFile}" ]; then
+    echo "ERROR: parent WAL-G sentinel ${sentinelFile} not found" >&2
+    return 1
+  fi
+  if ! datasafed pull "${sentinelFile}" "${sentinelFile}"; then
+    echo "ERROR: failed to pull parent WAL-G sentinel ${sentinelFile}" >&2
+    return 1
+  fi
+  if ! value=$(cat "${sentinelFile}"); then
+    echo "ERROR: failed to read parent WAL-G sentinel ${sentinelFile}" >&2
+    return 1
+  fi
+  printf '%s\n' "${value}"
 }
 
 function writeSentinelInBaseBackupPath() {
   content=${1}
   fileName=${2}
   export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
-  echo "${content}" | datasafed push - "${fileName}"
+  if ! echo "${content}" | datasafed push - "${fileName}"; then
+    echo "ERROR: failed to publish WAL-G sentinel ${fileName}" >&2
+    return 1
+  fi
   export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
 }
 
@@ -93,12 +109,21 @@ config_wal_g "$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
 
 # 2. parent backup name of the wal-g
 export DATASAFED_BACKEND_BASE_PATH=$(dirname ${DP_BACKUP_BASE_PATH})/${DP_PARENT_BACKUP_NAME}
-parentWalGBackupName=$(getWalGSentinelInfo "wal-g-backup-name")
+if ! parentWalGBackupName=$(getWalGSentinelInfo "wal-g-backup-name"); then
+  exit 1
+fi
+if [[ -z ${parentWalGBackupName} ]]; then
+  echo "ERROR: parent WAL-G backup name is empty" >&2
+  exit 1
+fi
 
 # 1. incremental backup
-set +e
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
-PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} wal-g backup-push ${DATA_DIR} --delta-from-name ${parentWalGBackupName} 2>&1 | tee result.txt
+if ! PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} \
+  wal-g backup-push "${DATA_DIR}" --delta-from-name "${parentWalGBackupName}" 2>&1 | tee result.txt; then
+  echo "ERROR: WAL-G incremental backup-push failed" >&2
+  exit 1
+fi
 
 # 2. get backup name of the wal-g
 backupName=$(get_backup_name "${parentWalGBackupName}")
@@ -107,7 +132,6 @@ if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
    exit 1
 fi
 
-set -e
 echo "switch wal log"
 PSQL="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -p ${DP_DB_PORT} -d postgres"
 ${PSQL} -c "select pg_switch_wal();"
