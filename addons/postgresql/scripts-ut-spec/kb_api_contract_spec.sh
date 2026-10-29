@@ -23,6 +23,38 @@ Describe "PostgreSQL KubeBlocks API contract"
     render_chart | grep -c "$pattern" || true
   }
 
+  etcd_service_ref_contract_count() {
+    render_chart | ruby -ryaml -e '
+      versions = YAML.load_file("../../etcd/values.yaml")
+        .fetch("etcdVersions")
+        .map { |entry| entry.fetch("version").to_s }
+      definitions = YAML.load_stream(ARGF.read).compact.select do |document|
+        document["kind"] == "ComponentDefinition"
+      end
+
+      count = definitions.count do |definition|
+        declarations = definition.dig("spec", "serviceRefDeclarations") || []
+        declarations = declarations.select { |declaration| declaration["name"] == "etcd" }
+        next false unless declarations.length == 1
+
+        specs = declarations.first["serviceRefDeclarationSpecs"] || []
+        next false unless specs.length == 1 && specs.first["serviceKind"] == "etcd"
+
+        pattern = specs.first["serviceVersion"].to_s
+        regex = begin
+          Regexp.new(pattern)
+        rescue RegexpError
+          nil
+        end
+        matches = lambda { |version| regex ? regex.match?(version) : version == pattern }
+
+        versions.all? { |version| matches.call(version) } &&
+          ["2.3.8", "4.0.0"].none? { |version| matches.call(version) }
+      end
+      puts count
+    '
+  }
+
   component_definitions_with_pod_list_rbac() {
     render_chart | ruby -ryaml -e '
       definitions = YAML.load_stream(ARGF.read).compact.select do |document|
@@ -213,6 +245,12 @@ EOF
 
   It "uses an exec role probe supported by KubeBlocks main"
     When call component_definitions_with_exec_role_probe
+    The status should eq 0
+    The output should eq "7"
+  End
+
+  It "accepts supported ETCD v3 ServiceDescriptors and rejects other majors"
+    When call etcd_service_ref_contract_count
     The status should eq 0
     The output should eq "7"
   End

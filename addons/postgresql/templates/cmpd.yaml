@@ -18,7 +18,7 @@ spec:
     - name: etcd
       serviceRefDeclarationSpecs:
         - serviceKind: etcd
-          serviceVersion: "^*"
+          serviceVersion: "^3\\.\\d+\\.\\d+$"
       optional: true
     - name: remote-instances
       serviceRefDeclarationSpecs:
