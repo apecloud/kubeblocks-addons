@@ -1,20 +1,40 @@
+# shellcheck shell=bash
+
 function get_current_time() {
-  curr_time=$(psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -d postgres -t -c "SELECT now() AT TIME ZONE 'UTC'")
-  echo $curr_time
+  curr_time=$(psql -U "${DP_DB_USER}" -h "${DP_DB_HOST}" -d postgres -t -c "SELECT now() AT TIME ZONE 'UTC'") || return
+  printf '%s\n' "${curr_time}"
 }
 
 function stat_and_save_backup_info() {
   export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
   export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
-  START_TIME=$1
-  STOP_TIME=$2
-  if [ -z $STOP_TIME ]; then
-    STOP_TIME=$(get_current_time)
+  START_TIME="$1"
+  STOP_TIME="${2:-}"
+  if [[ -z "${STOP_TIME}" ]]; then
+    STOP_TIME=$(get_current_time) || return
   fi
-  START_TIME=$(date -d "${START_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
-  STOP_TIME=$(date -d "${STOP_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
-  TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-  echo "{\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"
+  START_TIME=$(date -d "${START_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ') || return
+  STOP_TIME=$(date -d "${STOP_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ') || return
+  local stat_output
+  if ! stat_output=$(datasafed stat /); then
+    echo "ERROR: datasafed stat failed" >&2
+    return 1
+  fi
+  TOTAL_SIZE=$(printf '%s\n' "${stat_output}" | awk '/TotalSize/ {print $2; exit}')
+  if [[ ! "${TOTAL_SIZE}" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: datasafed stat returned an invalid TotalSize" >&2
+    return 1
+  fi
+  local backup_info_tmp="${DP_BACKUP_INFO_FILE}.tmp.$$"
+  if ! printf '{"totalSize":"%s","timeRange":{"start":"%s","end":"%s"}}\n' \
+      "${TOTAL_SIZE}" "${START_TIME}" "${STOP_TIME}" >"${backup_info_tmp}"; then
+    rm -f "${backup_info_tmp}"
+    return 1
+  fi
+  if ! mv -f "${backup_info_tmp}" "${DP_BACKUP_INFO_FILE}"; then
+    rm -f "${backup_info_tmp}"
+    return 1
+  fi
 }
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
