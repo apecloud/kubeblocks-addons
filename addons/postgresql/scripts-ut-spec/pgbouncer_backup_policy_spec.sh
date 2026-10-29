@@ -9,10 +9,10 @@ Describe "PostgreSQL backup policies for optional pooler topologies"
         definitions = documents.select { |item| item["kind"] == "ComponentDefinition" }
         definitions.each do |definition|
           matched = patterns.any? { |pattern| pattern.match?(definition.fetch("metadata").fetch("name")) }
-          backend = definition.dig("spec", "serviceKind") == "PostgreSQL"
+          backend = definition.dig("spec", "serviceKind").to_s.downcase == "postgresql"
           abort "incorrect backup policy target" unless matched == backend
         end
-        puts definitions.count { |definition| definition.dig("spec", "serviceKind") == "PostgreSQL" }
+        puts definitions.count { |definition| definition.dig("spec", "serviceKind").to_s.downcase == "postgresql" }
       '
   }
   It "covers all three PostgreSQL backend variants and excludes the pooler"
