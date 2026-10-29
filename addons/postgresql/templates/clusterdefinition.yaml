@@ -11,7 +11,7 @@ spec:
     - name: replication
       components:
         - name: postgresql
-          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+          compDef: '^postgresql-[0-9]+-'
       default: true
     # The legacy replication topology above intentionally keeps the historical
     # in-pod PgBouncer sidecar for compatibility.  KBE's typed connectionPool

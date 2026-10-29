@@ -216,7 +216,7 @@ spec:
           LANGUAGE sql
           SECURITY DEFINER
           SET search_path = pg_catalog
-          AS 'SELECT usename, passwd FROM pg_shadow WHERE usename = $1';
+          AS 'SELECT rolname, CASE WHEN rolvaliduntil < now() THEN NULL ELSE rolpassword END FROM pg_authid WHERE rolname = $1 AND rolcanlogin';
           REVOKE ALL ON FUNCTION public.pgbouncer_auth(text) FROM PUBLIC;
           GRANT CONNECT ON DATABASE postgres TO ${KB_ACCOUNT_NAME};
           GRANT USAGE ON SCHEMA public TO ${KB_ACCOUNT_NAME};

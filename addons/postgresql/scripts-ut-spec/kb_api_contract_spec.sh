@@ -72,6 +72,18 @@ Describe "PostgreSQL KubeBlocks API contract"
       abort unless topologies.dig("replication-pgbouncer", "components", 1, "compDef") == "pgbouncer-postgresql-1.2.0-alpha.4"
 
       definitions = documents.select { |document| document["kind"] == "ComponentDefinition" }
+      # Reproduce the controller selection rule for a default-topology
+      # cluster with an explicit serviceVersion but no componentDef.
+      legacy_pattern = topologies.dig("replication", "components", 0, "compDef")
+      definitions.select { |d| d.dig("metadata", "name").match?(/^postgresql-[0-9]+-/) }.each do |legacy|
+        candidates = definitions.select do |d|
+          name = d.dig("metadata", "name")
+          (name.start_with?(legacy_pattern) || name.match?(Regexp.new(legacy_pattern))) &&
+            d.dig("spec", "serviceVersion") == legacy.dig("spec", "serviceVersion")
+        end.sort_by { |d| d.dig("metadata", "name") }
+        abort unless candidates.last.dig("metadata", "name") == legacy.dig("metadata", "name")
+        abort unless candidates.last.dig("spec", "runtime", "containers").any? { |c| c["name"] == "pgbouncer" }
+      end
       direct = definitions.find { |definition| definition.dig("metadata", "name") == "postgresql-direct-14-1.2.0-alpha.4" }
       pooled = definitions.find { |definition| definition.dig("metadata", "name") == "postgresql-pooler-14-1.2.0-alpha.4" }
       pgbouncer = definitions.find { |definition| definition.dig("metadata", "name") == "pgbouncer-postgresql-1.2.0-alpha.4" }
