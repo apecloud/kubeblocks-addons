@@ -29,7 +29,7 @@ Describe "PostgreSQL KubeBlocks API contract"
         .fetch("etcdVersions")
         .map { |entry| entry.fetch("version").to_s }
       definitions = YAML.load_stream(ARGF.read).compact.select do |document|
-        document["kind"] == "ComponentDefinition"
+        document["kind"] == "ComponentDefinition" && document.dig("spec", "serviceKind") == "PostgreSQL"
       end
 
       count = definitions.count do |definition|
@@ -51,7 +51,8 @@ Describe "PostgreSQL KubeBlocks API contract"
         versions.all? { |version| matches.call(version) } &&
           ["2.3.8", "4.0.0"].none? { |version| matches.call(version) }
       end
-      puts count
+      abort "invalid etcd service reference" if definitions.empty? || count != definitions.length
+      puts "all PostgreSQL backends validated"
     '
   }
 
@@ -252,7 +253,7 @@ EOF
   It "accepts supported ETCD v3 ServiceDescriptors and rejects other majors"
     When call etcd_service_ref_contract_count
     The status should eq 0
-    The output should eq "7"
+    The output should eq "all PostgreSQL backends validated"
   End
 
   It "renders exactly one CmpD reconfigure action per PostgreSQL major"
