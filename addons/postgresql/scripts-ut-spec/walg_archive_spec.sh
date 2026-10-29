@@ -24,7 +24,12 @@ Describe "dataprotection/wal-g-archive.sh"
     DP_TARGET_POD_NAME="pod-0"
     TARGET_POD_ROLE="primary"
     mkdir -p "${VOLUME_DATA_DIR}/wal-g/env" "${LOG_DIR}/archive_status"
-    echo "conf" > "${VOLUME_DATA_DIR}/wal-g/env/WALG_DATASAFED_CONFIG"
+    echo "backend=A" > "${VOLUME_DATA_DIR}/wal-g/datasafed.conf"
+    echo "${VOLUME_DATA_DIR}/wal-g/datasafed.conf" > "${VOLUME_DATA_DIR}/wal-g/env/WALG_DATASAFED_CONFIG"
+    echo "/repo-A" > "${VOLUME_DATA_DIR}/wal-g/env/DATASAFED_BACKEND_BASE_PATH"
+    if ! command -v sha256sum >/dev/null && command -v gsha256sum >/dev/null; then
+      ln -s "$(command -v gsha256sum)" "${bindir}/sha256sum"
+    fi
     export PATH CALL_LOG VOLUME_DATA_DIR LOG_DIR KB_BACKUP_WORKDIR \
       DP_BACKUP_INFO_FILE UPLOAD_MISSING_LOGS_RETRY_INTERVAL \
       DP_TARGET_POD_NAME TARGET_POD_ROLE
@@ -154,6 +159,14 @@ EOF
     ' ../dataprotection/wal-g-archive.sh
   }
 
+  run_archive_round() (
+    check_pg_process() { :; }
+    uploadMissingLogs() { echo normal-upload >> "${CALL_LOG}"; }
+    save_backup_status() { echo status-published >> "${CALL_LOG}"; }
+    sleep() { exit 0; }
+    eval "$(sed -n '/^while true; do$/,$p' ../dataprotection/wal-g-archive.sh)"
+  )
+
   retry_same_size_after_publication_failure() {
     export DATASAFED_STAT_OUT="TotalSize: 4096"
     export MV_EXIT=17
@@ -183,8 +196,83 @@ EOF
       uploadDoneHistoryWALs
       When call uploadDoneHistoryWALs
       The status should eq 0
-      The path "${LOG_DIR}/archive_status/00000002.history.done.walg-uploaded" should be exist
+      The path "${LOG_DIR}/archive_status/00000002.history.done.walg-uploaded.$(history_repository_id)" should be exist
       The result of function wal_g_call_count should eq 1
+    End
+
+    It "uploads again after the target repository prefix changes"
+      touch "${LOG_DIR}/00000002.history" "${LOG_DIR}/archive_status/00000002.history.done"
+      uploadDoneHistoryWALs
+      echo "/repo-B" > "${VOLUME_DATA_DIR}/wal-g/env/DATASAFED_BACKEND_BASE_PATH"
+      When call uploadDoneHistoryWALs
+      The status should eq 0
+      The result of function wal_g_call_count should eq 2
+    End
+
+    It "uploads again when the backend changes but the prefix stays the same"
+      touch "${LOG_DIR}/00000002.history" "${LOG_DIR}/archive_status/00000002.history.done"
+      uploadDoneHistoryWALs
+      echo "backend=B" > "${VOLUME_DATA_DIR}/wal-g/datasafed.conf"
+      When call uploadDoneHistoryWALs
+      The status should eq 0
+      The result of function wal_g_call_count should eq 2
+    End
+
+    It "ignores old repository-independent success markers"
+      touch "${LOG_DIR}/00000002.history" "${LOG_DIR}/archive_status/00000002.history.done"
+      touch "${LOG_DIR}/archive_status/00000002.history.done.walg-uploaded"
+      When call uploadDoneHistoryWALs
+      The status should eq 0
+      The result of function wal_g_call_count should eq 1
+    End
+
+    It "blocks WAL upload and status publication after history upload failure"
+      touch "${LOG_DIR}/00000002.history" "${LOG_DIR}/archive_status/00000002.history.done"
+      export WALG_EXIT=41
+      When run run_archive_round
+      The status should eq 0
+      The output should include "timeline history upload incomplete"
+      The result of function call_log should not include "normal-upload"
+      The result of function call_log should not include "status-published"
+    End
+
+    It "resumes publication once the failed history upload succeeds"
+      touch "${LOG_DIR}/00000002.history" "${LOG_DIR}/archive_status/00000002.history.done"
+      WALG_EXIT=41 run_archive_round >/dev/null
+      export WALG_EXIT=0
+      When run run_archive_round
+      The status should eq 0
+      The output should include "Successfully uploaded file"
+      The result of function call_log should include "normal-upload"
+      The result of function call_log should include "status-published"
+    End
+
+    It "also blocks the shutdown flush when history upload fails"
+      touch "${LOG_DIR}/00000002.history" "${LOG_DIR}/archive_status/00000002.history.done"
+      export WALG_EXIT=41 PSQL_EXIT=1
+      sleep() { :; }
+      uploadMissingLogs() { echo BAD-upload; }
+      save_backup_status() { echo BAD-status; }
+      When run check_pg_process
+      The status should eq 1
+      The output should include "Failed to upload file"
+      The output should not include "BAD-"
+    End
+
+    It "blocks publication when required history is missing locally"
+      touch "${LOG_DIR}/archive_status/00000002.history.done"
+      When run run_archive_round
+      The status should eq 0
+      The output should include "Required timeline history file is missing"
+      The result of function call_log should not include "status-published"
+    End
+
+    It "fails closed when repository identity cannot be read"
+      rm "${VOLUME_DATA_DIR}/wal-g/datasafed.conf"
+      When call uploadDoneHistoryWALs
+      The status should be failure
+      The stderr should include "Cannot identify WAL-G repository"
+      The result of function wal_g_call_count should eq 0
     End
 
     It "is invoked from every archive loop iteration"

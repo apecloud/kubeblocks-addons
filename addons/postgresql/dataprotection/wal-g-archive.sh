@@ -156,15 +156,44 @@ function save_backup_status() {
 
 # Upload historical .history files that are marked as .done but not yet uploaded to remote
 # These are timeline history files (e.g., 00000002.history) that are critical for PITR recovery
+function history_repository_id() {
+  local config_file config_hash repository_path repository_hash
+  local walg_env="${VOLUME_DATA_DIR}/wal-g/env"
+  if ! config_file=$(cat "${walg_env}/WALG_DATASAFED_CONFIG") || [[ -z ${config_file} ]]; then
+    DP_error_log "Cannot read WAL-G repository configuration path" >&2
+    return 1
+  fi
+  if ! config_hash=$(sha256sum "${config_file}") ||
+     ! repository_path=$(cat "${walg_env}/DATASAFED_BACKEND_BASE_PATH") || [[ -z ${repository_path} ]]; then
+    DP_error_log "Cannot identify WAL-G repository" >&2
+    return 1
+  fi
+  # Include the backend configuration (endpoint/bucket/etc.) as well as the
+  # prefix. Never persist or log configuration contents, which may be secret.
+  if ! repository_hash=$(printf '%s\n%s\n' "${config_hash%% *}" "${repository_path}" | sha256sum); then
+    return 1
+  fi
+  printf '%s\n' "${repository_hash%% *}"
+}
+
 function uploadDoneHistoryWALs() {
   local upload_failed=false
+  local repository_id history_files
+  if ! repository_id=$(history_repository_id); then
+    return 1
+  fi
   DP_log "Checking for historical .history files with .done status to upload..."
 
   # Find all .done status files for .history files in archive_status directory
-  for done_file in $(find "${LOG_DIR}/archive_status/" -name "*.history.done" -type f | sort); do
+  if ! history_files=$(find "${LOG_DIR}/archive_status/" -name "*.history.done" -type f); then
+    DP_error_log "Cannot list timeline history files" >&2
+    return 1
+  fi
+  for done_file in ${history_files}; do
     history_name=$(basename "$done_file" .done)
     history_path="${LOG_DIR}/${history_name}"
-    uploaded_marker="${done_file}.walg-uploaded"
+    # Legacy unscoped markers must not suppress uploads to a different repo.
+    uploaded_marker="${done_file}.walg-uploaded.${repository_id}"
 
     if [ -f "${uploaded_marker}" ]; then
       continue
@@ -188,6 +217,9 @@ function uploadDoneHistoryWALs() {
         DP_error_log "Failed to upload file: ${history_name}, exit code: ${exit_code}"
         upload_failed=true
       fi
+    else
+      DP_error_log "Required timeline history file is missing: ${history_name}"
+      upload_failed=true
     fi
   done
 
@@ -259,9 +291,11 @@ function check_pg_process() {
     if [[ ${is_ok} == "false" ]];then
       DP_error_log "target backup pod/${DP_TARGET_POD_NAME} is not OK, target role: ${TARGET_POD_ROLE}, pg_is_in_recovery: ${is_secondary}!"
       DP_log "Before switching to a new instance, back up any remaining WAL logs."
-      uploadMissingLogs
-      # save backup status which will be updated to `backup` CR by the sidecar
-      save_backup_status
+      if uploadDoneHistoryWALs; then
+        uploadMissingLogs
+        # The shutdown flush must obey the same history gate as normal rounds.
+        save_backup_status
+      fi
       exit 1
     fi
 }
@@ -276,7 +310,11 @@ while true; do
   check_pg_process
   # Retry timeline history uploads until each local file has a persisted
   # success marker; cross-timeline PITR depends on these files.
-  uploadDoneHistoryWALs || DP_error_log "timeline history upload incomplete; will retry"
+  if ! uploadDoneHistoryWALs; then
+    DP_error_log "timeline history upload incomplete; will retry"
+    sleep "${LOG_ARCHIVE_SECONDS}"
+    continue
+  fi
   # upload wal logs
   uploadMissingLogs
   # save backup status which will be updated to `backup` CR by the sidecar
