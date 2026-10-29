@@ -29,7 +29,7 @@ Describe "PostgreSQL KubeBlocks API contract"
         .fetch("etcdVersions")
         .map { |entry| entry.fetch("version").to_s }
       definitions = YAML.load_stream(ARGF.read).compact.select do |document|
-        document["kind"] == "ComponentDefinition" && document.dig("spec", "serviceKind") == "PostgreSQL"
+        document["kind"] == "ComponentDefinition" && document.dig("spec", "serviceKind").to_s.downcase == "postgresql"
       end
 
       count = definitions.count do |definition|
