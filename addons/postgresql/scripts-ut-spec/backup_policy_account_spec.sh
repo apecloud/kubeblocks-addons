@@ -12,7 +12,7 @@ Describe "PostgreSQL backup policy accounts"
           account = method.dig("target", "account") || default_account
           puts "#{method.fetch("name")}=#{account}"
         end
-        definitions = documents.select { |item| item["kind"] == "ComponentDefinition" && item.dig("spec", "serviceKind") == "PostgreSQL" }
+        definitions = documents.select { |item| item["kind"] == "ComponentDefinition" && item.dig("spec", "serviceKind").to_s.downcase == "postgresql" }
         abort "missing backup account" unless !definitions.empty? && definitions.all? do |definition|
           definition.fetch("spec").fetch("systemAccounts").any? { |account| account["name"] == default_account }
         end
