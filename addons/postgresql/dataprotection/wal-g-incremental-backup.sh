@@ -98,7 +98,7 @@ parentWalGBackupName=$(getWalGSentinelInfo "wal-g-backup-name")
 # 1. incremental backup
 set +e
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
-PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} wal-g backup-push ${DATA_DIR} --delta-from-name ${parentWalGBackupName} 2>&1 | tee result.txt
+PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} PGDATABASE=postgres wal-g backup-push ${DATA_DIR} --delta-from-name ${parentWalGBackupName} 2>&1 | tee result.txt
 
 # 2. get backup name of the wal-g
 backupName=$(get_backup_name "${parentWalGBackupName}")

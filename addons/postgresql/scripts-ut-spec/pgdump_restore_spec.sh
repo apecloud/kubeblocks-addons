@@ -17,13 +17,13 @@ Describe "dataprotection/pgdump-restore.sh"
     DP_DATASAFED_BIN_PATH="${bindir}"
     DP_BACKUP_BASE_PATH="/backup"
     DP_BACKUP_NAME="backup-test"
-    POSTGRES_PASSWORD="secret"
-    POSTGRES_USER="postgres"
+    DP_DB_PASSWORD="dp-secret"
+    DP_DB_USER="kbdataprotection"
     DP_DB_HOST="localhost"
     DP_DB_PORT="5432"
     BACKUP_DIR="${tmpdir}/restore-workdir"
     export PATH CALL_LOG DP_DATASAFED_BIN_PATH DP_BACKUP_BASE_PATH \
-      DP_BACKUP_NAME POSTGRES_PASSWORD POSTGRES_USER DP_DB_HOST DP_DB_PORT BACKUP_DIR
+      DP_BACKUP_NAME DP_DB_PASSWORD DP_DB_USER DP_DB_HOST DP_DB_PORT BACKUP_DIR
     unset DATASAFED_LIST_OUT DATASAFED_PULL_EXIT PG_RESTORE_EXIT PG_RESTORE_STDERR \
       jobs database schemas tables schema_only conflict_policy 2>/dev/null || true
     write_stubs
@@ -59,12 +59,12 @@ cat > /dev/null
 EOF
     cat > "${bindir}/psql" <<'EOF'
 #!/bin/sh
-printf 'psql %s\n' "$*" >> "${CALL_LOG}"
+printf 'psql PGPASSWORD=%s args=%s\n' "${PGPASSWORD}" "$*" >> "${CALL_LOG}"
 exit 0
 EOF
     cat > "${bindir}/pg_restore" <<'EOF'
 #!/bin/sh
-printf 'pg_restore %s\n' "$*" >> "${CALL_LOG}"
+printf 'pg_restore PGPASSWORD=%s args=%s\n' "${PGPASSWORD}" "$*" >> "${CALL_LOG}"
 if [ -n "${PG_RESTORE_STDERR:-}" ]; then
   printf '%s\n' "${PG_RESTORE_STDERR}" >&2
 fi
@@ -83,6 +83,15 @@ EOF
     The status should be failure
     The error should include "backup-test.tar not found"
     The result of function call_log should not include "pg_restore"
+  End
+
+  It "uses the DataProtection user and password for psql and pg_restore"
+    export DATASAFED_LIST_OUT="backup-test.tar"
+    export database="application"
+    When run bash "$(script_path)"
+    The status should eq 0
+    The result of function call_log should include "psql PGPASSWORD=dp-secret args=-h localhost -U kbdataprotection -p 5432"
+    The result of function call_log should include "pg_restore PGPASSWORD=dp-secret args=-h localhost -U kbdataprotection -p 5432"
   End
 
   It "restores successfully when the backup exists and pg_restore succeeds"
