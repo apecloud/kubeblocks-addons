@@ -22,6 +22,8 @@ spec:
   serviceKind: PostgreSQL
   compDefs:
     - postgresql-\d+
+    - postgresql-direct-\d+
+    - postgresql-pooler-\d+
   target:
     role: primary
     fallbackRole: secondary
