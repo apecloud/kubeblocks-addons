@@ -75,10 +75,14 @@ Describe "PostgreSQL metrics compatibility contract"
       || printf 'pg18 does not convert write bytes to buffers\n'
   }
 
-  It "disables the legacy stat_bgwriter collector only for PostgreSQL 17 and 18"
+  It "disables the legacy stat_bgwriter collector for every PostgreSQL 17 and 18 backend variant"
     When call disabled_bgwriter_majors
     The status should eq 0
     The output should eq "17
+17
+17
+18
+18
 18"
   End
 

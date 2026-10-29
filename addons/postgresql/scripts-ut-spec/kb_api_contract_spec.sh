@@ -62,6 +62,56 @@ Describe "PostgreSQL KubeBlocks API contract"
     '
   }
 
+  independent_pgbouncer_contract() {
+    render_chart | ruby -ryaml -e '
+      documents = YAML.load_stream(ARGF.read).compact
+      cluster_definition = documents.find { |document| document["kind"] == "ClusterDefinition" }
+      topologies = cluster_definition.dig("spec", "topologies").to_h { |topology| [topology["name"], topology] }
+      abort unless topologies.dig("replication-direct", "components", 0, "compDef") == "postgresql-direct-"
+      abort unless topologies.dig("replication-pgbouncer", "components", 0, "compDef") == "postgresql-pooler-"
+      abort unless topologies.dig("replication-pgbouncer", "components", 1, "compDef") == "pgbouncer-postgresql-1.2.0-alpha.4"
+
+      definitions = documents.select { |document| document["kind"] == "ComponentDefinition" }
+      direct = definitions.find { |definition| definition.dig("metadata", "name") == "postgresql-direct-14-1.2.0-alpha.4" }
+      pooled = definitions.find { |definition| definition.dig("metadata", "name") == "postgresql-pooler-14-1.2.0-alpha.4" }
+      pgbouncer = definitions.find { |definition| definition.dig("metadata", "name") == "pgbouncer-postgresql-1.2.0-alpha.4" }
+      abort if direct.dig("spec", "systemAccounts").any? { |account| account["name"] == "pgbouncer" }
+      pooler_account = pooled.dig("spec", "systemAccounts").find { |account| account["name"] == "pgbouncer" }
+      abort unless pooler_account.dig("statement", "update").include?("ALTER USER")
+      abort unless pooler_account.dig("statement", "delete").include?("DROP USER")
+      probe_account = pooled.dig("spec", "systemAccounts").find { |account| account["name"] == "pgbouncerprobe" }
+      abort unless probe_account.dig("statement", "create").include?("NOSUPERUSER")
+      abort unless probe_account.dig("statement", "create").include?("GRANT CONNECT ON DATABASE postgres")
+      abort unless pgbouncer.dig("spec", "services", 0, "spec", "ports", 0, "port") == 6432
+      refs = pgbouncer.dig("spec", "vars").map { |var| var.dig("valueFrom", "serviceVarRef", "compDef") || var.dig("valueFrom", "credentialVarRef", "compDef") }.compact
+      abort unless refs == Array.new(6, "postgresql-pooler-")
+      probe = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe", "exec", "command", -1)
+      abort unless probe.include?("public.pgbouncer_auth(") && probe.include?("pgbouncerprobe") && probe.include?("--port=6432")
+      abort unless probe.include?("--username=\"$PGBOUNCER_PROBE_USERNAME\"")
+      abort unless probe.include?("PGPASSWORD=\"$PGBOUNCER_PROBE_PASSWORD\"")
+
+      component_versions = documents.select { |document| document["kind"] == "ComponentVersion" }
+      postgres_prefixes = component_versions.find { |version| version.dig("metadata", "name") == "postgresql" }.dig("spec", "compatibilityRules").flat_map { |rule| rule["compDefs"] }
+      abort unless postgres_prefixes.include?("postgresql-direct-14-") && postgres_prefixes.include?("postgresql-pooler-14-")
+      pgbouncer_prefixes = component_versions.find { |version| version.dig("metadata", "name") == "postgresql-pgbouncer" }.dig("spec", "compatibilityRules", 0, "compDefs")
+      abort unless pgbouncer_prefixes == ["pgbouncer-postgresql-"]
+      puts "ok"
+    '
+  }
+
+  pgbouncer_digest_and_pull_policy_contract() {
+    helm template kb-addon-postgresql "$(chart_dir)" --namespace kb-system --dependency-update \
+      --set pgbouncer.image.digest=sha256:0123456789abcdef \
+      --set pgbouncer.image.pullPolicy=Always | ruby -ryaml -e '
+        documents = YAML.load_stream(ARGF.read).compact
+        version = documents.find { |document| document["kind"] == "ComponentVersion" && document.dig("metadata", "name") == "postgresql-pgbouncer" }
+        abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer@sha256:0123456789abcdef"
+        definition = documents.find { |document| document["kind"] == "ComponentDefinition" && document.dig("metadata", "name") == "pgbouncer-postgresql-1.2.0-alpha.4" }
+        abort unless definition.dig("spec", "runtime", "containers", 0, "imagePullPolicy") == "Always"
+        puts "ok"
+      '
+  }
+
   pg13_config_contract() {
     config="$(chart_dir)/config/pg13-config.tpl"
     schema="$(chart_dir)/config/pg13-config-constraint.cue"
@@ -172,13 +222,31 @@ EOF
   It "advances the chart identity when immutable ComponentDefinitions change"
     When call chart_version
     The status should eq 0
-    The output should eq "1.2.0-alpha.3"
+    The output should eq "1.2.0-alpha.4"
   End
 
-  It "publishes every ComponentDefinition under the advanced immutable identity"
-    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.3$'
+  It "publishes every legacy ComponentDefinition under the advanced immutable identity"
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.4$'
     The status should eq 0
     The output should eq "7"
+  End
+
+  It "publishes direct and pooler PostgreSQL backends under distinct immutable identities"
+    When call render_count '^  name: postgresql-\(direct\|pooler\)-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.4$'
+    The status should eq 0
+    The output should eq "14"
+  End
+
+  It "renders the independent PgBouncer topology and runtime contract"
+    When call independent_pgbouncer_contract
+    The status should eq 0
+    The output should eq "ok"
+  End
+
+  It "honors the independent PgBouncer digest and pull policy"
+    When call pgbouncer_digest_and_pull_policy_contract
+    The status should eq 0
+    The output should eq "ok"
   End
 
   It "does not update the published alpha.2 ComponentDefinitions in place"
@@ -208,19 +276,19 @@ EOF
   It "grants every ComponentDefinition the pod-list permission used by live arbitration"
     When call component_definitions_with_pod_list_rbac
     The status should eq 0
-    The output should eq "7"
+    The output should eq "21"
   End
 
   It "uses an exec role probe supported by KubeBlocks main"
     When call component_definitions_with_exec_role_probe
     The status should eq 0
-    The output should eq "7"
+    The output should eq "21"
   End
 
-  It "renders exactly one CmpD reconfigure action per PostgreSQL major"
+  It "renders exactly one CmpD reconfigure action per PostgreSQL backend"
     When call render_count '^[[:space:]]*reconfigure:$'
     The status should eq 0
-    The output should eq "7"
+    The output should eq "21"
   End
 
   It "does not render the legacy PD reloadAction path"
@@ -232,19 +300,19 @@ EOF
   It "binds every PD to the KB 1.2 config entry"
     When call render_count '^[[:space:]]*templateName: postgresql-configuration$'
     The status should eq 0
-    The output should eq "7"
+    The output should eq "21"
   End
 
   It "uses the projected KB scripts path for all CmpD actions"
     When call render_count '/kb-scripts/update-parameter.sh "\$1" "\$2"'
     The status should eq 0
-    The output should eq "7"
+    The output should eq "21"
   End
 
   It "publishes PG 18.4 in the CmpD, PD, and ComponentVersion"
     When call render_count '^[[:space:]]*serviceVersion: 18.4.0$'
     The status should eq 0
-    The output should eq "3"
+    The output should eq "7"
   End
 
   It "publishes the PG 18.4 image for runtime and lifecycle actions"
@@ -256,7 +324,7 @@ EOF
   It "publishes PG 13.23 in the CmpD, PD, and ComponentVersion"
     When call render_count '^[[:space:]]*serviceVersion: 13.23.0$'
     The status should eq 0
-    The output should eq "3"
+    The output should eq "7"
   End
 
   It "publishes the PG 13.23 image for runtime and lifecycle actions"

@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: {{ include "pgbouncer.componentVersionName" . }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "pgbouncer.componentDefNamePrefix" . }}
+      releases:
+        - {{ .Values.pgbouncer.image.tag | quote }}
+  releases:
+    - name: {{ .Values.pgbouncer.image.tag | quote }}
+      serviceVersion: {{ .Values.pgbouncer.image.tag | quote }}
+      images:
+        pgbouncer: {{ include "postgresql.pgbouncerImage" . }}

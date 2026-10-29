@@ -11,6 +11,8 @@ spec:
   {{- range .Values.versions }}
     - compDefs:
         - {{ include "postgresql.componentDefNamePrefixByMajor" (dict "major" .major) }}
+        - {{ include "postgresql.directComponentDefNamePrefixByMajor" (dict "major" .major) }}
+        - {{ include "postgresql.poolerComponentDefNamePrefixByMajor" (dict "major" .major) }}
       releases:
       {{- range .minors }}
         - {{ .version }}

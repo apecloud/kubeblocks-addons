@@ -104,6 +104,60 @@ Define postgresql component definition name prefix by major version
 {{- end -}}
 
 {{/*
+Define the PostgreSQL component definition used by the productized PgBouncer
+topologies.  The legacy definition keeps the in-pod PgBouncer sidecar so
+existing clusters are not changed by an addon upgrade; new product flows use
+this direct-only definition and add PgBouncer as a separate component.
+*/}}
+{{- define "postgresql.directComponentDefNamePrefix" -}}
+postgresql-direct-
+{{- end -}}
+
+{{- define "postgresql.directComponentDefNamePrefixByMajor" -}}
+{{- printf "postgresql-direct-%s-" .major -}}
+{{- end -}}
+
+{{- define "postgresql.directComponentDefByMajor" -}}
+{{- printf "postgresql-direct-%s-%s" .major .root.Chart.Version -}}
+{{- end -}}
+
+{{/*
+Define the PostgreSQL backend used only by the standalone PgBouncer topology.
+It is separate from the direct-only definition because it owns the
+least-privilege PgBouncer authentication account and function.
+*/}}
+{{- define "postgresql.poolerComponentDefNamePrefix" -}}
+postgresql-pooler-
+{{- end -}}
+
+{{- define "postgresql.poolerComponentDefNamePrefixByMajor" -}}
+{{- printf "postgresql-pooler-%s-" .major -}}
+{{- end -}}
+
+{{- define "postgresql.poolerComponentDefByMajor" -}}
+{{- printf "postgresql-pooler-%s-%s" .major .root.Chart.Version -}}
+{{- end -}}
+
+{{/*
+Define the standalone PgBouncer component names.
+*/}}
+{{- define "pgbouncer.componentDefName" -}}
+{{ include "pgbouncer.componentDefNamePrefix" . }}{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "pgbouncer.componentDefNamePrefix" -}}
+pgbouncer-postgresql-
+{{- end -}}
+
+{{- define "pgbouncer.componentVersionName" -}}
+postgresql-pgbouncer
+{{- end -}}
+
+{{- define "pgbouncer.parametersDefinition" -}}
+pgbouncer-pd-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Get PostgreSQL image address by major and minor version
 Parameters: major (string), minor (string), root context
 Usage: {{ include "postgresql.imageByVersion" (dict "major" "14" "minor" "14.8.0" "root" .) }}
@@ -137,6 +191,13 @@ Usage: {{ include "postgresql.imagePullPolicy" . }}
 */}}
 {{- define "postgresql.imagePullPolicy" -}}
 {{- default "IfNotPresent" .Values.image.pullPolicy -}}
+{{- end -}}
+
+{{/*
+Get standalone PgBouncer image pull policy.
+*/}}
+{{- define "pgbouncer.imagePullPolicy" -}}
+{{- default "IfNotPresent" .Values.pgbouncer.image.pullPolicy -}}
 {{- end -}}
 
 {{/*
@@ -177,6 +238,14 @@ Define component config constraint name by major version
 {{- $major := .major -}}
 {{- $root := .root -}}
 postgresql{{ $major }}-pd-{{ $root.Chart.Version }}
+{{- end -}}
+
+{{- define "postgresql.directParametersDefinition" -}}
+{{- printf "postgresql%s-direct-pd-%s" .major .root.Chart.Version -}}
+{{- end -}}
+
+{{- define "postgresql.poolerParametersDefinition" -}}
+{{- printf "postgresql%s-pooler-pd-%s" .major .root.Chart.Version -}}
 {{- end -}}
 
 {{/*
@@ -242,6 +311,10 @@ Define pgbouncer configuration template name
 pgbouncer-configuration-{{ .Chart.Version }}
 {{- end -}}
 
+{{- define "pgbouncer.componentConfigurationTemplate" -}}
+pgbouncer-component-configuration-{{ .Chart.Version }}
+{{- end -}}
+
 {{/*
 Define image
 */}}
@@ -250,7 +323,12 @@ Define image
 {{- end }}
 
 {{- define "postgresql.pgbouncerImage" -}}
-{{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
+{{- $repository := printf "%s/%s" (.Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io")) .Values.pgbouncer.image.repository -}}
+{{- if .Values.pgbouncer.image.digest -}}
+{{- printf "%s@%s" $repository .Values.pgbouncer.image.digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repository .Values.pgbouncer.image.tag -}}
+{{- end -}}
 {{- end }}
 
 {{- define "postgresql.metricsImage" -}}

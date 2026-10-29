@@ -15,10 +15,32 @@ load_common_library() {
 }
 
 build_pgbouncer_conf() {
-  if is_empty "$POSTGRESQL_USERNAME" || is_empty "$POSTGRESQL_PASSWORD" || is_empty "$CURRENT_POD_IP"; then
-    echo "POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD or CURRENT_POD_IP is not set. Exiting..."
-    exit 1
+  local backend_host="${POSTGRESQL_HOST:-${CURRENT_POD_IP:-}}"
+  local backend_port="${POSTGRESQL_PORT:-5432}"
+
+  if is_empty "$POSTGRESQL_USERNAME" || is_empty "$POSTGRESQL_PASSWORD" || is_empty "$backend_host"; then
+    echo "POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD or PostgreSQL backend host is not set. Exiting..."
+    return 1
   fi
+
+  case "$POSTGRESQL_USERNAME$POSTGRESQL_PASSWORD" in
+    *$'\r'*|*$'\n'*)
+      echo "PostgreSQL credentials contain an unsupported line break. Exiting..."
+      return 1
+      ;;
+  esac
+  case "$backend_host" in
+    *[!A-Za-z0-9.-]*)
+      echo "PostgreSQL backend host contains unsupported characters. Exiting..."
+      return 1
+      ;;
+  esac
+  case "$backend_port" in
+    ''|*[!0-9]*)
+      echo "PostgreSQL backend port is invalid. Exiting..."
+      return 1
+      ;;
+  esac
 
   local escaped_username="${POSTGRESQL_USERNAME//\"/\"\"}"
   local escaped_password="${POSTGRESQL_PASSWORD//\"/\"\"}"
@@ -28,8 +50,8 @@ build_pgbouncer_conf() {
   printf '"%s" "%s"\n' "$escaped_username" "$escaped_password" > "$pgbouncer_user_list_file" || return $?
   # shellcheck disable=SC2129
   printf '\n[databases]\n' >> "$pgbouncer_conf_file" || return $?
-  printf 'postgres=host=%s port=5432 dbname=postgres\n' "$CURRENT_POD_IP" >> "$pgbouncer_conf_file" || return $?
-  printf '*=host=%s port=5432\n' "$CURRENT_POD_IP" >> "$pgbouncer_conf_file" || return $?
+  printf 'postgres=host=%s port=%s dbname=postgres\n' "$backend_host" "$backend_port" >> "$pgbouncer_conf_file" || return $?
+  printf '*=host=%s port=%s\n' "$backend_host" "$backend_port" >> "$pgbouncer_conf_file" || return $?
   chmod 644 "$pgbouncer_conf_file" || return $?
   chmod 600 "$pgbouncer_user_list_file" || return $?
 
@@ -81,7 +103,7 @@ build_pgbouncer_conf() {
       echo "pgbouncer user and group are ready"
   else
       echo "Failed to create pgbouncer user or group. Exiting..."
-      exit 1
+      return 1
   fi
 
   chown -R pgbouncer:pgbouncer "$pgbouncer_conf_dir" "$pgbouncer_log_dir" "$pgbouncer_tmp_dir"
