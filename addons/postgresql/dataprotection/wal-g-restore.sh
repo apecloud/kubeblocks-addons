@@ -10,11 +10,22 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 function getWalGSentinelInfo() {
   local sentinelFile=${1}
-  local out=$(datasafed list ${sentinelFile})
+  local out
+  local value
+  if ! out=$(datasafed list "${sentinelFile}"); then
+     echo "ERROR: failed to list WAL-G sentinel ${sentinelFile}" >&2
+     return 1
+  fi
   if [ "${out}" == "${sentinelFile}" ]; then
-     datasafed pull "${sentinelFile}" ${sentinelFile}
-     echo "$(cat ${sentinelFile})"
-     return
+     if ! datasafed pull "${sentinelFile}" "${sentinelFile}"; then
+        echo "ERROR: failed to pull WAL-G sentinel ${sentinelFile}" >&2
+        return 1
+     fi
+     if ! value=$(cat "${sentinelFile}"); then
+        echo "ERROR: failed to read WAL-G sentinel ${sentinelFile}" >&2
+        return 1
+     fi
+     printf '%s\n' "${value}"
   fi
 }
 
@@ -45,7 +56,15 @@ function config_wal_g_for_fetch_wal_log() {
 
 # 1. get restore info
 backupRepoPath=$(getWalGSentinelInfo "wal-g-backup-repo.path")
+if [[ -z "${backupRepoPath}" ]]; then
+  echo "ERROR: missing WAL-G backup repository sentinel" >&2
+  exit 1
+fi
 backupName=$(getWalGSentinelInfo "wal-g-backup-name")
+if [[ -z "${backupName}" ]]; then
+  echo "ERROR: missing WAL-G backup name sentinel" >&2
+  exit 1
+fi
 
 # 2. fetch base backup
 export DATASAFED_BACKEND_BASE_PATH="${backupRepoPath}"

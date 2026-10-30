@@ -321,13 +321,13 @@ EOF
     The output should eq "21"
   End
 
-  It "publishes PG 18.4 in the CmpD, PD, and ComponentVersion"
-    When call render_count '^[[:space:]]*serviceVersion: 18.4.0$'
+  It "publishes PG 18.6 in the CmpD, PD, and ComponentVersion"
+    When call render_count '^[[:space:]]*serviceVersion: 18.6.0$'
     The status should eq 0
     The output should eq "7"
   End
 
-  It "publishes the PG 18.4 image for runtime and lifecycle actions"
+  It "preserves the PG 18.4 image for runtime and lifecycle actions"
     When call render_count 'docker.io/apecloud/spilo:18.4'
     The status should eq 0
     The output should eq "3"

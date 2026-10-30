@@ -23,7 +23,8 @@ Describe "WAL-G backup connection contract"
     export PATH CALL_LOG DP_DATASAFED_BIN_PATH DP_BACKUP_BASE_PATH \
       DP_BACKUP_NAME DP_PARENT_BACKUP_NAME DP_BACKUP_INFO_FILE \
       DP_DB_PASSWORD DP_DB_USER DP_DB_HOST DP_DB_PORT VOLUME_DATA_DIR DATA_DIR
-    unset FAIL_SWITCH_WAL 2>/dev/null || true
+    unset DATASAFED_LIST_EXIT FAIL_BACKUP_PUSH FAIL_REPO_SENTINEL_PUSH \
+      FAIL_SWITCH_WAL 2>/dev/null || true
     write_stubs
   }
 
@@ -57,13 +58,26 @@ EOF
 printf 'wal-g PGHOST=%s PGUSER=%s PGPORT=%s args=%s\n' \
   "${PGHOST}" "${PGUSER}" "${PGPORT}" "$*" >> "${CALL_LOG}"
 printf '%s\n' 'Wrote backup with name base_000000010000000000000001'
+if [ "${FAIL_BACKUP_PUSH:-0}" -eq 1 ]; then
+  exit 42
+fi
 EOF
     cat > "${bindir}/datasafed" <<'EOF'
 #!/bin/sh
 printf 'datasafed %s\n' "$*" >> "${CALL_LOG}"
 case "$1" in
-  list) printf '%s\n' "$2" ;;
-  push) cat > /dev/null ;;
+  list)
+    if [ "${DATASAFED_LIST_EXIT:-0}" -ne 0 ]; then
+      exit "${DATASAFED_LIST_EXIT}"
+    fi
+    printf '%s\n' "$2"
+    ;;
+  push)
+    if [ "${FAIL_REPO_SENTINEL_PUSH:-0}" -eq 1 ] && [ "$3" = "wal-g-backup-repo.path" ]; then
+      exit 43
+    fi
+    cat > /dev/null
+    ;;
   pull)
     case "$2" in
       wal-g-backup-name) printf '%s\n' 'base_parent' > "$3" ;;
@@ -98,6 +112,30 @@ EOF
     The result of function call_log should include "psql -h postgres.example.test -U postgres -p 6432 -d postgres"
     The result of function call_log should include "wal-g PGHOST=postgres.example.test PGUSER=postgres PGPORT=6432"
     The result of function call_log should not include "CLUSTER_COMPONENT_NAME"
+  End
+
+  It "fails an incremental backup before publication when the parent sentinel lookup fails"
+    export DATASAFED_LIST_EXIT=41
+    When call run_backup "wal-g-incremental-backup.sh"
+    The status should be failure
+    The path "${DP_BACKUP_INFO_FILE}.exit" should be file
+    The result of function call_log should not include "wal-g PGHOST="
+  End
+
+  It "fails an incremental backup before backup-push when repository sentinel publication fails"
+    export FAIL_REPO_SENTINEL_PUSH=1
+    When call run_backup "wal-g-incremental-backup.sh"
+    The status should be failure
+    The path "${DP_BACKUP_INFO_FILE}.exit" should be file
+    The result of function call_log should not include "wal-g PGHOST="
+  End
+
+  It "fails an incremental backup when backup-push returns nonzero after writing a backup name"
+    export FAIL_BACKUP_PUSH=1
+    When call run_backup "wal-g-incremental-backup.sh"
+    The status should be failure
+    The path "${DP_BACKUP_INFO_FILE}.exit" should be file
+    The result of function call_log should not include "pg_switch_wal"
   End
 
   It "executes incremental backup and WAL switch against the ActionSet endpoint"
