@@ -23,6 +23,39 @@ Describe "PostgreSQL KubeBlocks API contract"
     render_chart | grep -c "$pattern" || true
   }
 
+  etcd_service_ref_contract_count() {
+    render_chart | ruby -ryaml -e '
+      versions = YAML.load_file("../../etcd/values.yaml")
+        .fetch("etcdVersions")
+        .map { |entry| entry.fetch("version").to_s }
+      definitions = YAML.load_stream(ARGF.read).compact.select do |document|
+        document["kind"] == "ComponentDefinition" && document.dig("spec", "serviceKind").to_s.downcase == "postgresql"
+      end
+
+      count = definitions.count do |definition|
+        declarations = definition.dig("spec", "serviceRefDeclarations") || []
+        declarations = declarations.select { |declaration| declaration["name"] == "etcd" }
+        next false unless declarations.length == 1
+
+        specs = declarations.first["serviceRefDeclarationSpecs"] || []
+        next false unless specs.length == 1 && specs.first["serviceKind"] == "etcd"
+
+        pattern = specs.first["serviceVersion"].to_s
+        regex = begin
+          Regexp.new(pattern)
+        rescue RegexpError
+          nil
+        end
+        matches = lambda { |version| regex ? regex.match?(version) : version == pattern }
+
+        versions.all? { |version| matches.call(version) } &&
+          ["2.3.8", "4.0.0"].none? { |version| matches.call(version) }
+      end
+      abort "invalid etcd service reference" if definitions.empty? || count != definitions.length
+      puts "all PostgreSQL backends validated"
+    '
+  }
+
   component_definitions_with_pod_list_rbac() {
     render_chart | ruby -ryaml -e '
       definitions = YAML.load_stream(ARGF.read).compact.select do |document|
@@ -172,13 +205,19 @@ EOF
   It "advances the chart identity when immutable ComponentDefinitions change"
     When call chart_version
     The status should eq 0
-    The output should eq "1.2.0-alpha.4"
+    The output should eq "1.2.0-alpha.5"
   End
 
   It "publishes every ComponentDefinition under the advanced immutable identity"
-    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.4$'
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.5$'
     The status should eq 0
     The output should eq "7"
+  End
+
+  It "does not overwrite existing alpha.3 or alpha.4 ComponentDefinitions"
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.[34]$'
+    The status should eq 0
+    The output should eq "0"
   End
 
   It "does not update the published alpha.2 ComponentDefinitions in place"
@@ -215,6 +254,12 @@ EOF
     When call component_definitions_with_exec_role_probe
     The status should eq 0
     The output should eq "7"
+  End
+
+  It "accepts supported ETCD v3 ServiceDescriptors and rejects other majors"
+    When call etcd_service_ref_contract_count
+    The status should eq 0
+    The output should eq "all PostgreSQL backends validated"
   End
 
   It "renders exactly one CmpD reconfigure action per PostgreSQL major"

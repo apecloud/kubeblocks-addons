@@ -27,7 +27,13 @@ init_postgres_log() {
 
 copy_necessary_binaries() {
   mkdir -p "$postgres_walg_dir"
-  cp /spilo-init/bin/wal-g ${postgres_walg_dir}/wal-g
+  cp /spilo-init/bin/wal-g "${postgres_walg_dir}/wal-g"
+}
+
+main() {
+  build_real_postgres_conf
+  init_postgres_log
+  copy_necessary_binaries
 }
 
 # This is magic for shellspec ut framework.
@@ -37,7 +43,5 @@ copy_necessary_binaries() {
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
 
-# main
-build_real_postgres_conf
-init_postgres_log
-copy_necessary_binaries
+set -e
+main
