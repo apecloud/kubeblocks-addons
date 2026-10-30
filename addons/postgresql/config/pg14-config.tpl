@@ -37,6 +37,9 @@
 {{- end }}
 
 listen_addresses = '*'
+{{- if semverCompare ">=14.24.0" (default "14.0.0" $.component.serviceVersion) }}
+output_plugin_libraries = 'pgoutput,test_decoding,wal2json,decoderbufs,pglogical,pglogical_output'
+{{- end }}
 port = '5432'
 archive_command = '/bin/true'
 archive_mode = 'on'

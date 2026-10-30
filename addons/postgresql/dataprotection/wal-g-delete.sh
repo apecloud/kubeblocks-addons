@@ -1,14 +1,18 @@
 #!/bin/bash
+set -e
+set -o pipefail
+
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 function getWalGSentinelInfo() {
   local sentinelFile=${1}
-  local out=$(datasafed list ${sentinelFile})
+  local out
+  out=$(datasafed list "${sentinelFile}") || return $?
   if [ "${out}" == "${sentinelFile}" ]; then
-     datasafed pull "${sentinelFile}" ${sentinelFile}
-     echo "$(cat ${sentinelFile})"
+     datasafed pull "${sentinelFile}" "${sentinelFile}" || return $?
+     cat "${sentinelFile}" || return $?
      return
   fi
 }
@@ -47,5 +51,3 @@ else
   echo "INFO: no other full backup, delete all wal archives."
   datasafed rm -r /wal_005
 fi
-
-
