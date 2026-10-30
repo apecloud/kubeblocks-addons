@@ -1,0 +1,15 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-volumeexpansion
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: yashandb-cluster
+  type: VolumeExpansion
+  # 2026-06-02 Reason: add storage expansion example using the existing data volume name; Purpose: match MySQL basic Ops coverage without changing addon runtime behavior.
+  volumeExpansion:
+  - componentName: yashan-comp
+    volumeClaimTemplates:
+    - name: data
+      storage: 30Gi

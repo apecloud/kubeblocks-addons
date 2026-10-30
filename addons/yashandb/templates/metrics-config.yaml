@@ -1,0 +1,25 @@
+{{- if .Values.metrics.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yashandb.metricsConfigName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+data:
+  # 2026-06-24 Reason: the exporter sidecar needs a source target file but credentials must stay Secret-backed; Purpose: provide only non-secret target metadata for the writable runtime config copy.
+  # Time: 2026-06-24.
+  yashandb-targets.yml: |-
+    targets:
+      - type: {{ .Values.metrics.target.type | quote }}
+        name: {{ .Values.metrics.target.name | quote }}
+        pkgVersion: {{ .Values.metrics.target.pkgVersion | quote }}
+        nodes:
+          - id: {{ .Values.metrics.target.nodeId | quote }}
+            type: {{ .Values.metrics.target.nodeType | quote }}
+            group: {{ .Values.metrics.target.nodeGroup | quote }}
+            name: {{ .Values.metrics.target.nodeName | quote }}
+            connection:
+              ip: {{ .Values.metrics.target.host | quote }}
+              port: {{ include "yashandb.metricsTargetPort" . }}
+{{- end }}
