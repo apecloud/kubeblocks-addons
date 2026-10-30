@@ -7,14 +7,22 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 export KB_BACKUP_WORKDIR=${VOLUME_DATA_DIR}/kb-backup
 
 PSQL="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -d postgres"
-global_last_switch_wal_time=$(date +%s)
-global_last_purge_time=$(date +%s)
+if ! global_last_switch_wal_time=$(date +%s) || [[ ! ${global_last_switch_wal_time} =~ ^[0-9]+$ ]]; then
+  DP_error_log "failed to determine initial WAL switch time"
+  exit 1
+fi
+if ! global_last_purge_time=$(date +%s) || [[ ! ${global_last_purge_time} =~ ^[0-9]+$ ]]; then
+  DP_error_log "failed to determine initial WAL retention time"
+  exit 1
+fi
 global_switch_wal_interval=300
 global_stop_time=
 global_old_size=0
+global_missing_logs_reconciled=false
+global_purge_metadata_pending=false
 
 if [[ ${SWITCH_WAL_INTERVAL_SECONDS} =~ ^[0-9]+$ ]];then
-  global_switch_wal_interval=${SWITCH_WAL_INTERVAL_SECONDS}
+  global_switch_wal_interval=$((10#${SWITCH_WAL_INTERVAL_SECONDS}))
 fi
 
 global_backup_in_secondary=
@@ -26,47 +34,152 @@ fi
 
 # clean up expired logfiles, interval is 600s
 function purge_expired_files() {
-    local currentUnix=$(date +%s)
-    info=$(DP_purge_expired_files ${currentUnix} ${global_last_purge_time} / 600)
-    if [ ! -z "${info}" ]; then
-       global_last_purge_time=${currentUnix}
-       DP_log "cleanup expired wal-log files: ${info}"
-       local TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-       DP_save_backup_status_info "${TOTAL_SIZE}"
+    local currentUnix
+    if ! currentUnix=$(date +%s) || [[ ! ${currentUnix} =~ ^[0-9]+$ ]]; then
+      DP_error_log "failed to determine current time for WAL retention"
+      return 1
     fi
+    if [[ -n ${DP_TTL_SECONDS} && ! ${DP_TTL_SECONDS} =~ ^[0-9]+$ ]]; then
+      DP_error_log "invalid WAL retention TTL: ${DP_TTL_SECONDS}"
+      return 1
+    fi
+    if [[ -z ${DP_TTL_SECONDS} || $((currentUnix - global_last_purge_time)) -lt 600 ]]; then
+      return
+    fi
+    local info
+    local purge_failed=false
+    if ! info=$(DP_purge_expired_files ${currentUnix} ${global_last_purge_time} / 600); then
+       purge_failed=true
+    fi
+    if [ ! -z "${info}" ]; then
+       # A successful deletion still needs publication if a later deletion or
+       # the metadata write fails. The next scan may have no files left.
+       global_purge_metadata_pending=true
+       DP_log "cleanup expired wal-log files: ${info}"
+    fi
+    if [[ ${purge_failed} == "true" ]]; then
+       return 1
+    fi
+    if [[ ${global_purge_metadata_pending} == "true" ]]; then
+       local TOTAL_SIZE
+       if ! TOTAL_SIZE=$(DP_get_backup_total_size); then
+         return 1
+       fi
+       if ! DP_save_backup_status_info "${TOTAL_SIZE}"; then
+         return 1
+       fi
+       global_purge_metadata_pending=false
+    fi
+    global_last_purge_time=${currentUnix}
 }
 
 # switch wal log
 function switch_wal_log() {
-    local curr_time=$(date +%s)
+    local curr_time
+    if ! curr_time=$(date +%s) || [[ ! ${curr_time} =~ ^[0-9]+$ ]]; then
+      DP_error_log "failed to determine current time for WAL switch"
+      return 1
+    fi
     local diff_time=$((${curr_time}-${global_last_switch_wal_time}))
     if [[ ${diff_time} -lt ${global_switch_wal_interval} ]]; then
        return
     fi
-    LAST_TRANS=$(pg_waldump $(${PSQL} -Atc "select pg_walfile_name(pg_current_wal_lsn())") --rmgr=Transaction 2>/dev/null |tail -n 1)
-    if [ "${LAST_TRANS}" != "" ] && [ "$(find ${LOG_DIR}/archive_status/ -name '*.ready')" = "" ]; then
+    local current_wal
+    local current_wal_status
+    current_wal=$(${PSQL} -Atc "select pg_walfile_name(pg_current_wal_lsn())")
+    current_wal_status=$?
+    if [[ ${current_wal_status} -ne 0 || -z ${current_wal} ]]; then
+      DP_error_log "failed to resolve current WAL for switch" >&2
+      return 1
+    fi
+    local wal_dump_output
+    local wal_dump_status
+    local LAST_TRANS
+    wal_dump_output=$(pg_waldump "${current_wal}" --rmgr=Transaction 2>/dev/null)
+    wal_dump_status=$?
+    LAST_TRANS=$(printf '%s\n' "${wal_dump_output}" | tail -n 1)
+    if [[ ${wal_dump_status} -ne 0 && -z ${LAST_TRANS} ]]; then
+      DP_error_log "failed to inspect current WAL for switch: ${current_wal}" >&2
+      return 1
+    fi
+    local ready_wal_files
+    if ! ready_wal_files=$(find ${LOG_DIR}/archive_status/ -name '*.ready'); then
+      DP_error_log "failed to inspect WAL archive status before switch"
+      return 1
+    fi
+    if [ "${LAST_TRANS}" != "" ] && [ "${ready_wal_files}" = "" ]; then
       DP_log "start to switch wal file"
-      ${PSQL} -c "select pg_switch_wal()" || DP_error_log "pg_switch_wal failed, will retry on the next round"
+      if ! ${PSQL} -c "select pg_switch_wal()"; then
+        DP_error_log "pg_switch_wal failed, will retry on the next round"
+        return 1
+      fi
+      local switch_confirmed=false
       for i in $(seq 1 60); do
-        if [ "$(find ${LOG_DIR}/archive_status/ -name '*.ready')" != "" ]; then
+        if ! ready_wal_files=$(find ${LOG_DIR}/archive_status/ -name '*.ready'); then
+          DP_error_log "failed to inspect WAL archive status after switch"
+          return 1
+        fi
+        if [ "${ready_wal_files}" != "" ]; then
           DP_log "switch wal file successfully"
+          switch_confirmed=true
           break;
         fi
         sleep 1
       done
+      if [[ ${switch_confirmed} == "false" ]]; then
+        DP_error_log "timed out waiting for switched WAL, will retry on the next round"
+        return 1
+      fi
     fi
     global_last_switch_wal_time=${curr_time}
 }
 
 # upload wal log
 function upload_wal_log() {
-    local TODAY_INCR_LOG=$(date +%Y%m%d);
+    local TODAY_INCR_LOG
+    if ! TODAY_INCR_LOG=$(date +%Y%m%d) || [[ ! ${TODAY_INCR_LOG} =~ ^[0-9]{8}$ ]]; then
+      DP_error_log "failed to determine WAL upload partition"
+      return 1
+    fi
+    local normalized_stop_time
+    local wal_dump_output
+    local wal_dump_status
+    local archive_status_files
     cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
-    for i in $(ls -tr ./archive_status/ | grep .ready); do
+    if ! archive_status_files=$(ls -tr ./archive_status/); then
+      DP_error_log "failed to list WAL archive status"
+      return 1
+    fi
+    for i in ${archive_status_files}; do
+      case ${i} in
+        *.ready) ;;
+        *) continue ;;
+      esac
       wal_name=${i%.*}
-      LOG_STOP_TIME=$(pg_waldump ${wal_name} --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+      if [ ! -f ${wal_name} ]; then
+        DP_error_log "local WAL file ${wal_name} is missing, keeping ${i} for retry"
+        return 1
+      fi
+      LOG_STOP_TIME=
+      # Timeline history is a text file required after promotion, not a WAL
+      # segment. Upload it without passing it to pg_waldump.
+      if [[ ${wal_name} != *.history ]]; then
+        wal_dump_output=$(pg_waldump "${wal_name}" --rmgr=Transaction 2>/dev/null)
+        wal_dump_status=$?
+        LOG_STOP_TIME=$(printf '%s\n' "${wal_dump_output}" | grep 'desc: COMMIT' | tail -n 1 | awk -F ' COMMIT ' '{print $2}' | awk -F ';' '{print $1}')
+        # .ready marks a closed segment: an earlier COMMIT does not make a
+        # truncated or corrupt tail safe to advertise as archived.
+        if (( wal_dump_status != 0 )); then
+          DP_error_log "failed to inspect ${wal_name} for stop time, keeping ${i} for retry"
+          return 1
+        fi
+      fi
+      normalized_stop_time=
       if [[ ! -z $LOG_STOP_TIME ]];then
-         global_stop_time=$(date -d "${LOG_STOP_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
+        if ! normalized_stop_time=$(date -d "${LOG_STOP_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ'); then
+          DP_error_log "failed to normalize stop time for ${wal_name}, keeping ${i} for retry"
+          return 1
+        fi
       fi
       if [ -f ${wal_name} ]; then
         DP_log "upload ${wal_name}"
@@ -74,9 +187,16 @@ function upload_wal_log() {
         # failed upload as .done lets PostgreSQL recycle a WAL segment that
         # never reached the repository, leaving a hole in the PITR chain.
         if datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst"; then
-          mv -f ./archive_status/${i} ./archive_status/${wal_name}.done;
+          if ! mv -f ./archive_status/${i} ./archive_status/${wal_name}.done; then
+            DP_error_log "failed to mark ${wal_name} done, keeping ${i} for retry"
+            return 1
+          fi
+          if [[ ! -z $normalized_stop_time ]];then
+            global_stop_time=${normalized_stop_time}
+          fi
         else
           DP_error_log "failed to upload ${wal_name}, keeping ${i} for retry"
+          return 1
         fi
       fi
     done
@@ -85,10 +205,23 @@ function upload_wal_log() {
 # get start time of the wal log
 function get_wal_log_start_time() {
     local file="${1:?missing wal log name to analyze}"
-    local START_TIME=$(pg_waldump $file --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |head -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    local wal_dump_output
+    local wal_dump_status
+    local START_TIME
+    local normalized_start_time
+    wal_dump_output=$(pg_waldump "${file}" --rmgr=Transaction 2>/dev/null)
+    wal_dump_status=$?
+    START_TIME=$(printf '%s\n' "${wal_dump_output}" | grep 'desc: COMMIT' |head -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    if [[ ${wal_dump_status} -ne 0 && ( ${file} != *.partial || -z ${START_TIME} ) ]]; then
+       DP_error_log "failed to analyze oldest WAL: ${file}" >&2
+       return 1
+    fi
     if [[ ! -z ${START_TIME} ]];then
-       START_TIME=$(date -d "${START_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
-       echo $START_TIME
+       if ! normalized_start_time=$(date -d "${START_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ'); then
+          DP_error_log "failed to normalize oldest WAL timestamp: ${file}" >&2
+          return 1
+       fi
+       echo "${normalized_start_time}"
    fi
 }
 
@@ -102,23 +235,38 @@ function pull_wal_log() {
 
 # get the start time for backup.status.timeRange
 function get_start_time_for_range() {
-   local OLDEST_FILE=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) | .[] | .path' |head -n 1)
+   local WAL_FILES
+   if ! WAL_FILES=$(DP_list_backup_files_by_mtime); then
+     return 1
+   fi
+   local OLDEST_FILE="${WAL_FILES%%$'\n'*}"
    if [ ! -z ${OLDEST_FILE} ]; then
-     START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log)
+     local START_TIME
+     if ! START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log); then
+       return 1
+     fi
      echo ${START_TIME}
    fi
 }
 
 # save backup status info to sync file
 function save_backup_status() {
-    local TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+    local TOTAL_SIZE
+    if ! TOTAL_SIZE=$(DP_get_backup_total_size); then
+       return 1
+    fi
     # if no size changes, return
-    if [[ -z ${TOTAL_SIZE} || ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == ${global_old_size} ]];then
+    if [[ ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == ${global_old_size} ]];then
        return
     fi
+    local START_TIME
+    if ! START_TIME=$(get_start_time_for_range); then
+       return 1
+    fi
+    if ! DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${global_stop_time}"; then
+       return 1
+    fi
     global_old_size=${TOTAL_SIZE}
-    local START_TIME=$(get_start_time_for_range)
-    DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${global_stop_time}"
 }
 
 function check_pg_process() {
@@ -135,28 +283,45 @@ function check_pg_process() {
     if [[ ${is_ok} == "false" ]];then
       DP_error_log "target backup pod/${DP_TARGET_POD_NAME} is not OK, target role: ${TARGET_POD_ROLE}, pg_is_in_recovery: ${is_secondary}!"
       DP_log "Before switching to a new instance, back up any remaining WAL logs."
-      upload_wal_log
-      # save backup status which will be updated to `backup` CR by the sidecar
-      save_backup_status
+      if [[ ${global_missing_logs_reconciled} == "true" ]] && upload_wal_log; then
+        # Publish only after all remaining local WALs reached the repository.
+        save_backup_status
+      fi
       exit 1
     fi
 }
 
 function uploadMissingLogs() {
     DP_log "start to upload the wal log which maybe misses"
-    local TODAY_INCR_LOG=$(date +%Y%m%d)
-    cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
-    uploadedLogs=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) | .[] | .path')
-    if [[ -z ${uploadedLogs} ]]; then
-      return
+    local TODAY_INCR_LOG
+    if ! TODAY_INCR_LOG=$(date +%Y%m%d) || [[ ! ${TODAY_INCR_LOG} =~ ^[0-9]{8}$ ]]; then
+      DP_error_log "failed to determine missing-WAL upload partition"
+      return 1
     fi
-    OLDEST_FILE=$(echo $uploadedLogs | awk '{print $1}')
-    OLDEST_FILE=$(basename $OLDEST_FILE)
-    DP_log "oldest uploaded wal: ${OLDEST_FILE}"
-    for i in $(find ./archive_status -type f | sort | grep .done); do
+    cd ${LOG_DIR} || { DP_error_log "failed to cd to ${LOG_DIR}"; return 1; }
+    local uploadedLogs
+    if ! uploadedLogs=$(DP_list_backup_files_by_mtime); then
+      return 1
+    fi
+    local OLDEST_FILE=
+    if [[ -n ${uploadedLogs} ]]; then
+      OLDEST_FILE=$(echo $uploadedLogs | awk '{print $1}')
+      OLDEST_FILE=$(basename $OLDEST_FILE)
+      DP_log "oldest uploaded wal: ${OLDEST_FILE}"
+    fi
+    local wal_status_files
+    if ! wal_status_files=$(find ./archive_status -type f -name '*.done'); then
+      DP_error_log "failed to list local WAL archive status"
+      return 1
+    fi
+    if ! wal_status_files=$(printf '%s\n' "${wal_status_files}" | sort); then
+      DP_error_log "failed to sort local WAL archive status"
+      return 1
+    fi
+    for i in ${wal_status_files}; do
       wal_done_name=$(basename ${i})
       wal_name=${wal_done_name%.*}
-      if [[ "$wal_name" < "$OLDEST_FILE" ]]; then
+      if [[ ${wal_name} != *.history && -n ${OLDEST_FILE} && "$wal_name" < "$OLDEST_FILE" ]]; then
         continue
       fi
       if echo "$uploadedLogs" | grep -qE "${wal_name}\.(zst|partial\.zst)";then
@@ -164,7 +329,13 @@ function uploadMissingLogs() {
       fi
       if [ -f ${wal_name} ]; then
         DP_log "upload ${wal_name}"
-        datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst" || DP_error_log "failed to upload ${wal_name}"
+        if ! datasafed push -z zstd ${wal_name} "/${TODAY_INCR_LOG}/${wal_name}.zst"; then
+          DP_error_log "failed to upload ${wal_name}, will retry reconciliation"
+          return 1
+        fi
+      else
+        DP_error_log "cannot reconcile ${wal_name}: local WAL file is missing"
+        return 1
       fi
     done
     save_backup_status
@@ -172,7 +343,11 @@ function uploadMissingLogs() {
 
 # trap term signal
 trap "echo 'Terminating...' && sync && exit 0" TERM
-uploadMissingLogs
+if uploadMissingLogs; then
+  global_missing_logs_reconciled=true
+else
+  DP_error_log "missing WAL reconciliation incomplete; will retry"
+fi
 
 DP_log "start to archive wal logs"
 while true; do
@@ -180,11 +355,25 @@ while true; do
   # check if pg process is ok
   check_pg_process
 
+  # Retry startup reconciliation until one complete repository read succeeds.
+  if [[ ${global_missing_logs_reconciled} == "false" ]]; then
+    if uploadMissingLogs; then
+      global_missing_logs_reconciled=true
+    else
+      DP_error_log "missing WAL reconciliation incomplete; will retry"
+      sleep ${LOG_ARCHIVE_SECONDS}
+      continue
+    fi
+  fi
+
   # switch wal log
   switch_wal_log
 
   # upload wal log
-  upload_wal_log
+  if ! upload_wal_log; then
+    sleep ${LOG_ARCHIVE_SECONDS}
+    continue
+  fi
 
   # save backup status which will be updated to `backup` CR by the sidecar
   save_backup_status
