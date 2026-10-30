@@ -4,6 +4,7 @@
 {{- end }}
 
 <clickhouse>
+  <prepare_system_log_tables_on_startup>true</prepare_system_log_tables_on_startup>
   <listen_host replace="replace">::</listen_host>
   <listen_host>0.0.0.0</listen_host>
   <listen_try replace="replace">1</listen_try>
