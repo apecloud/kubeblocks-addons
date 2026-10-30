@@ -1,0 +1,123 @@
+# shellcheck shell=sh
+
+Describe "DoltDB replication peer-list restart marker"
+  template_path="../config/server.yaml.tpl"
+
+  setup() {
+    TEST_DIR="$(mktemp -d)"
+    export TEST_DIR
+  }
+  BeforeEach "setup"
+
+  cleanup() {
+    rm -rf "$TEST_DIR"
+    unset TEST_DIR
+  }
+  AfterEach "cleanup"
+
+  render_template_with_standalone_context() {
+    go_file="${TEST_DIR}/render_template.go"
+    cat >"${go_file}" <<'EOF'
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"reflect"
+	"text/template"
+)
+
+func defaultValue(def any, value any) any {
+	if isEmpty(value) {
+		return def
+	}
+	return value
+}
+
+func isEmpty(value any) bool {
+	if value == nil {
+		return true
+	}
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
+		return v.Len() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
+	case reflect.Interface, reflect.Pointer:
+		return v.IsNil()
+	case reflect.Invalid:
+		return true
+	default:
+		return false
+	}
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: render_template <template-path>")
+		os.Exit(2)
+	}
+
+	data := map[string]any{
+		"DOLT_LOG_LEVEL":                         "info",
+		"DOLT_LOG_FORMAT":                        "text",
+		"DOLT_READ_ONLY":                         "false",
+		"DOLT_AUTOCOMMIT":                        "true",
+		"DOLT_TRANSACTION_COMMIT":                "false",
+		"DOLT_AUTO_GC_ENABLED":                   "true",
+		"DOLT_SQL_PORT":                          "3306",
+		"DOLT_MAX_CONNECTIONS":                   "1000",
+		"DOLT_BACK_LOG":                          "50",
+		"DOLT_MAX_CONNECTIONS_TIMEOUT_MILLIS":    "60000",
+		"DOLT_READ_TIMEOUT_MILLIS":               "28800000",
+		"DOLT_WRITE_TIMEOUT_MILLIS":              "28800000",
+		"DOLT_DATA_DIR":                          "/custom/dolt",
+		"TLS_ENABLED":                            "false",
+	}
+
+	tpl, err := template.New("server.yaml.tpl").
+		Option("missingkey=error").
+		Funcs(template.FuncMap{"default": defaultValue}).
+		ParseFiles(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	var out bytes.Buffer
+	if err := tpl.ExecuteTemplate(&out, "server.yaml.tpl", data); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	fmt.Print(out.String())
+}
+EOF
+    go run "${go_file}" "$template_path"
+  }
+
+  It "renders component peer variables into the config template"
+    When run grep -E "DOLT_POD_FQDN_LIST|DOLT_CLUSTER_REPLICAS" "$template_path"
+    The status should be success
+    The output should include "DOLT_POD_FQDN_LIST"
+    The output should include "DOLT_CLUSTER_REPLICAS"
+  End
+
+  It "renders in a standalone config context without replication vars"
+    When call render_template_with_standalone_context
+    The status should be success
+    The output should include "data_dir: /custom/dolt"
+    The output should include "cfg_dir: /custom/dolt/.doltcfg"
+    The output should include "privilege_file: /custom/dolt/.doltcfg/privileges.db"
+    The output should include "# DOLT_CLUSTER_MODE=false"
+    The output should include "# DOLT_CLUSTER_REPLICAS=1"
+    The output should include "# DOLT_POD_FQDN_LIST="
+  End
+End

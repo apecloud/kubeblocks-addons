@@ -1,0 +1,13 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: doltdb-volumeexpand
+  namespace: demo
+spec:
+  clusterName: doltdb-cluster
+  type: VolumeExpansion
+  volumeExpansion:
+    - componentName: doltdb
+      volumeClaimTemplates:
+        - name: data
+          storage: 30Gi
