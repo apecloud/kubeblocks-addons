@@ -12,6 +12,7 @@ Describe "dataprotection/backup-info-collector.sh"
     DP_DB_HOST="postgres.example.test"
     DP_DB_PORT="6432"
     export PATH CALL_LOG DP_DB_USER DP_DB_HOST DP_DB_PORT
+    unset PSQL_EXIT
     write_stubs
     . ../dataprotection/backup-info-collector.sh
   }
@@ -28,6 +29,7 @@ Describe "dataprotection/backup-info-collector.sh"
 #!/bin/sh
 printf 'psql %s\n' "$*" >> "${CALL_LOG}"
 printf '%s\n' '2026-08-15 15:00:00'
+exit "${PSQL_EXIT:-0}"
 EOF
     chmod +x "${bindir}/psql"
   }
@@ -40,6 +42,14 @@ EOF
     When call get_current_time
     The status should eq 0
     The output should eq "2026-08-15 15:00:00"
+    The result of function call_log should include "psql -U kbdataprotection -h postgres.example.test -p 6432 -d postgres"
+  End
+
+  It "propagates a time-query failure without publishing its output"
+    export PSQL_EXIT=17
+    When call get_current_time
+    The status should eq 17
+    The output should eq ""
     The result of function call_log should include "psql -U kbdataprotection -h postgres.example.test -p 6432 -d postgres"
   End
 End
