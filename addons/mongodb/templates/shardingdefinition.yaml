@@ -16,8 +16,9 @@ spec:
   updateStrategy: Parallel
   lifecycleActions:
     shardRemove:
-      # Each attempt is idempotent. Use the controller's default action timeout
-      # and rate limiter to retry removeShard without blocking reconciliation.
+      # Each attempt is idempotent; the controller tracks non-blocking completion.
+      nonBlocking: true
+      timeoutSeconds: 3600
       exec:
         container: mongodb
         command:
@@ -28,4 +29,3 @@ spec:
         matchingKey: primary
       retryPolicy:
         maxRetries: 10
-
