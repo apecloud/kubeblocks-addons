@@ -75,6 +75,23 @@ function writeSentinelInBaseBackupPath() {
   export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
 }
 
+function publish_backup_info() {
+  local backup_name="$1"
+  local total_size="$2"
+  local start_time="$3"
+  local stop_time="$4"
+  local backup_info_tmp="${DP_BACKUP_INFO_FILE}.tmp.$$"
+  if ! printf '{"totalSize":"%s","extras":[{"wal-g-backup-name":"%s"}],"timeRange":{"start":"%s","end":"%s"}}\n' \
+      "${total_size}" "${backup_name}" "${start_time}" "${stop_time}" > "${backup_info_tmp}"; then
+    rm -f "${backup_info_tmp}"
+    return 1
+  fi
+  if ! mv -f "${backup_info_tmp}" "${DP_BACKUP_INFO_FILE}"; then
+    rm -f "${backup_info_tmp}"
+    return 1
+  fi
+}
+
 trap handle_exit EXIT
 set -e
 
@@ -89,7 +106,7 @@ fi
 
 # 1. do full backup
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
-PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt
+PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} PGDATABASE=postgres wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt
 
 echo "switch wal log"
 PSQL="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -p ${DP_DB_PORT} -d postgres"
@@ -115,4 +132,4 @@ START_TIME=$(echo $result_json | jq -r ".StartTime")
 TOTAL_SIZE=$(echo $result_json | jq -r ".CompressedSize")
 
 # 5. update backup status
-echo "{\"totalSize\":\"$TOTAL_SIZE\",\"extras\":[{\"wal-g-backup-name\":\"${backupName}\"}],\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"
+publish_backup_info "${backupName}" "${TOTAL_SIZE}" "${START_TIME}" "${STOP_TIME}"

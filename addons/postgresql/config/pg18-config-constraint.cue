@@ -2,6 +2,8 @@
 #PgBool: string & =~"(?i)^(t(r(u(e)?)?)?|f(a(l(s(e)?)?)?)?|y(e(s)?)?|n(o)?|on|of(f)?|0|1)$"
 
 #PGParameter: {
+	// Trusted logical decoding libraries; supported only by the corresponding new minor releases.
+	output_plugin_libraries?: string
 	// Allows tablespaces directly inside pg_tblspc, for testing, pg version: 15
 	allow_in_place_tablespaces?: #PgBool
 	// Allows modification of the structure of system tables as well as certain other risky actions on system tables. This is otherwise not allowed even for superusers. Ill-advised use of this setting can cause irretrievable data loss or seriously corrupt the database system.

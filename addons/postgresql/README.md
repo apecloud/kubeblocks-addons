@@ -24,14 +24,43 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 |---------------|-------------|
 | 12            | 12.14.0, 12.14.1, 12.15.0, 12.22.0 |
 | 13            | 13.23.0 |
-| 14            | 14.7.2, 14.8.0, 14.18.0, 14.23.0 |
-| 15            | 15.7.0, 15.13.0, 15.18.0 |
-| 16            | 16.4.0, 16.9.0, 16.14.0 |
-| 17            | 17.5.0, 17.10.0 |
-| 18            | 18.1.0, 18.4.0 |
+| 14            | 14.7.2, 14.8.0, 14.18.0, 14.23.0, 14.24.0 |
+| 15            | 15.7.0, 15.13.0, 15.18.0, 15.19.0 |
+| 16            | 16.4.0, 16.9.0, 16.14.0, 16.15.0 |
+| 17            | 17.5.0, 17.10.0, 17.11.0 |
+| 18            | 18.1.0, 18.4.0, 18.6.0 |
 
 PostgreSQL 13 reached upstream end of life on November 13, 2025. Version 13.23.0
 is its final patch and is provided for compatibility; plan an upgrade to a supported major.
+
+
+### Extensions in the latest minor versions
+
+Images for 14.24.0, 15.19.0, 16.15.0, 17.11.0 and 18.6.0 include pgvector
+0.8.7 and zhparser 2.4 (upstream commit
+`2e995c4df672563992b4d7a147b8fa2d0d4cda6c`) with SCWS 1.2.3 and its bundled
+dictionary. Existing image tags are unchanged.
+
+After updating the cluster image, connect to each application database as an
+administrator to install the extensions, or update an existing vector extension:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+ALTER EXTENSION vector UPDATE TO '0.8.7';
+CREATE EXTENSION zhparser;
+CREATE TEXT SEARCH CONFIGURATION chinese (PARSER = zhparser);
+ALTER TEXT SEARCH CONFIGURATION chinese ADD MAPPING FOR n,v,a,i,e,l WITH simple;
+SELECT to_tsvector('chinese', '数据库支持中文全文检索');
+```
+
+These PostgreSQL minor releases restrict logical decoding through
+`output_plugin_libraries`. For 14.24+, 15.19+, 16.15+, 17.11+ and 18.6+, the Addon
+sets `pgoutput,test_decoding,wal2json,decoderbufs,pglogical,pglogical_output`, covering
+the output plugins installed in these images. The setting is reloadable and can
+be customized through the parameter schema. The default is gated by the resolved
+Component version; it is not rendered for older minor versions. Do not manually
+set it on older versions that do not recognize it. Before resuming CDC after an
+upgrade, verify the target configuration permits the plugins used by existing slots.
 
 ## Prerequisites
 
@@ -81,7 +110,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,15.7.0,15.13.0,15.18.0,16.4.0,16.9.0,16.14.0,17.5.0,17.10.0,18.1.0,18.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,14.24.0,15.7.0,15.13.0,15.18.0,15.19.0,16.4.0,16.9.0,16.14.0,16.15.0,17.5.0,17.10.0,17.11.0,18.1.0,18.4.0,18.6.0]
       serviceVersion: "14.7.2"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
@@ -149,7 +178,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,15.7.0,15.13.0,15.18.0,16.4.0,16.9.0,16.14.0,17.5.0,17.10.0,18.1.0,18.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,14.24.0,15.7.0,15.13.0,15.18.0,15.19.0,16.4.0,16.9.0,16.14.0,16.15.0,17.5.0,17.10.0,17.11.0,18.1.0,18.4.0,18.6.0]
       serviceVersion: "14.7.2"
 ```
 
@@ -163,7 +192,7 @@ And the expected output is like:
 
 ```bash
 NAME         VERSIONS                                                                                    STATUS      AGE
-postgresql   18.4.0,18.1.0,17.10.0,17.5.0,16.14.0,16.9.0,16.4.0,15.18.0,15.13.0,15.7.0,14.23.0,14.18.0,14.8.0,14.7.2,13.23.0,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
+postgresql   18.4.0,18.6.0,18.1.0,17.10.0,17.11.0,17.5.0,16.14.0,16.15.0,16.9.0,16.4.0,15.18.0,15.19.0,15.13.0,15.7.0,14.23.0,14.24.0,14.18.0,14.8.0,14.7.2,13.23.0,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
 ```
 
 ### Horizontal scaling
@@ -618,6 +647,17 @@ kbcli cluster explain-config pg-cluster # kbcli is a command line tool to intera
 > Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 KubeBlocks supports multiple backup methods for PostgreSQL cluster, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc.
+
+The default backup account is the system-managed `kbadmin` superuser. WAL-G and
+backup metadata queries use the `postgres` database; a database named `kbadmin` is not required.
+The `postgres` role remains the bootstrap account.
+
+Upgrading this template does not migrate existing accounts or backup data. Existing
+BackupPolicy credentials may be retained or synchronized from the template,
+depending on the target and the policy's synchronization settings. Before upgrading,
+ensure that `kbadmin` is provisioned and its account Secret matches the database
+password. A credential change can restart continuous backup Pods and temporarily
+delay WAL uploads; monitor archiving and available WAL storage during the upgrade.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `pg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `pg-cluster-postgresql-backup-schedule` in this case.
 
@@ -1093,7 +1133,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,15.7.0,15.13.0,15.18.0,16.4.0,16.9.0,16.14.0,17.5.0,17.10.0,18.1.0,18.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,13.23.0,14.7.2,14.8.0,14.18.0,14.23.0,14.24.0,15.7.0,15.13.0,15.18.0,15.19.0,16.4.0,16.9.0,16.14.0,16.15.0,17.5.0,17.10.0,17.11.0,18.1.0,18.4.0,18.6.0]
       serviceVersion: "14.7.2"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.

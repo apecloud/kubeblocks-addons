@@ -30,7 +30,7 @@ fi
 
 # Build pg_dump parameters
 # Detect PostgreSQL server version to choose compression flag
-PG_MAJOR_VERSION=$(psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -p ${DP_DB_PORT} -Atc "SHOW server_version;" 2>/dev/null | cut -d'.' -f1)
+PG_MAJOR_VERSION=$(psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -p ${DP_DB_PORT} -d postgres -Atc "SHOW server_version;" 2>/dev/null | cut -d'.' -f1)
 if [ -z "$PG_MAJOR_VERSION" ] || [ "$PG_MAJOR_VERSION" -le 15 ] 2>/dev/null; then
   pg_zopt="-Z 6"
 else

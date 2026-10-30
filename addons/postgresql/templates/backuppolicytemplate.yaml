@@ -25,7 +25,7 @@ spec:
   target:
     role: primary
     fallbackRole: secondary
-    account: postgres
+    account: kbadmin
     useParentSelectedPods: true
   backupMethods:
     - name: pg-basebackup
@@ -34,7 +34,7 @@ spec:
       target:
         role: secondary
         fallbackRole: primary
-        account: postgres
+        account: kbadmin
       env: &compDefEnvMapping
         - name: IMAGE_TAG
           valueFrom:
@@ -77,7 +77,7 @@ spec:
     - name: archive-wal
       target:
         role: primary
-        account: postgres
+        account: kbadmin
       actionSetName: postgresql-for-pitr
       snapshotVolumes: false
       env: *compDefEnvMapping
@@ -88,7 +88,7 @@ spec:
     - name: wal-g-archive
       target:
         role: primary
-        account: postgres
+        account: kbadmin
       actionSetName: postgres-wal-g-pitr
       snapshotVolumes: false
       env: *compDefEnvMapping
