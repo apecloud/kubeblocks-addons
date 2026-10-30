@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-Describe "PostgreSQL backup policies for optional pooler topologies"
+Describe "PostgreSQL backup policies for the optional PgBouncer component"
   matched_backends() {
     helm template kb-addon-postgresql .. --namespace kb-system --dependency-update |
       ruby -ryaml -e '
@@ -15,9 +15,9 @@ Describe "PostgreSQL backup policies for optional pooler topologies"
         puts definitions.count { |definition| definition.dig("spec", "serviceKind").to_s.downcase == "postgresql" }
       '
   }
-  It "covers all three PostgreSQL backend variants and excludes the pooler"
+  It "covers all seven PostgreSQL versions and excludes the pooler"
     When call matched_backends
     The status should be success
-    The output should eq "21"
+    The output should eq "7"
   End
 End

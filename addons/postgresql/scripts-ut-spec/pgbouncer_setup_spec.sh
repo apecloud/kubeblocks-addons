@@ -1,97 +1,148 @@
-# shellcheck shell=bash
+# shellcheck shell=sh
 # shellcheck disable=SC2034,SC2317,SC2329
 
-Describe "PostgreSQL Pgbouncer setup fail-fast contract"
+Describe "PostgreSQL PgBouncer setup contract"
   Include ../scripts/pgbouncer-setup.sh
 
   setup() {
-    test_dir=$(mktemp -d -t pgbouncer-failfast-XXXXXX)
-    pgbouncer_template_conf_file="../config/pgbouncer-ini.tpl"
-    pgbouncer_conf_dir="$test_dir/conf/"
-    pgbouncer_log_dir="$test_dir/logs/"
-    pgbouncer_tmp_dir="$test_dir/tmp/"
+    test_dir=$(mktemp -d -t pgbouncer-setup-XXXXXX)
+    mkdir -p "$test_dir/conf" "$test_dir/tmp"
+    sed -n '/^\[pgbouncer\]/,$p' ../config/pgbouncer-ini.tpl > "$test_dir/pgbouncer.ini.tpl"
+    pgbouncer_template_conf_file="$test_dir/pgbouncer.ini.tpl"
+    pgbouncer_conf_dir="$test_dir/conf"
     pgbouncer_conf_file="$test_dir/conf/pgbouncer.ini"
     pgbouncer_user_list_file="$test_dir/conf/userlist.txt"
-    POSTGRESQL_USERNAME=postgres
-    POSTGRESQL_PASSWORD=secret
-    CURRENT_POD_IP=127.0.0.1
-    export PGB_FAIL_STEP=chown
+    POSTGRESQL_USERNAME=pgbouncer
+    POSTGRESQL_PASSWORD='pa"ss'
+    POSTGRESQL_HOST=sample-postgresql
+    POSTGRESQL_PORT=5432
   }
 
   cleanup() {
     rm -rf "$test_dir"
   }
 
+  customize_pool_limits() {
+    sed \
+      -e 's/max_client_conn = 500/max_client_conn = 1200/' \
+      -e 's/default_pool_size = 20/default_pool_size = 30/' \
+      -e 's/max_db_connections = 80/max_db_connections = 60/' \
+      -e 's/max_user_connections = 80/max_user_connections = 40/' \
+      "$pgbouncer_template_conf_file" > "$test_dir/custom.ini"
+    mv "$test_dir/custom.ini" "$pgbouncer_template_conf_file"
+    build_pgbouncer_conf
+  }
+
+  rebuild_for_new_backend() {
+    build_pgbouncer_conf || return 1
+    POSTGRESQL_HOST=replaced-postgresql
+    build_pgbouncer_conf
+  }
+
+  enable_backend_tls() {
+    sed 's/server_tls_sslmode = disable/server_tls_sslmode = verify-full/' \
+      "$pgbouncer_template_conf_file" > "$test_dir/tls.ini"
+    mv "$test_dir/tls.ini" "$pgbouncer_template_conf_file"
+    build_pgbouncer_conf
+  }
+
   BeforeEach 'setup'
   AfterEach 'cleanup'
 
-  is_empty() {
-    test -z "${1:-}"
-  }
-
-  printf() {
-    if test "$PGB_FAIL_STEP" = "database_header" && test "${1:-}" = '\n[databases]\n'; then
-      return 42
-    fi
-    # shellcheck disable=SC2059
-    builtin printf "$@"
-  }
-
-  Mock useradd
-    exit 0
+  It "doubles quotes in credentials before writing the auth file"
+    When call build_pgbouncer_conf
+    The status should be success
+    The path "$pgbouncer_user_list_file" should be file
+    The contents of file "$pgbouncer_user_list_file" should equal '"pgbouncer" "pa""ss"'
   End
 
-  Mock load_common_library
-    exit 0
+  It "loads the documented pool defaults from the managed configuration"
+    When call build_pgbouncer_conf
+    The status should be success
+    The contents of file "$pgbouncer_conf_file" should include "%include $pgbouncer_template_conf_file"
+    The contents of file "$pgbouncer_template_conf_file" should include "pool_mode = session"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_client_conn = 500"
+    The contents of file "$pgbouncer_template_conf_file" should include "default_pool_size = 20"
+    The contents of file "$pgbouncer_template_conf_file" should include "min_pool_size = 5"
+    The contents of file "$pgbouncer_template_conf_file" should include "reserve_pool_size = 5"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_db_connections = 80"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_user_connections = 80"
   End
 
-  Mock id
-    if test "${1:-}" = "-g"; then
-      printf '%s\n' 1001
-    fi
-    exit 0
+  It "preserves user-provided pool limits without automatic recalculation"
+    When call customize_pool_limits
+    The status should be success
+    The contents of file "$pgbouncer_template_conf_file" should include "max_client_conn = 1200"
+    The contents of file "$pgbouncer_template_conf_file" should include "default_pool_size = 30"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_db_connections = 60"
+    The contents of file "$pgbouncer_template_conf_file" should include "max_user_connections = 40"
   End
 
-  Mock getent
-    exit 0
+  It "keeps backend TLS disabled by default"
+    When call build_pgbouncer_conf
+    The status should be success
+    The contents of file "$pgbouncer_template_conf_file" should include "server_tls_sslmode = disable"
+    The contents of file "$pgbouncer_template_conf_file" should include "server_tls_ca_file = /etc/pgbouncer/tls/ca.pem"
   End
 
-  Mock cp
-    if test "$PGB_FAIL_STEP" = "cp"; then
-      exit 42
-    fi
-    /bin/cp "$@"
+  It "preserves managed backend TLS settings and PostgreSQL Service routing"
+    When call enable_backend_tls
+    The status should be success
+    The contents of file "$pgbouncer_template_conf_file" should include "server_tls_sslmode = verify-full"
+    The contents of file "$pgbouncer_template_conf_file" should include "client_tls_sslmode = disable"
+    The contents of file "$pgbouncer_conf_file" should include "%include $pgbouncer_template_conf_file"
+    The contents of file "$pgbouncer_conf_file" should include "host=sample-postgresql"
   End
 
-  Mock chown
-    if test "$PGB_FAIL_STEP" = "chown"; then
-      exit 42
-    fi
-    exit 0
+  It "routes the PgBouncer component through the PostgreSQL Service"
+    POSTGRESQL_PORT=5433
+    When call build_pgbouncer_conf
+    The status should be success
+    The contents of file "$pgbouncer_conf_file" should include "postgres=host=sample-postgresql port=5433 dbname=postgres"
+    The contents of file "$pgbouncer_conf_file" should include "*=host=sample-postgresql port=5433"
   End
 
-  Mock start_pgbouncer
-    printf '%s\n' start-called
-    exit 0
+  It "atomically replaces an existing generated configuration"
+    When call rebuild_for_new_backend
+    The status should be success
+    The contents of file "$pgbouncer_conf_file" should include "host=replaced-postgresql"
+    The contents of file "$pgbouncer_conf_file" should not include "host=sample-postgresql"
   End
 
-  It "does not start Pgbouncer after ownership setup fails"
-    When call main
+  It "references and extends a read-only managed configuration"
+    chmod 0444 "$pgbouncer_template_conf_file"
+    When call build_pgbouncer_conf
+    The status should be success
+    The contents of file "$pgbouncer_conf_file" should include "%include $pgbouncer_template_conf_file"
+    The contents of file "$pgbouncer_conf_file" should include "[databases]"
+  End
+
+  It "rejects line breaks in credentials before writing files"
+    POSTGRESQL_PASSWORD=$(printf 'bad\nsecret')
+    When call build_pgbouncer_conf
     The status should be failure
-    The output should not include "start-called"
+    The stderr should include "credentials contain an unsupported line break"
+    The path "$pgbouncer_user_list_file" should not be exist
   End
 
-  It "does not start Pgbouncer after copying the template fails"
-    export PGB_FAIL_STEP=cp
-    When call main
+  It "fails when the required PostgreSQL Service host is missing"
+    unset POSTGRESQL_HOST
+    When call build_pgbouncer_conf
     The status should be failure
-    The output should not include "start-called"
+    The stderr should include "POSTGRESQL_HOST or POSTGRESQL_PORT is not set"
   End
 
-  It "does not start Pgbouncer after an early database config write fails"
-    export PGB_FAIL_STEP=database_header
-    When call main
+  It "rejects an invalid PostgreSQL Service port"
+    POSTGRESQL_PORT=70000
+    When call build_pgbouncer_conf
     The status should be failure
-    The output should not include "start-called"
+    The stderr should include "outside 1..65535"
+  End
+
+  It "fails when the managed configuration is unavailable"
+    rm -f "$pgbouncer_template_conf_file"
+    When call build_pgbouncer_conf
+    The status should be failure
+    The stderr should include "configuration is not readable"
   End
 End

@@ -24,16 +24,14 @@ def main():
     chart = Path(__file__).resolve().parents[1]
     pg = Path(os.environ["PG_BIN"]).resolve()
     rendered = run(["helm", "template", "auth-test", str(chart)]).stdout
-    statement = run(["ruby", "-ryaml", "-e", '''
+    configuration = run(["ruby", "-ryaml", "-e", '''
       docs = YAML.load_stream(STDIN.read).compact
-      definition = docs.find { |d| d["kind"] == "ComponentDefinition" && d.dig("metadata", "name").start_with?("postgresql-pooler-17-") }
-      account = definition.dig("spec", "systemAccounts").find { |a| a["name"] == "pgbouncer" }
-      puts account.dig("statement", "create")
+      config = docs.find { |d| d["kind"] == "ConfigMap" && d.dig("data", "pgbouncer.ini") }
+      puts config.dig("data", "pgbouncer.ini")
     '''], input=rendered).stdout
-    assert re.search(r"CREATE OR REPLACE FUNCTION public\.pgbouncer_auth", statement)
+    auth_query = re.search(r"^auth_query = (.+)$", configuration, re.MULTILINE).group(1)
+    assert "pg_catalog.pg_authid" in auth_query
     password = secrets.token_hex(24)
-    statement = statement.replace("${KB_ACCOUNT_NAME}", "lookup_probe")
-    statement = statement.replace("${KB_ACCOUNT_PASSWORD}", password)
     rows = []
     with tempfile.TemporaryDirectory(prefix="pg-auth-expiry-") as directory:
         temp = Path(directory)
@@ -57,7 +55,6 @@ def main():
                     time.sleep(0.1)
                 else:
                     raise RuntimeError("temporary PostgreSQL server failed to start")
-                sql(statement)
                 cases = [("expired_probe", "LOGIN", "2000-01-01", False),
                          ("future_probe", "LOGIN", "2099-01-01", True),
                          ("unlimited_probe", "LOGIN", None, True),
@@ -65,12 +62,11 @@ def main():
                 for name, login, until, expected in cases:
                     validity = f" VALID UNTIL '{until}'" if until else ""
                     sql(f"CREATE ROLE {name} {login} PASSWORD '{password}'{validity};")
-                    query = (f"SELECT EXISTS (SELECT 1 FROM public.pgbouncer_auth('{name}') "
-                             "WHERE password IS NOT NULL AND length(password)>0)")
-                    # Execute as the restricted auth account, not as a superuser.
-                    verifier = run([str(pg / "psql"), "-X", "-h", str(sock), "-U", "lookup_probe",
-                                    "-d", "postgres", "-Atc", query],
-                                   env=dict(os.environ, PGPASSWORD=password)).stdout.strip() == "t"
+                    # PgBouncer uses the existing postgres account, as in release-1.0.
+                    # PREPARE exercises the $1 parameter exactly as auth_query does.
+                    result = sql(f"PREPARE auth_lookup(text) AS {auth_query}; EXECUTE auth_lookup('{name}');")
+                    records = [line.split("|", 1) for line in result.splitlines() if "|" in line]
+                    verifier = any(len(row) == 2 and bool(row[1]) for row in records)
                     direct = subprocess.run([str(pg / "psql"), "-X", "-h", str(sock), "-U", name,
                                              "-d", "postgres", "-Atc", "SELECT 1"], text=True,
                                             capture_output=True, env=dict(os.environ, PGPASSWORD=password))

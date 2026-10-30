@@ -1,10 +1,5 @@
-{{- range $version := .Values.versions }}
-{{- $variants := list
-      (dict "compDefName" (include "postgresql.componentDefByMajor" (dict "major" $version.major "root" $)) "legacyPgbouncer" true "poolerAccount" false)
-      (dict "compDefName" (include "postgresql.directComponentDefByMajor" (dict "major" $version.major "root" $)) "legacyPgbouncer" false "poolerAccount" false)
-      (dict "compDefName" (include "postgresql.poolerComponentDefByMajor" (dict "major" $version.major "root" $)) "legacyPgbouncer" false "poolerAccount" true) }}
-{{- range $variant := $variants }}
-{{- $compDefName := $variant.compDefName }}
+{{- range .Values.versions }}
+{{- $compDefName := include "postgresql.componentDefByMajor" (dict "major" .major "root" $) }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
@@ -18,7 +13,7 @@ spec:
   provider: kubeblocks
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
   serviceKind: postgresql
-  serviceVersion: {{ $version.serviceVersion }}
+  serviceVersion: {{ .serviceVersion }}
   serviceRefDeclarations:
     - name: etcd
       serviceRefDeclarationSpecs:
@@ -28,7 +23,7 @@ spec:
     - name: remote-instances
       serviceRefDeclarationSpecs:
         - serviceKind: postgresql
-          serviceVersion: "{{ $version.major }}\\.\\d+\\.\\d+"
+          serviceVersion: "{{ .major }}\\.\\d+\\.\\d+"
       optional: true
   services:
     - name: postgresql
@@ -38,11 +33,6 @@ spec:
           - name: tcp-postgresql
             port: 5432
             targetPort: tcp-postgresql
-          {{- if $variant.legacyPgbouncer }}
-          - name: tcp-pgbouncer
-            port: 6432
-            targetPort: tcp-pgbouncer
-          {{- end }}
       roleSelector: primary
   updateStrategy: BestEffortParallel
   podManagementPolicy: Parallel
@@ -69,21 +59,14 @@ spec:
     scrapePath: /metrics
   configs:
     - name: postgresql-configuration
-      template: {{ include "postgresql.parameterTemplate" (dict "major" $version.major "root" $) }}
+      template: {{ include "postgresql.parameterTemplate" (dict "major" .major "root" $) }}
       namespace: {{ $.Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0777
       externalManaged: true
       {{- include "postgresql.config.reconfigureAction" $ | nindent 6 }}
-    {{- if $variant.legacyPgbouncer }}
-    - name: pgbouncer-configuration
-      template: {{ include "pgbouncer.configurationTemplate" $ }}
-      namespace: {{ $.Release.Namespace }}
-      volumeName: pgbouncer-config
-      defaultMode: 0777
-    {{- end }}
     - name: postgresql-custom-metrics
-      template: {{ include "postgresql.metricsConfiguration" (dict "major" $version.major "root" $) }}
+      template: {{ include "postgresql.metricsConfiguration" (dict "major" .major "root" $) }}
       namespace: {{ $.Release.Namespace }}
       volumeName: postgresql-custom-metrics
       defaultMode: 0444
@@ -192,12 +175,6 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
-    {{- if $variant.legacyPgbouncer }}
-    - name: POSTGRESQL_MEMORY_LIMIT
-      valueFrom:
-        resourceVarRef:
-          memoryLimit: Required
-    {{- end }}
   systemAccounts:
     - name: postgres
       initAccount: true
@@ -206,39 +183,6 @@ spec:
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
-    {{- if $variant.poolerAccount }}
-    - name: pgbouncer
-      statement:
-        create: |-
-          CREATE USER ${KB_ACCOUNT_NAME} WITH PASSWORD '${KB_ACCOUNT_PASSWORD}';
-          CREATE OR REPLACE FUNCTION public.pgbouncer_auth(text)
-          RETURNS TABLE(username name, password text)
-          LANGUAGE sql
-          SECURITY DEFINER
-          SET search_path = pg_catalog
-          AS 'SELECT rolname, CASE WHEN rolvaliduntil < now() THEN NULL ELSE rolpassword END FROM pg_authid WHERE rolname = $1 AND rolcanlogin';
-          REVOKE ALL ON FUNCTION public.pgbouncer_auth(text) FROM PUBLIC;
-          GRANT CONNECT ON DATABASE postgres TO ${KB_ACCOUNT_NAME};
-          GRANT USAGE ON SCHEMA public TO ${KB_ACCOUNT_NAME};
-          GRANT EXECUTE ON FUNCTION public.pgbouncer_auth(text) TO ${KB_ACCOUNT_NAME};
-        update: ALTER USER ${KB_ACCOUNT_NAME} WITH PASSWORD '${KB_ACCOUNT_PASSWORD}';
-        delete: DROP OWNED BY ${KB_ACCOUNT_NAME}; DROP USER IF EXISTS ${KB_ACCOUNT_NAME};
-      passwordConfig:
-        length: 16
-        numDigits: 8
-        numSymbols: 0
-        letterCase: MixedCases
-    - name: pgbouncerprobe
-      statement:
-        create: CREATE USER ${KB_ACCOUNT_NAME} WITH NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD '${KB_ACCOUNT_PASSWORD}'; GRANT CONNECT ON DATABASE postgres TO ${KB_ACCOUNT_NAME};
-        update: ALTER USER ${KB_ACCOUNT_NAME} WITH PASSWORD '${KB_ACCOUNT_PASSWORD}';
-        delete: DROP OWNED BY ${KB_ACCOUNT_NAME}; DROP USER IF EXISTS ${KB_ACCOUNT_NAME};
-      passwordConfig:
-        length: 16
-        numDigits: 8
-        numSymbols: 0
-        letterCase: MixedCases
-    {{- end }}
     - name: kbadmin
       statement:
         create: CREATE USER ${KB_ACCOUNT_NAME} SUPERUSER PASSWORD '${KB_ACCOUNT_PASSWORD}';
@@ -482,71 +426,6 @@ spec:
             value: $(CURRENT_POD_IP)
           - name: POD_NAMESPACE
             value: $(CLUSTER_NAMESPACE)
-      {{- if $variant.legacyPgbouncer }}
-      - name: pgbouncer
-        imagePullPolicy: {{ include "pgbouncer.imagePullPolicy" $ }}
-        securityContext:
-          runAsUser: 0
-        ports:
-          - name: tcp-pgbouncer
-            containerPort: 6432
-        volumeMounts:
-          - name: pgbouncer-config
-            mountPath: /home/pgbouncer/conf
-          - name: scripts
-            mountPath: /kb-scripts
-        command:
-          - /kb-scripts/pgbouncer-setup.sh
-        livenessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 15
-          periodSeconds: 30
-          successThreshold: 1
-          timeoutSeconds: 5
-          tcpSocket:
-            port: tcp-pgbouncer
-        readinessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 15
-          periodSeconds: 30
-          successThreshold: 1
-          timeoutSeconds: 5
-          tcpSocket:
-            port: tcp-pgbouncer
-        env:
-          # md5 is PgBouncer's dual-mode setting (auto-SCRAM when the fetched
-          # verifier is SCRAM); scram-sha-256 would be SCRAM-only and lock out
-          # pre-upgrade md5-stored accounts through the pooler.
-          - name: PGBOUNCER_AUTH_TYPE
-            value: md5
-          - name: POSTGRESQL_USERNAME
-            value: $(POSTGRES_USER)
-          - name: POSTGRESQL_PASSWORD
-            value: $(POSTGRES_PASSWORD)
-          - name: POSTGRESQL_PORT
-            value: "5432"
-          - name: PGBOUNCER_PORT
-            value: "6432"
-          - name: PGBOUNCER_BIND_ADDRESS
-            value: "0.0.0.0"
-          - name: CURRENT_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: CURRENT_POD_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.podIP
-          - name: CURRENT_POD_HOST_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.hostIP
-          - name: POSTGRESQL_HOST
-            value: $(CURRENT_POD_IP)
-      {{- end }}
       - name: exporter
         ports:
           - name: http-metrics
@@ -554,7 +433,7 @@ spec:
         imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         args:
           - "--extend.query-path=/opt/conf/custom-metrics.yaml"
-          {{- if or (eq $version.major "17") (eq $version.major "18") }}
+          {{- if or (eq .major "17") (eq .major "18") }}
           # postgres-exporter v0.15 queries checkpoint columns from
           # pg_stat_bgwriter, but PostgreSQL 17 moved them to
           # pg_stat_checkpointer. The version-specific custom query below
@@ -589,5 +468,4 @@ spec:
           {{- with $.Values.shmVolume.sizeLimit }}
           sizeLimit: {{ . }}
           {{- end }}
-{{- end }}
 {{- end -}}

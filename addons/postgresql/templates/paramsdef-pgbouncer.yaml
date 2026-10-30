@@ -1,4 +1,3 @@
-{{- $effectScope := .Files.Get "config/pgbouncer-config-effect-scope.yaml" | fromYaml }}
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
@@ -9,20 +8,23 @@ metadata:
     {{- include "postgresql.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "pgbouncer.componentDefName" . }}
-  serviceVersion: {{ .Values.pgbouncer.image.tag | quote }}
+  serviceVersion: {{ include "pgbouncer.defaultServiceVersion" . | quote }}
   templateName: pgbouncer-configuration
-  fileName: pgbouncer.ini
   fileFormatConfig:
     format: ini
     iniConfig:
       sectionName: pgbouncer
-  mergeReloadAndRestart: true
-  reloadStaticParamsBeforeRestart: false
+  fileName: pgbouncer.ini
   parametersSchema:
-    topLevelKey: PgBouncerParameters
+    topLevelKey: PgBouncerParameter
     cue: |-
       {{- .Files.Get "config/pgbouncer-config-constraint.cue" | nindent 6 }}
-  staticParameters:
-    {{- range (get $effectScope "staticParameters") }}
-    - {{ . }}
-    {{- end }}
+  dynamicParameters:
+    - pool_mode
+    - max_client_conn
+    - default_pool_size
+    - min_pool_size
+    - reserve_pool_size
+    - max_db_connections
+    - max_user_connections
+    - server_tls_sslmode

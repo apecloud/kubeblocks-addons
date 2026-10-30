@@ -11,19 +11,7 @@ spec:
     - name: replication
       components:
         - name: postgresql
-          compDef: '^postgresql-[0-9]+-'
-      default: true
-    # The legacy replication topology above intentionally keeps the historical
-    # in-pod PgBouncer sidecar for compatibility.  KBE's typed connectionPool
-    # contract selects one of the following topologies for new clusters.
-    - name: replication-direct
-      components:
-        - name: postgresql
-          compDef: {{ include "postgresql.directComponentDefNamePrefix" . }}
-    - name: replication-pgbouncer
-      components:
-        - name: postgresql
-          compDef: {{ include "postgresql.poolerComponentDefNamePrefix" . }}
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
         - name: pgbouncer
           compDef: {{ include "pgbouncer.componentDefName" . }}
       orders:
@@ -36,3 +24,4 @@ spec:
         update:
           - postgresql
           - pgbouncer
+      default: true

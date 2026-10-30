@@ -11,8 +11,6 @@ spec:
   {{- range .Values.versions }}
     - compDefs:
         - {{ include "postgresql.componentDefNamePrefixByMajor" (dict "major" .major) }}
-        - {{ include "postgresql.directComponentDefNamePrefixByMajor" (dict "major" .major) }}
-        - {{ include "postgresql.poolerComponentDefNamePrefixByMajor" (dict "major" .major) }}
       releases:
       {{- range .minors }}
         - {{ .version }}
@@ -28,7 +26,7 @@ spec:
         pg-init-container: {{ include "postgresql.initImage" $ }}
         exporter: {{ include "postgresql.metricsImage" $ }}
         postgresql: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
-        pgbouncer: {{ include "postgresql.pgbouncerImage" $ }}
+        pgbouncer: {{ include "pgbouncer.sidecarImage" $ }}
         switchover: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
         accountProvision: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
         dbctl: {{ include "postgresql.dbctlImage" $ }}

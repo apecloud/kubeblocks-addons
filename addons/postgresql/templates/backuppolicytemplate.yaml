@@ -21,9 +21,7 @@ metadata:
 spec:
   serviceKind: PostgreSQL
   compDefs:
-    - ^postgresql-\d+
-    - ^postgresql-direct-\d+
-    - ^postgresql-pooler-\d+
+    - postgresql-\d+
   target:
     role: primary
     fallbackRole: secondary
