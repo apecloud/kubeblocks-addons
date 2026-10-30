@@ -234,7 +234,7 @@ spec:
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           optional: true
           componentName: Required
     ## the username of falkordb sentinel for falkordb connection, it is optional
@@ -242,7 +242,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the falkordb-sent component definition name
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           name: default
           optional: true
           username: Required
@@ -258,27 +258,27 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the falkordb-sent component definition name
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           name: default
           optional: true
           password: Required
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           optional: true
           podNames: Required
     - name: SENTINEL_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           optional: true
           podFQDNs: Required
     ## the falkordb sentinel server port, if falkordb sentinel is in host network mode, the port will be allocated automatically by KubeBlocks, if not, the default port is 26379
     - name: SENTINEL_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
-          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
+          compDef: {{ .sentinelComponentDef }}
           optional: true
           container:
             name: falkordb-sent
@@ -360,6 +360,9 @@ spec:
         args:
           - /scripts/redis-account-provision.sh
     switchover:
+      # The script enforces per-command and whole-action wall-clock deadlines.
+      # Disable kbagent's 30s default so Sentinel convergence can finish first.
+      timeoutSeconds: -1
       exec:
         container: falkordb
         command:
