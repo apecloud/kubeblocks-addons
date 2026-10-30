@@ -119,7 +119,7 @@ fi
 
 # 1. incremental backup
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
-if ! PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} \
+if ! PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=${DP_DB_PORT} PGDATABASE=postgres \
   wal-g backup-push "${DATA_DIR}" --delta-from-name "${parentWalGBackupName}" 2>&1 | tee result.txt; then
   echo "ERROR: WAL-G incremental backup-push failed" >&2
   exit 1
