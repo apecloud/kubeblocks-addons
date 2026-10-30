@@ -57,6 +57,7 @@ EOF
 #!/bin/sh
 printf 'wal-g PGHOST=%s PGUSER=%s PGPORT=%s args=%s\n' \
   "${PGHOST}" "${PGUSER}" "${PGPORT}" "$*" >> "${CALL_LOG}"
+printf 'wal-g PGDATABASE=%s\n' "${PGDATABASE}" >> "${CALL_LOG}"
 printf '%s\n' 'Wrote backup with name base_000000010000000000000001'
 if [ "${FAIL_BACKUP_PUSH:-0}" -eq 1 ]; then
   exit 42
@@ -194,6 +195,24 @@ EOF
     The status should be failure
     The output should include "failed with exit code 2"
     The path "${DP_BACKUP_INFO_FILE}.exit" should be file
+  End
+
+  It "connects a full backup as kbadmin to the postgres database"
+    export DP_DB_USER=kbadmin PGDATABASE=nonexistent
+    When call run_backup "wal-g-backup.sh"
+    The status should eq 0
+    The result of function call_log should include "wal-g PGHOST=postgres.example.test PGUSER=kbadmin PGPORT=6432"
+    The result of function call_log should include "wal-g PGDATABASE=postgres"
+    The result of function call_log should include "psql -h postgres.example.test -U kbadmin -p 6432 -d postgres"
+  End
+
+  It "connects an incremental backup as kbadmin to the postgres database"
+    export DP_DB_USER=kbadmin PGDATABASE=nonexistent
+    When call run_backup "wal-g-incremental-backup.sh"
+    The status should eq 0
+    The result of function call_log should include "wal-g PGHOST=postgres.example.test PGUSER=kbadmin PGPORT=6432"
+    The result of function call_log should include "wal-g PGDATABASE=postgres"
+    The result of function call_log should include "psql -h postgres.example.test -U kbadmin -p 6432 -d postgres"
   End
 
   It "fails an incremental backup when the WAL switch control command fails"

@@ -575,6 +575,9 @@
 	// Path to the directory containing data. The trailing slash is mandatory.
 	path: string
 
+	// If true, ClickHouse creates all system.*_log tables (e.g. system.query_log, system.session_log) on server startup.
+	prepare_system_log_tables_on_startup: bool & true | false | *false
+
 	// Query cache configuration.
 	query_cache: {
 		// The maximum cache size in bytes. 0 means the query cache is disabled.
