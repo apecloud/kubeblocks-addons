@@ -172,11 +172,11 @@ EOF
   It "advances the chart identity when immutable ComponentDefinitions change"
     When call chart_version
     The status should eq 0
-    The output should eq "1.2.0-alpha.3"
+    The output should eq "1.2.0-alpha.4"
   End
 
   It "publishes every ComponentDefinition under the advanced immutable identity"
-    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.3$'
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.4$'
     The status should eq 0
     The output should eq "7"
   End
@@ -241,13 +241,13 @@ EOF
     The output should eq "7"
   End
 
-  It "publishes PG 18.4 in the CmpD, PD, and ComponentVersion"
-    When call render_count '^[[:space:]]*serviceVersion: 18.4.0$'
+  It "publishes PG 18.6 in the CmpD, PD, and ComponentVersion"
+    When call render_count '^[[:space:]]*serviceVersion: 18.6.0$'
     The status should eq 0
     The output should eq "3"
   End
 
-  It "publishes the PG 18.4 image for runtime and lifecycle actions"
+  It "preserves the PG 18.4 image for runtime and lifecycle actions"
     When call render_count 'docker.io/apecloud/spilo:18.4'
     The status should eq 0
     The output should eq "3"
