@@ -191,7 +191,6 @@ spec:
           password: Required
           multipleClusterObjectOption:
             strategy: individual
-            optional: true
     ## the component name of redis, used as the sentinel master name when scale-out redis sentinel
     - name: REDIS_COMPONENT_NAME
       valueFrom:
@@ -201,7 +200,6 @@ spec:
           componentName: Required
           multipleClusterObjectOption:
             strategy: individual
-            optional: true
     ## the redis pod name list for each pod, used to determine the default primary node when scale-out redis sentinel
     - name: REDIS_POD_NAME_LIST
       valueFrom:
@@ -211,7 +209,6 @@ spec:
           podNames: Required
           multipleClusterObjectOption:
             strategy: individual
-            optional: true
     ## the redis pod fqdn list for each pod, used to determine the default primary node when scale-out redis sentinel
     - name: REDIS_POD_FQDN_LIST
       valueFrom:
@@ -221,7 +218,6 @@ spec:
           podFQDNs: Required
           multipleClusterObjectOption:
             strategy: individual
-            optional: true
     ## the redis advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
     - name: REDIS_ADVERTISED_PORT
       valueFrom:
@@ -231,7 +227,6 @@ spec:
           optional: true
           multipleClusterObjectOption:
             strategy: individual
-            optional: true
           port:
             name: redis-advertised
             option: Required
@@ -243,7 +238,6 @@ spec:
           optional: true
           multipleClusterObjectOption:
             strategy: individual
-            optional: true
           port:
             name: redis-advertised
             option: Required
@@ -256,7 +250,6 @@ spec:
           optional: true
           multipleClusterObjectOption:
             strategy: individual
-            optional: true
           loadBalancer: Required
           host: Required
     ## the redis server port
