@@ -172,13 +172,19 @@ EOF
   It "advances the chart identity when immutable ComponentDefinitions change"
     When call chart_version
     The status should eq 0
-    The output should eq "1.2.0-alpha.4"
+    The output should eq "1.2.0-alpha.6"
   End
 
   It "publishes every ComponentDefinition under the advanced immutable identity"
-    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.4$'
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.6$'
     The status should eq 0
     The output should eq "7"
+  End
+
+  It "does not overwrite existing alpha.3, alpha.4 or alpha.5 ComponentDefinitions"
+    When call render_count '^  name: postgresql-\(12\|13\|14\|15\|16\|17\|18\)-1.2.0-alpha.[345]$'
+    The status should eq 0
+    The output should eq "0"
   End
 
   It "does not update the published alpha.2 ComponentDefinitions in place"
@@ -217,10 +223,10 @@ EOF
     The output should eq "7"
   End
 
-  It "renders exactly one CmpD reconfigure action per PostgreSQL major"
+  It "renders one reconfigure action per PostgreSQL major and one for PgBouncer"
     When call render_count '^[[:space:]]*reconfigure:$'
     The status should eq 0
-    The output should eq "7"
+    The output should eq "8"
   End
 
   It "does not render the legacy PD reloadAction path"

@@ -44,6 +44,20 @@ storage: 20
 ## systemAccountSecret.postgres takes precedence when both are specified.
 defaultPassword: ""
 
+## @param pgbouncer.enabled Include the PgBouncer component in the Cluster.
+## @param pgbouncer.replicas PgBouncer replicas; zero keeps the component inactive.
+## @param pgbouncer.version Service version; empty lets KubeBlocks select it.
+## @param pgbouncer.cpu CPU limit in cores.
+## @param pgbouncer.memory Memory limit in Gi.
+## @param pgbouncer.requests CPU and memory requests; defaults to the limits.
+pgbouncer:
+  enabled: false
+  replicas: 0
+  version: ""
+  cpu: 0.5
+  memory: 0.5
+  requests: {}
+
 etcd:
   enabled: false
   meta:

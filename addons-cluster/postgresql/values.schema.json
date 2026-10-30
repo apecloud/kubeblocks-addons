@@ -1,12 +1,36 @@
 {
-  "$schema": "http://json-schema.org/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "definitions": {
+    "positiveResource": {
+      "type": ["number", "string"],
+      "exclusiveMinimum": 0,
+      "pattern": "^(0*[1-9][0-9]*(\\.[0-9]+)?|0+\\.[0-9]*[1-9][0-9]*)$"
+    }
+  },
   "properties": {
     "defaultPassword": {
       "title": "Initial password for the PostgreSQL postgres superuser",
       "description": "A non-empty value is stored in '<cluster name>-custom-default-password' and referenced by the postgres system account. When empty, KubeBlocks generates a random password. Only used for initialization, not password rotation. systemAccountSecret.postgres takes precedence when both are specified.",
       "type": "string",
       "default": ""
+    },
+    "pgbouncer": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "replicas": {"type": "integer", "minimum": 0, "maximum": 64},
+        "version": {"type": "string"},
+        "cpu": {"$ref": "#/definitions/positiveResource"},
+        "memory": {"$ref": "#/definitions/positiveResource"},
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": {"$ref": "#/definitions/positiveResource"},
+            "memory": {"$ref": "#/definitions/positiveResource"}
+          }
+        }
+      }
     },
     "version": {
       "title": "Version",

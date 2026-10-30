@@ -166,6 +166,16 @@ pgbouncer:
     tag: 1.19.0
     pullPolicy: IfNotPresent
 
+  # PgBouncer component image.
+  componentImage:
+    registry: ""
+    repository: apecloud/pgbouncer
+    pullPolicy: IfNotPresent
+    versions:
+      - version: 1.25.2
+        tag: 1.25.2
+        isDefault: true
+
 dataMountPath: /home/postgres/pgdata
 
 logConfigs:

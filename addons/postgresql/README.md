@@ -195,6 +195,258 @@ NAME         VERSIONS                                                           
 postgresql   18.4.0,18.6.0,18.1.0,17.10.0,17.11.0,17.5.0,16.14.0,16.15.0,16.9.0,16.4.0,15.18.0,15.19.0,15.13.0,15.7.0,14.23.0,14.24.0,14.18.0,14.8.0,14.7.2,13.23.0,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
 ```
 
+### PgBouncer connection pool
+
+The managed component runs PgBouncer 1.25.2. Zero replicas keep client traffic
+on the direct PostgreSQL endpoint. One or more replicas activate the managed
+pool. The default PgBouncer resources are 100m CPU and 128Mi memory requests,
+with 500m CPU and 512Mi memory limits.
+
+#### Enable and disable
+
+The PostgreSQL cluster chart includes PgBouncer when `pgbouncer.enabled=true`.
+Use a PostgreSQL Addon whose `replication` topology contains `pgbouncer`
+(this KB 1.2 Addon):
+
+```bash
+helm template pg-cluster ./addons-cluster/postgresql --dependency-update \
+  --set pgbouncer.enabled=true --set pgbouncer.replicas=2
+```
+
+The chart defaults to `pgbouncer.enabled=false`. Set `pgbouncer.enabled=true`
+and `pgbouncer.replicas=0` to render an inactive component for later scaling.
+PgBouncer has independent `pgbouncer.cpu` and `pgbouncer.memory` values, both
+defaulting to `0.5` (cores and Gi). Requests default to these limits and can be
+lowered with `pgbouncer.requests.cpu` and `pgbouncer.requests.memory`.
+Set `pgbouncer.version` to select a service version, or leave it empty for
+KubeBlocks to select it from the installed Addon.
+
+To activate PgBouncer when creating a Cluster, add it to the `replication`
+topology:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: demo
+spec:
+  clusterDef: postgresql
+  topology: replication
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: postgresql
+      serviceVersion: "14.23.0"
+      replicas: 2
+      resources:
+        requests: {cpu: "500m", memory: 512Mi}
+        limits: {cpu: "500m", memory: 512Mi}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes: [ReadWriteOnce]
+            resources:
+              requests:
+                storage: 20Gi
+    - name: pgbouncer
+      replicas: 2
+      resources:
+        requests: {cpu: "100m", memory: 128Mi}
+        limits: {cpu: "500m", memory: 512Mi}
+```
+
+For a Cluster that already contains the `pgbouncer` component, activate two
+replicas with a HorizontalScaling OpsRequest:
+
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pg-pgbouncer-enable
+  namespace: demo
+spec:
+  clusterName: pg-cluster
+  type: HorizontalScaling
+  horizontalScaling:
+    - componentName: pgbouncer
+      scaleOut:
+        replicaChanges: 2
+```
+
+Return the component to zero replicas with a second HorizontalScaling
+OpsRequest:
+
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pg-pgbouncer-disable
+  namespace: demo
+spec:
+  clusterName: pg-cluster
+  type: HorizontalScaling
+  horizontalScaling:
+    - componentName: pgbouncer
+      scaleIn:
+        replicaChanges: 2
+```
+
+Older ComponentDefinitions retain their in-Pod PgBouncer sidecar until the
+Cluster is explicitly upgraded. New definitions expose PostgreSQL on port 5432
+and PgBouncer through its separate Service. Update clients using the old
+PostgreSQL Service port 6432 before switching definitions.
+
+#### Connect
+
+The managed endpoint uses the following in-cluster address:
+
+```text
+<cluster-name>-pgbouncer.<namespace>.svc:6432
+```
+
+For the example Cluster, connect to `pg-cluster-pgbouncer.demo.svc:6432`.
+The Service receives endpoints after at least one PgBouncer replica reaches
+Ready. Check the endpoint before publishing the address:
+
+```bash
+kubectl get endpoints -n demo pg-cluster-pgbouncer
+```
+
+#### Configure
+
+PgBouncer starts with the following per-instance settings:
+
+| Parameter | Default | Allowed values | Scope |
+|-----------|---------|----------------|-------|
+| `pool_mode` | `session` | `session`, `transaction`, `statement` | New client connections |
+| `max_client_conn` | `500` | `1..999999` | Client connections per PgBouncer instance |
+| `default_pool_size` | `20` | `1..999999` | Backend connections per user/database pool |
+| `min_pool_size` | `5` | `0..999999` | Retained backend connections per user/database pool |
+| `reserve_pool_size` | `5` | `0..999999` | Reserve connections per user/database pool |
+| `max_db_connections` | `80` | `0..999999`; `0` means unlimited | Backend connections per database and PgBouncer instance |
+| `max_user_connections` | `80` | `0..999999`; `0` means unlimited | Backend connections per user and PgBouncer instance |
+| `server_tls_sslmode` | `disable` | `disable`, `require`, `verify-ca`, `verify-full` | TLS for connections from PgBouncer to PostgreSQL |
+
+PostgreSQL `max_connections` remains the global connection limit. Review the
+PgBouncer settings after changing PostgreSQL capacity, database or user counts,
+or the PgBouncer replica count. Also size memory and file descriptors for the
+selected client limit.
+
+Apply parameter changes with a Reconfiguring OpsRequest. On KB 1.2,
+`ParametersDefinition` binds the component, config entry, INI file and section;
+the ComponentDefinition's `reconfigure.exec` action runs `RELOAD;` on each
+PgBouncer instance after KubeBlocks verifies the projected configuration
+checksum. This replaces release-1.0's ParamConfigRenderer and legacy SIGHUP
+config-manager action. The engine reloads the same file without restarting:
+
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pg-pgbouncer-reconfigure
+  namespace: demo
+spec:
+  type: Reconfiguring
+  clusterName: pg-cluster
+  reconfigures:
+    - componentName: pgbouncer
+      parameters:
+        - key: max_client_conn
+          value: "1000"
+        - key: default_pool_size
+          value: "30"
+        - key: max_db_connections
+          value: "60"
+        - key: max_user_connections
+          value: "40"
+```
+
+KubeBlocks validates values against the documented ranges before applying
+them.
+
+Configuration propagation and reload complete asynchronously across running
+replicas. Confirm that each instance reports the requested values with
+PgBouncer `SHOW CONFIG` before relying on new connection limits.
+
+#### PostgreSQL backend TLS
+
+Use `server_tls_sslmode=verify-full` to encrypt connections from PgBouncer to
+PostgreSQL and validate the server certificate's CA and Service hostname.
+The application-facing PgBouncer connection remains plain PostgreSQL protocol.
+
+Enable the PgBouncer component's TLS configuration with the same
+`issuer.secretRef` as PostgreSQL. KubeBlocks creates and mounts the component's
+CA file according to its ComponentDefinition. For a PostgreSQL issuer Secret
+named `pg-tls` with keys `ca.crt`, `tls.crt` and `tls.key`:
+
+```yaml
+# PgBouncer component in Cluster.spec.componentSpecs
+- name: pgbouncer
+  replicas: 2
+  tls: true
+  issuer:
+    name: UserProvided
+    secretRef:
+      name: pg-tls
+      ca: ca.crt
+      cert: tls.crt
+      key: tls.key
+```
+
+The source Secret contains PostgreSQL's CA, certificate and private key.
+PgBouncer's ComponentDefinition selects only the CA for its derived Secret,
+mounted read-only at `/etc/pgbouncer/tls/ca.pem`. Enabling component TLS prepares
+this trust material; `server_tls_sslmode` stays `disable` until explicitly
+configured. Adding or removing the TLS mount changes the Pod specification.
+
+For a Cluster configured with an explicit `pgbouncer-tls` volume, replace that
+volume entry with the TLS and issuer configuration above in the same Cluster
+update.
+
+To return to a plaintext backend, reload `server_tls_sslmode=disable` before
+disabling component TLS. KubeBlocks removes the derived CA Secret when component
+TLS is disabled.
+
+For `verify-full`, the PostgreSQL certificate's SAN must include the hostname
+resolved into the PgBouncer Pod's `POSTGRESQL_HOST` environment variable.
+Select the PostgreSQL primary Service when the KBE APIServer creates the
+certificate; user-supplied certificates must cover the same hostname.
+`verify-ca` checks the CA alone; `require` enforces encryption only.
+
+Set `server_tls_sslmode` through a `Reconfiguring` OpsRequest as shown above.
+KubeBlocks invokes the same per-instance reload action as for pooling parameters.
+PgBouncer reconnects backend connections when TLS settings change; active
+session-pooled connections drain when their client sessions end.
+Verify `SHOW CONFIG` on each PgBouncer instance, then use a new application
+connection to query `SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()`.
+The result should be `true`.
+
+For CA rotation, publish a bundle containing both the current and replacement
+CAs first. After the Secret projection reaches every PgBouncer Pod, run
+`RELOAD;` followed by `RECONNECT;` on each instance's PgBouncer admin console.
+Rotate the PostgreSQL certificate, verify new backend connections, then remove
+the old CA and repeat the reload. A Secret-only update requires this explicit
+reload. The PgBouncer process stays running while session-pooled connections
+drain normally.
+
+#### Runtime behavior and requirements
+
+- Readiness requires a successful connection through PgBouncer to the writable
+  PostgreSQL primary. The same PgBouncer Pod becomes Ready automatically after
+  PostgreSQL recovers.
+- Dynamic parameter reload uses the KB 1.2 `reconfigure.exec` action on every
+  PgBouncer replica. It uses the local admin console and does not need the
+  legacy config-manager signal path. The PgBouncer container runs as UID/GID 70
+  with privilege escalation disabled and all capabilities dropped.
+- Applications reconnect with backoff after a PostgreSQL primary change and
+  retry any interrupted transaction. Transaction and statement pooling modes
+  also require application compatibility testing.
+- TLS-enforced PostgreSQL backends use the policy and CA configured above.
+- This implementation requires KB 1.2 or later. Addon `1.2.0-alpha.6` publishes
+  new ComponentDefinition names for the sidecar removal; it does not overwrite
+  the immutable definitions from earlier chart versions.
+
+
 ### Horizontal scaling
 
 #### Scale-out

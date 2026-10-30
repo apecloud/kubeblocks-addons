@@ -46,9 +46,10 @@ Describe "postgresql authentication contract"
       The status should be failure
     End
 
-    It "keeps cmpd PGBOUNCER_AUTH_TYPE aligned with the ini dual-mode setting"
-      When call grep -A1 "name: PGBOUNCER_AUTH_TYPE" ../templates/cmpd.yaml
-      The output should include "value: md5"
+    It "keeps the managed schema aligned with the ini dual-mode setting"
+      When call grep -E 'auth_type: +"md5"' ../config/pgbouncer-config-constraint.cue
+      The status should be success
+      The output should include '"md5"'
     End
   End
 
