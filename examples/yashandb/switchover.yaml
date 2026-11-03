@@ -1,0 +1,13 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-switchover
+  namespace: demo
+spec:
+  clusterName: yashandb-cluster
+  type: Switchover
+  # 2026-06-02 Reason: YashanDB switchover is executed on the selected standby pod; Purpose: document the KubeBlocks request shape without using unsupported candidate semantics.
+  switchover:
+  - componentName: yashan-comp
+    # Replace this with a pod whose KubeBlocks role label is "secondary".
+    instanceName: yashandb-cluster-yashan-1
