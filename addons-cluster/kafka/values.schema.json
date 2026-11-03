@@ -190,19 +190,19 @@
       "type": "boolean",
       "default": false,
       "title": "nodePortEnabled",
-      "description":"Whether to enable NodePort mode in Kafka's `advertised.listeners`"
+      "description": "Whether to enable NodePort mode in Kafka's `advertised.listeners`. Mutually exclusive with fixedPodIPEnabled and loadBalancerEnabled."
     },
     "fixedPodIPEnabled": {
       "type": "boolean",
       "default": false,
       "title": "fixedPodIPEnabled",
-      "description":"Whether to enable fixed Pod IP mode in Kafka's `advertised.listeners`"
+      "description": "Whether to enable fixed Pod IP mode in Kafka's `advertised.listeners`. Mutually exclusive with nodePortEnabled and loadBalancerEnabled."
     },
     "loadBalancerEnabled": {
       "type": "boolean",
       "default": false,
       "title": "loadBalancerEnabled",
-      "description":"Whether to enable LoadBalance mode in Kafka's `advertised.listeners`"
+      "description": "Whether to enable LoadBalancer mode in Kafka's `advertised.listeners`. Mutually exclusive with nodePortEnabled and fixedPodIPEnabled."
     },
     "sasl": {
       "title": "Sasl",
@@ -251,5 +251,49 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "nodePortEnabled": { "const": true }
+        },
+        "required": ["nodePortEnabled"]
+      },
+      "then": {
+        "properties": {
+          "fixedPodIPEnabled": { "const": false },
+          "loadBalancerEnabled": { "const": false }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "fixedPodIPEnabled": { "const": true }
+        },
+        "required": ["fixedPodIPEnabled"]
+      },
+      "then": {
+        "properties": {
+          "nodePortEnabled": { "const": false },
+          "loadBalancerEnabled": { "const": false }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "loadBalancerEnabled": { "const": true }
+        },
+        "required": ["loadBalancerEnabled"]
+      },
+      "then": {
+        "properties": {
+          "nodePortEnabled": { "const": false },
+          "fixedPodIPEnabled": { "const": false }
+        }
+      }
+    }
+  ]
 }
