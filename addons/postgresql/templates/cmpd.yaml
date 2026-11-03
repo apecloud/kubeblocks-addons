@@ -412,6 +412,11 @@ spec:
         imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         args:
           - "--extend.query-path=/opt/conf/custom-metrics.yaml"
+          {{- if or (eq .major "17") (eq .major "18") }}
+          # Checkpoint statistics moved out of pg_stat_bgwriter in PG17.
+          # The version-specific custom query preserves the metric names.
+          - "--no-collector.stat_bgwriter"
+          {{- end }}
           - "--web.listen-address=:{{ $.Values.metrics.service.port }}"
           - "--log.level=info"
         env:
