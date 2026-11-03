@@ -1,0 +1,41 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: docker.io
+  repository: hugegraph/hugegraph
+  tag: "1.7.0"
+  pullPolicy: IfNotPresent
+
+exporter:
+  image:
+    registry: docker.io
+    repository: apecloud/hugegraph-exporter
+    tag: "0.1.1"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+distributed:
+  pd:
+    repository: hugegraph/pd
+    tag: "1.7.0"
+    dataMountPath: /hugegraph-pd/pd_data
+  store:
+    repository: hugegraph/store
+    tag: "1.7.0"
+    dataMountPath: /hugegraph-store/storage
+  server:
+    repository: hugegraph/server
+    tag: "1.7.0"
+
+serviceVersion: "1.7.0"
+dataMountPath: /hugegraph-data
+
+logConfigs:
+  running: /hugegraph-server/logs/hugegraph-server.log

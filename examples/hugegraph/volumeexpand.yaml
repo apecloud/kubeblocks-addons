@@ -1,0 +1,13 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: hugegraph-volumeexpand
+  namespace: demo
+spec:
+  clusterName: hugegraph-cluster
+  type: VolumeExpansion
+  volumeExpansion:
+    - componentName: server
+      volumeClaimTemplates:
+        - name: data
+          storage: 40Gi
