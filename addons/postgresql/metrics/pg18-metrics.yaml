@@ -673,7 +673,7 @@ pg_stat_wal:
         SUM(write_time) AS wal_write_time,
         SUM(fsync_time) AS wal_sync_time
       FROM pg_catalog.pg_stat_io
-      WHERE object = 'wal'
+      WHERE object = 'wal' AND context = 'normal'
     ) AS io
   master: true
   metrics:
