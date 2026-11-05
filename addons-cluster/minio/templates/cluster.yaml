@@ -10,6 +10,10 @@ spec:
     - componentDef: minio
       name: minio
       replicas: {{ .Values.replicas }}
+      {{- with .Values.storageClass }}
+      annotations:
+        config.kubeblocks.io/custom-template: {{ dict "storage-class" (dict "templateRef" (printf "%s-minio-storage-class-template" (include "kblib.clusterName" $)) "namespace" $.Release.Namespace "policy" "replace") | toJson | quote }}
+      {{- end }}
       env:
       - name: MINIO_BUCKETS
         value: {{ .Values.buckets }}

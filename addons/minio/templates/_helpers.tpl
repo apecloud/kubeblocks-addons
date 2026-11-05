@@ -84,14 +84,14 @@ Define minio component definition regular expression name prefix
 Define minio script template name
 */}}
 {{- define "minio.scriptTplName" -}}
-minio-script-template
+minio-script-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define minio config template name
 */}}
 {{- define "minio.configTplName" -}}
-minio-config-template
+minio-config-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*

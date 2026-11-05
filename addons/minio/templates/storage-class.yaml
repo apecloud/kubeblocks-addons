@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-storage-class-template-{{ .Chart.Version }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+data:
+  storage-class.json: {{ dict "apply_request" (dict "requestID" "initial" "parameters" (dict) | toJson) | toJson | quote }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: minio-storage-class-{{ .Chart.Version }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  fileName: storage-class.json
+  mergeReloadAndRestart: false
+  dynamicParameters: [apply_request]
+  parametersSchema:
+    topLevelKey: StorageClass
+    cue: |-
+      #StorageClass: {
+        "apply_request": string
+      }
+  reloadAction:
+    shellTrigger:
+      sync: true
+      batchReload: true
+      batchParamsFormatterTemplate: {{ "{{ . | toJson }}" | quote }}
+      command: ["storage-class.sh", "apply-stdin"]
+      scriptConfig:
+        scriptConfigMapRef: {{ include "minio.scriptTplName" . }}
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb-tools
+        toolConfigs:
+          - name: minio-cli
+            asContainerImage: true
+          - name: minio-jq
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag }}
+            command: ["cp", "/bin/jq", "/kb-tools/jq"]
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: minio-storage-class-{{ .Chart.Version }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "minio.cmpdName" . }}
+  parametersDefs: [minio-storage-class-{{ .Chart.Version }}]
+  configs:
+    - name: storage-class.json
+      templateName: storage-class
+      fileFormatConfig:
+        format: json

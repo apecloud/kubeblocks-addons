@@ -16,6 +16,9 @@ image:
   registry: docker.io
   repository: coollabsio/minio
   pullPolicy: IfNotPresent
+  tools:
+    repository: apecloud/curl-jq
+    tag: "0.1.0"
 
 ## @param versions MinIO versions configuration
 ## Array of versions with specific image tags and service versions

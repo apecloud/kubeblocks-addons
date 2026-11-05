@@ -5,6 +5,7 @@ metadata:
   labels:
     {{- include "minio.labels" . | nindent 4 }}
   annotations:
+    apps.kubeblocks.io/minio-storage-class: "true"
     {{- include "minio.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
@@ -39,6 +40,12 @@ spec:
       volumeName: minio-config
       defaultMode: 0777
       restartOnFileChange: true
+    - name: storage-class
+      template: minio-storage-class-template-{{ .Chart.Version }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: minio-storage-class
+      externalManaged: true
+      restartOnFileChange: false
   scripts:
     - name: script
       template: {{ include "minio.scriptTplName" . }}
@@ -124,6 +131,12 @@ spec:
         - get
         - patch
   lifecycleActions:
+    postProvision:
+      timeoutSeconds: 120
+      exec:
+        container: minio
+        command: ["/bin/bash", "/scripts/storage-class.sh"]
+        targetPodSelector: Any
     roleProbe:
       exec:
         command:
@@ -188,6 +201,8 @@ spec:
             mountPath: /scripts
           - name: minio-replicas-config
             mountPath: /minio-config
+          - name: minio-storage-class
+            mountPath: /minio-storage-class
     volumes:
       - name: minio-replicas-config
         emptyDir: {}

@@ -11,3 +11,6 @@ cpu: 1
 memory: 1
 storageClassName: ""
 storage: 20
+
+# Omit keys to keep MinIO defaults; an empty value resets that class to its default.
+storageClass: {}

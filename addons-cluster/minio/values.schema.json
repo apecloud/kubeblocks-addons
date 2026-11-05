@@ -53,6 +53,21 @@
       "title": "bucket Names",
       "description": "bucket names",
       "type": "string"
+    },
+    "storageClass": {
+      "title": "Storage class parity",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "standard": {
+          "type": "string",
+          "pattern": "^(EC:[0-8])?$"
+        },
+        "rrs": {
+          "type": "string",
+          "pattern": "^(EC:[0-8])?$"
+        }
+      }
     }
   }
 }
