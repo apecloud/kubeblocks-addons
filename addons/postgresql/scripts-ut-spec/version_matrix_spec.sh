@@ -103,7 +103,7 @@ Describe "PostgreSQL version matrix contract"
       replication = topologies.first
       abort unless replication["components"] == [
         {"name" => "postgresql", "compDef" => "postgresql-"},
-        {"name" => "pgbouncer", "compDef" => "pgbouncer-1.0.7"}
+        {"name" => "pgbouncer", "compDef" => "pgbouncer-"}
       ]
 
       definitions = documents.select { |document| document["kind"] == "ComponentDefinition" }
