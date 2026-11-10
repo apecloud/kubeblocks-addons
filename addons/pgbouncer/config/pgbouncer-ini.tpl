@@ -8,8 +8,8 @@ auth_type = md5
 auth_user = postgres
 auth_query = SELECT rolname, CASE WHEN rolvaliduntil IS NOT NULL AND rolvaliduntil < pg_catalog.now() THEN NULL ELSE rolpassword END FROM pg_catalog.pg_authid WHERE rolname=$1 AND rolcanlogin
 auth_dbname = postgres
-admin_users = postgres
-stats_users = postgres
+admin_users = pgbouncer
+stats_users = pgbouncer
 pool_mode = session
 client_tls_sslmode = disable
 server_tls_sslmode = disable

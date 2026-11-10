@@ -20,7 +20,13 @@ validate_runtime_inputs() {
     return 1
   fi
 
-  pgbouncer_credentials="${POSTGRESQL_USERNAME}${POSTGRESQL_PASSWORD}"
+  if [ "${POSTGRESQL_USERNAME}" != "postgres" ] ||
+    [ "${PGBOUNCER_ADMIN_USERNAME:-}" != "pgbouncer" ] || [ -z "${PGBOUNCER_ADMIN_PASSWORD:-}" ]; then
+    pgbouncer_log "postgres backend credentials and pgbouncer management credentials are required"
+    return 1
+  fi
+
+  pgbouncer_credentials="${POSTGRESQL_USERNAME}${POSTGRESQL_PASSWORD}${PGBOUNCER_ADMIN_USERNAME}${PGBOUNCER_ADMIN_PASSWORD}"
   pgbouncer_sanitized_credentials=$(printf '%s' "$pgbouncer_credentials" | tr -d '\r\n')
   if [ "$pgbouncer_credentials" != "$pgbouncer_sanitized_credentials" ]; then
     pgbouncer_log "PostgreSQL credentials contain an unsupported line break"
@@ -57,6 +63,7 @@ build_pgbouncer_conf() {
 
   pgbouncer_escaped_username=$(printf '%s' "$POSTGRESQL_USERNAME" | sed 's/"/""/g')
   pgbouncer_escaped_password=$(printf '%s' "$POSTGRESQL_PASSWORD" | sed 's/"/""/g')
+  pgbouncer_escaped_admin_password=$(printf '%s' "$PGBOUNCER_ADMIN_PASSWORD" | sed 's/"/""/g')
   pgbouncer_generated_file=$(mktemp "${pgbouncer_conf_dir}/.pgbouncer.ini.XXXXXX") || return 1
   pgbouncer_user_list_tmp=$(mktemp "${pgbouncer_conf_dir}/.userlist.txt.XXXXXX") || {
     rm -f "$pgbouncer_generated_file"
@@ -68,6 +75,7 @@ build_pgbouncer_conf() {
     ! printf '*=host=%s port=%s\n' "$pgbouncer_backend_host" "$pgbouncer_backend_port" >> "$pgbouncer_generated_file" ||
     ! chmod 600 "$pgbouncer_generated_file" ||
     ! printf '"%s" "%s"\n' "$pgbouncer_escaped_username" "$pgbouncer_escaped_password" > "$pgbouncer_user_list_tmp" ||
+    ! printf '"pgbouncer" "%s"\n' "$pgbouncer_escaped_admin_password" >> "$pgbouncer_user_list_tmp" ||
     ! chmod 600 "$pgbouncer_user_list_tmp"; then
     rm -f "$pgbouncer_generated_file" "$pgbouncer_user_list_tmp"
     return 1

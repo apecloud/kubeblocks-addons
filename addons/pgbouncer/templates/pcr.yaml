@@ -3,9 +3,9 @@ kind: ParamConfigRenderer
 metadata:
   name: {{ include "pgbouncer.pcr" . }}
   labels:
-    {{- include "postgresql.labels" . | nindent 4 }}
+    {{- include "pgbouncer.labels" . | nindent 4 }}
   annotations:
-    {{- include "postgresql.annotations" . | nindent 4 }}
+    {{- include "pgbouncer.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "pgbouncer.componentDefName" . }}
   serviceVersion: {{ include "pgbouncer.defaultServiceVersion" . | quote }}

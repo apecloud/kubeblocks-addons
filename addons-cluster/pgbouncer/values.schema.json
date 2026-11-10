@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "definitions": {
+    "positiveResource": {
+      "type": [
+        "number",
+        "string"
+      ],
+      "exclusiveMinimum": 0,
+      "pattern": "^(0*[1-9][0-9]*(\\.[0-9]+)?|0+\\.[0-9]*[1-9][0-9]*)$"
+    }
+  },
+  "properties": {
+    "backend": {
+      "type": "object",
+      "required": [
+        "role"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "rw",
+            "ro"
+          ]
+        }
+      }
+    },
+    "postgresql": {
+      "type": "object",
+      "required": [
+        "cluster",
+        "component",
+        "port"
+      ],
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "component": {
+          "type": "string",
+          "minLength": 1
+        },
+        "service": {
+          "type": "string"
+        },
+        "port": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "replicas": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cpu": {
+      "$ref": "#/definitions/positiveResource"
+    },
+    "memory": {
+      "$ref": "#/definitions/positiveResource"
+    },
+    "requests": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "$ref": "#/definitions/positiveResource"
+        },
+        "memory": {
+          "$ref": "#/definitions/positiveResource"
+        }
+      }
+    }
+  }
+}

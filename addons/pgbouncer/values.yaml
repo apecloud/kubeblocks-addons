@@ -1,0 +1,10 @@
+nameOverride: ""
+fullnameOverride: ""
+image:
+  registry: docker.io
+  repository: apecloud/pgbouncer
+  pullPolicy: IfNotPresent
+versions:
+  - version: "1.25.2"
+    tag: "1.25.2"
+    isDefault: true

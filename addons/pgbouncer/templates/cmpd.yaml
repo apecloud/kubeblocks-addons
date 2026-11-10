@@ -3,16 +3,16 @@ kind: ComponentDefinition
 metadata:
   name: {{ include "pgbouncer.componentDefName" . }}
   labels:
-    {{- include "postgresql.labels" . | nindent 4 }}
+    {{- include "pgbouncer.labels" . | nindent 4 }}
   annotations:
-    {{- include "postgresql.annotations" . | nindent 4 }}
+    {{- include "pgbouncer.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A managed PgBouncer connection pool for PostgreSQL
   serviceKind: pgbouncer
   serviceVersion: {{ include "pgbouncer.defaultServiceVersion" . | quote }}
   replicasLimit:
-    minReplicas: 0
+    minReplicas: 1
     maxReplicas: 64
   updateStrategy: Serial
   podManagementPolicy: Parallel
@@ -36,42 +36,55 @@ spec:
       defaultMode: 0444
       externalManaged: true
   scripts:
-    - name: postgresql-scripts
-      template: {{ include "postgresql.scriptsTemplate" . }}
+    - name: pgbouncer-scripts
+      template: {{ include "pgbouncer.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  serviceRefDeclarations:
+    - name: postgresql
+      serviceRefDeclarationSpecs:
+        - serviceKind: postgresql
+          serviceVersion: "^*"
+  systemAccounts:
+    - name: pgbouncer
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 24
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
   vars:
     - name: POSTGRESQL_HOST
       valueFrom:
-        serviceVarRef:
-          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+        serviceRefVarRef:
           name: postgresql
           host: Required
-          optional: false
     - name: POSTGRESQL_PORT
       valueFrom:
-        serviceVarRef:
-          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+        serviceRefVarRef:
           name: postgresql
-          port:
-            name: tcp-postgresql
-            option: Required
-          optional: false
+          port: Required
     - name: POSTGRESQL_USERNAME
       valueFrom:
-        credentialVarRef:
-          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
-          name: postgres
+        serviceRefVarRef:
+          name: postgresql
           username: Required
-          optional: false
     - name: POSTGRESQL_PASSWORD
       valueFrom:
-        credentialVarRef:
-          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
-          name: postgres
+        serviceRefVarRef:
+          name: postgresql
           password: Required
-          optional: false
+    - name: PGBOUNCER_ADMIN_USERNAME
+      valueFrom:
+        credentialVarRef:
+          name: pgbouncer
+          username: Required
+    - name: PGBOUNCER_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: pgbouncer
+          password: Required
   runtime:
     securityContext:
       runAsUser: 70
@@ -83,7 +96,7 @@ spec:
         emptyDir: {}
     containers:
       - name: pgbouncer
-        imagePullPolicy: {{ include "pgbouncer.componentImagePullPolicy" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         resources:
           requests:
             cpu: 100m
@@ -126,18 +139,10 @@ spec:
           timeoutSeconds: 5
           exec:
             command:
-              - /bin/sh
-              - -ec
-              - |
-                primary="$(
-                  PGPASSWORD="$POSTGRESQL_PASSWORD" PGCONNECT_TIMEOUT=3 \
-                    psql --no-password --username="$POSTGRESQL_USERNAME" \
-                    --host="$CURRENT_POD_IP" --port=6432 --dbname=postgres \
-                    --tuples-only --no-align --set=ON_ERROR_STOP=1 \
-                    --command="SELECT NOT pg_is_in_recovery() AND current_setting('transaction_read_only') = 'off'"
-                )"
-                test "$primary" = "t"
+              - /kb-scripts/pgbouncer-readiness.sh
         env:
+          - name: PGBOUNCER_BACKEND_ROLE
+            value: rw
           - name: CURRENT_POD_IP
             valueFrom:
               fieldRef:
@@ -151,3 +156,7 @@ spec:
             value: $(POSTGRESQL_USERNAME)
           - name: POSTGRESQL_PASSWORD
             value: $(POSTGRESQL_PASSWORD)
+          - name: PGBOUNCER_ADMIN_USERNAME
+            value: $(PGBOUNCER_ADMIN_USERNAME)
+          - name: PGBOUNCER_ADMIN_PASSWORD
+            value: $(PGBOUNCER_ADMIN_PASSWORD)
