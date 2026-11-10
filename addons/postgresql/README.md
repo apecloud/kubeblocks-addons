@@ -316,6 +316,15 @@ Ready. Check the endpoint before publishing the address:
 kubectl get endpoints -n demo pg-cluster-pgbouncer
 ```
 
+The readiness probe checks that a query through PgBouncer reaches a writable
+primary. If it reaches a replica during a primary Service routing transition,
+it marks the backend connections in all database pools for reconnection and
+remains unready until a subsequent probe reaches a writable primary. Connection
+errors and a primary configured for read-only transactions do not trigger this
+reconnection. With session pooling, active client sessions release their backend
+only when they disconnect; applications must handle connection failures and
+retry according to their transaction semantics during failover.
+
 #### Configure
 
 PgBouncer starts with the following per-instance settings:

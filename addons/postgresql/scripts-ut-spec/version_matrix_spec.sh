@@ -176,11 +176,12 @@ Describe "PostgreSQL version matrix contract"
       abort if pgbouncer_schema.match?(/^\s*\.\.\.\s*$/)
       account_refs = pgbouncer.dig("spec", "vars").map { |var| var.dig("valueFrom", "credentialVarRef", "name") }.compact
       abort unless account_refs == ["postgres", "postgres"]
-      probe = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe", "exec", "command", -1)
-      abort unless probe.include?("--port=6432") && probe.include?("$POSTGRESQL_USERNAME")
-      abort unless probe.include?("$CURRENT_POD_IP") && probe.include?("NOT pg_is_in_recovery()")
-      abort unless probe.include?("current_setting(\u0027transaction_read_only\u0027) = \u0027off\u0027")
-      abort if probe.include?("budget-ready") || probe.include?("budget-sync")
+      probe = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe", "exec", "command")
+      abort unless probe == ["/kb-scripts/pgbouncer-readiness.sh"]
+      scripts = documents.find do |document|
+        document["kind"] == "ConfigMap" && document.fetch("data", {}).key?("pgbouncer-readiness.sh")
+      end
+      abort unless scripts && scripts["data"]["pgbouncer-readiness.sh"] == File.read("../scripts/pgbouncer-readiness.sh").chomp
       readiness = pgbouncer.dig("spec", "runtime", "containers", 0, "readinessProbe")
       abort unless readiness["failureThreshold"] == 1 && readiness["periodSeconds"] == 5
       pod_security = pgbouncer.dig("spec", "runtime", "securityContext")
