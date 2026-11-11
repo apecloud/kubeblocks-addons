@@ -1320,3 +1320,17 @@ More environment variables can be found in [Spilo's ENVIRONMENT](https://github.
 [^3]: Internal load balancer: <https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer>
 [^4]: Volume Expansion: <https://kubernetes.io/blog/2022/05/05/volume-expansion-ga/>
 [^5]: Grafana Dashboard Store: <https://grafana.com/grafana/dashboards/>
+
+
+## Independent connection pools
+
+PgBouncer is provided by the separate [PgBouncer Addon](../pgbouncer/README.md).
+The PostgreSQL primary Service exposes port 5432; new definitions no longer
+embed a pool or expose port 6432. Create independent read/write and read-only
+pools for separate capacity and configuration. Replica access is created on
+demand with an Expose operation, not enabled by default.
+
+Before upgrading an existing embedded-pool cluster to the new definition,
+create and verify an independent pool and move applications to its endpoint.
+See the [migration guidance](../pgbouncer/README.md#moving-from-the-embedded-postgresql-pool)
+for definition retention and connection interruption boundaries.

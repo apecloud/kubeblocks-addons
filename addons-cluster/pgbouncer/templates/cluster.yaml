@@ -1,0 +1,45 @@
+{{- $namespace := .Values.postgresql.namespace | default .Release.Namespace -}}
+{{- if ne $namespace .Release.Namespace -}}
+{{- fail "PostgreSQL must be in the same namespace as PgBouncer" -}}
+{{- end -}}
+{{- $readonly := eq .Values.backend.role "ro" -}}
+{{- $service := .Values.postgresql.service | default "postgresql" -}}
+{{- if and $readonly (empty .Values.postgresql.service) -}}
+{{- fail "read-only pools require postgresql.service naming an existing replica ClusterService" -}}
+{{- end -}}
+{{- if and (not $readonly) (ne $service "postgresql") -}}
+{{- fail "read/write pools require the postgresql primary component service" -}}
+{{- end -}}
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  clusterDef: pgbouncer
+  topology: pgbouncer
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  componentSpecs:
+    - name: pgbouncer
+      serviceVersion: {{ .Values.version | quote }}
+      replicas: {{ .Values.replicas }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      env:
+        - name: PGBOUNCER_BACKEND_ROLE
+          value: {{ .Values.backend.role | quote }}
+      serviceRefs:
+        - name: postgresql
+          namespace: {{ $namespace }}
+          clusterServiceSelector:
+            cluster: {{ required "postgresql.cluster must name an existing PostgreSQL cluster" .Values.postgresql.cluster | quote }}
+            service:
+              {{- if not $readonly }}
+              component: {{ .Values.postgresql.component }}
+              {{- end }}
+              service: {{ $service | quote }}
+              port: {{ .Values.postgresql.port }}
+            credential:
+              component: {{ .Values.postgresql.component }}
+              name: postgres

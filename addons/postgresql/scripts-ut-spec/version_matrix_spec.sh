@@ -92,4 +92,31 @@ RUBY
     The output should eq "ok"
   End
 
+  independent_pool_contract() {
+    render_chart | RUBYOPT=-W0 ruby -ryaml -e '
+      docs = YAML.load_stream(ARGF.read).compact
+      defs = docs.select { |doc| doc["kind"] == "ComponentDefinition" }
+      abort "wrong definition count" unless defs.size == 7
+      defs.each do |definition|
+        spec = definition.fetch("spec")
+        abort "embedded pool remains" if spec.fetch("runtime").fetch("containers").any? { |c| c["name"] == "pgbouncer" }
+        abort "pool configuration remains" if spec.fetch("configs").any? { |c| c["name"].include?("pgbouncer") }
+        services = spec.fetch("services")
+        abort "unexpected replica service" unless services.size == 1 && services.first["roleSelector"] == "primary"
+        abort "old pool endpoint remains" unless services.first.dig("spec", "ports").map { |p| p["port"] } == [5432]
+        abort "old immutable identity" unless definition.dig("metadata", "name").end_with?("-1.2.0-alpha.6")
+      end
+      versions = docs.find { |d| d["kind"] == "ComponentVersion" }.dig("spec", "releases")
+      abort "old image remains" if versions.any? { |v| v.fetch("images").key?("pgbouncer") }
+      abort "old configuration or script remains" if docs.select { |d| d["kind"] == "ConfigMap" }.any? { |d| d.fetch("data", {}).keys.any? { |k| k.include?("pgbouncer") } }
+      puts "ok"
+    '
+  }
+
+  It "keeps PostgreSQL independent of the pool with only the primary service enabled"
+    When call independent_pool_contract
+    The status should eq 0
+    The output should eq "ok"
+  End
+
 End
