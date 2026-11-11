@@ -2,9 +2,13 @@
 {{- if ne $namespace .Release.Namespace -}}
 {{- fail "PostgreSQL must be in the same namespace as PgBouncer" -}}
 {{- end -}}
-{{- $service := ternary "postgresql-ro" "postgresql" (eq .Values.backend.role "ro") -}}
-{{- if and .Values.postgresql.service (ne .Values.postgresql.service $service) -}}
-{{- fail "postgresql.service must match backend.role: postgresql for rw, postgresql-ro for ro" -}}
+{{- $readonly := eq .Values.backend.role "ro" -}}
+{{- $service := .Values.postgresql.service | default "postgresql" -}}
+{{- if and $readonly (empty .Values.postgresql.service) -}}
+{{- fail "read-only pools require postgresql.service naming an existing replica ClusterService" -}}
+{{- end -}}
+{{- if and (not $readonly) (ne $service "postgresql") -}}
+{{- fail "read/write pools require the postgresql primary component service" -}}
 {{- end -}}
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
@@ -31,8 +35,10 @@ spec:
           clusterServiceSelector:
             cluster: {{ .Values.postgresql.cluster }}
             service:
+              {{- if not $readonly }}
               component: {{ .Values.postgresql.component }}
-              service: {{ $service }}
+              {{- end }}
+              service: {{ $service | quote }}
               port: {{ .Values.postgresql.port }}
             credential:
               component: {{ .Values.postgresql.component }}

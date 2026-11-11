@@ -18,7 +18,9 @@ Describe "Standalone PgBouncer chart"
         YAML.load_stream(output).compact.find { |doc| doc["kind"] == "Cluster" }.fetch("spec")
       end
       %w[rw ro].each do |role|
-        spec = render.call("backend.role=#{role}", "replicas=3", "cpu=1", "memory=2")
+        values = ["backend.role=#{role}", "replicas=3", "cpu=1", "memory=2"]
+        values.concat(["postgresql.service=replica-access", "postgresql.port=replica-port"]) if role == "ro"
+        spec = render.call(*values)
         abort unless spec["clusterDef"] == "pgbouncer" && spec["topology"] == role
         pool = spec.fetch("componentSpecs").fetch(0)
         abort unless pool["name"] == "pgbouncer" && pool["replicas"] == 3
@@ -28,7 +30,8 @@ Describe "Standalone PgBouncer chart"
         abort unless ref["namespace"] == "demo" && ref["name"] == "postgresql"
         selector = ref.fetch("clusterServiceSelector")
         abort unless selector["cluster"] == "backend"
-        abort unless selector["service"] == {"component" => "postgresql", "service" => (role == "ro" ? "postgresql-ro" : "postgresql"), "port" => "tcp-postgresql"}
+        expected = role == "ro" ? {"service" => "replica-access", "port" => "replica-port"} : {"component" => "postgresql", "service" => "postgresql", "port" => "tcp-postgresql"}
+        abort unless selector["service"] == expected
         abort unless selector["credential"] == {"component" => "postgresql", "name" => "postgres"}
         abort if pool.key?("volumeClaimTemplates")
       end
@@ -38,7 +41,7 @@ Describe "Standalone PgBouncer chart"
 
   invalid_backend_contract() {
     RUBYOPT=-W0 ruby -ropen3 -e '
-      ["postgresql.cluster=", "backend.role=invalid", "postgresql.namespace=other", "postgresql.service=postgresql-ro", "replicas=0"].each do |value|
+      ["postgresql.cluster=", "backend.role=invalid", "backend.role=ro", "postgresql.namespace=other", "postgresql.service=postgresql-ro", "replicas=0"].each do |value|
         _, _, status = Open3.capture3("helm", "template", "pool", "../../../addons-cluster/pgbouncer", "--namespace", "demo", "--set", "postgresql.cluster=backend", "--set", value)
         abort "accepted #{value}" if status.success?
       end
@@ -67,7 +70,7 @@ Describe "Standalone PgBouncer chart"
     The output should eq "ok"
   End
 
-  It "rejects missing backends, conflicting roles and cross-namespace credentials"
+  It "rejects missing backends or replica services, conflicting primary services and cross-namespace credentials"
     When call invalid_backend_contract
     The status should be success
     The output should eq "ok"

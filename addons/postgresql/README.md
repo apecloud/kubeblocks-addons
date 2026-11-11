@@ -195,13 +195,6 @@ NAME         VERSIONS                                                           
 postgresql   18.4.0,18.6.0,18.1.0,17.10.0,17.11.0,17.5.0,16.14.0,16.15.0,16.9.0,16.4.0,15.18.0,15.19.0,15.13.0,15.7.0,14.23.0,14.24.0,14.18.0,14.8.0,14.7.2,13.23.0,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
 ```
 
-### PgBouncer connection pool
-
-Use the standalone [PgBouncer Addon](../pgbouncer/README.md) to create independent
-read/write or read-only connection pools for this PostgreSQL cluster.
-The `postgresql` Service selects the primary; `postgresql-ro` selects replicas
-and has no endpoints when no replica is available.
-
 ### Horizontal scaling
 
 #### Scale-out

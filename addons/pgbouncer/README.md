@@ -4,8 +4,9 @@ This Addon runs PgBouncer 1.25.2 as an independent, stateless KubeBlocks Cluster
 Each instance targets one existing PostgreSQL cluster and one backend role:
 
 - `rw`: the PostgreSQL primary, through the `postgresql` Service.
-- `ro`: PostgreSQL replicas, through the `postgresql-ro` Service. There is no
-  fallback to the primary when replicas are unavailable.
+- `ro`: PostgreSQL replicas, through an explicitly selected replica ClusterService.
+  Create this service on demand before creating the pool. There is no fallback
+  to the primary when replicas are unavailable.
 
 Create separate PgBouncer clusters for independent read/write and read-only
 addresses, pool settings, resources, or application workloads. Applications
@@ -15,7 +16,9 @@ choose an address; PgBouncer does not classify or split SQL statements.
 
 - KubeBlocks newer than 1.0.2.
 - PgBouncer Addon 1.0.0.
-- PostgreSQL Addon 1.0.8, with the backend cluster using its ComponentDefinition.
+- An existing PostgreSQL cluster with a primary component Service and a `postgres`
+  system account. Read-only pools also require a ClusterService that selects only
+  PostgreSQL replicas; PostgreSQL does not create this service by default.
 - Both clusters in the same Kubernetes namespace. Native KubeBlocks service
   references cannot resolve another namespace's account credentials.
 
@@ -29,8 +32,13 @@ helm install kb-addon-pgbouncer addons/pgbouncer --namespace kb-system
 helm dependency build addons-cluster/pgbouncer
 helm install app-pool-rw addons-cluster/pgbouncer --namespace demo \
   --set postgresql.cluster=pg-cluster --set backend.role=rw
+# Create replica access only when a read-only pool is needed.
+kubectl apply -f examples/pgbouncer/expose-readonly.yaml
+kubectl wait --for=jsonpath='{.status.phase}'=Succeed \
+  opsrequest/pg-expose-readonly --namespace demo --timeout=180s
 helm install app-pool-ro addons-cluster/pgbouncer --namespace demo \
-  --set postgresql.cluster=pg-cluster --set backend.role=ro
+  --set postgresql.cluster=pg-cluster --set backend.role=ro \
+  --set postgresql.service=postgresql-internal-ro
 ```
 
 The default is two replicas, each with 0.5 CPU and 0.5 GiB memory. Set `replicas`,
@@ -40,8 +48,11 @@ not delete its PostgreSQL backend.
 
 The Cluster chart takes `postgresql.cluster`, `postgresql.namespace`,
 `postgresql.component`, `postgresql.service`, and `postgresql.port`. The service
-is chosen from `backend.role`; an explicit conflicting service is rejected.
-The backend credential is the PostgreSQL component's `postgres` system account.
+defaults to the `postgresql` component Service for `rw`. For `ro`, set it to the
+name of an existing replica ClusterService in the backend Cluster specification.
+The read-only service reference omits `service.component`; its credential still
+uses the PostgreSQL component's `postgres` system account. Keep the referenced
+service enabled while the pool is in use.
 
 Raw Cluster examples are in [examples/pgbouncer](../../examples/pgbouncer).
 

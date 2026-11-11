@@ -27,8 +27,7 @@ spec:
           clusterServiceSelector:
             cluster: pg-cluster
             service:
-              component: postgresql
-              service: postgresql-ro
+              service: postgresql-internal-ro
               port: tcp-postgresql
             credential:
               component: postgresql

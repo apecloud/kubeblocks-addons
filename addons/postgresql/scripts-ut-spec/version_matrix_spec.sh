@@ -53,12 +53,11 @@ Describe "PostgreSQL version matrix contract"
       abort unless topology["components"] == [{"name" => "postgresql", "compDef" => "postgresql-"}]
       docs.select { |doc| doc["kind"] == "ComponentDefinition" }.each do |definition|
         services = definition.fetch("spec").fetch("services")
-        {"postgresql" => "primary", "postgresql-ro" => "secondary"}.each do |name, role|
-          service = services.find { |item| item["name"] == name }
-          abort unless service && service["roleSelector"] == role && service["serviceName"] == name
-          abort unless service.dig("spec", "ports", 0, "name") == "tcp-postgresql"
-          abort unless service.dig("spec", "ports", 0, "port") == 5432
-        end
+        abort unless services.size == 1
+        service = services.fetch(0)
+        abort unless service["name"] == "postgresql" && service["roleSelector"] == "primary" && service["serviceName"] == "postgresql"
+        abort unless service.dig("spec", "ports", 0, "name") == "tcp-postgresql"
+        abort unless service.dig("spec", "ports", 0, "port") == 5432
       end
       puts "ok"
     '
@@ -172,7 +171,7 @@ EOF
     fi
   }
 
-  It "provides separate primary and replica services for independent connection pools"
+  It "provides only the PostgreSQL component and its primary service by default"
     When call service_roles_contract
     The status should be success
     The output should eq "ok"
