@@ -21,7 +21,7 @@ Describe "Standalone PgBouncer chart"
         values = ["backend.role=#{role}", "replicas=3", "cpu=1", "memory=2"]
         values.concat(["postgresql.service=replica-access", "postgresql.port=replica-port"]) if role == "ro"
         spec = render.call(*values)
-        abort unless spec["clusterDef"] == "pgbouncer" && spec["topology"] == role
+        abort unless spec["clusterDef"] == "pgbouncer" && spec["topology"] == "pgbouncer"
         pool = spec.fetch("componentSpecs").fetch(0)
         abort unless pool["name"] == "pgbouncer" && pool["replicas"] == 3
         abort unless pool.dig("resources", "limits") == {"cpu" => "1", "memory" => "2Gi"}
@@ -52,6 +52,8 @@ Describe "Standalone PgBouncer chart"
   definition_contract() {
     helm template addon .. | RUBYOPT=-W0 ruby -ryaml -e '
       docs = YAML.load_stream(ARGF.read).compact
+      topologies = docs.find { |doc| doc["kind"] == "ClusterDefinition" }.dig("spec", "topologies")
+      abort unless topologies.map { |topology| topology["name"] } == ["pgbouncer"] && topologies.first["default"]
       definition = docs.find { |doc| doc["kind"] == "ComponentDefinition" }.fetch("spec")
       abort unless definition["serviceKind"] == "pgbouncer"
       refs = definition.fetch("vars").select { |var| var["name"].start_with?("POSTGRESQL_") }

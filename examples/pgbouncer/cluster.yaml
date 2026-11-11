@@ -5,7 +5,7 @@ metadata:
   namespace: demo
 spec:
   clusterDef: pgbouncer
-  topology: rw
+  topology: pgbouncer
   terminationPolicy: Delete
   componentSpecs:
     - name: pgbouncer

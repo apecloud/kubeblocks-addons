@@ -18,7 +18,7 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   clusterDef: pgbouncer
-  topology: {{ .Values.backend.role }}
+  topology: pgbouncer
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: pgbouncer

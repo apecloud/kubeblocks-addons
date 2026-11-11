@@ -8,12 +8,8 @@ metadata:
     {{- include "pgbouncer.apiVersion" . | nindent 4 }}
 spec:
   topologies:
-    {{- range list "rw" "ro" }}
-    - name: {{ . }}
+    - name: pgbouncer
       components:
         - name: pgbouncer
-          compDef: {{ include "pgbouncer.componentDefNamePrefix" $ }}
-      {{- if eq . "rw" }}
+          compDef: {{ include "pgbouncer.componentDefNamePrefix" . }}
       default: true
-      {{- end }}
-    {{- end }}
