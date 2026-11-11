@@ -242,6 +242,11 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
 
+{{/* Image compatibility for retained definitions that embed PgBouncer. */}}
+{{- define "postgresql.pgbouncerImage" -}}
+{{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
+{{- end }}
+
 {{- define "postgresql.metricsImage" -}}
 {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 {{- end }}

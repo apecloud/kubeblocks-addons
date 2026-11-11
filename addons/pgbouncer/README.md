@@ -132,7 +132,10 @@ The main PostgreSQL Addon no longer embeds PgBouncer. PostgreSQL chart
 5432 on its primary Service. Previously installed definitions use Helm's keep
 policy; existing Clusters are not automatically migrated by installing this
 Addon. They continue to depend on their selected definitions until explicitly
-upgraded.
+upgraded. The shared PostgreSQL ComponentVersion retains the legacy embedded
+pool image (`apecloud/pgbouncer:1.19.0`) and its existing `pgbouncer.image`
+overrides so those old definitions can still resolve all container images.
+That compatibility entry does not add a sidecar to the new definitions.
 
 Create an independent pool against the existing PostgreSQL cluster, verify
 business authentication and routing, and move applications from the old
