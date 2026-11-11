@@ -33,7 +33,7 @@ spec:
         - name: postgresql
           namespace: {{ $namespace }}
           clusterServiceSelector:
-            cluster: {{ .Values.postgresql.cluster }}
+            cluster: {{ required "postgresql.cluster must name an existing PostgreSQL cluster" .Values.postgresql.cluster | quote }}
             service:
               {{- if not $readonly }}
               component: {{ .Values.postgresql.component }}
