@@ -1,0 +1,15 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pg-expose-readonly
+  namespace: demo
+spec:
+  clusterName: pg-cluster
+  type: Expose
+  expose:
+    - componentName: postgresql
+      switch: Enable
+      services:
+        - name: internal-ro
+          serviceType: ClusterIP
+          roleSelector: secondary

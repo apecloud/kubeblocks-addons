@@ -34,6 +34,7 @@ on:
           - opensearch
           - orchestrator
           - orioledb
+          - pgbouncer
           - polardbx
           - postgresql
           - pulsar

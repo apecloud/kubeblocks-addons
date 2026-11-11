@@ -3,9 +3,9 @@ kind: ParametersDefinition
 metadata:
   name: {{ include "pgbouncer.parametersDefinition" . }}
   labels:
-    {{- include "postgresql.labels" . | nindent 4 }}
+    {{- include "pgbouncer.labels" . | nindent 4 }}
   annotations:
-    {{- include "postgresql.annotations" . | nindent 4 }}
+    {{- include "pgbouncer.annotations" . | nindent 4 }}
 spec:
   fileName: pgbouncer.ini
   reloadAction:

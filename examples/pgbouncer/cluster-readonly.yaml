@@ -1,0 +1,34 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: app-pool-ro
+  namespace: demo
+spec:
+  clusterDef: pgbouncer
+  topology: pgbouncer
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: pgbouncer
+      serviceVersion: "1.25.2"
+      replicas: 2
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      env:
+        - name: PGBOUNCER_BACKEND_ROLE
+          value: ro
+      serviceRefs:
+        - name: postgresql
+          namespace: demo
+          clusterServiceSelector:
+            cluster: pg-cluster
+            service:
+              service: postgresql-internal-ro
+              port: tcp-postgresql
+            credential:
+              component: postgresql
+              name: postgres

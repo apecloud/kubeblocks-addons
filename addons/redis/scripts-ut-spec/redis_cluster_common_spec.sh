@@ -589,6 +589,11 @@ Describe "Redis Cluster Common Bash Script Tests"
   End
 
   Describe "forget_cluster_node()"
+    timeout() {
+      shift
+      "$@"
+    }
+
     setup() {
       export REDIS_DEFAULT_PASSWORD=""
       export REDIS_CLI_TLS_CMD=""

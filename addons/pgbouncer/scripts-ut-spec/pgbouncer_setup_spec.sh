@@ -1,7 +1,7 @@
 # shellcheck shell=sh
 # shellcheck disable=SC2034,SC2317,SC2329
 
-Describe "PostgreSQL PgBouncer setup contract"
+Describe "PgBouncer setup contract"
   Include ../scripts/pgbouncer-setup.sh
 
   setup() {
@@ -12,8 +12,10 @@ Describe "PostgreSQL PgBouncer setup contract"
     pgbouncer_conf_dir="$test_dir/conf"
     pgbouncer_conf_file="$test_dir/conf/pgbouncer.ini"
     pgbouncer_user_list_file="$test_dir/conf/userlist.txt"
-    POSTGRESQL_USERNAME=pgbouncer
+    POSTGRESQL_USERNAME=postgres
     POSTGRESQL_PASSWORD='pa"ss'
+    PGBOUNCER_ADMIN_USERNAME=pgbouncer
+    PGBOUNCER_ADMIN_PASSWORD='admin"secret'
     POSTGRESQL_HOST=sample-postgresql
     POSTGRESQL_PORT=5432
   }
@@ -53,7 +55,8 @@ Describe "PostgreSQL PgBouncer setup contract"
     When call build_pgbouncer_conf
     The status should be success
     The path "$pgbouncer_user_list_file" should be file
-    The contents of file "$pgbouncer_user_list_file" should equal '"pgbouncer" "pa""ss"'
+    The contents of file "$pgbouncer_user_list_file" should include '"postgres" "pa""ss"'
+    The contents of file "$pgbouncer_user_list_file" should include '"pgbouncer" "admin""secret"'
   End
 
   It "loads the documented pool defaults from the managed configuration"
@@ -123,6 +126,21 @@ Describe "PostgreSQL PgBouncer setup contract"
     The status should be failure
     The stderr should include "credentials contain an unsupported line break"
     The path "$pgbouncer_user_list_file" should not be exist
+  End
+
+  It "requires the independent management credential"
+    unset PGBOUNCER_ADMIN_PASSWORD
+    When call build_pgbouncer_conf
+    The status should be failure
+    The stderr should include "management credentials are required"
+    The path "$pgbouncer_user_list_file" should not be exist
+  End
+
+  It "rejects line breaks in management credentials"
+    PGBOUNCER_ADMIN_PASSWORD=$(printf 'bad\nsecret')
+    When call build_pgbouncer_conf
+    The status should be failure
+    The stderr should include "credentials contain an unsupported line break"
   End
 
   It "fails when the required PostgreSQL Service host is missing"
