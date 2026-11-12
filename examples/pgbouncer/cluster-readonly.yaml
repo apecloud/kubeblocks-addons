@@ -9,7 +9,7 @@ spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: pgbouncer
-      serviceVersion: "1.25.2"
+      serviceVersion: "1.26.1"
       replicas: 2
       resources:
         requests:

@@ -3,7 +3,7 @@ name: pgbouncer-cluster
 description: A standalone PgBouncer cluster for an existing PostgreSQL cluster
 type: application
 version: 1.0.0
-appVersion: "1.25.2"
+appVersion: "1.26.1"
 dependencies:
   - name: kblib
     version: 0.1.2

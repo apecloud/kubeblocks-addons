@@ -1,6 +1,6 @@
 # PgBouncer
 
-This Addon runs PgBouncer 1.25.2 as an independent, stateless KubeBlocks Cluster.
+This Addon runs PgBouncer 1.26.1 as an independent, stateless KubeBlocks Cluster.
 Each instance targets one existing PostgreSQL cluster and one backend role:
 
 - `rw`: the PostgreSQL primary, through the `postgresql` Service.
