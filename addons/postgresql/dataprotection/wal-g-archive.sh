@@ -54,10 +54,23 @@ function config_wal_g() {
 # get start time of the wal log
 function get_wal_log_start_time() {
     local file="${1:?missing wal log name to analyze}"
-    local START_TIME=$(pg_waldump $file --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |head -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    local wal_dump_output
+    local wal_dump_status
+    local START_TIME
+    local normalized_start_time
+    wal_dump_output=$(pg_waldump "${file}" --rmgr=Transaction 2>/dev/null)
+    wal_dump_status=$?
+    START_TIME=$(printf '%s\n' "${wal_dump_output}" | grep 'desc: COMMIT' |head -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    if [[ ${wal_dump_status} -ne 0 && -z ${START_TIME} ]]; then
+       DP_error_log "failed to analyze oldest WAL: ${file}" >&2
+       return 1
+    fi
     if [[ ! -z ${START_TIME} ]];then
-       START_TIME=$(date -d "${START_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
-       echo $START_TIME
+       if ! normalized_start_time=$(date -d "${START_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ'); then
+          DP_error_log "failed to normalize oldest WAL timestamp: ${file}" >&2
+          return 1
+       fi
+       echo "${normalized_start_time}"
    fi
 }
 
@@ -72,53 +85,119 @@ function pull_wal_log() {
 function get_wal_log_end_time() {
     wal_file="${1:?missing file name to pull}"
     mkdir -p "${KB_BACKUP_WORKDIR}" && cd "${KB_BACKUP_WORKDIR}" || return 1
-    pull_wal_log ${wal_file}
+    if ! pull_wal_log "${wal_file}"; then
+       DP_error_log "failed to pull latest WAL: ${wal_file}" >&2
+       return 1
+    fi
     wal_file_name=$(DP_get_file_name_without_ext "$(basename "${wal_file}")")
-    local END_TIME=$(pg_waldump $wal_file_name --rmgr=Transaction 2>/dev/null | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    local wal_dump_output
+    local wal_dump_status
+    local END_TIME
+    wal_dump_output=$(pg_waldump "${wal_file_name}" --rmgr=Transaction 2>/dev/null)
+    wal_dump_status=$?
+    END_TIME=$(printf '%s\n' "${wal_dump_output}" | grep 'desc: COMMIT' |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+    if [[ ${wal_dump_status} -ne 0 && -z ${END_TIME} ]]; then
+       DP_error_log "failed to analyze latest WAL: ${wal_file}" >&2
+       rm -rf "${wal_file_name}"
+       return 1
+    fi
     if [[ ! -z ${END_TIME} ]];then
-       END_TIME=$(date -d "${END_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ')
+       local normalized_end_time
+       if ! normalized_end_time=$(date -d "${END_TIME}" -u '+%Y-%m-%dT%H:%M:%SZ'); then
+          DP_error_log "failed to normalize latest WAL timestamp: ${wal_file}" >&2
+          rm -rf "${wal_file_name}"
+          return 1
+       fi
+       END_TIME="${normalized_end_time}"
        echo $END_TIME
     fi
-    rm -rf $wal_file_name
+    rm -rf "${wal_file_name}"
 }
 
 # save backup status info to sync file
 function save_backup_status() {
-    local TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+    local TOTAL_SIZE
+    if ! TOTAL_SIZE=$(DP_get_backup_total_size); then
+       return 1
+    fi
     # if no size changes, return
-    if [[ -z ${TOTAL_SIZE} || ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == "${GLOBAL_OLD_SIZE}" ]];then
+    if [[ ${TOTAL_SIZE} -eq 0 || ${TOTAL_SIZE} == "${GLOBAL_OLD_SIZE}" ]];then
        return
     fi
-    GLOBAL_OLD_SIZE=${TOTAL_SIZE}
-    local wal_files=$(datasafed list -f --recursive / -o json | jq -s -r '.[] | sort_by(.mtime) |.[] |.path')
+    local wal_files
+    if ! wal_files=$(DP_list_backup_files_by_mtime); then
+       return 1
+    fi
     local OLDEST_FILE=$(echo $wal_files | tr ' ' '\n' |head -n 1)
     local START_TIME=
     local END_TIME=
     if [ ! -z ${OLDEST_FILE} ]; then
-       START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log)
+       if ! START_TIME=$(DP_analyze_start_time_from_datasafed ${OLDEST_FILE} get_wal_log_start_time pull_wal_log); then
+         return 1
+       fi
     fi
     if [ -n "${wal_files}" ]; then
       # get the end time from the latest 10 files
       for file in $(echo $wal_files | tr ' ' '\n' | tail -n 10 | tac); do
-         END_TIME=$(get_wal_log_end_time ${file})
+         if ! END_TIME=$(get_wal_log_end_time "${file}"); then
+           return 1
+         fi
          if [ -n "${END_TIME}" ];then
              break
          fi
       done
     fi
     DP_log "start time of the oldest wal: ${START_TIME}, end time of the latest wal: ${END_TIME}, total size: ${TOTAL_SIZE}"
-    DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${END_TIME}"
+    if ! DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${END_TIME}"; then
+       return 1
+    fi
+    GLOBAL_OLD_SIZE=${TOTAL_SIZE}
 }
 
 # Upload historical .history files that are marked as .done but not yet uploaded to remote
 # These are timeline history files (e.g., 00000002.history) that are critical for PITR recovery
+function history_repository_id() {
+  local config_file config_hash repository_path repository_hash
+  local walg_env="${VOLUME_DATA_DIR}/wal-g/env"
+  if ! config_file=$(cat "${walg_env}/WALG_DATASAFED_CONFIG") || [[ -z ${config_file} ]]; then
+    DP_error_log "Cannot read WAL-G repository configuration path" >&2
+    return 1
+  fi
+  if ! config_hash=$(sha256sum "${config_file}") ||
+     ! repository_path=$(cat "${walg_env}/DATASAFED_BACKEND_BASE_PATH") || [[ -z ${repository_path} ]]; then
+    DP_error_log "Cannot identify WAL-G repository" >&2
+    return 1
+  fi
+  # Include the backend configuration (endpoint/bucket/etc.) as well as the
+  # prefix. Never persist or log configuration contents, which may be secret.
+  if ! repository_hash=$(printf '%s\n%s\n' "${config_hash%% *}" "${repository_path}" | sha256sum); then
+    return 1
+  fi
+  printf '%s\n' "${repository_hash%% *}"
+}
+
 function uploadDoneHistoryWALs() {
+  local upload_failed=false
+  local repository_id history_files
+  if ! repository_id=$(history_repository_id); then
+    return 1
+  fi
   DP_log "Checking for historical .history files with .done status to upload..."
 
   # Find all .done status files for .history files in archive_status directory
-  for done_file in $(find "${LOG_DIR}/archive_status/" -name "*.history.done" -type f | sort); do
+  if ! history_files=$(find "${LOG_DIR}/archive_status/" -name "*.history.done" -type f); then
+    DP_error_log "Cannot list timeline history files" >&2
+    return 1
+  fi
+  for done_file in ${history_files}; do
     history_name=$(basename "$done_file" .done)
     history_path="${LOG_DIR}/${history_name}"
+    # Legacy unscoped markers must not suppress uploads to a different repo.
+    uploaded_marker="${done_file}.walg-uploaded.${repository_id}"
+
+    if [ -f "${uploaded_marker}" ]; then
+      continue
+    fi
 
     # Check if the actual .history file still exists
     if [ -f "$history_path" ]; then
@@ -128,14 +207,26 @@ function uploadDoneHistoryWALs() {
       envdir "${VOLUME_DATA_DIR}/wal-g/env" "${VOLUME_DATA_DIR}/wal-g/wal-g" wal-push "${history_path}"
       exit_code=$?
       if [ "$exit_code" -eq 0 ]; then
-        DP_log "Successfully uploaded file: ${history_name}"
+        if touch "${uploaded_marker}"; then
+          DP_log "Successfully uploaded file: ${history_name}"
+        else
+          DP_error_log "Uploaded ${history_name} but failed to persist its success marker"
+          upload_failed=true
+        fi
       else
         DP_error_log "Failed to upload file: ${history_name}, exit code: ${exit_code}"
+        upload_failed=true
       fi
+    else
+      DP_error_log "Required timeline history file is missing: ${history_name}"
+      upload_failed=true
     fi
   done
 
   DP_log "Completed uploading historical .history files"
+  if [ "${upload_failed}" == "true" ]; then
+    return 1
+  fi
 }
 
 # Upload missing ready WAL files and rename the ready file to done.
@@ -200,9 +291,11 @@ function check_pg_process() {
     if [[ ${is_ok} == "false" ]];then
       DP_error_log "target backup pod/${DP_TARGET_POD_NAME} is not OK, target role: ${TARGET_POD_ROLE}, pg_is_in_recovery: ${is_secondary}!"
       DP_log "Before switching to a new instance, back up any remaining WAL logs."
-      uploadMissingLogs
-      # save backup status which will be updated to `backup` CR by the sidecar
-      save_backup_status
+      if uploadDoneHistoryWALs; then
+        uploadMissingLogs
+        # The shutdown flush must obey the same history gate as normal rounds.
+        save_backup_status
+      fi
       exit 1
     fi
 }
@@ -212,12 +305,16 @@ trap "echo 'Terminating...' && exit 0" TERM
 DP_log "start to archive and update wal infos"
 config_wal_g "$(dirname "${DP_BACKUP_BASE_PATH}")/wal-g"
 
-# Upload historical .history files on first run
-uploadDoneHistoryWALs
-
 while true; do
   # check if pg process is ok
   check_pg_process
+  # Retry timeline history uploads until each local file has a persisted
+  # success marker; cross-timeline PITR depends on these files.
+  if ! uploadDoneHistoryWALs; then
+    DP_error_log "timeline history upload incomplete; will retry"
+    sleep "${LOG_ARCHIVE_SECONDS}"
+    continue
+  fi
   # upload wal logs
   uploadMissingLogs
   # save backup status which will be updated to `backup` CR by the sidecar
