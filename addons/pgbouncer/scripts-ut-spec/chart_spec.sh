@@ -61,7 +61,7 @@ Describe "Standalone PgBouncer chart"
       abort unless definition.fetch("systemAccounts").map { |account| account["name"] } == ["pgbouncer"]
       abort unless definition.dig("runtime", "containers", 0, "readinessProbe", "exec", "command") == ["/kb-scripts/pgbouncer-readiness.sh"]
       version = docs.find { |doc| doc["kind"] == "ComponentVersion" }
-      abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.25.2"
+      abort unless version.dig("spec", "releases", 0, "images", "pgbouncer") == "docker.io/apecloud/pgbouncer:1.26.1"
       puts "ok"
     '
   }
