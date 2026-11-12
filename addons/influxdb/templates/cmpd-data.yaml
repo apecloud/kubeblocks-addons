@@ -49,6 +49,20 @@ spec:
       value: "$(META_HOST).$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}:8091"
     - name: SERVICE_PORT
       value: "8086"
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ .Values.tlsMountPath | default "/etc/pki/tls" }}
+  tls:
+    volumeName: tls
+    mountPath: {{ .Values.tlsMountPath | default "/etc/pki/tls" }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
+    defaultMode: 0644
   systemAccounts:
     - name: admin
       initAccount: true
@@ -114,9 +128,8 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 10
-          httpGet:
-            port: 8086
-            path: "/ping"
+          tcpSocket:
+            port: http
         volumeMounts:
           - name: data
             mountPath: /var/lib/influxdb

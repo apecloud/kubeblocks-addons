@@ -12,3 +12,13 @@
 
 [hinted-handoff]
   dir = "/var/lib/influxdb/hh"
+
+[http]
+  enabled = true
+  bind-address = ":8086"
+  auth-enabled = true
+{{- if eq (index . "TLS_ENABLED") "true" }}
+  https-enabled = true
+  https-certificate = "{{ .TLS_MOUNT_PATH }}/tls.crt"
+  https-private-key = "{{ .TLS_MOUNT_PATH }}/tls.key"
+{{- end }}
