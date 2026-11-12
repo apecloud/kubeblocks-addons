@@ -3,7 +3,7 @@ name: pgbouncer
 description: A standalone PgBouncer connection pool for PostgreSQL
 type: application
 version: 1.2.0-alpha.1
-appVersion: "1.25.2"
+appVersion: "1.26.1"
 dependencies:
   - name: kblib
     version: 0.1.0

@@ -66,13 +66,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{- define "pgbouncer.componentDefNamePrefix" -}}
-pgbouncer-proxy-
+pgbouncer-pooler-
 {{- end -}}
 {{- define "pgbouncer.componentDefName" -}}
-pgbouncer-proxy-{{ .Chart.Version }}
+pgbouncer-pooler-{{ .Chart.Version }}
 {{- end -}}
 {{- define "pgbouncer.componentVersionName" -}}
-pgbouncer-proxy
+pgbouncer-pooler
 {{- end -}}
 {{- define "pgbouncer.configurationTemplate" -}}
 pgbouncer-configuration-{{ .Chart.Version }}
