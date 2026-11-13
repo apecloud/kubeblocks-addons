@@ -1,0 +1,28 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: influxdb-backup-policy-template
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  serviceKind: influxdb
+  compDefs:
+    - {{ include "influxdb.standalone.cmpdRegexpPattern" . }}
+  target:
+    role: ""
+    account: admin
+    strategy: Any
+    containerPort:
+      containerName: influxdb
+      portName: http
+  backupMethods:
+    - name: full
+      snapshotVolumes: false
+      actionSetName: influxdb-full
+  schedules:
+    - backupMethod: full
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
