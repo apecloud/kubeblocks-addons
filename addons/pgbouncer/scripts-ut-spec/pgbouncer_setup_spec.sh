@@ -22,7 +22,6 @@ Describe "PgBouncer setup contract"
     PGBOUNCER_COMPONENT_NAME=sample-pgbouncer
     pgbouncer_peers_file="$test_dir/peers.ini"
     printf '[peers]\n1 = host=sample-pgbouncer-0.sample-pgbouncer-headless port=6432\n' > "$pgbouncer_peers_file"
-    chmod 0555 "$pgbouncer_peers_file"
   }
 
   cleanup() {
