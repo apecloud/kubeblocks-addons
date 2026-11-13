@@ -1,0 +1,127 @@
+topology: cluster
+
+replicas:
+  hmaster: 2
+  hregionserver: 2
+
+resources:
+  hmaster:
+    requests:
+      cpu: "0.5"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  hregionserver:
+    requests:
+      cpu: "0.5"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 6Gi
+  hbasestandalone:
+    requests:
+      cpu: "0.2"
+      memory: 0.5Gi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+storage:
+  storageClassName: ""
+  standalone:
+    data: 20Gi
+
+serviceRefs:
+  hbaseZookeeper:
+    namespace: kubeblocks
+    clusterServiceSelector:
+      cluster: zk
+      service:
+        component: zookeeper
+        service: headless
+        port: client
+  hdfsNamenode:
+    enabled: true
+    namespace: kubeblocks
+    clusterServiceSelector:
+      cluster: hdfs
+      service:
+        component: namenode
+        service: headless
+        port: fs
+
+hdfs:
+  nameservice: hdfs
+  namenodeNodes: nn0,nn1
+  namenodePodFQDNs: ""
+  namenodeRpcPort: 8020
+  namenodeHttpPort: 9870
+  haZkParent: /hadoop-ha
+  replication: "3"
+  permissionsEnabled: false
+  fs:
+    trashInterval: 1440
+  security:
+    authentication: simple
+    authorization: false
+  ipc:
+    clientConnectionMaxIdleTime: 30000
+    clientConnectTimeout: 10000
+    pingInterval: 60000
+  paths:
+    tmpDir: /hadoop/tmp
+  client:
+    webhdfsEnabled: false
+    failoverMaxAttempts: 15
+    failoverSleepBaseMillis: 500
+    failoverSleepMaxMillis: 15000
+    retryPolicy:
+      enabled: true
+      spec: "10000,6,60000,10"
+    commonRetryPolicy:
+      enabled: true
+      spec: "1000,1"
+  hbaseClient:
+    ipcClientConnectTimeout: 30000
+    ipcClientConnectMaxRetries: 10
+
+hbase:
+  zk:
+    sessionTimeout: 30000
+    maxClientCnxns: 4000
+  security:
+    authentication: simple
+    authorization: false
+  common:
+    clientScannerCaching: 100
+    regionMemstoreFlushSize: 134217728
+  cluster:
+    regionserverHandlerCount: 100
+    hstoreFlusherCount: 4
+    regionMaxFileSize: 53687091200
+    regionMajorCompaction: 0
+    masterWaitOnRegionserversTimeout: 300000
+    masterStartupRetainassignTimeout: 300000
+    oldWalsCleanerThreadTimeoutMsec: 60000
+    masterLogCleanerTtl: 60000
+    masterHfileCleanerTtl: 600000
+    balancerPeriod: 1800000
+    procedureStoreWalUseHsync: true
+    regionserverOptionalCacheFlushInterval: 28800000
+    regionserverStartupRetries: 10
+    regionserverStartupRetryInterval: 10000
+    replicationEnabled: true
+    splitlogManagerTimeout: 600000
+  standalone:
+    regionserverHandlerCount: 30
+    hstoreFlusherCount: 2
+    regionMaxFileSize: 10737418240
+    procedureStoreWalUseHsync: false
+    replicationEnabled: false
+
+prometheus:
+  enabled: false
+
+extra:
+  terminationPolicy: Delete
