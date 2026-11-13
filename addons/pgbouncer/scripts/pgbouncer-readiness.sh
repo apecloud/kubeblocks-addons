@@ -10,7 +10,7 @@ esac
 
 # Projected membership changes must reach existing processes after scaling.
 if ! cmp -s /kb-scripts/pgbouncer-peers.ini.tpl /etc/pgbouncer/peers.applied; then
-  cp -f /kb-scripts/pgbouncer-peers.ini.tpl /etc/pgbouncer/peers.pending
+  cp /kb-scripts/pgbouncer-peers.ini.tpl /etc/pgbouncer/peers.pending
   PGPASSWORD="$PGBOUNCER_ADMIN_PASSWORD" timeout -s KILL 2 psql --no-password --username="$PGBOUNCER_ADMIN_USERNAME" \
     --host="$CURRENT_POD_IP" --port=6432 --dbname=pgbouncer \
     --set=ON_ERROR_STOP=1 --command="RELOAD" > /dev/null
