@@ -55,6 +55,14 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
   vars:
+    - name: PGBOUNCER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          componentName: Required
+    - name: PGBOUNCER_POD_FQDNS
+      valueFrom:
+        componentVarRef:
+          podFQDNs: Required
     - name: POSTGRESQL_HOST
       valueFrom:
         serviceRefVarRef:
@@ -141,6 +149,10 @@ spec:
             command:
               - /kb-scripts/pgbouncer-readiness.sh
         env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
           - name: PGBOUNCER_BACKEND_ROLE
             value: rw
           - name: CURRENT_POD_IP

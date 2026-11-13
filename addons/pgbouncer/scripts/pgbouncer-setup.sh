@@ -5,12 +5,24 @@ pgbouncer_conf_dir="/etc/pgbouncer"
 pgbouncer_conf_file="${pgbouncer_conf_dir}/pgbouncer.ini"
 pgbouncer_user_list_file="${pgbouncer_conf_dir}/userlist.txt"
 pgbouncer_bin="/usr/bin/pgbouncer"
+pgbouncer_peers_file="/kb-scripts/pgbouncer-peers.ini.tpl"
 
 pgbouncer_log() {
   printf '%s\n' "pgbouncer-setup: $*" >&2
 }
 
 validate_runtime_inputs() {
+  pgbouncer_ordinal=${CURRENT_POD_NAME#"${PGBOUNCER_COMPONENT_NAME}-"}
+  case "$pgbouncer_ordinal" in
+    ''|*[!0-9]*|0[0-9]*)
+      pgbouncer_log "PgBouncer peering requires a default instance name with an ordinal in 0..65534"
+      return 1
+      ;;
+  esac
+  if [ "$pgbouncer_ordinal" -gt 65534 ]; then
+    pgbouncer_log "PgBouncer peer ordinal is outside 0..65534"
+    return 1
+  fi
   pgbouncer_backend_host="${POSTGRESQL_HOST:-}"
   pgbouncer_backend_port="${POSTGRESQL_PORT:-}"
 
@@ -70,7 +82,8 @@ build_pgbouncer_conf() {
     return 1
   }
 
-  if ! printf '%%include %s\n\n[databases]\n' "$pgbouncer_template_conf_file" > "$pgbouncer_generated_file" ||
+  if ! printf '%%include %s\n%%include %s\n\n[pgbouncer]\npeer_id = %s\n\n[databases]\n' \
+      "$pgbouncer_template_conf_file" "$pgbouncer_peers_file" "$((pgbouncer_ordinal + 1))" > "$pgbouncer_generated_file" ||
     ! printf 'postgres=host=%s port=%s dbname=postgres\n' "$pgbouncer_backend_host" "$pgbouncer_backend_port" >> "$pgbouncer_generated_file" ||
     ! printf '*=host=%s port=%s\n' "$pgbouncer_backend_host" "$pgbouncer_backend_port" >> "$pgbouncer_generated_file" ||
     ! chmod 600 "$pgbouncer_generated_file" ||
@@ -82,7 +95,8 @@ build_pgbouncer_conf() {
   fi
 
   if ! mv -f "$pgbouncer_user_list_tmp" "$pgbouncer_user_list_file" ||
-    ! mv -f "$pgbouncer_generated_file" "$pgbouncer_conf_file"; then
+    ! mv -f "$pgbouncer_generated_file" "$pgbouncer_conf_file" ||
+    ! cp "$pgbouncer_peers_file" "${pgbouncer_conf_dir}/peers.applied"; then
     rm -f "$pgbouncer_generated_file" "$pgbouncer_user_list_tmp"
     return 1
   fi

@@ -8,6 +8,15 @@ case "$PGBOUNCER_BACKEND_ROLE" in
   *) exit 1 ;;
 esac
 
+# Projected membership changes must reach existing processes after scaling.
+if ! cmp -s /kb-scripts/pgbouncer-peers.ini.tpl /etc/pgbouncer/peers.applied; then
+  cp /kb-scripts/pgbouncer-peers.ini.tpl /etc/pgbouncer/peers.pending
+  PGPASSWORD="$PGBOUNCER_ADMIN_PASSWORD" timeout -s KILL 2 psql --no-password --username="$PGBOUNCER_ADMIN_USERNAME" \
+    --host="$CURRENT_POD_IP" --port=6432 --dbname=pgbouncer \
+    --set=ON_ERROR_STOP=1 --command="RELOAD" > /dev/null
+  mv /etc/pgbouncer/peers.pending /etc/pgbouncer/peers.applied
+fi
+
 backend="$(
   # Bound SQL queueing as well as connection setup, within the five-second probe budget.
   PGPASSWORD="$POSTGRESQL_PASSWORD" timeout -s KILL 2 psql --no-password --username="$POSTGRESQL_USERNAME" \
