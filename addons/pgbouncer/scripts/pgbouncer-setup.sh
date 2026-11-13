@@ -97,7 +97,7 @@ build_pgbouncer_conf() {
 
   if ! mv -f "$pgbouncer_user_list_tmp" "$pgbouncer_user_list_file" ||
     ! mv -f "$pgbouncer_generated_file" "$pgbouncer_conf_file" ||
-    ! cp "$pgbouncer_peers_file" "${pgbouncer_conf_dir}/peers.applied"; then
+    ! cp -f "$pgbouncer_peers_file" "${pgbouncer_conf_dir}/peers.applied"; then
     rm -f "$pgbouncer_generated_file" "$pgbouncer_user_list_tmp"
     return 1
   fi
