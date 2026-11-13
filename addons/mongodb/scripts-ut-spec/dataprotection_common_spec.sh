@@ -533,6 +533,28 @@ EOF
     The status should be success
   End
 
+  It "forces path style for the GCS provider when force_path_style is absent"
+    write_datasafed_config "GCS" "" \
+      "https://storage.googleapis.com" "auto"
+
+    When call run_set_backup_config_env
+
+    The output should include "force_path_style=true"
+    The output should include "endpoint=https://storage.googleapis.com"
+    The output should include "region=auto"
+    The status should be success
+  End
+
+  It "lets explicit force_path_style=false override the GCS provider default"
+    write_datasafed_config "GCS" "force_path_style = false" \
+      "https://storage.googleapis.com" "auto"
+
+    When call run_set_backup_config_env
+
+    The output should include "force_path_style=false"
+    The status should be success
+  End
+
   It "normalizes a Minio endpoint without a scheme before provider handling"
     write_datasafed_config "Minio" "" \
       "minio.example.com"
