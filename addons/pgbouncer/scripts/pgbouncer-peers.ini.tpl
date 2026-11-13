@@ -1,6 +1,6 @@
 [peers]
 {{- $prefix := printf "%s-" .PGBOUNCER_COMPONENT_NAME }}
-{{- range $fqdn := splitList "," .PGBOUNCER_POD_FQDNS }}
+{{- range $fqdn := compact (splitList "," .PGBOUNCER_POD_FQDNS) }}
 {{- $pod := first (splitList "." $fqdn) }}
 {{- $ordinal := trimPrefix $prefix $pod }}
 {{- if or (not (regexMatch "^(0|[1-9][0-9]*)$" $ordinal)) (ge (atoi $ordinal) 65535) }}
