@@ -1,0 +1,167 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: yashandb-fixed-ha-3
+  namespace: demo
+  annotations:
+    # 2026-06-22 Reason: fixed-address HA depends on explicit hostNetwork addon rendering; Purpose: prevent this example from being mistaken for ordinary Pod-IP multi-replica support.
+    yashandb.com/ha-mode: fixed-address
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: yashan-comp
+      # 2026-06-23 Reason: the live P0 recovery path converged only after all replicas used the current immutable ComponentDefinition revision; Purpose: keep the PR example aligned with the Chart version validated by local gates.
+      # 2026-07-06 Reason: upstream main advanced the chart version to 1.2.0-alpha.2 during PR review; Purpose: keep fixed-address examples aligned with the rendered ComponentDefinition name.
+      # Time: 2026-07-06.
+      componentDef: yashandb-1.2.0-alpha.2
+      # 2026-06-22 Reason: a three-node proof can form one primary plus two standby nodes only when addresses remain stable; Purpose: document the fixed-address contract without claiming generic Pod-IP HA.
+      replicas: 3
+      # 2026-06-23 Reason: fixed-address HA must pin each logical database node to the worker address used by yasboot metadata; Purpose: express one primary plus two standbys as an explicit KubeBlocks instance topology.
+      instances:
+        - name: node1
+          replicas: 1
+          env:
+            - name: YASDB_HA_ENABLED
+              value: "true"
+            - name: YASDB_HA_CLUSTER_NAME
+              value: kbfh3
+            - name: YASDB_HA_NODE_ID
+              value: "1-1"
+            - name: YASDB_HA_NODE_ROLE
+              value: primary
+            - name: YASDB_HA_NODE_IP
+              value: "192.0.2.10"
+            - name: YASDB_HA_NODE_IP_LIST
+              value: "192.0.2.10,192.0.2.11,192.0.2.12"
+            - name: YASDB_HA_OM_PORT
+              value: "2675"
+            - name: YASDB_HA_DB_PORT
+              value: "2688"
+            - name: YASHANDB_SSHD_PORT
+              value: "3222"
+            - name: YASBOOT_PRIMARY_OM_ADDR
+              value: "192.0.2.10:2675"
+            # 2026-06-23 Reason: fixed-address empty-PVC bootstrap uses yasboot SSH from the initial primary; Purpose: keep the example runnable without embedding private key material in Git.
+            - name: YASHANDB_SSH_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yashandb-fixed-ha-ssh
+                  key: id_rsa
+            - name: YASHANDB_AUTHORIZED_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yashandb-fixed-ha-ssh
+                  key: authorized_key
+          schedulingPolicy:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: kubernetes.io/hostname
+                          operator: In
+                          values:
+                            - worker-a
+        - name: node2
+          replicas: 1
+          env:
+            - name: YASDB_HA_ENABLED
+              value: "true"
+            - name: YASDB_HA_CLUSTER_NAME
+              value: kbfh3
+            - name: YASDB_HA_NODE_ID
+              value: "1-2"
+            - name: YASDB_HA_NODE_ROLE
+              value: standby
+            - name: YASDB_HA_NODE_IP
+              value: "192.0.2.11"
+            - name: YASDB_HA_NODE_IP_LIST
+              value: "192.0.2.10,192.0.2.11,192.0.2.12"
+            - name: YASDB_HA_OM_PORT
+              value: "2675"
+            - name: YASDB_HA_DB_PORT
+              value: "2688"
+            - name: YASHANDB_SSHD_PORT
+              value: "3222"
+            - name: YASBOOT_PRIMARY_OM_ADDR
+              value: "192.0.2.10:2675"
+            # 2026-06-23 Reason: every fixed-address peer must accept the bootstrap SSH identity; Purpose: let yasboot package install reach standby nodes without storing public key data in the manifest.
+            - name: YASHANDB_AUTHORIZED_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yashandb-fixed-ha-ssh
+                  key: authorized_key
+          schedulingPolicy:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: kubernetes.io/hostname
+                          operator: In
+                          values:
+                            - worker-b
+        - name: node3
+          replicas: 1
+          env:
+            - name: YASDB_HA_ENABLED
+              value: "true"
+            - name: YASDB_HA_CLUSTER_NAME
+              value: kbfh3
+            - name: YASDB_HA_NODE_ID
+              value: "1-3"
+            - name: YASDB_HA_NODE_ROLE
+              value: standby
+            - name: YASDB_HA_NODE_IP
+              value: "192.0.2.12"
+            - name: YASDB_HA_NODE_IP_LIST
+              value: "192.0.2.10,192.0.2.11,192.0.2.12"
+            - name: YASDB_HA_OM_PORT
+              value: "2675"
+            - name: YASDB_HA_DB_PORT
+              value: "2688"
+            - name: YASHANDB_SSHD_PORT
+              value: "3222"
+            - name: YASBOOT_PRIMARY_OM_ADDR
+              value: "192.0.2.10:2675"
+            # 2026-06-23 Reason: every fixed-address peer must accept the bootstrap SSH identity; Purpose: let yasboot package install reach standby nodes without storing public key data in the manifest.
+            - name: YASHANDB_AUTHORIZED_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yashandb-fixed-ha-ssh
+                  key: authorized_key
+          schedulingPolicy:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: kubernetes.io/hostname
+                          operator: In
+                          values:
+                            - worker-c
+      schedulingPolicy:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: yashandb-fixed-ha-3
+                    apps.kubeblocks.io/component-name: yashan-comp
+                topologyKey: kubernetes.io/hostname
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: open-local-lvm
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      resources:
+        limits:
+          cpu: "1"
+          memory: "4Gi"
+        requests:
+          cpu: "1"
+          memory: "4Gi"
