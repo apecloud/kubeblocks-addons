@@ -82,8 +82,9 @@ build_pgbouncer_conf() {
     return 1
   }
 
-  if ! printf '%%include %s\n%%include %s\n\n[pgbouncer]\npeer_id = %s\n\n[databases]\n' \
-      "$pgbouncer_template_conf_file" "$pgbouncer_peers_file" "$((pgbouncer_ordinal + 1))" > "$pgbouncer_generated_file" ||
+  # A second [pgbouncer] section resets defaults; extend the included section instead.
+  if ! printf '%%include %s\npeer_id = %s\n%%include %s\n\n[databases]\n' \
+      "$pgbouncer_template_conf_file" "$((pgbouncer_ordinal + 1))" "$pgbouncer_peers_file" > "$pgbouncer_generated_file" ||
     ! printf 'postgres=host=%s port=%s dbname=postgres\n' "$pgbouncer_backend_host" "$pgbouncer_backend_port" >> "$pgbouncer_generated_file" ||
     ! printf '*=host=%s port=%s\n' "$pgbouncer_backend_host" "$pgbouncer_backend_port" >> "$pgbouncer_generated_file" ||
     ! chmod 600 "$pgbouncer_generated_file" ||
