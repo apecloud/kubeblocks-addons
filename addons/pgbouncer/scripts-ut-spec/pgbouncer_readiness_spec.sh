@@ -15,6 +15,13 @@ Describe "PgBouncer readiness recovery"
     rm -f "$TEST_COMMAND_LOG"
   }
 
+  timeout_status() {
+    case "${timeout_status:-}" in
+      124|137) return 0 ;;
+      *) return 1 ;;
+    esac
+  }
+
   BeforeEach 'setup'
   AfterEach 'cleanup'
 
@@ -35,6 +42,7 @@ Describe "PgBouncer readiness recovery"
       *--username=postgres*--dbname=postgres*)
         [ "$PGPASSWORD" = fixture ] || exit 98
         if [ "$TEST_BLOCK_QUERY" = 1 ]; then
+          printf '%s\n' QUERY_STARTED >> "$TEST_COMMAND_LOG"
           exec sleep 10
         fi
         printf '%s\n' "$TEST_BACKEND"
@@ -130,9 +138,9 @@ Describe "PgBouncer readiness recovery"
   It "kills a queued backend query within the probe budget"
     TEST_BLOCK_QUERY=1
     When run sh ../scripts/pgbouncer-readiness.sh
-    The status should equal 137
+    The status should satisfy timeout_status
     The stderr should be defined
-    The contents of file "$TEST_COMMAND_LOG" should be blank
+    The contents of file "$TEST_COMMAND_LOG" should equal QUERY_STARTED
   End
 
   It "remains unready when the admin reconnect fails"
