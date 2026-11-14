@@ -24,9 +24,11 @@ spec:
       serviceVersion: {{ .version }}
       images:
         pg-init-container: {{ include "postgresql.initImage" $ }}
+        # Retained ComponentDefinitions still contain the embedded pool.
+        # The shared ComponentVersion must resolve their images during migration.
+        pgbouncer: {{ include "postgresql.pgbouncerImage" $ }}
         exporter: {{ include "postgresql.metricsImage" $ }}
         postgresql: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
-        pgbouncer: {{ include "postgresql.pgbouncerImage" $ }}
         switchover: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
         accountProvision: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
         dbctl: {{ include "postgresql.dbctlImage" $ }}

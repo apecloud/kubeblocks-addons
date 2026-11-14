@@ -1,0 +1,15 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: app-pool-rw-configure
+  namespace: demo
+spec:
+  clusterName: app-pool-rw
+  type: Reconfiguring
+  reconfigures:
+    - componentName: pgbouncer
+      parameters:
+        - key: pool_mode
+          value: transaction
+        - key: default_pool_size
+          value: "30"

@@ -1,0 +1,14 @@
+apiVersion: v2
+name: pgbouncer-cluster
+description: A standalone PgBouncer cluster for an existing PostgreSQL cluster
+type: application
+version: 1.2.0-alpha.1
+appVersion: "1.25.2"
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
+maintainers:
+  - name: ApeCloud
+    url: https://kubeblocks.io/

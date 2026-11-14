@@ -92,4 +92,68 @@ RUBY
     The output should eq "ok"
   End
 
+  independent_pool_contract() {
+    render_chart | RUBYOPT=-W0 ruby -ryaml -e '
+      docs = YAML.load_stream(ARGF.read).compact
+      defs = docs.select { |doc| doc["kind"] == "ComponentDefinition" }
+      abort "wrong definition count" unless defs.size == 7
+      defs.each do |definition|
+        spec = definition.fetch("spec")
+        abort "embedded pool remains" if spec.fetch("runtime").fetch("containers").any? { |c| c["name"] == "pgbouncer" }
+        abort "pool configuration remains" if spec.fetch("configs").any? { |c| c["name"].include?("pgbouncer") }
+        services = spec.fetch("services")
+        abort "unexpected replica service" unless services.size == 1 && services.first["roleSelector"] == "primary"
+        abort "old pool endpoint remains" unless services.first.dig("spec", "ports").map { |p| p["port"] } == [5432]
+        abort "old immutable identity" unless definition.dig("metadata", "name").end_with?("-1.2.0-alpha.6")
+      end
+      abort "old configuration or script remains" if docs.select { |d| d["kind"] == "ConfigMap" }.any? { |d| d.fetch("data", {}).keys.any? { |k| k.include?("pgbouncer") } }
+      puts "ok"
+    '
+  }
+
+  It "keeps PostgreSQL independent of the pool with only the primary service enabled"
+    When call independent_pool_contract
+    The status should eq 0
+    The output should eq "ok"
+  End
+
+  legacy_image_contract() {
+    RUBYOPT=-W0 ruby -ryaml -ropen3 -e '
+      old = YAML.load_file("fixtures/alpha5-image-requirements.yaml")
+      abort "incomplete baseline fixture" unless old.size == 7
+      [
+        [[], "docker.io/apecloud/pgbouncer:1.19.0"],
+        [["image.registry=global.example.test"], "global.example.test/apecloud/pgbouncer:1.19.0"],
+        [["image.registry=global.example.test", "pgbouncer.image.registry=pool.example.test", "pgbouncer.image.repository=custom/pool", "pgbouncer.image.tag=legacy"], "pool.example.test/custom/pool:legacy"]
+      ].each do |overrides, expected_pool_image|
+        command = ["helm", "template", "candidate", ".."]
+        overrides.each { |value| command.concat(["--set", value]) }
+        output, error, status = Open3.capture3(*command)
+        abort error unless status.success?
+        docs = YAML.load_stream(output).compact
+        version = docs.find { |d| d["kind"] == "ComponentVersion" && d.dig("metadata", "name") == "postgresql" }.fetch("spec")
+        old.each do |definition|
+          rules = version.fetch("compatibilityRules").select { |rule| rule.fetch("compDefs").any? { |prefix| definition["name"].start_with?(prefix) } }
+          releases = rules.flat_map { |rule| rule.fetch("releases") }.uniq
+          abort "old definition no longer compatible" unless releases.include?(definition["serviceVersion"])
+          releases.each do |name|
+            release = version.fetch("releases").find { |r| r["name"] == name }
+            abort "missing compatible release #{name}" unless release
+            definition.fetch("requiredImages").each do |container|
+              abort "#{definition["name"]}/#{name}: no image for #{container}" if release.fetch("images").fetch(container, "").empty?
+            end
+            abort "changed legacy pool image" unless release.dig("images", "pgbouncer") == expected_pool_image
+          end
+        end
+      end
+      puts "ok"
+    '
+  }
+
+  It "resolves every retained alpha.5 container image with the new shared ComponentVersion"
+    When call legacy_image_contract
+    The status should eq 0
+    The output should eq "ok"
+  End
+
 End

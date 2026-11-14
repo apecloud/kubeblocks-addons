@@ -1,0 +1,16 @@
+version: "1.25.2"
+replicas: 2
+cpu: 0.5
+memory: 0.5
+requests: {}
+backend:
+  # rw selects the primary; ro selects replicas without primary fallback.
+  role: rw
+postgresql:
+  # The existing PostgreSQL cluster must be in the same namespace.
+  cluster: ""
+  namespace: ""
+  component: postgresql
+  # rw uses the postgresql component service. ro requires an existing replica ClusterService name.
+  service: ""
+  port: tcp-postgresql
