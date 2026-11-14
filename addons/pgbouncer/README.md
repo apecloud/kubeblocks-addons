@@ -15,7 +15,7 @@ choose an address; PgBouncer does not classify or split SQL statements.
 ## Prerequisites
 
 - KubeBlocks newer than 1.0.2.
-- PgBouncer Addon 1.0.0.
+- PgBouncer Addon 1.0.1.
 - An existing PostgreSQL cluster with a primary component Service and a `postgres`
   system account. Read-only pools also require a ClusterService that selects only
   PostgreSQL replicas; PostgreSQL does not create this service by default.
@@ -124,3 +124,20 @@ read-after-write consistency is required.
 Backend and management credentials are loaded on process startup. After
 changing the referenced credential, ensure the pool Pods are restarted and
 verify authentication with a new connection.
+
+## Query cancellation across replicas
+
+PgBouncer peers forward cancellation requests to the instance owning the client
+connection, even when the Service routes the separate cancellation connection to
+another Pod. Peer addresses use the individual Pod DNS names from KubeBlocks.
+The peer ID is the default instance ordinal plus one, so existing connections
+retain their cancellation identity when replicas are added, removed, or rebuilt.
+This Addon requires default instance names with ordinals from 0 through 65534;
+custom named instance groups are not supported by its peer identity mapping.
+
+KubeBlocks updates the projected peer list when membership changes. Readiness
+reloads changed lists without restarting PgBouncer and retries failed reloads.
+During the projection and reload convergence window, cancellation involving a
+new instance can still fail on a Pod that has not received the updated list.
+Applications must also handle disconnection when the instance owning a session
+is removed or restarted; peering does not migrate sessions.

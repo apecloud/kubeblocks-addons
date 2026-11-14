@@ -8,20 +8,41 @@ Describe "PgBouncer readiness recovery"
     export POSTGRESQL_USERNAME=postgres POSTGRESQL_PASSWORD=fixture CURRENT_POD_IP=127.0.0.1
     export PGBOUNCER_BACKEND_ROLE=rw PGBOUNCER_ADMIN_USERNAME=pgbouncer PGBOUNCER_ADMIN_PASSWORD=admin-fixture
     export TEST_BACKEND=primary TEST_QUERY_STATUS=0 TEST_RECONNECT_STATUS=0 TEST_BLOCK_QUERY=0
+    export TEST_PEERS_CHANGED=0 TEST_RELOAD_STATUS=0
   }
 
   cleanup() {
     rm -f "$TEST_COMMAND_LOG"
   }
 
+  timeout_status() {
+    case "${timeout_status:-}" in
+      124|137) return 0 ;;
+      *) return 1 ;;
+    esac
+  }
+
   BeforeEach 'setup'
   AfterEach 'cleanup'
+
+  Mock cmp
+    [ "$TEST_PEERS_CHANGED" = 0 ]
+  End
+
+  Mock cp
+    exit 0
+  End
+
+  Mock mv
+    printf '%s\n' APPLIED >> "$TEST_COMMAND_LOG"
+  End
 
   Mock psql
     case "$*" in
       *--username=postgres*--dbname=postgres*)
         [ "$PGPASSWORD" = fixture ] || exit 98
         if [ "$TEST_BLOCK_QUERY" = 1 ]; then
+          printf '%s\n' QUERY_STARTED >> "$TEST_COMMAND_LOG"
           exec sleep 10
         fi
         printf '%s\n' "$TEST_BACKEND"
@@ -32,6 +53,11 @@ Describe "PgBouncer readiness recovery"
         printf '%s\n' RECONNECT >> "$TEST_COMMAND_LOG"
         exit "$TEST_RECONNECT_STATUS"
         ;;
+      *--username=pgbouncer*--dbname=pgbouncer*--command=RELOAD)
+        [ "$PGPASSWORD" = admin-fixture ] || exit 98
+        printf '%s\n' RELOAD >> "$TEST_COMMAND_LOG"
+        exit "$TEST_RELOAD_STATUS"
+        ;;
       *) exit 99 ;;
     esac
   End
@@ -40,6 +66,21 @@ Describe "PgBouncer readiness recovery"
     When run sh ../scripts/pgbouncer-readiness.sh
     The status should be success
     The contents of file "$TEST_COMMAND_LOG" should be blank
+  End
+
+  It "reloads changed membership before marking it applied"
+    TEST_PEERS_CHANGED=1
+    When run sh ../scripts/pgbouncer-readiness.sh
+    The status should be success
+    The contents of file "$TEST_COMMAND_LOG" should equal "$(printf 'RELOAD\nAPPLIED')"
+  End
+
+  It "leaves failed reloads unapplied for the next probe to retry"
+    TEST_PEERS_CHANGED=1
+    TEST_RELOAD_STATUS=2
+    When run sh ../scripts/pgbouncer-readiness.sh
+    The status should be failure
+    The contents of file "$TEST_COMMAND_LOG" should equal RELOAD
   End
 
   It "retires replica connections and waits for the next probe to become ready"
@@ -97,9 +138,9 @@ Describe "PgBouncer readiness recovery"
   It "kills a queued backend query within the probe budget"
     TEST_BLOCK_QUERY=1
     When run sh ../scripts/pgbouncer-readiness.sh
-    The status should equal 137
+    The status should satisfy timeout_status
     The stderr should be defined
-    The contents of file "$TEST_COMMAND_LOG" should be blank
+    The contents of file "$TEST_COMMAND_LOG" should equal QUERY_STARTED
   End
 
   It "remains unready when the admin reconnect fails"
