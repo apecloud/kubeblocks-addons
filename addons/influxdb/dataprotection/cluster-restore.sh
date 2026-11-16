@@ -5,47 +5,37 @@ echo "Starting InfluxDB cluster restore (import)..."
 mkdir -p "${work_dir}/downloads"
 files_to_import=()
 
-# Search for export.lp.gz in current DP_BACKUP_BASE_PATH (covering both root and per-pod subdirectories)
-for entry in $(datasafed list / 2>/dev/null || true); do
-  subpath="${entry%/}"
-  if [ -n "$subpath" ] && datasafed stat "/${subpath}/export.lp.gz" >/dev/null 2>&1; then
-    mkdir -p "${work_dir}/downloads/${subpath}"
-    target_file="${work_dir}/downloads/${subpath}/export.lp.gz"
-    echo "Found export file at /${subpath}/export.lp.gz, pulling..."
-    datasafed pull "/${subpath}/export.lp.gz" "${target_file}"
-    files_to_import+=("${target_file}")
-  fi
-done
-
-# Check if export.lp.gz exists directly at root of DP_BACKUP_BASE_PATH
-if datasafed stat "/export.lp.gz" >/dev/null 2>&1; then
-  target_file="${work_dir}/downloads/export_root.lp.gz"
-  echo "Found export file at /export.lp.gz, pulling..."
-  datasafed pull "/export.lp.gz" "${target_file}"
-  files_to_import+=("${target_file}")
-fi
+# Discover all export.lp.gz files in current DP_BACKUP_BASE_PATH
+file_list=()
+while IFS= read -r relpath; do
+  [ -n "$relpath" ] && file_list+=("$relpath")
+done < <(datasafed list -r / 2>/dev/null | grep -E '(^|/)export\.lp\.gz$' || true)
 
 # Fallback: check parent directory if needed
-if [ ${#files_to_import[@]} -eq 0 ]; then
+if [ ${#file_list[@]} -eq 0 ]; then
   parent_base_path="$(dirname "${DP_BACKUP_BASE_PATH}")"
   echo "Checking parent path: ${parent_base_path}..."
   export DATASAFED_BACKEND_BASE_PATH="${parent_base_path}"
-  for entry in $(datasafed list / 2>/dev/null || true); do
-    subpath="${entry%/}"
-    if [ -n "$subpath" ] && datasafed stat "/${subpath}/export.lp.gz" >/dev/null 2>&1; then
-      mkdir -p "${work_dir}/downloads/${subpath}"
-      target_file="${work_dir}/downloads/${subpath}/export.lp.gz"
-      echo "Found export file at /${subpath}/export.lp.gz, pulling..."
-      datasafed pull "/${subpath}/export.lp.gz" "${target_file}"
-      files_to_import+=("${target_file}")
-    fi
-  done
+  while IFS= read -r relpath; do
+    [ -n "$relpath" ] && file_list+=("$relpath")
+  done < <(datasafed list -r / 2>/dev/null | grep -E '(^|/)export\.lp\.gz$' || true)
 fi
 
-if [ ${#files_to_import[@]} -eq 0 ]; then
+if [ ${#file_list[@]} -eq 0 ]; then
   echo "ERROR: No backup export files found to restore." >&2
   exit 1
 fi
+
+echo "Found ${#file_list[@]} export file(s) to pull."
+
+for relpath in "${file_list[@]}"; do
+  remote_path="/${relpath#/}"
+  local_name="$(echo "${relpath}" | tr '/' '_')"
+  target_file="${work_dir}/downloads/${local_name}"
+  echo "Pulling ${remote_path} to ${target_file}..."
+  datasafed pull "${remote_path}" "${target_file}"
+  files_to_import+=("${target_file}")
+done
 
 echo "Found ${#files_to_import[@]} export file(s) to import."
 
@@ -59,7 +49,7 @@ done
 # Filter out _internal monitor database commands and import files into cluster
 for f in "${files_to_import[@]}"; do
   echo "Importing ${f} into InfluxDB cluster..."
-  clean_file="${work_dir}/clean_$(basename "$(dirname "${f}")")_$(basename "${f}")"
+  clean_file="${work_dir}/clean_$(basename "${f}")"
   # Filter out _internal database DDL and DML to avoid polluting new cluster monitor stats
   zcat "${f}" | awk '
     /^CREATE DATABASE _internal/ { next }
