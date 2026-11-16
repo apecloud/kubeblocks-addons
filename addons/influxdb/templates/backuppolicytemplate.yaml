@@ -29,3 +29,37 @@ spec:
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: influxdb-cluster-backup-policy-template
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  serviceKind: influxdb
+  compDefs:
+    - {{ include "influxdb.data.cmpdRegexpPattern" . }}
+  target:
+    role: ""
+    account: admin
+    strategy: All
+    containerPort:
+      containerName: influxdb-data
+      portName: http
+  backupMethods:
+    - name: full
+      snapshotVolumes: false
+      actionSetName: influxdb-cluster-full
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/influxdb
+  schedules:
+    - backupMethod: full
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
