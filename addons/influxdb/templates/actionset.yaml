@@ -45,6 +45,9 @@ spec:
       syncProgress:
         enabled: false
         intervalSeconds: 5
+      env:
+        - name: BACKUP_CONCURRENCY
+          value: {{ .Values.backupConcurrency | default 4 | quote }}
       command:
         - bash
         - -c

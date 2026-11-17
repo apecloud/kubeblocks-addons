@@ -31,3 +31,6 @@ configPath: /opt/bitnami/influxdb/etc
 tlsMountPath: /etc/pki/tls
 
 clusterDomain: ".cluster.local"
+
+# Concurrency for parallel database export in cluster backup
+backupConcurrency: 4
