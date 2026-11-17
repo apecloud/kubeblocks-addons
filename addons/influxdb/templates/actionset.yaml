@@ -45,13 +45,11 @@ spec:
       syncProgress:
         enabled: false
         intervalSeconds: 5
-      env:
-        - name: BACKUP_CONCURRENCY
-          value: {{ .Values.backupConcurrency | default 4 | quote }}
       command:
         - bash
         - -c
         - |
+          export BACKUP_CONCURRENCY={{ .Values.backupConcurrency | default 4 | quote }}
           {{- .Files.Get "dataprotection/cluster-common.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/cluster-backup.sh" | nindent 10 }}
   restore:
