@@ -12,6 +12,11 @@ on:
         type: string
         required: false
         default: ''
+      CLOUD_SUFFIX:
+        description: "Enable image tags include the version"
+        type: boolean
+        required: false
+        default: false
   workflow_call:
     inputs:
       VERSION:
@@ -24,6 +29,11 @@ on:
         type: string
         required: false
         default: ''
+      CLOUD_SUFFIX:
+        description: "Enable image tags include the version"
+        type: boolean
+        required: false
+        default: false
 
 run-name: release chart image ${{ inputs.VERSION }}
 
@@ -37,5 +47,5 @@ jobs:
       DOCKERFILE_PATH: "./docker/Dockerfile-charts"
       REMOVE_PREFIX: false
       ADD_ADDONS: "${{ inputs.ADD_ADDONS }}"
-      CLOUD_SUFFIX: true
+      CLOUD_SUFFIX: ${{ inputs.CLOUD_SUFFIX }}
     secrets: inherit
