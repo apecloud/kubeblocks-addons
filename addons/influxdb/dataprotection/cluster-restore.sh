@@ -5,11 +5,11 @@ echo "Starting InfluxDB cluster restore (import)..."
 mkdir -p "${work_dir}/downloads"
 files_to_import=()
 
-# Discover all export.lp.gz files in current DP_BACKUP_BASE_PATH
+# Discover all export*.lp.gz files in current DP_BACKUP_BASE_PATH
 file_list=()
 while IFS= read -r relpath; do
   [ -n "$relpath" ] && file_list+=("$relpath")
-done < <(datasafed list -r / 2>/dev/null | grep -E '(^|/)export\.lp\.gz$' || true)
+done < <(datasafed list -r / 2>/dev/null | grep -E '(^|/)export.*\.lp\.gz$' || true)
 
 # Fallback: check parent directory if needed
 if [ ${#file_list[@]} -eq 0 ]; then
@@ -18,7 +18,7 @@ if [ ${#file_list[@]} -eq 0 ]; then
   export DATASAFED_BACKEND_BASE_PATH="${parent_base_path}"
   while IFS= read -r relpath; do
     [ -n "$relpath" ] && file_list+=("$relpath")
-  done < <(datasafed list -r / 2>/dev/null | grep -E '(^|/)export\.lp\.gz$' || true)
+  done < <(datasafed list -r / 2>/dev/null | grep -E '(^|/)export.*\.lp\.gz$' || true)
 fi
 
 if [ ${#file_list[@]} -eq 0 ]; then

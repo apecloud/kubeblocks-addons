@@ -29,3 +29,6 @@ image:
 configPath: /opt/bitnami/influxdb/etc
 
 clusterDomain: ".cluster.local"
+
+# Concurrency for parallel database export in cluster backup
+backupConcurrency: 4
