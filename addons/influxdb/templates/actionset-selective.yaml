@@ -1,0 +1,55 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: influxdb-selective
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+spec:
+  backupType: Selective
+  env:
+    - name: INFLUX_BACKUP_MODE
+      value: selective
+  parametersSchema:
+    openAPIV3Schema:
+      type: object
+      required: [bucket, org]
+      properties:
+        org:
+          type: string
+          minLength: 1
+          description: Source organization name.
+        bucket:
+          type: string
+          minLength: 1
+          description: Source bucket name within the source organization.
+        new_bucket:
+          type: string
+          minLength: 1
+          description: Optional destination bucket name; defaults to the source name and must not already exist.
+        new_org:
+          type: string
+          description: Optional destination organization name.
+  backup:
+    withParameters: [bucket, org]
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:{{ .Values.image.influxdb.tag }}
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
+  restore:
+    withParameters: [bucket, org, new_bucket, new_org]
+    postReady:
+      - job:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:{{ .Values.image.influxdb.tag }}
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/common.sh" | nindent 14 }}
+              {{- .Files.Get "dataprotection/restore.sh" | nindent 14 }}
