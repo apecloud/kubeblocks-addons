@@ -39,6 +39,29 @@ done
 
 echo "Found ${#files_to_import[@]} export file(s) to import."
 
+# If databases parameter is set, filter files_to_import to only those matching selected databases
+if [ -n "${databases:-}" ]; then
+  selected_dbs=()
+  while IFS= read -r db; do
+    [ -n "$db" ] && selected_dbs+=("$db")
+  done < <(echo "${databases}" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -vE "^(_internal)?$")
+
+  if [ ${#selected_dbs[@]} -gt 0 ]; then
+    filtered_files=()
+    for f in "${files_to_import[@]}"; do
+      fname=$(basename "$f")
+      for db in "${selected_dbs[@]}"; do
+        if [[ "$fname" =~ export_${db}\.lp\.gz$ ]]; then
+          filtered_files+=("$f")
+          break
+        fi
+      done
+    done
+    files_to_import=("${filtered_files[@]}")
+    echo "Filtered to ${#files_to_import[@]} export file(s) for database(s): ${databases}"
+  fi
+fi
+
 # Wait for InfluxDB cluster service to be accessible
 echo "Connecting to InfluxDB at ${INFLUX_HOST}:${INFLUX_PORT}..."
 until influx -host "${INFLUX_HOST}" -port "${INFLUX_PORT}" -username "${INFLUX_USER}" -password "${INFLUX_PASSWORD}" -execute "SHOW DATABASES" >/dev/null 2>&1; do

@@ -53,3 +53,50 @@ spec:
             - |
               {{- .Files.Get "dataprotection/common.sh" | nindent 14 }}
               {{- .Files.Get "dataprotection/restore.sh" | nindent 14 }}
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: influxdb-export-selective
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+spec:
+  backupType: Selective
+  env:
+    - name: INFLUX_BACKUP_MODE
+      value: selective
+  parametersSchema:
+    openAPIV3Schema:
+      type: object
+      properties:
+        databases:
+          type: string
+          description: Comma-separated list of database names to back up or restore.
+  backup:
+    withParameters:
+      - databases
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:{{ .Values.image.influxdbData.tag | default "1.8.10-c1.1.2-data" }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+        - bash
+        - -c
+        - |
+          export BACKUP_CONCURRENCY={{ .Values.backupConcurrency | default 4 | quote }}
+          {{- .Files.Get "dataprotection/cluster-common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/cluster-backup.sh" | nindent 10 }}
+  restore:
+    withParameters:
+      - databases
+    postReady:
+      - job:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:{{ .Values.image.influxdbData.tag | default "1.8.10-c1.1.2-data" }}
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/cluster-common.sh" | nindent 14 }}
+              {{- .Files.Get "dataprotection/cluster-restore.sh" | nindent 14 }}

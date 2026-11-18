@@ -58,6 +58,13 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /var/lib/influxdb
+    - name: export-selective
+      snapshotVolumes: false
+      actionSetName: influxdb-export-selective
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/influxdb
   schedules:
     - backupMethod: export
       enabled: false

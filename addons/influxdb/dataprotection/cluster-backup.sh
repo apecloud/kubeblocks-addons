@@ -17,17 +17,24 @@ until influx -host "${INFLUX_HOST}" -port "${INFLUX_PORT}" -username "${INFLUX_U
   sleep 3
 done
 
-# Export non-internal databases in parallel using xargs
-influx -host "${INFLUX_HOST}" -port "${INFLUX_PORT}" -username "${INFLUX_USER}" -password "${INFLUX_PASSWORD}" -execute "SHOW DATABASES" | \
-  tail -n +4 | \
-  grep -vE "^(_internal)?$" | \
-  xargs -r -P "${parallel_jobs}" -I {} \
-    influx_inspect export \
-      -compress \
-      -datadir "${data_dir}/data" \
-      -waldir "${data_dir}/wal" \
-      -database "{}" \
-      -out "${export_dir}/export_{}.lp.gz"
+# Export databases in parallel using xargs
+if [ -n "${databases:-}" ]; then
+  echo "Selective backup requested for database(s): ${databases}"
+  db_source=$(echo "${databases}" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -vE "^(_internal)?$")
+else
+  echo "Full backup: exporting all non-internal databases..."
+  db_source=$(influx -host "${INFLUX_HOST}" -port "${INFLUX_PORT}" -username "${INFLUX_USER}" -password "${INFLUX_PASSWORD}" -execute "SHOW DATABASES" | \
+    tail -n +4 | \
+    grep -vE "^(_internal)?$")
+fi
+
+echo "${db_source}" | xargs -r -P "${parallel_jobs}" -I {} \
+  influx_inspect export \
+    -compress \
+    -datadir "${data_dir}/data" \
+    -waldir "${data_dir}/wal" \
+    -database "{}" \
+    -out "${export_dir}/export_{}.lp.gz"
 
 echo "Export completed. Uploading export file(s) to backup repository..."
 exported_count=0
