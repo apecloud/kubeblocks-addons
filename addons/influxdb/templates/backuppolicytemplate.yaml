@@ -21,6 +21,9 @@ spec:
     - name: full
       snapshotVolumes: false
       actionSetName: influxdb-full
+    - name: selective
+      snapshotVolumes: false
+      actionSetName: influxdb-selective
   schedules:
     - backupMethod: full
       enabled: false
