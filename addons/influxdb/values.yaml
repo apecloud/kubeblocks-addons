@@ -27,4 +27,6 @@ image:
 
 configPath: /opt/bitnami/influxdb/etc
 
+tlsMountPath: /etc/pki/tls
+
 clusterDomain: ".cluster.local"
