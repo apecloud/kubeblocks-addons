@@ -41,6 +41,26 @@ spec:
           name: admin
           optional: false
           password: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+          optional: true
+    - name: TLS_MOUNT_PATH
+      value: {{ .Values.tlsMountPath | default "/etc/pki/tls" }}
+    - name: INFLUX_HOST
+      value: "http://127.0.0.1:8086"
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}https://127.0.0.1:8086{{else}}http://127.0.0.1:8086{{end}}` | toYaml }}
+    - name: INFLUX_SKIP_VERIFY
+      value: "false"
+      expression: {{ `{{if eq (index . "TLS_ENABLED") "true"}}true{{else}}false{{end}}` | toYaml }}
+  tls:
+    volumeName: tls
+    mountPath: {{ .Values.tlsMountPath | default "/etc/pki/tls" }}
+    caFile: ca.crt
+    certFile: tls.crt
+    keyFile: tls.key
+    defaultMode: 0644
   systemAccounts:
     - name: admin
       initAccount: true
@@ -129,7 +149,14 @@ spec:
                 export INFLUX_USERNAME="$INFLUXDB_ADMIN_USER"
                 export INFLUX_PASSWORD="$INFLUXDB_ADMIN_USER_PASSWORD"
 
-                timeout 29s influx ping --host http://$POD_IP:8086
+                protocol="http"
+                extra_args=""
+                if [ "$TLS_ENABLED" = "true" ]; then
+                  protocol="https"
+                  extra_args="--skip-verify"
+                fi
+
+                timeout 29s influx ping --host ${protocol}://$POD_IP:8086 ${extra_args}
         resources:
           limits: { }
           requests: { }
