@@ -51,15 +51,15 @@ spec:
       containerName: influxdb-data
       portName: http
   backupMethods:
-    - name: full
+    - name: export
       snapshotVolumes: false
-      actionSetName: influxdb-cluster-full
+      actionSetName: influxdb-export
       targetVolumes:
         volumeMounts:
           - name: data
             mountPath: /var/lib/influxdb
   schedules:
-    - backupMethod: full
+    - backupMethod: export
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
