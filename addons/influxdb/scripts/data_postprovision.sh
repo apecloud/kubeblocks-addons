@@ -12,6 +12,10 @@ done
 # but it only reties 30 seconds and errors out. It may not be enough time for
 # the post-provisioning script to succuess. So we manually do the creation here.
 init_query="CREATE USER \"$INFLUXDB_ADMIN_USER_POSTPROVISON\" WITH PASSWORD '$INFLUXDB_ADMIN_PASSWORD' WITH ALL PRIVILEGES"
-cmd="/tools/influx -host 127.0.0.1 -port 8086 -execute "
+cmd="/tools/influx -host 127.0.0.1 -port 8086"
+if [ "$TLS_ENABLED" = "true" ]; then
+    cmd="$cmd -ssl -unsafeSsl"
+fi
+cmd="$cmd -execute"
 $cmd "$init_query"
 echo "admin user \"$INFLUXDB_ADMIN_USER_POSTPROVISON\" created"
