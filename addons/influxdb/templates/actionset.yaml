@@ -33,7 +33,7 @@ spec:
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: influxdb-cluster-full
+  name: influxdb-export
   labels:
     {{- include "influxdb.labels" . | nindent 4 }}
 spec:
