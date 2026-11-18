@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-# Never enable shell tracing: DP_DB_PASSWORD is the operator token.
-: "${DP_DB_HOST:?}" "${DP_DB_PASSWORD:?}" "${DP_BACKUP_BASE_PATH:?}"
+# Never enable shell tracing: credentials contain the operator token.
+INFLUX_TOKEN="${DP_DB_PASSWORD:-${INFLUXDB_ADMIN_USER_TOKEN:-${INFLUXDB_ADMIN_USER_PASSWORD:-}}}"
+: "${DP_DB_HOST:?}" "${INFLUX_TOKEN:?}" "${DP_BACKUP_BASE_PATH:?}"
 export PATH="${PATH}:${DP_DATASAFED_BIN_PATH:?}"
 export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_BASE_PATH}"
 export INFLUX_HOST="http://${DP_DB_HOST}:${DP_DB_PORT:-8086}"
-export INFLUX_TOKEN="${DP_DB_PASSWORD}"
+export INFLUX_TOKEN
 umask 077
 work_dir=$(mktemp -d)
 # Keep CLI configuration (which can contain tokens) in the disposable directory.
