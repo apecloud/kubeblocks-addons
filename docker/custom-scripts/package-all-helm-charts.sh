@@ -40,22 +40,21 @@ package_helm_charts() {
         echo "not found addons dir"
         exit 1
     fi
-    for chartName in $(ls addons); do
+    for chartDir in addons/*; do
+        [[ -d ${chartDir} ]] || continue
+        chartName=${chartDir##*/}
         if [[ "$chartName" == *"-cluster" ]]; then
             continue
         fi
-        chartDir="addons/${chartName}"
-        if [[ -d ${chartDir} ]]; then
-            if [[ -n "${PREBUILT_CHART_NAMES}" ]]; then
-                chart_name=$(awk -F': ' '$1 == "name" {print $2; exit}' "${chartDir}/Chart.yaml")
-                if is_prebuilt_chart "${chart_name}"; then
-                    echo "use prebuilt chart ${chart_name}"
-                    continue
-                fi
+        if [[ -n "${PREBUILT_CHART_NAMES}" ]]; then
+            chart_name=$(awk -F': ' '$1 == "name" {print $2; exit}' "${chartDir}/Chart.yaml")
+            if is_prebuilt_chart "${chart_name}"; then
+                echo "use prebuilt chart ${chart_name}"
+                continue
             fi
-            echo "helm package ${chartName}"
-            helm package ${chartDir} --destination "${TARGET_DIR}" --dependency-update
         fi
+        echo "helm package ${chartName}"
+        helm package "${chartDir}" --destination "${TARGET_DIR}" --dependency-update
     done
 }
 
