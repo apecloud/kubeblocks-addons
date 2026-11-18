@@ -5439,7 +5439,7 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "This metric will only be non-zero if the instance is a master",
+      "description": "Only masters report connected replicas.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -5536,7 +5536,100 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "This metric will only be non-zero if the instance is a master",
+      "description": "Per-replica lag in bytes, computed on the master as master_repl_offset - connected_slave_offset_bytes. Only online replicas are shown.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "links": [],
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 78
+      },
+      "id": 28,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "editorMode": "code",
+          "expr": "redis_master_repl_offset{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} - on(namespace, app_kubernetes_io_instance, pod) group_right() redis_connected_slave_offset_bytes{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\",slave_state=\"online\"}",
+          "interval": "",
+          "legendFormat": "{{pod}} -> {{slave_ip}}:{{slave_port}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Replication Lag (bytes)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "description": "Per-replica lag in seconds reported by the master (INFO replication \"lag\" field). Only masters export this.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -5583,22 +5676,26 @@
                 "value": null
               },
               {
+                "color": "yellow",
+                "value": 1
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 10
               }
             ]
           },
-          "unit": "short"
+          "unit": "s"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 7,
         "w": 8,
-        "x": 8,
+        "x": 16,
         "y": 78
       },
-      "id": 28,
+      "id": 30,
       "options": {
         "legend": {
           "calcs": [],
@@ -5618,14 +5715,15 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "redis_slave_repl_offset{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}",
+          "exemplar": false,
+          "expr": "redis_connected_slave_lag_seconds{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}",
           "interval": "",
-          "legendFormat": "{{pod}} ",
+          "legendFormat": "{{pod}} -> {{slave_ip}}:{{slave_port}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Slave Repl Offset",
+      "title": "Replication Lag (seconds)",
       "type": "timeseries"
     },
     {
@@ -5633,7 +5731,119 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "This metric is only exported if the instance is a slave.",
+      "description": "1 = replica link is up, 0 = link is down. Only replicas export this metric.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "links": [],
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "DOWN"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "UP"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 85
+      },
+      "id": 78,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "redis_master_link_up{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}",
+          "interval": "",
+          "legendFormat": "{{pod}} -> {{master_host}}:{{master_port}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Replication link status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "description": "Seconds since the replica last interacted with its master. Only replicas export this; it grows when the link is down.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -5692,10 +5902,10 @@
       "gridPos": {
         "h": 7,
         "w": 8,
-        "x": 16,
-        "y": 78
+        "x": 8,
+        "y": 85
       },
-      "id": 30,
+      "id": 79,
       "options": {
         "legend": {
           "calcs": [],
@@ -5723,7 +5933,7 @@
           "refId": "A"
         }
       ],
-      "title": "Time since last master connection",
+      "title": "Time since last master IO",
       "type": "timeseries"
     }
   ],
