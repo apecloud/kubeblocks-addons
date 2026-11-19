@@ -13,13 +13,10 @@ spec:
     openAPIV3Schema:
       type: object
       properties:
-        buckets:
+        selection:
           type: string
           minLength: 1
-          description: >-
-            Comma-separated qualified buckets, for example "org-a"/"raw","org-b"/"raw".
-            Names must not contain double quotes. Required for backup.
-            Restore defaults to all buckets if the archive contains a bucket list.
+          description: 'Comma-separated organization and bucket pairs, e.g. "org1"/"bucket1","org2"/"bucket2". Required for backup. Restore defaults to all buckets in the backup.'
         new_bucket:
           type: string
           minLength: 1
@@ -28,7 +25,7 @@ spec:
           type: string
           description: Optional destination organization name.
   backup:
-    withParameters: [buckets]
+    withParameters: [selection]
     backupData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:{{ .Values.image.influxdb.tag }}
       syncProgress:
@@ -39,9 +36,10 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/selection.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
   restore:
-    withParameters: [buckets, new_bucket, new_org]
+    withParameters: [selection, new_bucket, new_org]
     postReady:
       - job:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:{{ .Values.image.influxdb.tag }}
@@ -50,7 +48,9 @@ spec:
             - -c
             - |
               {{- .Files.Get "dataprotection/common.sh" | nindent 14 }}
+              {{- .Files.Get "dataprotection/selection.sh" | nindent 14 }}
               {{- .Files.Get "dataprotection/restore.sh" | nindent 14 }}
+
 ---
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
@@ -62,17 +62,18 @@ spec:
   backupType: Selective
   env:
     - name: INFLUX_BACKUP_MODE
-      value: selective
+      value: export-selective
   parametersSchema:
     openAPIV3Schema:
       type: object
       properties:
-        databases:
+        selection:
           type: string
-          description: Comma-separated list of database names to back up or restore.
+          minLength: 1
+          description: 'Comma-separated database or retention policy paths, e.g. "db1","db2"/"30d". A database path selects all its retention policies. Required for backup. Restore defaults to all entries in the backup.'
   backup:
     withParameters:
-      - databases
+      - selection
     backupData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:{{ .Values.image.influxdbData.tag | default "1.8.10-c1.1.2-data" }}
       runOnTargetPodNode: true
@@ -85,10 +86,11 @@ spec:
         - |
           export BACKUP_CONCURRENCY={{ .Values.backupConcurrency | default 4 | quote }}
           {{- .Files.Get "dataprotection/cluster-common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/selection.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/cluster-backup.sh" | nindent 10 }}
   restore:
     withParameters:
-      - databases
+      - selection
     postReady:
       - job:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:{{ .Values.image.influxdbData.tag | default "1.8.10-c1.1.2-data" }}
@@ -97,4 +99,5 @@ spec:
             - -c
             - |
               {{- .Files.Get "dataprotection/cluster-common.sh" | nindent 14 }}
+              {{- .Files.Get "dataprotection/selection.sh" | nindent 14 }}
               {{- .Files.Get "dataprotection/cluster-restore.sh" | nindent 14 }}
