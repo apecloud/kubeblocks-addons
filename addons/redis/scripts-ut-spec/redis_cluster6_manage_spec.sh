@@ -197,4 +197,81 @@ Describe "Redis Cluster6 Manage Script Tests"
       End
     End
   End
+
+  Describe "sync_acl_for_redis_cluster_shard() (Redis 6)"
+    # Contract mirrors redis_cluster_manage_spec.sh: only a pod reporting
+    # cluster_state "ok" with a successful ACL LIST may be trusted; otherwise
+    # fail closed instead of silently skipping ACL sync (which would leave a
+    # scaled-out Redis 6 shard without the cluster's custom ACL users).
+    get_pod_service_port_by_network_mode() {
+      echo "6379"
+    }
+
+    setup_sync_acl() {
+      export KB_CLUSTER_POD_FQDN_LIST="src-0,src-1"
+      export CURRENT_SHARD_POD_FQDN_LIST="dst-0"
+      export SERVICE_PORT="6379"
+      export REDIS_DEFAULT_PASSWORD=""
+    }
+    Before "setup_sync_acl"
+
+    un_setup_sync_acl() {
+      unset KB_CLUSTER_POD_FQDN_LIST CURRENT_SHARD_POD_FQDN_LIST SERVICE_PORT REDIS_DEFAULT_PASSWORD
+    }
+    After "un_setup_sync_acl"
+
+    Context "when reachable pods never report cluster_state ok"
+      get_cluster_info_with_retry() {
+        echo ""
+        return 0
+      }
+
+      It "fails closed instead of silently skipping ACL sync"
+        When run sync_acl_for_redis_cluster_shard
+        The status should be failure
+        The stdout should include "Sync ACL rules for redis cluster shard..."
+        The stderr should include "Failed to get ACL LIST from other shard pods"
+      End
+    End
+
+    Context "when the source pod is ok but ACL LIST fails"
+      get_cluster_info_with_retry() {
+        printf 'cluster_state:ok\n'
+        return 0
+      }
+      redis-cli() {
+        case "$*" in
+          *"ACL LIST"*) return 1 ;;
+          *) echo "OK" ;;
+        esac
+      }
+
+      It "does not treat a failed ACL LIST as 'no rules'; fails closed"
+        When run sync_acl_for_redis_cluster_shard
+        The status should be failure
+        The stdout should include "Sync ACL rules for redis cluster shard..."
+        The stderr should include "Failed to get ACL LIST from other shard pods"
+      End
+    End
+
+    Context "when a source pod returns ACL rules (happy path)"
+      get_cluster_info_with_retry() {
+        printf 'cluster_state:ok\n'
+        return 0
+      }
+      redis-cli() {
+        case "$*" in
+          *"ACL LIST"*) printf 'user default on nopass ~* +@all\nuser appuser on >secret ~* +@all\n' ;;
+          *) echo "OK" ;;
+        esac
+      }
+
+      It "syncs non-default ACL users without failing"
+        When run sync_acl_for_redis_cluster_shard
+        The status should be success
+        The stdout should include "Sync ACL rules for redis cluster shard..."
+        The stderr should not include "Failed to get ACL LIST from other shard pods"
+      End
+    End
+  End
 End
