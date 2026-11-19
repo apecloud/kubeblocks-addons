@@ -165,6 +165,68 @@ Describe 'register_to_sentinel.sh'
   End
 
   Describe 'register_to_sentinel()'
+    Context 'Redis 6.0 address compatibility'
+      setup_monitor() {
+        SERVICE_VERSION=6.0.20
+        SENTINEL_PASSWORD=""
+        REDIS_DEFAULT_PASSWORD=""
+        REDIS_SENTINEL_PASSWORD=""
+      }
+      Before 'setup_monitor'
+      check_connectivity() { :; }
+      get_master_addr_by_name() { :; }
+      execute_sentinel_sub_command() { echo "$3"; }
+      getent() {
+        [ "$1" = hosts ] && [ "$2" = primary.example.test ] || return 2
+        echo '10.0.0.10 primary.example.test'
+      }
+
+      It 'resolves the default primary hostname before MONITOR'
+        When run register_to_sentinel sentinel.example.test redis primary.example.test 6379
+        The status should be success
+        The output should include 'SENTINEL monitor redis 10.0.0.10 6379 2'
+        The output should not include 'SENTINEL monitor redis primary.example.test'
+      End
+
+      It 'preserves numeric advertised addresses without DNS lookup'
+        When run register_to_sentinel sentinel.example.test redis 192.0.2.10 31000
+        The status should be success
+        The output should include 'SENTINEL monitor redis 192.0.2.10 31000 2'
+      End
+
+      It 'preserves numeric IPv6 addresses without DNS lookup'
+        When run register_to_sentinel sentinel.example.test redis 2001:db8::10 6379
+        The status should be success
+        The output should include 'SENTINEL monitor redis 2001:db8::10 6379 2'
+      End
+
+      It 'does not register when DNS resolution returns no address'
+        getent() { return 2; }
+        When run register_to_sentinel sentinel.example.test redis primary.example.test 6379
+        The status should be failure
+        The stderr should include 'Failed to resolve primary address'
+        The stdout should include 'Registering it'
+        The stdout should not include 'SENTINEL monitor'
+      End
+
+      It 'does not resolve or replace an existing monitored primary'
+        getent() { return 2; }
+        get_master_addr_by_name() { echo '10.0.0.20'; }
+        When run register_to_sentinel sentinel.example.test redis primary.example.test 6379
+        The status should be success
+        The output should include 'Skipping monitor registration'
+        The output should not include 'SENTINEL monitor'
+      End
+
+      It 'preserves DNS registration on Redis 6.2'
+        SERVICE_VERSION=6.2.14
+        getent() { return 2; }
+        When run register_to_sentinel sentinel.example.test redis primary.example.test 6379
+        The status should be success
+        The output should include 'SENTINEL monitor redis primary.example.test 6379 2'
+      End
+    End
+
     It 'registers the redis primary to sentinel'
       sentinel_host="redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local"
       sentinel_port="26379"
