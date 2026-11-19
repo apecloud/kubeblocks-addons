@@ -79,6 +79,9 @@ addons-cluster/orchestrator/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon
 addons/orioledb/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/orioledb/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/pgbouncer/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/pgbouncer/ @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/polardbx/ @Vettal_Wu @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/polardbx/ @Vettal_Wu @leon-ape @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 

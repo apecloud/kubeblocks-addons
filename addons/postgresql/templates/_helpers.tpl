@@ -236,19 +236,13 @@ reconfigure:
 {{- end -}}
 
 {{/*
-Define pgbouncer configuration template name
-*/}}
-{{- define "pgbouncer.configurationTemplate" -}}
-pgbouncer-configuration-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
 Define image
 */}}
 {{- define "postgresql.repository" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
 
+{{/* Image compatibility for retained definitions that embed PgBouncer. */}}
 {{- define "postgresql.pgbouncerImage" -}}
 {{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
 {{- end }}

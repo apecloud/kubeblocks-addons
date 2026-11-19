@@ -1,0 +1,168 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "pgbouncer.componentDefName" . }}
+  labels:
+    {{- include "pgbouncer.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pgbouncer.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A managed PgBouncer connection pool for PostgreSQL
+  serviceKind: pgbouncer
+  serviceVersion: {{ include "pgbouncer.defaultServiceVersion" . | quote }}
+  replicasLimit:
+    minReplicas: 1
+    maxReplicas: 64
+  updateStrategy: Serial
+  podManagementPolicy: Parallel
+  tls:
+    volumeName: pgbouncer-tls
+    mountPath: /etc/pgbouncer/tls
+    defaultMode: 0444
+    caFile: ca.pem
+  services:
+    - name: pgbouncer
+      spec:
+        ports:
+          - name: pgbouncer
+            port: 6432
+            targetPort: pgbouncer
+  configs:
+    - name: pgbouncer-configuration
+      template: {{ include "pgbouncer.configurationTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: pgbouncer-config
+      defaultMode: 0444
+      externalManaged: true
+      reconfigure:
+        exec:
+          container: pgbouncer
+          targetPodSelector: All
+          command:
+            - /kb-scripts/pgbouncer-reload.sh
+  scripts:
+    - name: pgbouncer-scripts
+      template: {{ include "pgbouncer.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  serviceRefDeclarations:
+    - name: postgresql
+      serviceRefDeclarationSpecs:
+        - serviceKind: postgresql
+          serviceVersion: "^.*$"
+  systemAccounts:
+    - name: pgbouncer
+      initAccount: true
+      passwordConfig:
+        length: 24
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  vars:
+    - name: POSTGRESQL_HOST
+      valueFrom:
+        serviceRefVarRef:
+          name: postgresql
+          host: Required
+    - name: POSTGRESQL_PORT
+      valueFrom:
+        serviceRefVarRef:
+          name: postgresql
+          port: Required
+    - name: POSTGRESQL_USERNAME
+      valueFrom:
+        serviceRefVarRef:
+          name: postgresql
+          username: Required
+    - name: POSTGRESQL_PASSWORD
+      valueFrom:
+        serviceRefVarRef:
+          name: postgresql
+          password: Required
+    - name: PGBOUNCER_ADMIN_USERNAME
+      valueFrom:
+        credentialVarRef:
+          name: pgbouncer
+          username: Required
+    - name: PGBOUNCER_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: pgbouncer
+          password: Required
+  runtime:
+    securityContext:
+      runAsUser: 70
+      runAsGroup: 70
+      fsGroup: 70
+      fsGroupChangePolicy: OnRootMismatch
+    volumes:
+      - name: pgbouncer-state
+        emptyDir: {}
+    containers:
+      - name: pgbouncer
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 70
+          runAsGroup: 70
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        command:
+          - /kb-scripts/pgbouncer-setup.sh
+        ports:
+          - name: pgbouncer
+            containerPort: 6432
+            protocol: TCP
+        volumeMounts:
+          - name: pgbouncer-config
+            mountPath: /opt/pgbouncer-template
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: pgbouncer-state
+            mountPath: /etc/pgbouncer
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 30
+          timeoutSeconds: 5
+          tcpSocket:
+            port: pgbouncer
+        readinessProbe:
+          failureThreshold: 1
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /kb-scripts/pgbouncer-readiness.sh
+        env:
+          - name: PGBOUNCER_BACKEND_ROLE
+            value: rw
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: POSTGRESQL_HOST
+            value: $(POSTGRESQL_HOST)
+          - name: POSTGRESQL_PORT
+            value: $(POSTGRESQL_PORT)
+          - name: POSTGRESQL_USERNAME
+            value: $(POSTGRESQL_USERNAME)
+          - name: POSTGRESQL_PASSWORD
+            value: $(POSTGRESQL_PASSWORD)
+          - name: PGBOUNCER_ADMIN_USERNAME
+            value: $(PGBOUNCER_ADMIN_USERNAME)
+          - name: PGBOUNCER_ADMIN_PASSWORD
+            value: $(PGBOUNCER_ADMIN_PASSWORD)

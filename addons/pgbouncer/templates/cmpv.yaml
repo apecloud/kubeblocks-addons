@@ -1,0 +1,23 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: {{ include "pgbouncer.componentVersionName" . }}
+  labels:
+    {{- include "pgbouncer.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pgbouncer.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "pgbouncer.componentDefNamePrefix" . }}
+      releases:
+      {{- range .Values.versions }}
+        - {{ .version | quote }}
+      {{- end }}
+  releases:
+  {{- range .Values.versions }}
+    - name: {{ .version | quote }}
+      serviceVersion: {{ .version | quote }}
+      images:
+        pgbouncer: {{ include "pgbouncer.componentImageByVersion" (dict "tag" .tag "root" $) }}
+  {{- end }}
