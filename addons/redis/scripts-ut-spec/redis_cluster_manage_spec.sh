@@ -1528,6 +1528,14 @@ Describe "Redis Cluster Manage Bash Script Tests"
         return 0
       }
 
+      # Isolate the scale-out failure path from the redis-cli-dependent ACL
+      # prerequisite (mirrors the sibling Context above). Previously this ran
+      # unmocked and only "passed" because get_cluster_info masked its exit
+      # code; with the masking fixed, sync_acl correctly fails without redis-cli.
+      sync_acl_for_redis_cluster_shard() {
+        return 0
+      }
+
       scale_out_redis_cluster_shard() {
         return 1
       }
