@@ -4,16 +4,21 @@
 case "${INFLUX_BACKUP_MODE:-full}" in
   full) influx backup "${work_dir}/backup" ;;
   selective)
+    parse_selection "${selection:-}" || { echo "Invalid or empty InfluxDB bucket selection" >&2; exit 1; }
     backup_dir="${work_dir}/backup"
-    selection="${work_dir}/selection"
-    write_bucket_selection "$selection"
-    read_bucket_selection "$selection"
-    mkdir "$backup_dir"
-    for i in "${!bucket_names[@]}"; do
-      key=$(bucket_key "${bucket_orgs[i]}" "${bucket_names[i]}")
-      if [[ ! -d "$backup_dir/$key" ]]; then
-        influx backup --org "${bucket_orgs[i]}" --bucket "${bucket_names[i]}" "$backup_dir/$key"
-        printf '%s\0%s\0' "${bucket_orgs[i]}" "${bucket_names[i]}" >> "$backup_dir/bucket-list"
+    mkdir -p "$backup_dir/selected"
+    for i in "${!parents[@]}"; do
+      org_path=$(encode_archive_name "${parents[i]}")
+      bucket_path=$(encode_archive_name "${children[i]}")
+      archive_dir="$backup_dir/selected/$org_path/$bucket_path"
+      if [[ ! -d "$archive_dir" ]]; then
+        # influx backup can succeed even when the requested bucket is missing.
+        if ! influx bucket list --org "${parents[i]}" --name "${children[i]}" >/dev/null; then
+          printf 'Failed to look up bucket %q in organization %q\n' "${children[i]}" "${parents[i]}" >&2
+          exit 1
+        fi
+        mkdir -p "$backup_dir/selected/$org_path"
+        influx backup --org "${parents[i]}" --bucket "${children[i]}" "$archive_dir"
       fi
     done
     ;;

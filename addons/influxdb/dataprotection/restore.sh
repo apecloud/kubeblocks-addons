@@ -8,45 +8,56 @@ case "${INFLUX_BACKUP_MODE:-full}" in
   full) influx restore --full "${work_dir}/backup" ;;
   selective)
     backup_dir="${work_dir}/backup"
-    catalog="$backup_dir/bucket-list"
-    selection="$catalog"
-    if [[ -n ${buckets:-} || ! -f $catalog ]]; then
-      selection="${work_dir}/selection"
-      write_bucket_selection "$selection"
+    if [[ -n ${selection:-} ]]; then
+      parse_selection "$selection" || { echo "Invalid InfluxDB bucket selection" >&2; exit 1; }
+    elif [[ -d "$backup_dir/selected" ]]; then
+      parents=()
+      children=()
+      for archive_dir in "$backup_dir"/selected/*/*; do
+        [[ -d "$archive_dir" ]] || continue
+        org_dir=${archive_dir%/*}
+        decode_archive_name "${org_dir##*/}"
+        parents+=("$decoded_name")
+        decode_archive_name "${archive_dir##*/}"
+        children+=("$decoded_name")
+      done
+    else
+      echo "A flat archive requires an explicit bucket selection" >&2
+      exit 1
     fi
-    read_bucket_selection "$selection"
-    if (( ${#bucket_names[@]} > 1 )) && [[ -n ${new_bucket:-} || ! -f $catalog ]]; then
-      echo "A single-bucket archive or new_bucket requires exactly one selected bucket" >&2
+    if [[ -z ${parents[0]:-} ]]; then
+      echo "No bucket archives found" >&2
+      exit 1
+    fi
+    if (( ${#parents[@]} != 1 )) && [[ ! -d "$backup_dir/selected" || -n ${new_bucket:-} ]]; then
+      echo "A flat archive or new_bucket requires exactly one selected bucket" >&2
       exit 1
     fi
 
-    # Check archive membership and duplicate destinations before creating buckets.
-    mkdir "${work_dir}/destinations"
+    declare -A destinations
     restore_dirs=()
-    for i in "${!bucket_names[@]}"; do
+    for i in "${!parents[@]}"; do
       restore_dir="$backup_dir"
-      if [[ -f $catalog ]]; then
-        key=$(bucket_key "${bucket_orgs[i]}" "${bucket_names[i]}")
-        restore_dir="$backup_dir/$key"
-        if [[ ! -d $restore_dir ]]; then
-          printf 'Bucket %q in organization %q is missing from the backup\n' "${bucket_names[i]}" "${bucket_orgs[i]}" >&2
-          exit 1
-        fi
+      if [[ -d "$backup_dir/selected" ]]; then
+        org_path=$(encode_archive_name "${parents[i]}")
+        bucket_path=$(encode_archive_name "${children[i]}")
+        restore_dir="$backup_dir/selected/$org_path/$bucket_path"
+        [[ -d "$restore_dir" ]] || { printf 'Bucket %q in organization %q is missing from the backup\n' "${children[i]}" "${parents[i]}" >&2; exit 1; }
       fi
       restore_dirs+=("$restore_dir")
-      key=$(bucket_key "${new_org:-${bucket_orgs[i]}}" "${new_bucket:-${bucket_names[i]}}")
-      if [[ -e ${work_dir}/destinations/$key ]]; then
-        echo "Multiple selected buckets resolve to the same destination" >&2
+      org_path=$(encode_archive_name "${new_org:-${parents[i]}}")
+      bucket_path=$(encode_archive_name "${new_bucket:-${children[i]}}")
+      key="$org_path/$bucket_path"
+      if [[ -n ${destinations[$key]:-} ]]; then
+        echo "Duplicate destination bucket" >&2
         exit 1
       fi
-      touch "${work_dir}/destinations/$key"
+      destinations[$key]=1
     done
-
-    for i in "${!bucket_names[@]}"; do
-      args=(--org "${bucket_orgs[i]}" --bucket "${bucket_names[i]}")
+    for i in "${!parents[@]}"; do
+      args=(--org "${parents[i]}" --bucket "${children[i]}")
       if [[ -n ${new_bucket:-} ]]; then args+=(--new-bucket "$new_bucket"); fi
       if [[ -n ${new_org:-} ]]; then args+=(--new-org "$new_org"); fi
-      # Never use --full for a bucket backup: destination credentials stay intact.
       influx restore "${args[@]}" "${restore_dirs[i]}"
     done
     ;;
