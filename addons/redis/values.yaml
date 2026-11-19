@@ -6,6 +6,12 @@ nameOverride: ""
 
 fullnameOverride: ""
 
+## @param skipComponentDefImmutableCheck sets apps.kubeblocks.io/skip-immutable-check on the
+## redis ComponentDefinitions, which disables KubeBlocks' immutability protection so a chart
+## upgrade may mutate a ComponentDefinition that running clusters reference. Only enable this
+## for controlled dev/iteration; it must stay false for shipped installs.
+skipComponentDefImmutableCheck: false
+
 ## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
 cmpdVersionPrefix:
