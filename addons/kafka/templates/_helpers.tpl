@@ -189,8 +189,16 @@ Define kafka jmx configuration tpl name
 kafka-jmx-configuration-tpl
 {{- end -}}
 
-{{- define "kafka.paramsDefName" -}}
-kafka-pd
+{{- define "kafka.paramsDefNameCombined" -}}
+kafka-pd-combined
+{{- end -}}
+
+{{- define "kafka.paramsDefNameController" -}}
+kafka-pd-controller
+{{- end -}}
+
+{{- define "kafka.paramsDefNameBroker" -}}
+kafka-pd-broker
 {{- end -}}
 
 {{- define "kafka2.paramsDefName" -}}
