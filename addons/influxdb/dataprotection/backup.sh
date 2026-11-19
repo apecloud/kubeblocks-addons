@@ -4,9 +4,18 @@
 case "${INFLUX_BACKUP_MODE:-full}" in
   full) influx backup "${work_dir}/backup" ;;
   selective)
-    [[ -n ${org:-} ]] || { echo "A source organization name is required" >&2; exit 1; }
-    [[ -n ${bucket:-} ]] || { echo "A source bucket name is required" >&2; exit 1; }
-    influx backup --org "$org" --bucket "$bucket" "${work_dir}/backup"
+    backup_dir="${work_dir}/backup"
+    selection="${work_dir}/selection"
+    write_bucket_selection "$selection"
+    read_bucket_selection "$selection"
+    mkdir "$backup_dir"
+    for i in "${!bucket_names[@]}"; do
+      key=$(bucket_key "${bucket_orgs[i]}" "${bucket_names[i]}")
+      if [[ ! -d "$backup_dir/$key" ]]; then
+        influx backup --org "${bucket_orgs[i]}" --bucket "${bucket_names[i]}" "$backup_dir/$key"
+        printf '%s\0%s\0' "${bucket_orgs[i]}" "${bucket_names[i]}" >> "$backup_dir/bucket-list"
+      fi
+    done
     ;;
   *) echo "Unknown backup mode" >&2; exit 1 ;;
 esac
