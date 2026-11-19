@@ -1,0 +1,18 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-reconfiguring
+  namespace: demo
+spec:
+  type: Reconfiguring
+  clusterName: yashandb-cluster
+  force: false
+  reconfigures:
+    # 2026-06-03 Reason: demonstrate Stage 5A static parameter updates for fields already rendered by install.ini.tpl; Purpose: match the MySQL Configure example shape without claiming ALTER SYSTEM dynamic reload.
+    - componentName: yashan-comp
+      parameters:
+        - key: OPEN_CURSORS
+          value: "512"
+        - key: RUN_LOG_LEVEL
+          value: INFO
+  preConditionDeadlineSeconds: 0

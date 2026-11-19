@@ -7,10 +7,20 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  registry: registry.cn-shenzhen.aliyuncs.com
-  repository: jesseatyashan/yashandb-personal
+  # 2026-06-17 Reason: KubeBlocks InstanceSet v1.0.2 compares Pod spec images with container runtime status images.
+  # Purpose: use the vendor image archive's canonical tag so the demo pod can be counted as Ready/Available.
+  # Time: 2026-06-17.
+  registry: docker.io
+  repository: library/yashandb
   pullPolicy: IfNotPresent
-  tag: 23.1.1.100
+  # 2026-06-23 Reason: fixed-address HA examples use KubeBlocks ComponentVersion image resolution because instances[].image is not accepted by KubeBlocks 1.0.2; Purpose: keep the default validation image aligned with the imported yasboot-capable archive.
+  # 2026-06-25 Reason: live metrics sidecar proof uses the standalone install.sh path, while the yasboot-capable image does not expose the standalone runtime layout under /home/yashan; Purpose: keep the addon default on the standalone image and require fixed-address HA installs to override the image explicitly.
+  # 2026-07-07 Reason: the 23.4.1.109 container image archive was not available for current validation, while 23.5.2.9 passed standalone/data/archive-log checks in the real cluster; Purpose: keep the default image on the release with attached runtime evidence.
+  # Time: 2026-06-25; updated 2026-07-07.
+  tag: yashandb-image-23.5.2.9-linux-aarch64
+  # 2026-06-29 Reason: production upgrade validation needs a second registered ComponentVersion without changing the default install image; Purpose: let operators add lab or mirrored upgrade images explicitly through values.
+  # Time: 2026-06-29.
+  extraReleases: []
 
 busyboxImage:
   # if the value of busyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
@@ -22,3 +32,80 @@ busyboxImage:
 logConfigs:
   run: /home/yashan/mydb/yasdb_data/log/run/run.log
   slow: /home/yashan/mydb/yasdb_data/log/slow/slow.log
+
+metrics:
+  # 2026-06-03 Reason: reserve the YashanDB exporter contract without assuming the final image; Purpose: let Stage 4A wire monitoring placeholders while keeping the default addon install unchanged.
+  # 2026-06-24 Reason: YCM 23.5.13.3 provides yashandb_exporter-v0.1.1-159-g906774c-linux-arm64.tar.gz with a concrete startup contract; Purpose: replace placeholder defaults while keeping monitoring opt-in until the image is built or mirrored.
+  # 2026-06-24 Reason: the real exporter locks its credentials file and one bundled metric is incompatible with the validated 23.5.13.3 SE database; Purpose: productize the sidecar with writable runtime config and an explicit metric compatibility switch.
+  # Time: 2026-06-24.
+  enabled: false
+  image:
+    registry: ""
+    repository: yashandb/yashandb-exporter
+    tag: v0.1.1-159-g906774c-linux-arm64
+    pullPolicy: IfNotPresent
+  service:
+    port: 9100
+  scrapePath: /metrics
+  logLevel: info
+  target:
+    name: yashandb
+    type: SE
+    nodeId: 1-1
+    nodeType: yasdn
+    nodeGroup: "1"
+    nodeName: local
+    host: 127.0.0.1
+    port: ""
+    pkgVersion: "23.5.13.3"
+  auth:
+    username: sys
+    passwordSecretName: ""
+    passwordSecretKey: password
+  compat:
+    disabledMetrics:
+      - swap
+  extraArgs:
+    - --web.telemetry-path=/metrics
+    - --yashandb.metrics.dir=/opt/yashandb_exporter/metrics-work
+    - --yashandb.targets=/opt/yashandb_exporter/config/yashandb-targets.yml
+    - --yashandb.operations.users=/opt/yashandb_exporter/config/yasdbpasswd.yml
+  extraEnv: []
+
+ha:
+  fixedAddress:
+    # 2026-06-22 Reason: YashanDB yasboot metadata is address-bound and Pod IP drift breaks the tested HA topology; Purpose: keep the fixed-address HA mode explicit and disabled by default.
+    enabled: false
+    # 2026-06-23 Reason: fixed-address HA uses a yasboot-capable image and hostNetwork ports, not the standalone install.sh path; Purpose: keep the port contract explicit for per-instance examples and validation.
+    # Time: 2026-06-23.
+    sshPort: 3222
+    omPort: 2675
+    agentPort: 2676
+    dbPort: 2688
+    replicationPort: 2689
+  writerReconciler:
+    # 2026-06-22 Reason: writer traffic must follow the current YashanDB primary in fixed-address HA mode; Purpose: keep endpoint reconciliation productized but explicitly opt-in.
+    # Time: 2026-06-22.
+    enabled: false
+    image:
+      registry: ""
+      repository: ""
+      tag: ""
+      pullPolicy: IfNotPresent
+    name: yashandb-writer
+    sqlPort: 2688
+    clusterName: kbh3n3
+    dbUser: sys
+    dbPasswordSecretName: ""
+    dbPasswordSecretKey: password
+    dbPassword: ""
+    endpointPodMap: "172.16.90.245=yasboot-hostnet3-0-0,172.16.90.246=yasboot-hostnet3-1-0,172.16.90.247=yasboot-hostnet3-2-0"
+    intervalSeconds: 2
+    failover:
+      # 2026-06-22 Reason: database failover changes primary ownership and must not run accidentally; Purpose: keep automatic failover explicit and disabled by default.
+      # Time: 2026-06-22.
+      enabled: false
+      failureThreshold: 5
+      cooldownSeconds: 60
+      # 2026-06-23 Reason: YashanDB may already be electing a new primary when the addon observes no primary; Purpose: wait several reconcile loops before the optional yasboot failover fallback runs.
+      # Time: 2026-06-23.
