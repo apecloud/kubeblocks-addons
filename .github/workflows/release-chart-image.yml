@@ -12,6 +12,11 @@ on:
         type: string
         required: false
         default: ''
+      MANIFEST_ADDONS:
+        description: "The addon chart versions from the release manifest"
+        type: string
+        required: false
+        default: ''
       CLOUD_SUFFIX:
         description: "Enable image tags include the version"
         type: boolean
@@ -26,6 +31,11 @@ on:
         default: ''
       ADD_ADDONS:
         description: "The filter addons to release"
+        type: string
+        required: false
+        default: ''
+      MANIFEST_ADDONS:
+        description: "The addon chart versions from the release manifest"
         type: string
         required: false
         default: ''
@@ -47,5 +57,6 @@ jobs:
       DOCKERFILE_PATH: "./docker/Dockerfile-charts"
       REMOVE_PREFIX: false
       ADD_ADDONS: "${{ inputs.ADD_ADDONS }}"
+      MANIFEST_ADDONS: "${{ inputs.MANIFEST_ADDONS }}"
       CLOUD_SUFFIX: ${{ inputs.CLOUD_SUFFIX }}
     secrets: inherit
