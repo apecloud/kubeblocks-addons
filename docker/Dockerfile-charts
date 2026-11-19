@@ -2,13 +2,13 @@
 FROM alpine/helm:3.17.3 as builder
 
 COPY docker/custom-scripts/package-all-helm-charts.sh /tmp/package-all-helm-charts.sh
+COPY prebuilt-charts /tmp/prebuilt-charts
 
 COPY addons addons
 
 COPY addons-cluster/kblib addons-cluster/kblib
-COPY prebuilt-charts prebuilt-charts
 
-RUN bash /tmp/package-all-helm-charts.sh /tmp/charts /prebuilt-charts
+RUN bash /tmp/package-all-helm-charts.sh /tmp/charts /tmp/prebuilt-charts
 
 RUN rm -rf addons
 

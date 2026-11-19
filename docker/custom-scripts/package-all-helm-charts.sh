@@ -19,14 +19,23 @@ load_prebuilt_charts() {
     if [[ -z "${PREBUILT_DIR}" || ! -d "${PREBUILT_DIR}" ]]; then
         return
     fi
+    local chart_package chart_name
     for chart_package in "${PREBUILT_DIR}"/*.tgz; do
         if [[ ! -f "${chart_package}" ]]; then
             continue
         fi
         cp "${chart_package}" "${TARGET_DIR}/"
+        echo "copy prebuilt chart ${chart_package##*/} to ${TARGET_DIR}/"
     done
     if [[ -f "${PREBUILT_DIR}/.chart-names" ]]; then
         PREBUILT_CHART_NAMES=$(cat "${PREBUILT_DIR}/.chart-names")
+        while IFS= read -r chart_name; do
+            [[ -z "${chart_name}" ]] && continue
+            if ! compgen -G "${TARGET_DIR}/${chart_name}-*.tgz" >/dev/null; then
+                echo "missing prebuilt package for ${chart_name}" >&2
+                exit 1
+            fi
+        done < "${PREBUILT_DIR}/.chart-names"
     fi
 }
 
