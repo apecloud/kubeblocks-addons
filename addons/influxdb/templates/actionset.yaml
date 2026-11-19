@@ -28,3 +28,37 @@ spec:
             - |
               {{- .Files.Get "dataprotection/common.sh" | nindent 14 }}
               {{- .Files.Get "dataprotection/restore.sh" | nindent 14 }}
+
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: influxdb-export
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:{{ .Values.image.influxdbData.tag | default "1.8.10-c1.1.2-data" }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+        - bash
+        - -c
+        - |
+          export BACKUP_CONCURRENCY={{ .Values.backupConcurrency | default 4 | quote }}
+          {{- .Files.Get "dataprotection/cluster-common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/cluster-backup.sh" | nindent 10 }}
+  restore:
+    postReady:
+      - job:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdbData.repository }}:{{ .Values.image.influxdbData.tag | default "1.8.10-c1.1.2-data" }}
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/cluster-common.sh" | nindent 14 }}
+              {{- .Files.Get "dataprotection/cluster-restore.sh" | nindent 14 }}
