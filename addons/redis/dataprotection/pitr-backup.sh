@@ -1,4 +1,6 @@
 # shellcheck shell=bash
+set -e -o pipefail
+
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
@@ -161,7 +163,7 @@ function purge_expired_files() {
   local current_unix=$(date +%s)
   info=$(DP_purge_expired_files ${current_unix} ${global_last_purge_time} / 600)
   if [ ! -z "${info}" ]; then
-    global_last_purge_time=${currentUnix}
+    global_last_purge_time=${current_unix}
     DP_log "Cleanup expired aof files: ${info}"
     local total_size=$(datasafed stat / | grep TotalSize | awk '{print $2}')
     DP_save_backup_status_info "${total_size}"
