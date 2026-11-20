@@ -1,0 +1,259 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "topology": {
+      "type": "string",
+      "enum": ["standalone", "cluster"],
+      "default": "cluster"
+    },
+    "replicas": {
+      "type": "object",
+      "properties": {
+        "core": { "type": "integer", "default": 1, "minimum": 1 },
+        "journalnode": { "type": "integer", "default": 3, "minimum": 3 },
+        "namenode": { "type": "integer", "default": 2, "minimum": 1, "maximum": 2 },
+        "datanode": { "type": "integer", "default": 1, "minimum": 1 }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "core": { "$ref": "#/definitions/resourceSchema" },
+        "journalnode": { "$ref": "#/definitions/resourceSchema" },
+        "namenode": { "$ref": "#/definitions/resourceSchema" },
+        "datanode": { "$ref": "#/definitions/resourceSchema" }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "properties": {
+        "journalnode": { "$ref": "#/definitions/storageSchema" },
+        "namenode": { "$ref": "#/definitions/storageSchema" },
+        "datanode": { "$ref": "#/definitions/storageSchema" }
+      }
+    },
+    "hdfs": {
+      "type": "object",
+      "properties": {
+        "ports": {
+          "type": "object",
+          "properties": {
+            "namenode": {
+              "type": "object",
+              "properties": {
+                "rpc": { "type": "integer", "default": 8020, "minimum": 1, "maximum": 65535 },
+                "http": { "type": "integer", "default": 9870, "minimum": 1, "maximum": 65535 },
+                "jmx": { "type": "integer", "default": 10101, "minimum": 1, "maximum": 65535 }
+              }
+            },
+            "journalnode": {
+              "type": "object",
+              "properties": {
+                "rpc": { "type": "integer", "default": 8485, "minimum": 1, "maximum": 65535 },
+                "http": { "type": "integer", "default": 8480, "minimum": 1, "maximum": 65535 },
+                "jmx": { "type": "integer", "default": 10103, "minimum": 1, "maximum": 65535 }
+              }
+            },
+            "datanode": {
+              "type": "object",
+              "properties": {
+                "jmx": { "type": "integer", "default": 10102, "minimum": 1, "maximum": 65535 }
+              }
+            },
+            "zkfc": {
+              "type": "object",
+              "properties": {
+                "jmx": { "type": "integer", "default": 10104, "minimum": 1, "maximum": 65535 }
+              }
+            }
+          }
+        },
+        "paths": {
+          "type": "object",
+          "properties": {
+            "namenodeMetadataDir": { "type": "string", "default": "/hadoop/dfs/metadata" },
+            "datanodeDataDir": { "type": "string", "default": "/hadoop/dfs/data0" },
+            "journalnodeEditsDir": { "type": "string", "default": "/hadoop/dfs/journal" }
+          }
+        },
+        "core": {
+          "type": "object",
+          "properties": {
+            "hadoopTmpDir": { "type": "string", "default": "/hadoop/tmp" }
+          }
+        },
+          "replication": { "type": "integer", "default": 1, "minimum": 1 },
+          "replicationMax": { "type": "integer", "default": 6, "minimum": 1 },
+        "client": {
+          "type": "object",
+          "properties": {
+            "replaceDatanodeOnFailurePolicy": {
+              "type": "string",
+              "enum": ["NEVER", "DEFAULT", "ALWAYS"],
+              "default": "NEVER"
+            },
+            "retryPolicyEnabled": { "type": "boolean", "default": true },
+            "retryPolicySpec": { "type": "string", "default": "1000,1" }
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "superusergroup": { "type": "string", "default": "hadoop" }
+          }
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "authentication": { "type": "string", "default": "simple" },
+            "authorization": { "type": "boolean", "default": false }
+          }
+        },
+        "registration": {
+          "type": "object",
+          "properties": {
+            "ipHostnameCheck": { "type": "boolean", "default": false }
+          }
+        },
+        "ha": {
+          "type": "object",
+          "properties": {
+              "nameNodeIds": { "type": "string", "default": "nn0,nn1" },
+            "automaticFailoverEnabled": { "type": "boolean", "default": true },
+            "fencingMethods": { "type": "string", "default": "shell(/bin/true)" },
+              "fencingSshConnectTimeoutMs": { "type": "integer", "default": 30000, "minimum": 1 },
+            "zookeeper": {
+              "type": "object",
+              "properties": {
+                "parentZnodePrefix": { "type": "string", "default": "/hadoop-ha" },
+                "includeClusterUID": { "type": "boolean", "default": true },
+                "sessionTimeoutMs": { "type": "integer", "default": 60000, "minimum": 1 },
+                "operationRetries": { "type": "integer", "default": 3, "minimum": 0 }
+              }
+            }
+          }
+        },
+          "journalnode": {
+            "type": "object",
+            "properties": {
+              "enableSync": { "type": "boolean", "default": true },
+              "editCacheSizeBytes": { "type": "integer", "default": 104857600, "minimum": 1 },
+              "syncIntervalMs": { "type": "integer", "default": 120000, "minimum": 1 }
+            }
+          },
+        "ipc": {
+          "type": "object",
+          "properties": {
+            "clientConnectionMaxIdleTimeMs": { "type": "integer", "default": 300000, "minimum": 1 },
+            "clientConnectTimeoutMs": { "type": "integer", "default": 20000, "minimum": 1 },
+            "clientConnectionPoolSize": { "type": "integer", "default": 8, "minimum": 1 },
+            "clientConnectRetryIntervalMs": { "type": "integer", "default": 1000, "minimum": 1 },
+            "clientPing": { "type": "boolean", "default": true },
+            "pingIntervalMs": { "type": "integer", "default": 30000, "minimum": 1 }
+          }
+          },
+          "namenode": {
+            "type": "object",
+            "properties": {
+              "handlerCount": { "type": "integer", "default": 64, "minimum": 1 },
+              "webhdfsEnabled": { "type": "boolean", "default": false },
+              "resourceDuReserved": { "type": "integer", "default": 1073741824, "minimum": 0 },
+              "haLogRollPeriod": { "type": "integer", "default": 120, "minimum": 0 },
+              "haTailEditsPeriod": { "type": "integer", "default": 60, "minimum": 0 }
+            }
+          },
+          "datanode": {
+            "type": "object",
+            "properties": {
+              "handlerCount": { "type": "integer", "default": 64, "minimum": 1 },
+              "failedVolumesTolerated": { "type": "integer", "default": 0, "minimum": 0 },
+              "duReserved": { "type": "integer", "default": 1073741824, "minimum": 0 }
+            }
+        }
+      }
+    },
+    "serviceRefs": {
+      "type": "object",
+      "properties": {
+        "hadoopZookeeper": {
+          "type": "object",
+          "properties": {
+            "namespace": { "type": "string", "default": "kubeblocks" },
+            "clusterServiceSelector": {
+              "type": "object",
+              "properties": {
+                "cluster": { "type": "string", "default": "zk" },
+                "service": {
+                  "type": "object",
+                  "properties": {
+                    "component": { "type": "string", "default": "zookeeper" },
+                    "service": { "type": "string", "default": "headless" },
+                    "port": { "type": "string", "default": "client" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "prometheus": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "decommission": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "stateConfigMapName": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    }
+  },
+  "definitions": {
+    "resourceSchema": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "default": "0.5" },
+            "memory": { "type": "string", "default": "0.5Gi" }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "default": "0.5" },
+            "memory": { "type": "string", "default": "2Gi" }
+          }
+        }
+      }
+    },
+    "storageSchema": {
+      "type": "object",
+      "properties": {
+        "size": { "type": "string", "default": "10Gi" },
+        "storageClassName": { "type": "string", "default": "" },
+        "accessModes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["ReadWriteOnce"],
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

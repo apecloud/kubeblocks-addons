@@ -1,0 +1,21 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hdfs-journalnode
+  labels:
+    {{- include "hadoop.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - v3.3.4
+      compDefs:
+        - hdfs-journalnode
+  releases:
+    - name: v3.3.4
+      serviceVersion: v3.3.4
+      images:
+        hadoop-common: {{ include "hadoop.commonImage" . | quote }}
+        hdfs-journalnode: {{ include "hadoop.journalNodeImage" . | quote }}
+        jmx-exporter: {{ include "hadoop.jmxExporterImage" . | quote }}
