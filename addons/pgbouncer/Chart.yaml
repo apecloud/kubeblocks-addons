@@ -2,7 +2,7 @@ apiVersion: v2
 name: pgbouncer
 description: A standalone PgBouncer connection pool for PostgreSQL
 type: application
-version: 1.0.0
+version: 1.0.1
 appVersion: "1.26.1"
 dependencies:
   - name: kblib

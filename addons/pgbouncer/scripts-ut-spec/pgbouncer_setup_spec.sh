@@ -18,6 +18,10 @@ Describe "PgBouncer setup contract"
     PGBOUNCER_ADMIN_PASSWORD='admin"secret'
     POSTGRESQL_HOST=sample-postgresql
     POSTGRESQL_PORT=5432
+    CURRENT_POD_NAME=sample-pgbouncer-0
+    PGBOUNCER_COMPONENT_NAME=sample-pgbouncer
+    pgbouncer_peers_file="$test_dir/peers.ini"
+    printf '[peers]\n1 = host=sample-pgbouncer-0.sample-pgbouncer-headless port=6432\n' > "$pgbouncer_peers_file"
   }
 
   cleanup() {
@@ -57,6 +61,29 @@ Describe "PgBouncer setup contract"
     The path "$pgbouncer_user_list_file" should be file
     The contents of file "$pgbouncer_user_list_file" should include '"postgres" "pa""ss"'
     The contents of file "$pgbouncer_user_list_file" should include '"pgbouncer" "admin""secret"'
+  End
+
+  It "keeps the peer identity stable for a non-contiguous ordinal above the replica limit"
+    CURRENT_POD_NAME=sample-pgbouncer-100
+    When call build_pgbouncer_conf
+    The status should be success
+    The contents of file "$pgbouncer_conf_file" should include "peer_id = 101"
+    The contents of file "$pgbouncer_conf_file" should include "%include $pgbouncer_peers_file"
+    The contents of file "$pgbouncer_conf_dir/peers.applied" should include "[peers]"
+  End
+
+  It "rejects a peer ID outside the protocol range"
+    CURRENT_POD_NAME=sample-pgbouncer-65535
+    When call build_pgbouncer_conf
+    The status should be failure
+    The stderr should include "outside 0..65534"
+  End
+
+  It "rejects custom instance names rather than reusing another peer identity"
+    CURRENT_POD_NAME=sample-pgbouncer-other-0
+    When call build_pgbouncer_conf
+    The status should be failure
+    The stderr should include "requires a default instance name"
   End
 
   It "loads the documented pool defaults from the managed configuration"
