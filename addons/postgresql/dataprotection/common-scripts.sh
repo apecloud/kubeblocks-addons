@@ -13,6 +13,41 @@ function DP_error_log() {
     echo "${curr_date} ERROR: $msg"
 }
 
+function DP_get_backup_total_size() {
+    local statOutput
+    local totalSize
+    if ! statOutput=$(datasafed stat /); then
+      DP_error_log "datasafed stat failed" >&2
+      return 1
+    fi
+    totalSize=$(printf '%s\n' "${statOutput}" | awk '/TotalSize/ { print $2; exit }')
+    if [[ ! ${totalSize} =~ ^[0-9]+$ ]]; then
+      DP_error_log "datasafed stat returned an invalid TotalSize" >&2
+      return 1
+    fi
+    printf '%s\n' "${totalSize}"
+}
+
+function DP_list_backup_files_by_mtime() {
+    local listOutput
+    local sortedFiles
+    if ! listOutput=$(datasafed list -f --recursive / -o json); then
+      DP_error_log "datasafed WAL listing failed" >&2
+      return 1
+    fi
+    if ! sortedFiles=$(printf '%s\n' "${listOutput}" | jq -s -r '
+      .[]
+      | map(select(.path | test("/[0-9A-F]{24}(\\.partial)?\\.zst$")))
+      | sort_by(.mtime)
+      | .[]
+      | .path
+    '); then
+      DP_error_log "datasafed WAL listing returned invalid JSON" >&2
+      return 1
+    fi
+    printf '%s\n' "${sortedFiles}"
+}
+
 # Get file names without extensions based on the incoming file path
 function DP_get_file_name_without_ext() {
     local fileName=$1
@@ -29,15 +64,27 @@ function DP_save_backup_status_info() {
     local timeZone=$4
     local extras=$5
     local timeZoneStr=""
+    local backupInfo
+    local backupInfoTmp="${DP_BACKUP_INFO_FILE}.tmp.$$"
     if [ ! -z ${timeZone} ]; then
        timeZoneStr=",\"timeZone\":\"${timeZone}\""
     fi
     if [ -z "${stopTime}" ];then
-      echo "{\"totalSize\":\"${totalSize}\"}" > ${DP_BACKUP_INFO_FILE}
+      printf -v backupInfo '{"totalSize":"%s"}' "${totalSize}"
     elif [ -z "${startTime}" ];then
-      echo "{\"totalSize\":\"${totalSize}\",\"extras\":[${extras}],\"timeRange\":{\"end\":\"${stopTime}\"${timeZoneStr}}}" > ${DP_BACKUP_INFO_FILE}
+      printf -v backupInfo '{"totalSize":"%s","extras":[%s],"timeRange":{"end":"%s"%s}}' \
+        "${totalSize}" "${extras}" "${stopTime}" "${timeZoneStr}"
     else
-      echo "{\"totalSize\":\"${totalSize}\",\"extras\":[${extras}],\"timeRange\":{\"start\":\"${startTime}\",\"end\":\"${stopTime}\"${timeZoneStr}}}" > ${DP_BACKUP_INFO_FILE}
+      printf -v backupInfo '{"totalSize":"%s","extras":[%s],"timeRange":{"start":"%s","end":"%s"%s}}' \
+        "${totalSize}" "${extras}" "${startTime}" "${stopTime}" "${timeZoneStr}"
+    fi
+    if ! printf '%s\n' "${backupInfo}" > "${backupInfoTmp}"; then
+      rm -f "${backupInfoTmp}"
+      return 1
+    fi
+    if ! mv -f "${backupInfoTmp}" "${DP_BACKUP_INFO_FILE}"; then
+      rm -f "${backupInfoTmp}"
+      return 1
     fi
 }
 
@@ -53,13 +100,25 @@ function DP_purge_expired_files() {
   if [[ -z ${DP_TTL_SECONDS} || ${diff_time} -lt ${interval_seconds} ]]; then
      return
   fi
-  expiredUnix=$((${currentUnix}-${DP_TTL_SECONDS}))
-  files=$(datasafed list -f --recursive --older-than ${expiredUnix} ${root_path} )
+  local expiredUnix=$((${currentUnix}-10#${DP_TTL_SECONDS}))
+  local files
+  if ! files=$(datasafed list -f --recursive --older-than ${expiredUnix} ${root_path}); then
+      DP_error_log "failed to list expired WAL files" >&2
+      return 1
+  fi
+  local purge_failed=false
   for file in ${files}
   do
-      datasafed rm ${file}
-      echo ${file}
+      if datasafed rm ${file}; then
+          echo ${file}
+      else
+          DP_error_log "failed to remove expired WAL: ${file}" >&2
+          purge_failed=true
+      fi
   done
+  if [[ ${purge_failed} == "true" ]]; then
+      return 1
+  fi
 }
 
 # analyze the start time of the earliest file from the datasafed backend.
@@ -71,26 +130,46 @@ function DP_analyze_start_time_from_datasafed() {
     local get_start_time_from_file="${2:?missing get_start_time_from_file function}"
     local datasafed_pull="${3:?missing datasafed_pull function}"
     local info_file="${KB_BACKUP_WORKDIR}/dp_oldest_file.info"
-    mkdir -p ${KB_BACKUP_WORKDIR} && cd ${KB_BACKUP_WORKDIR}
+    if ! mkdir -p "${KB_BACKUP_WORKDIR}" || ! cd "${KB_BACKUP_WORKDIR}"; then
+      DP_error_log "failed to prepare oldest WAL workdir: ${KB_BACKUP_WORKDIR}" >&2
+      return 1
+    fi
     if [ -f ${info_file} ]; then
       last_oldest_file=$(cat ${info_file})
       last_oldest_file_name=$(DP_get_file_name_without_ext ${last_oldest_file})
-      if [ "$last_oldest_file" == "${oldest_file}" ]; then
+      if [ "$last_oldest_file" == "${oldest_file}" ] && [ -f ${last_oldest_file_name} ]; then
         # oldest file no changed.
-        ${get_start_time_from_file} $last_oldest_file_name
+        local cached_start_time
+        if ! cached_start_time=$(${get_start_time_from_file} "${last_oldest_file_name}"); then
+          rm -f "${info_file}" "${last_oldest_file_name}"
+          return 1
+        fi
+        printf '%s\n' "${cached_start_time}"
         return
       fi
-         # remove last oldest file
+      # remove last oldest file
       if [ -f ${last_oldest_file_name} ];then
-          rm -rf ${last_oldest_file_name}
+          rm -f ${last_oldest_file_name}
       fi
+      rm -f "${info_file}"
     fi
     # pull file
-    ${datasafed_pull} ${oldest_file}
-    # record last oldest file
-    echo ${oldest_file} > ${info_file}
+    if ! ${datasafed_pull} ${oldest_file}; then
+      DP_error_log "failed to pull oldest WAL" >&2
+      return 1
+    fi
     oldest_file_name=$(DP_get_file_name_without_ext ${oldest_file})
-    ${get_start_time_from_file} ${oldest_file_name}
+    local start_time
+    if ! start_time=$(${get_start_time_from_file} "${oldest_file_name}"); then
+      rm -f "${oldest_file_name}"
+      return 1
+    fi
+    if ! printf '%s\n' "${oldest_file}" > "${info_file}"; then
+      DP_error_log "failed to cache oldest WAL" >&2
+      rm -f "${info_file}" "${oldest_file_name}"
+      return 1
+    fi
+    printf '%s\n' "${start_time}"
 }
 
 # get the timeZone offset for location, such as Asia/Shanghai
@@ -116,4 +195,3 @@ function getTimeZoneOffset() {
    fi
    echo "${symbol}${offset}:00"
 }
-
