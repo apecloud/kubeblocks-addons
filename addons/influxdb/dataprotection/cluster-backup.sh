@@ -31,12 +31,16 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
   if [[ "$shards_csv" =~ "shard_group" ]]; then
     my_node_id=""
 
-    pod_name="${DP_TARGET_RELATIVE_PATH:-${CURRENT_POD_NAME:-$(hostname)}}"
+    target_pod="${DP_TARGET_POD_NAME:-${DP_TARGET_RELATIVE_PATH:-$(basename "${DP_BACKUP_BASE_PATH}")}}"
+    if [[ "$target_pod" =~ ^(dp-backup|backup) ]]; then
+      target_pod="${CURRENT_POD_NAME:-$(hostname)}"
+    fi
+    echo "Deduplication: Target pod identified as '${target_pod}'"
 
     # 1. Try to find node ID from SHOW SERVERS (InfluxDB cluster official topology)
     servers_csv=$(influx_query -format csv -execute "SHOW SERVERS" 2>/dev/null || true)
     if [[ "$servers_csv" =~ "data_nodes" ]]; then
-      my_node_id=$(echo "$servers_csv" | awk -F',' -v p="$pod_name" '
+      my_node_id=$(echo "$servers_csv" | awk -F',' -v p="$target_pod" '
         $1 == "data_nodes" && ($3 ~ p || $4 ~ p) {
           if ($2 ~ /^[0-9]+$/) {
             print $2
@@ -60,7 +64,7 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
 
     # 4. Try to match pod name in SHOW SHARDS owners field
     if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
-      my_node_id=$(echo "$shards_csv" | awk -F',' -v p="$pod_name" '
+      my_node_id=$(echo "$shards_csv" | awk -F',' -v p="$target_pod" '
         $1 != "name" && $2 ~ /^[0-9]+$/ {
           for (f = 9; f <= NF; f++) {
             if ($f ~ p) {
@@ -78,7 +82,7 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
 
     # 5. Fallback: map pod ordinal to sorted unique node IDs
     if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
-      if [[ "$pod_name" =~ -([0-9]+)$ ]]; then
+      if [[ "$target_pod" =~ -([0-9]+)$ ]]; then
         ordinal="${BASH_REMATCH[1]}"
         unique_ids=($(echo "$shards_csv" | awk -F',' '
           $1 != "name" && $2 ~ /^[0-9]+$/ {
@@ -125,7 +129,7 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
       ' > "$assigned_shards_file"
 
       assigned_count=$(wc -l < "$assigned_shards_file" | tr -d ' ')
-      echo "Deduplication active (Node ID: ${my_node_id}). Primary shards assigned to this node: ${assigned_count}"
+      echo "Deduplication active (Node ID: ${my_node_id}, Pod: ${target_pod}). Primary shards assigned to this node: ${assigned_count}"
       dedup_enabled=true
     else
       echo "WARNING: Could not determine current node ID. Exporting all local shards without deduplication."
