@@ -329,10 +329,6 @@ systemAccounts:
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
 {{- end }}
 
-{{- define "mysql.image.syncerMGR84" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.mgr84Tag }}
-{{- end }}
-
 {{- define "mysql.spec.runtime.common" -}}
 - command:
     - cp
@@ -340,7 +336,7 @@ systemAccounts:
     - /bin/syncer
     - /bin/syncerctl
     - /tools/
-  image: {{ .syncerImage | default (printf "%s/%s:%s" (.Values.image.registry | default "docker.io") .Values.image.syncer.repository .Values.image.syncer.tag) }}
+  image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   name: init-syncer
   volumeMounts:

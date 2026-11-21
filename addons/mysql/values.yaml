@@ -17,8 +17,6 @@ image:
   syncer:
     repository: apecloud/syncer
     tag: 0.5.0
-    # Supports the MySQL 8.4 MGR allowlist variable and the KubeBlocks v1alpha1 API.
-    mgr84Tag: 0.7.6
   # refer: addons/mysql/orc-tools/Dockerfile
   orcTools:
     repository: apecloud/orc-tools

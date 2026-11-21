@@ -29,7 +29,7 @@ spec:
         volumeMounts:
           - mountPath: /tools
             name: tools
-      {{- include "mysql.spec.runtime.common" (dict "Values" .Values "syncerImage" (include "mysql.image.syncerMGR84" .)) | nindent 6 }}
+      {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.2
@@ -42,18 +42,8 @@ spec:
           - bash
           - -c
           - |
-            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             chown -R mysql:root {{ .Values.dataMountPath }}
-            # Import time zones without creating local GTIDs that prevent members from joining MGR.
-            if [ -z "${MYSQL_INITDB_SKIP_TZINFO:-}" ]; then
-              cat > /docker-entrypoint-initdb.d/00-kubeblocks-timezone.sh <<'EOF' || exit 1
-            {
-              printf 'SET @@SESSION.SQL_LOG_BIN=0;\n'
-              mysql_tzinfo_to_sql /usr/share/zoneinfo | sed 's/Local time zone must be set--see zic manual page/FCTY/'
-            } | docker_process_sql --database=mysql
-            EOF
-              export MYSQL_INITDB_SKIP_TZINFO=1
-            fi
             REPORT_HOST=${KB_CLUSTER_COMP_NAME}-mysql-${KB_POD_NAME##*-}
             SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
             docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${REPORT_HOST} \
