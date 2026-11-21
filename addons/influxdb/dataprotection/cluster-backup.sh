@@ -28,7 +28,7 @@ echo "Export concurrency: ${parallel_jobs}"
 if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
   echo "Checking cluster shard distribution for replica deduplication..."
   shards_csv=$(influx_query -format csv -execute "SHOW SHARDS" 2>/dev/null || true)
-  if [[ "$shards_csv" =~ (^|[[:space:]])shards([,[:space:]]|$) ]]; then
+  if [[ "$shards_csv" =~ "shard_group" ]]; then
     my_node_id=""
 
     pod_name="${DP_TARGET_RELATIVE_PATH:-${CURRENT_POD_NAME:-$(hostname)}}"
@@ -61,17 +61,13 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
     # 4. Try to match pod name in SHOW SHARDS owners field
     if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
       my_node_id=$(echo "$shards_csv" | awk -F',' -v p="$pod_name" '
-        NR > 1 && $1 == "shards" && $9 ~ p {
-          gsub(/["\[\]{}]/, "", $9)
-          gsub(/,/, " ", $9)
-          n = split($9, tokens, " ")
-          for (i = 1; i <= n; i++) {
-            if (tokens[i] ~ p) {
-              if (match(tokens[i], /^[0-9]+/)) {
-                print substr(tokens[i], RSTART, RLENGTH)
-                exit
-              } else if (i > 1 && match(tokens[i-1], /^[0-9]+/)) {
-                print substr(tokens[i-1], RSTART, RLENGTH)
+        $1 != "name" && $2 ~ /^[0-9]+$/ {
+          for (f = 9; f <= NF; f++) {
+            if ($f ~ p) {
+              val = $f
+              gsub(/[^0-9]/, "", val)
+              if (val ~ /^[0-9]+$/) {
+                print val
                 exit
               }
             }
@@ -85,14 +81,12 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
       if [[ "$pod_name" =~ -([0-9]+)$ ]]; then
         ordinal="${BASH_REMATCH[1]}"
         unique_ids=($(echo "$shards_csv" | awk -F',' '
-          NR > 1 && $1 == "shards" {
-            owners_field = $9
-            gsub(/["\[\]{}]/, "", owners_field)
-            gsub(/,/, " ", owners_field)
-            n = split(owners_field, raw_tokens, " ")
-            for (i = 1; i <= n; i++) {
-              if (match(raw_tokens[i], /^[0-9]+/)) {
-                ids[substr(raw_tokens[i], RSTART, RLENGTH) + 0] = 1
+          $1 != "name" && $2 ~ /^[0-9]+$/ {
+            for (f = 9; f <= NF; f++) {
+              val = $f
+              gsub(/[^0-9]/, "", val)
+              if (val ~ /^[0-9]+$/) {
+                ids[val + 0] = 1
               }
             }
           }
@@ -109,19 +103,16 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
 
     if [[ -n "$my_node_id" && "$my_node_id" =~ ^[0-9]+$ ]]; then
       echo "$shards_csv" | awk -F',' -v my_id="$my_node_id" '
-        NR > 1 && $1 == "shards" {
+        $1 != "name" && $2 ~ /^[0-9]+$/ {
           s_id = $2
           db = $3
           rp = $4
-          owners_field = $9
-          gsub(/["\[\]{}]/, "", owners_field)
-          gsub(/,/, " ", owners_field)
-          n = split(owners_field, raw_tokens, " ")
           min_id = ""
-          for (i = 1; i <= n; i++) {
-            token = raw_tokens[i]
-            if (match(token, /^[0-9]+/)) {
-              id = substr(token, RSTART, RLENGTH) + 0
+          for (f = 9; f <= NF; f++) {
+            val = $f
+            gsub(/[^0-9]/, "", val)
+            if (val ~ /^[0-9]+$/) {
+              id = val + 0
               if (min_id == "" || id < min_id) {
                 min_id = id
               }
