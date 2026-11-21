@@ -140,7 +140,7 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
 fi
 
 jobs=()
-if [[ "${INFLUX_BACKUP_MODE:-}" == dbrp-selective ]]; then
+if [[ "${INFLUX_BACKUP_MODE:-}" == *-selective || "${INFLUX_BACKUP_MODE:-}" == dbrp-selective || -n "${selection:-}" ]]; then
   parse_selection "${selection:-}" 1 || { echo "Invalid or empty InfluxDB DB/RP selection" >&2; exit 1; }
   declare -A whole_databases policies_by_database exported
   for i in "${!parents[@]}"; do
