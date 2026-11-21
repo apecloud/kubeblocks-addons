@@ -27,7 +27,7 @@ else
   all_entries=$(datasafed list -r / 2>/dev/null || true)
 fi
 
-if [[ "${INFLUX_BACKUP_MODE:-}" == dbrp-selective ]]; then
+if [[ "${INFLUX_BACKUP_MODE:-}" == *-selective || "${INFLUX_BACKUP_MODE:-}" == dbrp-selective || -n "${selection:-}" ]]; then
   rp_path='(^|.*/)selected/([^/]+)/rp/([^/]+)/data\.lp\.gz$'
   db_path='(^|.*/)selected/([^/]+)/db\.lp\.gz$'
 
@@ -122,7 +122,7 @@ if [ ${#file_list[@]} -eq 0 ]; then
 fi
 
 # Filter legacy database exports by filename before downloading them.
-if [[ "${INFLUX_BACKUP_MODE:-}" != dbrp-selective && -n ${databases:-} ]]; then
+if [[ "${INFLUX_BACKUP_MODE:-}" != *-selective && "${INFLUX_BACKUP_MODE:-}" != dbrp-selective && -z "${selection:-}" && -n ${databases:-} ]]; then
   selected_dbs=()
   while IFS= read -r db; do
     [ -n "$db" ] && selected_dbs+=("$db")
@@ -173,7 +173,7 @@ for i in "${!file_list[@]}"; do
 
   echo "Pulling ${relpath}..."
   if ! datasafed pull "/${relpath#/}" "$target_file"; then
-    if [[ "${INFLUX_BACKUP_MODE:-}" == dbrp-selective && -n ${selection:-} ]]; then
+    if [[ -n ${selection:-} ]]; then
       printf 'Cannot read backup for database %q, retention policy %q\n' "$database" "$retention" >&2
     fi
     exit 1
