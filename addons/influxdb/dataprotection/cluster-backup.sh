@@ -31,18 +31,34 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
   if [[ "$shards_csv" =~ (^|[[:space:]])shards([,[:space:]]|$) ]]; then
     my_node_id=""
 
-    # 1. Try to find node ID from SHOW DIAGNOSTICS
-    diag_out=$(influx_query -execute "SHOW DIAGNOSTICS" 2>/dev/null || true)
-    my_node_id=$(echo "$diag_out" | awk -F': ' '/node_id|nodeID/ {print $2; exit}' | tr -d ' \r\n')
+    pod_name="${DP_TARGET_RELATIVE_PATH:-${CURRENT_POD_NAME:-$(hostname)}}"
 
-    # 2. Try to find node ID from /debug/vars
+    # 1. Try to find node ID from SHOW SERVERS (InfluxDB cluster official topology)
+    servers_csv=$(influx_query -format csv -execute "SHOW SERVERS" 2>/dev/null || true)
+    if [[ "$servers_csv" =~ "data_nodes" ]]; then
+      my_node_id=$(echo "$servers_csv" | awk -F',' -v p="$pod_name" '
+        $1 == "data_nodes" && ($3 ~ p || $4 ~ p) {
+          if ($2 ~ /^[0-9]+$/) {
+            print $2
+            exit
+          }
+        }
+      ')
+    fi
+
+    # 2. Try to find node ID from SHOW DIAGNOSTICS
+    if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
+      diag_out=$(influx_query -execute "SHOW DIAGNOSTICS" 2>/dev/null || true)
+      my_node_id=$(echo "$diag_out" | awk -F': ' '/node_id|nodeID/ {print $2; exit}' | tr -d ' \r\n')
+    fi
+
+    # 3. Try to find node ID from /debug/vars
     if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
       vars_out=$(curl -s -m 3 "http://${INFLUX_HOST}:${INFLUX_PORT}/debug/vars" 2>/dev/null || true)
       my_node_id=$(echo "$vars_out" | grep -oE '"nodeID":\s*"?([0-9]+)"?' | grep -oE '[0-9]+' | head -n 1 || true)
     fi
 
-    # 3. Try to match pod name in SHOW SHARDS owners field
-    pod_name="${DP_TARGET_RELATIVE_PATH:-${CURRENT_POD_NAME:-$(hostname)}}"
+    # 4. Try to match pod name in SHOW SHARDS owners field
     if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
       my_node_id=$(echo "$shards_csv" | awk -F',' -v p="$pod_name" '
         NR > 1 && $1 == "shards" && $9 ~ p {
@@ -64,7 +80,7 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
       ')
     fi
 
-    # 4. Fallback: map pod ordinal to sorted unique node IDs
+    # 5. Fallback: map pod ordinal to sorted unique node IDs
     if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
       if [[ "$pod_name" =~ -([0-9]+)$ ]]; then
         ordinal="${BASH_REMATCH[1]}"
