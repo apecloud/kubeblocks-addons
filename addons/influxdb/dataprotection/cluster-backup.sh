@@ -32,9 +32,6 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
     my_node_id=""
 
     target_pod="${DP_TARGET_POD_NAME:-${DP_TARGET_RELATIVE_PATH:-$(basename "${DP_BACKUP_BASE_PATH}")}}"
-    if [[ "$target_pod" =~ ^(dp-backup|backup) ]]; then
-      target_pod="${CURRENT_POD_NAME:-$(hostname)}"
-    fi
     echo "Deduplication: Target pod identified as '${target_pod}'"
 
     # Find node ID from SHOW SERVERS (InfluxDB cluster topology)
@@ -85,7 +82,7 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
 fi
 
 jobs=()
-if [[ "${INFLUX_BACKUP_MODE:-}" == *-selective || "${INFLUX_BACKUP_MODE:-}" == dbrp-selective || -n "${selection:-}" ]]; then
+if [[ -n "${selection:-}" ]]; then
   parse_selection "${selection:-}" 1 || { echo "Invalid or empty InfluxDB DB/RP selection" >&2; exit 1; }
   declare -A whole_databases policies_by_database exported
   for i in "${!parents[@]}"; do
@@ -127,16 +124,7 @@ if [[ "${INFLUX_BACKUP_MODE:-}" == *-selective || "${INFLUX_BACKUP_MODE:-}" == d
     jobs+=("$database" "rp:$retention" "$export_dir/$key")
   done
 else
-  # Keep the existing database-only parameters and archive names for the legacy actions.
-  until influx_query -execute 'SHOW DATABASES' >/dev/null 2>&1; do
-    echo "Waiting for InfluxDB to be ready..."
-    sleep 3
-  done
-  if [[ -n ${databases:-} ]]; then
-    db_source=$(printf '%s\n' "$databases" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-  else
-    db_source=$(influx_query -execute 'SHOW DATABASES' | tail -n +4)
-  fi
+  db_source=$(influx_query -execute 'SHOW DATABASES' | tail -n +4)
   while IFS= read -r database; do
     if [[ -n "$database" && "$database" != _internal ]]; then
       jobs+=("$database" "rp:" "$export_dir/export_$database.lp.gz")
@@ -244,7 +232,7 @@ if [[ -z "$total_size" || ! "$total_size" =~ ^[0-9]+$ ]]; then
   total_size=0
   for f in "${files[@]}"; do
     [ -f "${f}" ] || continue
-    sz=$(stat -c%s "${f}" 2>/dev/null || stat -f%z "${f}" 2>/dev/null || wc -c < "${f}")
+    sz=$(stat -c%s "${f}")
     total_size=$((total_size + sz))
   done
 fi

@@ -27,7 +27,7 @@ else
   all_entries=$(datasafed list -r / 2>/dev/null || true)
 fi
 
-if [[ "${INFLUX_BACKUP_MODE:-}" == *-selective || "${INFLUX_BACKUP_MODE:-}" == dbrp-selective || -n "${selection:-}" ]]; then
+if [[ -n "${selection:-}" || "$all_entries" =~ (^|[[:space:]/])selected/ ]]; then
   rp_path='(^|.*/)selected/([^/]+)/rp/([^/]+)/data\.lp\.gz$'
   db_path='(^|.*/)selected/([^/]+)/db\.lp\.gz$'
 
@@ -117,34 +117,6 @@ else
 fi
 
 if [ ${#file_list[@]} -eq 0 ]; then
-  echo "ERROR: No backup export files found to restore." >&2
-  exit 1
-fi
-
-# Filter legacy database exports by filename before downloading them.
-if [[ "${INFLUX_BACKUP_MODE:-}" != *-selective && "${INFLUX_BACKUP_MODE:-}" != dbrp-selective && -z "${selection:-}" && -n ${databases:-} ]]; then
-  selected_dbs=()
-  while IFS= read -r db; do
-    [ -n "$db" ] && selected_dbs+=("$db")
-  done < <(echo "${databases}" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -vE "^(_internal)?$")
-
-  if [ ${#selected_dbs[@]} -gt 0 ]; then
-    filtered_files=()
-    for f in "${file_list[@]}"; do
-      fname=${f##*/}
-      for db in "${selected_dbs[@]}"; do
-        if [[ "$fname" == "export_${db}.lp.gz" ]]; then
-          filtered_files+=("$f")
-          break
-        fi
-      done
-    done
-    file_list=("${filtered_files[@]}")
-    echo "Filtered to ${#file_list[@]} export file(s) for database(s): ${databases}"
-  fi
-fi
-
-if [ ${#file_list[@]} -eq 0 ]; then
   echo "ERROR: No matching backup export files found to restore." >&2
   exit 1
 fi
@@ -173,9 +145,7 @@ for i in "${!file_list[@]}"; do
 
   echo "Pulling ${relpath}..."
   if ! datasafed pull "/${relpath#/}" "$target_file"; then
-    if [[ -n ${selection:-} ]]; then
-      printf 'Cannot read backup for database %q, retention policy %q\n' "$database" "$retention" >&2
-    fi
+    printf 'Cannot read backup archive %q\n' "$relpath" >&2
     exit 1
   fi
   # Prepare every archive before importing any data. Keep monitoring data out of the target.
