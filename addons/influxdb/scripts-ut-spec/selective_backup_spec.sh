@@ -42,7 +42,7 @@ MOCK
   run_action() {
     action=$1
     shift
-    cat "$scripts/common.sh" "$scripts/$action.sh" | env \
+    cat "$scripts/common.sh" "$scripts/selection.sh" "$scripts/$action.sh" | env \
       PATH="$test_dir:$PATH" DP_DATASAFED_BIN_PATH="$test_dir" \
       DP_BACKUP_BASE_PATH="$test_dir" DP_BACKUP_INFO_FILE="$test_dir/info" \
       DP_DB_HOST=influxdb DP_DB_PASSWORD=test-token INFLUX_BACKUP_MODE=selective \

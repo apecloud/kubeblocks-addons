@@ -8,6 +8,7 @@ case "${INFLUX_BACKUP_MODE:-full}" in
   full) influx restore --full "${work_dir}/backup" ;;
   selective)
     backup_dir="${work_dir}/backup"
+    selection="${selection:-${buckets:-}}"
     if [[ -n ${selection:-} ]]; then
       parse_selection "$selection" || { echo "Invalid InfluxDB bucket selection" >&2; exit 1; }
     elif [[ -d "$backup_dir/selected" ]]; then
@@ -34,7 +35,7 @@ case "${INFLUX_BACKUP_MODE:-full}" in
       exit 1
     fi
 
-    declare -A destinations
+    destinations=","
     restore_dirs=()
     for i in "${!parents[@]}"; do
       restore_dir="$backup_dir"
@@ -48,11 +49,11 @@ case "${INFLUX_BACKUP_MODE:-full}" in
       org_path=$(encode_archive_name "${new_org:-${parents[i]}}")
       bucket_path=$(encode_archive_name "${new_bucket:-${children[i]}}")
       key="$org_path/$bucket_path"
-      if [[ -n ${destinations[$key]:-} ]]; then
-        echo "Duplicate destination bucket" >&2
+      if [[ "$destinations" == *",${key},"* ]]; then
+        echo "Multiple selected buckets resolve to the same destination" >&2
         exit 1
       fi
-      destinations[$key]=1
+      destinations="${destinations}${key},"
     done
     for i in "${!parents[@]}"; do
       args=(--org "${parents[i]}" --bucket "${children[i]}")
