@@ -95,8 +95,8 @@ if [[ -n "${selection:-}" ]]; then
     database=${parents[i]}
     retention=${children[i]}
     if [[ "$database" == _internal ]]; then
-      echo "Cannot select the _internal database" >&2
-      exit 1
+      echo "skip selected _internal database" >&2
+      continue
     fi
     database_key=$(encode_archive_name "$database")
     if [[ -n "$retention" && -n ${whole_databases[$database_key]:-} ]]; then
@@ -134,6 +134,7 @@ fi
 
 if (( ${#jobs[@]} )); then
   # Keep all three xargs fields nonempty, even for a whole-database export.
+  # shellcheck disable=SC2016
   printf '%s\0' "${jobs[@]}" | xargs -0 -r -n 3 -P "$parallel_jobs" bash -c '
     data_dir="$1"
     assigned_file="$2"
