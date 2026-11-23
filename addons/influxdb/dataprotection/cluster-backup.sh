@@ -37,7 +37,7 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
     fi
     echo "Deduplication: Target pod identified as '${target_pod}'"
 
-    # 1. Try to find node ID from SHOW SERVERS (InfluxDB cluster official topology)
+    # Find node ID from SHOW SERVERS (InfluxDB cluster topology)
     servers_csv=$(influx_query -format csv -execute "SHOW SERVERS" 2>/dev/null || true)
     if [[ "$servers_csv" =~ "data_nodes" ]]; then
       my_node_id=$(echo "$servers_csv" | awk -F',' -v p="$target_pod" '
@@ -48,61 +48,6 @@ if [[ "${INFLUX_EXPORT_DEDUP:-true}" != "false" ]]; then
           }
         }
       ')
-    fi
-
-    # 2. Try to find node ID from SHOW DIAGNOSTICS
-    if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
-      diag_out=$(influx_query -execute "SHOW DIAGNOSTICS" 2>/dev/null || true)
-      my_node_id=$(echo "$diag_out" | awk -F': ' '/node_id|nodeID/ {print $2; exit}' | tr -d ' \r\n')
-    fi
-
-    # 3. Try to find node ID from /debug/vars
-    if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
-      vars_out=$(curl -s -m 3 "http://${INFLUX_HOST}:${INFLUX_PORT}/debug/vars" 2>/dev/null || true)
-      my_node_id=$(echo "$vars_out" | grep -oE '"nodeID":\s*"?([0-9]+)"?' | grep -oE '[0-9]+' | head -n 1 || true)
-    fi
-
-    # 4. Try to match pod name in SHOW SHARDS owners field
-    if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
-      my_node_id=$(echo "$shards_csv" | awk -F',' -v p="$target_pod" '
-        $1 != "name" && $2 ~ /^[0-9]+$/ {
-          for (f = 9; f <= NF; f++) {
-            if ($f ~ p) {
-              val = $f
-              gsub(/[^0-9]/, "", val)
-              if (val ~ /^[0-9]+$/) {
-                print val
-                exit
-              }
-            }
-          }
-        }
-      ')
-    fi
-
-    # 5. Fallback: map pod ordinal to sorted unique node IDs
-    if [[ -z "$my_node_id" || ! "$my_node_id" =~ ^[0-9]+$ ]]; then
-      if [[ "$target_pod" =~ -([0-9]+)$ ]]; then
-        ordinal="${BASH_REMATCH[1]}"
-        unique_ids=($(echo "$shards_csv" | awk -F',' '
-          $1 != "name" && $2 ~ /^[0-9]+$/ {
-            for (f = 9; f <= NF; f++) {
-              val = $f
-              gsub(/[^0-9]/, "", val)
-              if (val ~ /^[0-9]+$/) {
-                ids[val + 0] = 1
-              }
-            }
-          }
-          END {
-            for (id in ids) print id
-          }
-        ' | sort -n))
-
-        if (( ordinal < ${#unique_ids[@]} )); then
-          my_node_id="${unique_ids[ordinal]}"
-        fi
-      fi
     fi
 
     if [[ -n "$my_node_id" && "$my_node_id" =~ ^[0-9]+$ ]]; then
