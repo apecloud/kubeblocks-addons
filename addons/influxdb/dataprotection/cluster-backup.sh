@@ -84,11 +84,12 @@ fi
 jobs=()
 if [[ -n "${selection:-}" ]]; then
   parse_selection "${selection:-}" 1 || { echo "Invalid or empty InfluxDB DB/RP selection" >&2; exit 1; }
-  declare -A whole_databases policies_by_database exported
+  whole_databases=","
+  exported=","
   for i in "${!parents[@]}"; do
     if [[ -z "${children[i]}" ]]; then
       database_key=$(encode_archive_name "${parents[i]}")
-      whole_databases[$database_key]=1
+      whole_databases="${whole_databases}${database_key},"
     fi
   done
   for i in "${!parents[@]}"; do
@@ -99,19 +100,20 @@ if [[ -n "${selection:-}" ]]; then
       continue
     fi
     database_key=$(encode_archive_name "$database")
-    if [[ -n "$retention" && -n ${whole_databases[$database_key]:-} ]]; then
+    if [[ -n "$retention" && "$whole_databases" == *",${database_key},"* ]]; then
       continue
     fi
     key=$(cluster_archive_path "$database" "$retention")
-    if [[ -n ${exported[$key]:-} ]]; then
+    if [[ "$exported" == *",${key},"* ]]; then
       continue
     fi
     # Check the metadata once per DB. An existing RP can have no local shards.
-    if [[ ! ${policies_by_database[$database_key]+found} ]]; then
-      policies_by_database[$database_key]=$(influx_query -database "$database" -format csv -execute 'SHOW RETENTION POLICIES')
+    policy_cache_file="${work_dir}/policy_${database_key}"
+    if [[ ! -f "$policy_cache_file" ]]; then
+      influx_query -database "$database" -format csv -execute 'SHOW RETENTION POLICIES' > "$policy_cache_file"
     fi
     if [[ -n "$retention" ]]; then
-      policies=${policies_by_database[$database_key]}
+      policies=$(cat "$policy_cache_file")
       # The RP name is the first CSV field, quoted when it contains a comma or newline.
       if [[ "$policies" != *$'\n'"\"$retention\","* ]] &&
         [[ "$retention" == *[,$'\r\n']* || "$policies" != *$'\n'"$retention,"* ]]; then
@@ -119,7 +121,7 @@ if [[ -n "${selection:-}" ]]; then
         exit 1
       fi
     fi
-    exported[$key]=1
+    exported="${exported}${key},"
     mkdir -p "$export_dir/${key%/*}"
     jobs+=("$database" "rp:$retention" "$export_dir/$key")
   done
