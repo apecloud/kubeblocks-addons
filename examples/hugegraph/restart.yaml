@@ -1,0 +1,10 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: hugegraph-restart
+  namespace: demo
+spec:
+  clusterName: hugegraph-cluster
+  type: Restart
+  restart:
+    - componentName: server
