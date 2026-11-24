@@ -4,12 +4,7 @@
 case "${INFLUX_BACKUP_MODE:-full}" in
   full) influx backup "${work_dir}/backup" ;;
   selective)
-    selection="${selection:-${buckets:-}}"
-    if [[ -z "$selection" ]]; then
-      echo "Select at least one InfluxDB bucket" >&2
-      exit 1
-    fi
-    parse_selection "$selection" || { echo "Invalid buckets parameter: invalid InfluxDB bucket selection" >&2; exit 1; }
+    parse_selection "${selection:-}" || { echo "Invalid or empty InfluxDB bucket selection" >&2; exit 1; }
     backup_dir="${work_dir}/backup"
     mkdir -p "$backup_dir/selected"
     for i in "${!parents[@]}"; do

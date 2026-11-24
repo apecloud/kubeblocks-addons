@@ -81,13 +81,6 @@ MOCK
       The contents of file "$test_dir/restored" should eq '--org org2/region,east --bucket raw,metrics --new-bucket target_bucket --new-org target_org'
     End
 
-    It "supports legacy buckets parameter for backward compatibility"
-      run_action backup 'buckets="org1"/"raw,metrics"'
-      When call run_action restore 'buckets="org1"/"raw,metrics"'
-      The status should be success
-      The contents of file "$test_dir/restored" should eq '--org org1 --bucket raw,metrics'
-    End
-
     It "restores legacy flat archive when explicit selection is provided"
       mkdir -p "$test_dir/flat"
       printf 'org1\0raw,metrics\0' > "$test_dir/flat/manifest"
@@ -102,14 +95,14 @@ MOCK
     It "rejects empty selection on backup"
       When call run_action backup
       The status should be failure
-      The stderr should include 'Select at least one InfluxDB bucket'
+      The stderr should include 'Invalid or empty InfluxDB bucket selection'
       The file "$test_dir/influxdb-full.tar" should not be exist
     End
 
     It "rejects malformed selection syntax"
       When call run_action backup 'selection="org1"/"unclosed,'
       The status should be failure
-      The stderr should include 'Invalid buckets parameter'
+      The stderr should include 'Invalid or empty InfluxDB bucket selection'
       The file "$test_dir/influxdb-full.tar" should not be exist
     End
 

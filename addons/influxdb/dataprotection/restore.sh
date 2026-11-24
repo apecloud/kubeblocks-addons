@@ -8,7 +8,6 @@ case "${INFLUX_BACKUP_MODE:-full}" in
   full) influx restore --full "${work_dir}/backup" ;;
   selective)
     backup_dir="${work_dir}/backup"
-    selection="${selection:-${buckets:-}}"
     if [[ -n ${selection:-} ]]; then
       parse_selection "$selection" || { echo "Invalid InfluxDB bucket selection" >&2; exit 1; }
     elif [[ -d "$backup_dir/selected" ]]; then
