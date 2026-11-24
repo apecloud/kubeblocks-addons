@@ -13,15 +13,25 @@ dir=${!#}
 shift
 case "$command" in
   bucket)
-    [[ ${4:-} != missing ]] || exit 1
+    for arg in "$@"; do
+      [[ $arg != missing* ]] || exit 1
+    done
     ;;
   backup)
-    [[ $4 != fail ]] || exit 1
+    org=""
+    bucket=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --org) org="$2"; shift 2 ;;
+        --bucket) bucket="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    [[ $bucket != fail && $org != fail ]] || exit 1
     mkdir -p "$dir"
-    printf '%s\0%s\0' "$2" "$4" > "$dir/manifest"
+    printf '%s\0%s\0' "$org" "$bucket" > "$dir/manifest"
     ;;
   restore)
-    printf '%s\0%s\0' "$2" "$4" | cmp - "$dir/manifest"
     printf '%s\n' "${*:1:$#-1}" >> "$DP_BACKUP_BASE_PATH/restored"
     ;;
 esac
@@ -89,6 +99,50 @@ MOCK
       The status should be success
       The contents of file "$test_dir/restored" should eq '--org org1 --bucket raw,metrics'
     End
+
+    It "backs up whole organization and restores all by default"
+      run_action backup 'selection="org1"'
+      When call run_action restore
+      The status should be success
+      The contents of file "$test_dir/restored" should eq '--org org1'
+    End
+
+    It "restores whole organization under a new organization name (--new-org)"
+      run_action backup 'selection="org1"'
+      When call run_action restore 'selection="org1"' new_org=target_org
+      The status should be success
+      The contents of file "$test_dir/restored" should eq '--org org1 --new-org target_org'
+    End
+
+    It "restores a specific bucket from a whole-organization backup"
+      run_action backup 'selection="org1"'
+      When call run_action restore 'selection="org1"/"custom_bucket"'
+      The status should be success
+      The contents of file "$test_dir/restored" should eq '--org org1 --bucket custom_bucket'
+    End
+
+    It "supports mixed selection with whole organization and specific bucket"
+      run_action backup 'selection="org1","org2/region,east"/"raw,metrics"'
+      expected=$(printf '%s\n' '--org org1' '--org org2/region,east --bucket raw,metrics')
+      When call run_action restore
+      The status should be success
+      The contents of file "$test_dir/restored" should eq "$expected"
+    End
+
+    It "deduplicates bucket when whole organization is also selected"
+      run_action backup 'selection="org1","org1"/"raw,metrics"'
+      When call run_action restore
+      The status should be success
+      The contents of file "$test_dir/restored" should eq '--org org1'
+    End
+
+    It "expands parent-only organization when restoring per-bucket archives"
+      backup_multi_buckets
+      expected=$(printf '%s\n' '--org org1 --bucket raw,metrics' '--org org1 --bucket roll ups/daily')
+      When call run_action restore 'selection="org1"'
+      The status should be success
+      The contents of file "$test_dir/restored" should eq "$expected"
+    End
   End
 
   Context "Validation and Failure Atomicity"
@@ -97,6 +151,29 @@ MOCK
       The status should be failure
       The stderr should include 'Invalid or empty InfluxDB bucket selection'
       The file "$test_dir/influxdb-full.tar" should not be exist
+    End
+
+    It "rejects missing organization during backup"
+      When call run_action backup 'selection="missing_org"'
+      The status should be failure
+      The stderr should include 'Failed to look up organization missing_org'
+      The file "$test_dir/influxdb-full.tar" should not be exist
+    End
+
+    It "rejects missing organization during restore"
+      run_action backup 'selection="org1"'
+      When call run_action restore 'selection="missing_org"'
+      The status should be failure
+      The stderr should include 'Organization missing_org is missing from the backup'
+      The file "$test_dir/restored" should not be exist
+    End
+
+    It "rejects new_bucket when restoring a whole organization"
+      run_action backup 'selection="org1"'
+      When call run_action restore 'selection="org1"' new_bucket=single_bucket
+      The status should be failure
+      The stderr should include 'A flat archive or new_bucket requires exactly one selected bucket'
+      The file "$test_dir/restored" should not be exist
     End
 
     It "rejects malformed selection syntax"

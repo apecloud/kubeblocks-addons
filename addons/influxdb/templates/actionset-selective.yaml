@@ -16,7 +16,7 @@ spec:
         selection:
           type: string
           minLength: 1
-          description: 'Comma-separated organization and bucket pairs, e.g. "org1"/"bucket1","org2"/"bucket2". Required for backup. Restore defaults to all buckets in the backup.'
+          description: 'Comma-separated organization or organization/bucket pairs, e.g. "org1", "org1"/"bucket1","org2"/"bucket2". Required for backup. Restore defaults to all buckets in the backup.'
         new_bucket:
           type: string
           minLength: 1

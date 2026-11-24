@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 
-# EngineOption sends comma-separated quoted paths. Only v1 allows parent-only paths.
+# EngineOption sends comma-separated quoted paths. Depth 1 allows parent-only paths.
 parse_selection() {
   local value=$1
   local depth=${2:-2}
