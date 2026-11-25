@@ -6,52 +6,59 @@ case "${INFLUX_BACKUP_MODE:-full}" in
   selective)
     parse_selection "${selection:-}" 1 || { echo "Invalid or empty InfluxDB bucket selection" >&2; exit 1; }
     backup_dir="${work_dir}/backup"
-    mkdir -p "$backup_dir/selected"
+    mkdir -p "$backup_dir"
 
-    # Identify whole-organization selections to avoid duplicate bucket backups
-    whole_orgs=","
+    # Resolve candidate (org, bucket) pairs
+    declare -A seen_candidates=()
+    candidate_pairs=()
+    add_candidate() {
+      local o="$1" b="$2"
+      local k="${o}"$'\t'"${b}"
+      if [[ -z "${seen_candidates[$k]:-}" ]]; then
+        seen_candidates[$k]=1
+        candidate_pairs+=("$k")
+      fi
+    }
+
     for i in "${!parents[@]}"; do
-      if [[ -z "${children[i]}" ]]; then
-        org_path=$(encode_archive_name "${parents[i]}")
-        whole_orgs="${whole_orgs}${org_path},"
+      org="${parents[i]}"
+      child="${children[i]}"
+
+      if [[ -z "$child" ]]; then
+        if ! raw_bucket_list=$(influx bucket list --org "$org" --hide-headers); then
+          printf 'Failed to look up organization %q\n' "$org" >&2
+          exit 1
+        fi
+        bucket_list=$(printf '%s\n' "$raw_bucket_list" | cut -f2)
+        found_bucket=0
+        while IFS= read -r b; do
+          [[ -n "$b" && "$b" != _* ]] || continue
+          found_bucket=1
+          add_candidate "$org" "$b"
+        done <<< "$bucket_list"
+        if [[ $found_bucket -eq 0 ]]; then
+          printf 'No user buckets found in organization %q\n' "$org" >&2
+          exit 1
+        fi
+      else
+        add_candidate "$org" "$child"
       fi
     done
 
-    backed_up=","
-    for i in "${!parents[@]}"; do
-      org_path=$(encode_archive_name "${parents[i]}")
-      if [[ -n "${children[i]}" && "$whole_orgs" == *",${org_path},"* ]]; then
-        continue
-      fi
+    # Backup each candidate bucket
+    for pair in "${candidate_pairs[@]}"; do
+      org="${pair%%$'\t'*}"
+      bucket="${pair#*$'\t'}"
+      org_path=$(encode_archive_name "$org")
+      bucket_path=$(encode_archive_name "$bucket")
+      archive_dir="$backup_dir/$org_path/$bucket_path"
 
-      if [[ -n "${children[i]}" ]]; then
-        bucket_path=$(encode_archive_name "${children[i]}")
-        key="${org_path}/${bucket_path}"
-        if [[ "$backed_up" == *",${key},"* ]]; then
-          continue
-        fi
-        archive_dir="$backup_dir/selected/$org_path/$bucket_path"
-        if ! influx bucket list --org "${parents[i]}" --name "${children[i]}" >/dev/null; then
-          printf 'Failed to look up bucket %q in organization %q\n' "${children[i]}" "${parents[i]}" >&2
-          exit 1
-        fi
-        mkdir -p "$backup_dir/selected/$org_path"
-        influx backup --org "${parents[i]}" --bucket "${children[i]}" "$archive_dir"
-        backed_up="${backed_up}${key},"
-      else
-        key="${org_path}/_all"
-        if [[ "$backed_up" == *",${key},"* ]]; then
-          continue
-        fi
-        archive_dir="$backup_dir/selected/$org_path/_all"
-        if ! influx bucket list --org "${parents[i]}" >/dev/null; then
-          printf 'Failed to look up organization %q\n' "${parents[i]}" >&2
-          exit 1
-        fi
-        mkdir -p "$backup_dir/selected/$org_path"
-        influx backup --org "${parents[i]}" "$archive_dir"
-        backed_up="${backed_up}${key},"
+      if ! influx bucket list --org "$org" --name "$bucket" >/dev/null; then
+        printf 'Failed to look up bucket %q in organization %q\n' "$bucket" "$org" >&2
+        exit 1
       fi
+      mkdir -p "$backup_dir/$org_path"
+      influx backup --org "$org" --bucket "$bucket" "$archive_dir"
     done
     ;;
   *) echo "Unknown backup mode" >&2; exit 1 ;;

@@ -58,10 +58,10 @@ decode_archive_name() {
 cluster_archive_path() {
   local database retention
   database=$(encode_archive_name "$1")
-  if [[ -z "$2" ]]; then
-    printf 'selected/%s/db.lp.gz' "$database"
+  if [[ -z "${2:-}" ]]; then
+    printf '%s/db.lp.gz' "$database"
   else
     retention=$(encode_archive_name "$2")
-    printf 'selected/%s/rp/%s/data.lp.gz' "$database" "$retention"
+    printf '%s/rp/%s/data.lp.gz' "$database" "$retention"
   fi
 }

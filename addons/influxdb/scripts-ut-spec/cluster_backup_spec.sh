@@ -158,12 +158,12 @@ MOCK
       bash
 
     # Node 0 (primary min-owner=4) should export actual data
-    node0_out="$test_dir/repo/influxdb-cluster-data-0/export_db_a.lp.gz"
+    node0_out="$test_dir/repo/influxdb-cluster-data-0/db_a/db.lp.gz"
     The file "$node0_out" should be exist
     The contents of file <(gzip -dc "$node0_out") should eq "DATA_POINTS_FOR_db_a"
 
     # Node 1 (replica owner=5) should skip data export and generate empty header archive
-    node1_out="$test_dir/repo/influxdb-cluster-data-1/export_db_a.lp.gz"
+    node1_out="$test_dir/repo/influxdb-cluster-data-1/db_a/db.lp.gz"
     The file "$node1_out" should be exist
     The contents of file <(gzip -dc "$node1_out") should eq "$(printf '# INFLUXDB EXPORT\n# DDL\n# DML')"
 
@@ -178,9 +178,9 @@ MOCK
 
   It "restores across multi-pod cluster backup directory layout"
     # Pre-populate multi-pod backup directory
-    mkdir -p "$test_dir/repo/influxdb-cluster-data-0" "$test_dir/repo/influxdb-cluster-data-1"
-    printf 'CREATE DATABASE db_a\nDATA_FROM_POD_0\n' | gzip > "$test_dir/repo/influxdb-cluster-data-0/export_db_a.lp.gz"
-    printf '# INFLUXDB EXPORT\n# DDL\n# DML\n' | gzip > "$test_dir/repo/influxdb-cluster-data-1/export_db_a.lp.gz"
+    mkdir -p "$test_dir/repo/influxdb-cluster-data-0/db_a" "$test_dir/repo/influxdb-cluster-data-1/db_a"
+    printf 'CREATE DATABASE db_a\nDATA_FROM_POD_0\n' | gzip > "$test_dir/repo/influxdb-cluster-data-0/db_a/db.lp.gz"
+    printf '# INFLUXDB EXPORT\n# DDL\n# DML\n' | gzip > "$test_dir/repo/influxdb-cluster-data-1/db_a/db.lp.gz"
 
     # Run cluster restore
     cat "$scripts/cluster-common.sh" "$scripts/selection.sh" "$scripts/cluster-restore.sh" | env \
@@ -216,8 +216,8 @@ MOCK
       bash
 
     # Verify selective archive layout and deduplication
-    node0_sel="$test_dir/repo/influxdb-cluster-data-0/selected/db_a/rp/autogen/data.lp.gz"
-    node1_sel="$test_dir/repo/influxdb-cluster-data-1/selected/db_a/rp/autogen/data.lp.gz"
+    node0_sel="$test_dir/repo/influxdb-cluster-data-0/db_a/rp/autogen/data.lp.gz"
+    node1_sel="$test_dir/repo/influxdb-cluster-data-1/db_a/rp/autogen/data.lp.gz"
     The file "$node0_sel" should be exist
     The file "$node1_sel" should be exist
     The contents of file <(gzip -dc "$node0_sel") should eq "DATA_POINTS_FOR_db_a"

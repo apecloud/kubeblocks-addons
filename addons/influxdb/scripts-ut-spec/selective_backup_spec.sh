@@ -16,6 +16,17 @@ case "$command" in
     for arg in "$@"; do
       [[ $arg != missing* ]] || exit 1
     done
+    org=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --org) org="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    if [[ $org == "org1" ]]; then
+      printf 'id1\traw,metrics\n'
+      printf 'id2\troll ups/daily\n'
+    fi
     ;;
   backup)
     org=""
@@ -102,28 +113,37 @@ MOCK
 
     It "backs up whole organization and restores all by default"
       run_action backup 'selection="org1"'
+      expected=$(printf '%s\n' \
+        '--org org1 --bucket raw,metrics' \
+        '--org org1 --bucket roll ups/daily')
       When call run_action restore
       The status should be success
-      The contents of file "$test_dir/restored" should eq '--org org1'
+      The contents of file "$test_dir/restored" should eq "$expected"
     End
 
     It "restores whole organization under a new organization name (--new-org)"
       run_action backup 'selection="org1"'
+      expected=$(printf '%s\n' \
+        '--org org1 --bucket raw,metrics --new-org target_org' \
+        '--org org1 --bucket roll ups/daily --new-org target_org')
       When call run_action restore 'selection="org1"' new_org=target_org
       The status should be success
-      The contents of file "$test_dir/restored" should eq '--org org1 --new-org target_org'
+      The contents of file "$test_dir/restored" should eq "$expected"
     End
 
     It "restores a specific bucket from a whole-organization backup"
       run_action backup 'selection="org1"'
-      When call run_action restore 'selection="org1"/"custom_bucket"'
+      When call run_action restore 'selection="org1"/"raw,metrics"'
       The status should be success
-      The contents of file "$test_dir/restored" should eq '--org org1 --bucket custom_bucket'
+      The contents of file "$test_dir/restored" should eq '--org org1 --bucket raw,metrics'
     End
 
     It "supports mixed selection with whole organization and specific bucket"
       run_action backup 'selection="org1","org2/region,east"/"raw,metrics"'
-      expected=$(printf '%s\n' '--org org1' '--org org2/region,east --bucket raw,metrics')
+      expected=$(printf '%s\n' \
+        '--org org1 --bucket raw,metrics' \
+        '--org org1 --bucket roll ups/daily' \
+        '--org org2/region,east --bucket raw,metrics')
       When call run_action restore
       The status should be success
       The contents of file "$test_dir/restored" should eq "$expected"
@@ -131,9 +151,12 @@ MOCK
 
     It "deduplicates bucket when whole organization is also selected"
       run_action backup 'selection="org1","org1"/"raw,metrics"'
+      expected=$(printf '%s\n' \
+        '--org org1 --bucket raw,metrics' \
+        '--org org1 --bucket roll ups/daily')
       When call run_action restore
       The status should be success
-      The contents of file "$test_dir/restored" should eq '--org org1'
+      The contents of file "$test_dir/restored" should eq "$expected"
     End
 
     It "expands parent-only organization when restoring per-bucket archives"

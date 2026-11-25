@@ -84,12 +84,12 @@ fi
 jobs=()
 if [[ -n "${selection:-}" ]]; then
   parse_selection "${selection:-}" 1 || { echo "Invalid or empty InfluxDB DB/RP selection" >&2; exit 1; }
-  whole_databases=","
-  exported=","
+  declare -A whole_databases=()
+  declare -A exported=()
   for i in "${!parents[@]}"; do
     if [[ -z "${children[i]}" ]]; then
       database_key=$(encode_archive_name "${parents[i]}")
-      whole_databases="${whole_databases}${database_key},"
+      whole_databases["$database_key"]=1
     fi
   done
   for i in "${!parents[@]}"; do
@@ -100,11 +100,11 @@ if [[ -n "${selection:-}" ]]; then
       continue
     fi
     database_key=$(encode_archive_name "$database")
-    if [[ -n "$retention" && "$whole_databases" == *",${database_key},"* ]]; then
+    if [[ -n "$retention" && -n "${whole_databases[$database_key]:-}" ]]; then
       continue
     fi
     key=$(cluster_archive_path "$database" "$retention")
-    if [[ "$exported" == *",${key},"* ]]; then
+    if [[ -n "${exported[$key]:-}" ]]; then
       continue
     fi
     # Check the metadata once per DB. An existing RP can have no local shards.
@@ -121,7 +121,7 @@ if [[ -n "${selection:-}" ]]; then
         exit 1
       fi
     fi
-    exported="${exported}${key},"
+    exported["$key"]=1
     mkdir -p "$export_dir/${key%/*}"
     jobs+=("$database" "rp:$retention" "$export_dir/$key")
   done
@@ -129,7 +129,9 @@ else
   db_source=$(influx_query -execute 'SHOW DATABASES' | tail -n +4)
   while IFS= read -r database; do
     if [[ -n "$database" && "$database" != _internal ]]; then
-      jobs+=("$database" "rp:" "$export_dir/export_$database.lp.gz")
+      key=$(cluster_archive_path "$database")
+      mkdir -p "$export_dir/${key%/*}"
+      jobs+=("$database" "rp:" "$export_dir/$key")
     fi
   done <<< "$db_source"
 fi
@@ -212,7 +214,7 @@ fi
 
 echo "Export completed. Uploading export file(s) to backup repository..."
 exported_count=0
-files=("$export_dir"/*.lp.gz "$export_dir"/selected/*/db.lp.gz "$export_dir"/selected/*/rp/*/data.lp.gz)
+files=("$export_dir"/*.lp.gz "$export_dir"/*/db.lp.gz "$export_dir"/*/rp/*/data.lp.gz)
 for f in "${files[@]}"; do
   [ -f "${f}" ] || continue
   file_name=${f#"$export_dir/"}
