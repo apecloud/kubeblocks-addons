@@ -8,7 +8,7 @@ Minio is a high performance open source relational database management system th
 
 | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Scale Out              | Yes                   | No                | Yes       | Yes        | No        | Yes    | N/A       |
+| Scale Out              | Yes                   | No                | Yes       | Yes        | Yes       | Yes    | N/A       |
 
 ### Versions
 
@@ -135,6 +135,49 @@ Credentials can be found in the secret `minio-cluster-minio-account-root` in the
 kubectl get secret -n demo minio-cluster-minio-account-root -o jsonpath="{.data.password}" | base64 --decode
 kubectl get secret -n demo minio-cluster-minio-account-root -o jsonpath="{.data.username}" | base64 --decode
 ```
+
+### Storage class parity
+
+MinIO Addon 1.0.4 exposes `standard` and `rrs` in the `storage-class`
+configuration template. Supply the following `storage-class.json` content
+through a component parameter template to set parity during creation:
+
+```json
+{"standard":"EC:1","rrs":"EC:0"}
+```
+
+To change one class on a running cluster, submit a Reconfiguring OpsRequest:
+
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  generateName: minio-parity-
+  namespace: demo
+spec:
+  type: Reconfiguring
+  clusterName: minio-cluster
+  reconfigures:
+    - componentName: minio
+      parameters:
+        - key: standard
+          value: "EC:0"
+```
+
+Each changed parameter takes effect without restarting MinIO. To restore a
+class's native default, set it to an empty string. Resetting a previously set
+value requires a KubeBlocks build containing the fix for
+[KubeBlocks #11151](https://github.com/apecloud/kubeblocks/issues/11151).
+Version 1.0.3-beta.22 can report success while retaining the previous parity.
+
+The Addon validates the combined settings against every erasure set and checks
+the native and runtime values on each server.
+Environment overrides `MINIO_STORAGE_CLASS_STANDARD` and
+`MINIO_STORAGE_CLASS_RRS` must be unset.
+
+The new parity applies to subsequent writes. Existing objects retain their
+encoding. Reducing parity lowers fault tolerance, and losing a drive with
+`EC:0` can permanently destroy affected objects.
 
 ### Horizontal scaling
 

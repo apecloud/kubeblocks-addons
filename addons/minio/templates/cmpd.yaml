@@ -39,11 +39,22 @@ spec:
       volumeName: minio-config
       defaultMode: 0777
       restartOnFileChange: true
+    - name: storage-class
+      template: minio-storage-class-template-{{ .Chart.Version }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: minio-storage-class
+      externalManaged: true
+      restartOnFileChange: false
   scripts:
     - name: script
       template: {{ include "minio.scriptTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: minio-script
+      defaultMode: 0555
+    - name: storage-class-script
+      template: minio-storage-class-script-{{ .Chart.Version }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: storage-class-script
       defaultMode: 0555
   volumes:
     - name: data
@@ -124,6 +135,13 @@ spec:
         - get
         - patch
   lifecycleActions:
+    postProvision:
+      # Each MinIO call has a deadline. Allow verification to visit every replica.
+      timeoutSeconds: -1
+      exec:
+        container: minio
+        command: ["/bin/bash", "/minio-reload/storage-class.sh"]
+        targetPodSelector: Any
     roleProbe:
       exec:
         command:
@@ -162,7 +180,11 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/startup.sh
+          - |-
+            if [[ "$TLS_ENABLED" == true ]]; then
+              cp -L "$CERTS_PATH/ca.crt" /kb-tools/minio-ca.crt || exit 1
+            fi
+            exec /scripts/startup.sh
         ports:
           - name: api
             protocol: TCP
@@ -188,6 +210,10 @@ spec:
             mountPath: /scripts
           - name: minio-replicas-config
             mountPath: /minio-config
+          - name: storage-class-script
+            mountPath: /minio-reload
+          - name: minio-storage-class
+            mountPath: /minio-storage-class
     volumes:
       - name: minio-replicas-config
         emptyDir: {}
