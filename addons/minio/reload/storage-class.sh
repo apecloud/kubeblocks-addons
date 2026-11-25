@@ -1,8 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC2016 # jq expressions deliberately use literal $variables.
 
-# Each queued request carries its original delta; MinIO persists the policy itself.
-# Missing keys preserve manual/native settings. Empty strings restore defaults.
 storage_class_error() {
   echo "MINIO_STORAGE_CLASS_ERROR: $1" >&2
   return 1
@@ -25,7 +23,7 @@ read_storage_class() {
 }
 
 validate_storage_class() {
-  local size standard_parity rrs_parity first_set_size=${set_sizes[0]}
+  local size first_set_size=${set_sizes[0]}
   # MinIO's global storage class is initialized from the first pool.
   if [[ -n "$desired_standard" ]]; then
     standard_parity=${desired_standard#EC:}
@@ -50,31 +48,20 @@ validate_storage_class() {
 }
 
 apply_storage_class() (
-  local desired_file=${MINIO_STORAGE_CLASS_FILE:-/minio-storage-class/storage-class.json}
+  local desired_file=${1:-${MINIO_STORAGE_CLASS_FILE:-/minio-storage-class/storage-class.json}}
   local jq_bin=${MINIO_JQ:-/kb-tools/jq}
-  local desired info sizes node endpoint mode=${1:-apply}
-  case "$mode" in
-    apply) desired=$(cat "$desired_file") || return 1 ;;
-    apply-stdin) desired=$(cat) || return 1; mode=apply ;;
-    validate) desired=${2:-} ;;
-    read) desired='{}' ;;
-    *) storage_class_error 'unknown operation'; return 1 ;;
-  esac
-  if [[ "$mode" == apply ]]; then
-    desired=$("$jq_bin" -ce '
-      select(type == "object" and keys == ["apply_request"])
-      | .apply_request | select(type == "string") | fromjson
-      | select(type == "object" and keys == ["parameters", "requestID"])
-      | select(.requestID | type == "string" and length > 0 and length <= 128)
-      | .parameters' <<< "$desired" 2>/dev/null) || {
-      storage_class_error 'invalid storage class request'; return 1;
-    }
-  fi
-  "$jq_bin" -e 'type == "object" and all(to_entries[]; (.key == "standard" or .key == "rrs") and (.value | type == "string" and test("^(EC:[0-8])?$")))' <<< "$desired" >/dev/null || {
+  local desired info sizes node endpoint standard_parity rrs_parity native_standard native_rrs
+  desired=$("$jq_bin" -cse '
+    select(length == 1) | .[0] | select(type == "object" and all(to_entries[];
+      (.key == "standard" or .key == "rrs") and (.value | type == "string" and test("^(EC:[0-8])?$"))))' "$desired_file") || {
     storage_class_error 'invalid desired configuration'; return 1;
   }
-  # An untouched template must not overwrite an existing manual policy.
-  if [[ "$mode" == apply && $("$jq_bin" 'length' <<< "$desired") == 0 ]]; then return 0; fi
+  # The initial template leaves empty classes at their native defaults. During
+  # reload an explicitly changed empty value restores that class to its default.
+  if [[ "$desired_file" != - ]]; then
+    desired=$("$jq_bin" -c 'with_entries(select(.value != ""))' <<< "$desired") || return 1
+  fi
+  [[ "$desired" != '{}' ]] || return 0
   [[ "${MINIO_COMP_REPLICAS:-}" =~ ^[1-9][0-9]*$ ]] || {
     storage_class_error 'missing replica count'; return 1;
   }
@@ -95,10 +82,6 @@ apply_storage_class() (
     storage_class_error 'cannot connect to MinIO'; return 1;
   }
   read_storage_class || return 1
-  if [[ "$mode" == read ]]; then
-    "$jq_bin" -cn --arg standard "$native_standard" --arg rrs "$native_rrs" '{standard:$standard,rrs:$rrs}'
-    return
-  fi
   local desired_standard desired_rrs
   desired_standard=$("$jq_bin" -r --arg current "$native_standard" 'if has("standard") then .standard else $current end' <<< "$desired") || return 1
   desired_rrs=$("$jq_bin" -r --arg current "$native_rrs" 'if has("rrs") then .rrs else $current end' <<< "$desired") || return 1
@@ -111,9 +94,6 @@ apply_storage_class() (
   local -a set_sizes
   while IFS= read -r size; do set_sizes+=("$size"); done <<< "$sizes"
   validate_storage_class || return 1
-  [[ "$mode" != validate ]] || return 0
-  # Repeat even equal values: a previous attempt may have persisted the policy
-  # without delivering its reload notification to every server.
   minio_mc admin config set policy storage_class "standard=$desired_standard" "rrs=$desired_rrs" >/dev/null || {
     storage_class_error 'native configuration update failed'; return 1;
   }
@@ -130,12 +110,6 @@ apply_storage_class() (
     info=$(minio_mc --json admin info policy) || {
       storage_class_error "cannot read runtime policy on server $node"; return 1;
     }
-    local standard_parity rrs_parity first_set_size=${set_sizes[0]}
-    if [[ -n "$desired_standard" ]]; then standard_parity=${desired_standard#EC:};
-    elif ((first_set_size >= 8)); then standard_parity=4;
-    else standard_parity=$((first_set_size / 2)); fi
-    rrs_parity=${desired_rrs#EC:}
-    [[ -n "$rrs_parity" ]] || rrs_parity=1
     "$jq_bin" -e --argjson standard "$standard_parity" --argjson rrs "$rrs_parity" '.info.backend | .standardSCParity == $standard and .rrSCParity == $rrs' <<< "$info" >/dev/null || {
       storage_class_error "runtime policy mismatch on server $node"; return 1;
     }

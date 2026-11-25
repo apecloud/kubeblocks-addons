@@ -1,12 +1,9 @@
 # shellcheck shell=bash
 
 Describe "MinIO storage class policy"
-  Include ../scripts/storage-class.sh
+  Include ../reload/storage-class.sh
 
-  request_payload() {
-    jq -cn --arg id "${2:-test-request}" --argjson parameters "$1" '{apply_request:({requestID:$id,parameters:$parameters}|tojson)}'
-  }
-  write_desired() { request_payload "$1" > "$MINIO_STORAGE_CLASS_FILE"; }
+  write_desired() { printf '%s' "$1" > "$MINIO_STORAGE_CLASS_FILE"; }
 
   setup() {
     test_dir=$(mktemp -d)
@@ -59,25 +56,17 @@ Describe "MinIO storage class policy"
     The contents of file "$test_dir/native.json" should eq '{"standard":"EC:0","rrs":"EC:0"}'
   End
 
-  It "preserves manually configured policy when no keys were supplied"
-    write_desired '{}'
+  It "leaves native policy unchanged on initial provisioning with the default template"
+    write_desired '{"standard":"","rrs":""}'
     When run apply_storage_class
     The status should be success
     The path "$test_dir/writes" should not be exist
   End
 
-
-  It "validates without changing native or desired configuration"
-    mock_sizes='[8]'
-    When run apply_storage_class validate '{"standard":"EC:4","rrs":"EC:2"}'
-    The status should be success
-    The path "$test_dir/writes" should not be exist
-    The contents of file "$test_dir/native.json" should eq '{"standard":"EC:1","rrs":"EC:1"}'
-  End
-
   It "checks all pools instead of total replica count"
     mock_sizes='[8,2]'
-    When run apply_storage_class validate '{"standard":"EC:2","rrs":"EC:1"}'
+    Data '{"standard":"EC:2","rrs":"EC:1"}'
+    When run apply_storage_class -
     The status should be failure
     The stderr should include 'erasure set of 2 drives'
     The path "$test_dir/writes" should not be exist
@@ -93,23 +82,10 @@ Describe "MinIO storage class policy"
   End
 
   It "accepts native zero parity with a nonzero RRS"
-    When run apply_storage_class validate '{"standard":"EC:0","rrs":"EC:1"}'
+    Data '{"standard":"EC:0","rrs":"EC:1"}'
+    When run apply_storage_class -
     The status should be success
-  End
-
-  It "preserves omitted keys and restores explicit empty keys to defaults"
-    mock_sizes='[4]'
-    write_desired '{"standard":""}'
-    When run apply_storage_class
-    The status should be success
-    The contents of file "$test_dir/native.json" should eq '{"standard":"","rrs":"EC:1"}'
-  End
-
-  It "reads native policy instead of desired state"
-    When run apply_storage_class read
-    The status should be success
-    The output should eq '{"standard":"EC:1","rrs":"EC:1"}'
-    The path "$test_dir/writes" should not be exist
+    The contents of file "$test_dir/native.json" should eq '{"standard":"EC:0","rrs":"EC:1"}'
   End
 
   It "fails when native update fails without exposing credentials"
@@ -127,7 +103,8 @@ Describe "MinIO storage class policy"
   End
 
   It "rejects unknown keys"
-    When run apply_storage_class validate '{"standard":"EC:0","typo":"EC:0"}'
+    Data '{"standard":"EC:0","typo":"EC:0"}'
+    When run apply_storage_class -
     The status should be failure
     The stderr should include 'invalid desired configuration'
     The path "$test_dir/writes" should not be exist
@@ -140,13 +117,6 @@ Describe "MinIO storage class policy"
     The stderr should include 'environment overrides'
     The path "$test_dir/writes" should not be exist
   End
-  It "reapplies an equal native policy to redeliver reload notifications"
-    write_desired '{"standard":"EC:1","rrs":"EC:1"}'
-    When run apply_storage_class
-    The status should be success
-    The contents of file "$test_dir/writes" should eq 'set'
-  End
-
   It "applies distinct legal STANDARD and RRS parity"
     mock_sizes='[8]'
     write_desired '{"standard":"EC:4","rrs":"EC:2"}'
@@ -172,7 +142,8 @@ Describe "MinIO storage class policy"
 
   It "checks the first pool's effective default against later smaller sets"
     mock_sizes='[8,4]'
-    When run apply_storage_class validate '{"standard":"","rrs":""}'
+    Data '{"standard":"","rrs":""}'
+    When run apply_storage_class -
     The status should be failure
     The stderr should include 'erasure set of 4 drives'
     The path "$test_dir/writes" should not be exist
@@ -193,47 +164,21 @@ Describe "MinIO storage class policy"
     The contents of file "$test_dir/writes" should eq "$(printf 'set\nset')"
   End
 
-  It "uses synchronous reload input even while the mounted file is stale"
-    write_desired '{}'
-    Data "$(request_payload '{"standard":"EC:0","rrs":"EC:0"}')"
-    When run apply_storage_class apply-stdin
-    The status should be success
-    The contents of file "$test_dir/native.json" should eq '{"standard":"EC:0","rrs":"EC:0"}'
-    The contents of file "$test_dir/writes" should eq 'set'
-  End
-
   It "preserves empty values and merges unchanged native keys from reload input"
     mock_sizes='[4]'
-    Data "$(request_payload '{"standard":""}')"
-    When run apply_storage_class apply-stdin
+    Data '{"standard":""}'
+    When run apply_storage_class -
     The status should be success
     The contents of file "$test_dir/native.json" should eq '{"standard":"","rrs":"EC:1"}'
   End
 
-  It "keeps the full requested pair despite mixed native and managed drift"
-    write_desired '{"standard":"EC:1","rrs":"EC:1"}'
-    echo '{"standard":"EC:0","rrs":"EC:1"}' > "$test_dir/native.json"
-    Data "$(request_payload '{"standard":"EC:1","rrs":"EC:0"}')"
-    When run apply_storage_class apply-stdin
-    The status should be success
-    The contents of file "$test_dir/native.json" should eq '{"standard":"EC:1","rrs":"EC:0"}'
-  End
-
-  It "merges a queued partial request with native state at execution time"
+  It "applies an RRS-only reload using current native STANDARD instead of the stale file"
     write_desired '{"standard":"EC:0","rrs":"EC:0"}'
     echo '{"standard":"EC:1","rrs":"EC:1"}' > "$test_dir/native.json"
-    Data "$(request_payload '{"rrs":"EC:0"}')"
-    When run apply_storage_class apply-stdin
+    Data '{"rrs":"EC:0"}'
+    When run apply_storage_class -
     The status should be success
     The contents of file "$test_dir/native.json" should eq '{"standard":"EC:1","rrs":"EC:0"}'
-  End
-
-  It "rejects malformed envelopes before updating MinIO"
-    Data '{"apply_request":"{\"requestID\":\"\",\"parameters\":{}}"}'
-    When run apply_storage_class apply-stdin
-    The status should be failure
-    The stderr should include 'invalid storage class request'
-    The path "$test_dir/writes" should not be exist
   End
 
 End

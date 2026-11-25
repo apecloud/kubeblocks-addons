@@ -1,36 +1,56 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: minio-storage-class-template-{{ .Chart.Version }}
+  name: minio-storage-class-script-{{ .Chart.Version }}
+  annotations:
+    {{- include "kblib.helm.resourcePolicy" . | nindent 4 }}
   labels:
     {{- include "minio.labels" . | nindent 4 }}
 data:
-  storage-class.json: {{ dict "apply_request" (dict "requestID" "initial" "parameters" (dict) | toJson) | toJson | quote }}
+{{ (.Files.Glob "reload/*.sh").AsConfig | indent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-storage-class-template-{{ .Chart.Version }}
+  annotations:
+    {{- include "kblib.helm.resourcePolicy" . | nindent 4 }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+data:
+  storage-class.json: '{"standard":"","rrs":""}'
 ---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
   name: minio-storage-class-{{ .Chart.Version }}
+  annotations:
+    {{- include "kblib.helm.resourcePolicy" . | nindent 4 }}
   labels:
     {{- include "minio.labels" . | nindent 4 }}
 spec:
   fileName: storage-class.json
   mergeReloadAndRestart: false
-  dynamicParameters: [apply_request]
+  dynamicParameters: [standard, rrs]
   parametersSchema:
     topLevelKey: StorageClass
     cue: |-
+      let parity = "" | "EC:0" | "EC:1" | "EC:2" | "EC:3" | "EC:4" | "EC:5" | "EC:6" | "EC:7" | "EC:8"
       #StorageClass: {
-        "apply_request": string
+        // Parity shards for STANDARD writes. Empty uses the native default. EC:0 provides no parity protection for new writes.
+        standard?: parity
+        // Parity shards for REDUCED_REDUNDANCY writes. Empty uses the native default. EC:0 provides no parity protection for new writes.
+        rrs?: parity
       }
+      configuration: #StorageClass
   reloadAction:
     shellTrigger:
       sync: true
       batchReload: true
       batchParamsFormatterTemplate: {{ "{{ . | toJson }}" | quote }}
-      command: ["storage-class.sh", "apply-stdin"]
+      command: ["storage-class.sh", "-"]
       scriptConfig:
-        scriptConfigMapRef: {{ include "minio.scriptTplName" . }}
+        scriptConfigMapRef: minio-storage-class-script-{{ .Chart.Version }}
         namespace: {{ .Release.Namespace }}
       toolsSetup:
         mountPoint: /kb-tools
@@ -45,6 +65,8 @@ apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParamConfigRenderer
 metadata:
   name: minio-storage-class-{{ .Chart.Version }}
+  annotations:
+    {{- include "kblib.helm.resourcePolicy" . | nindent 4 }}
   labels:
     {{- include "minio.labels" . | nindent 4 }}
 spec:

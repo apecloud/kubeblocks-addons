@@ -11,9 +11,6 @@ setup_tls_certs() {
     # Create writable certs directory
     mkdir -p ${writable_certs_path}/CAs
 
-    # Share the public CA with the dynamic configuration sidecar.
-    cp -L "${CERTS_PATH}/ca.crt" /kb-tools/minio-ca.crt
-
     # Copy certificates from read-only mount to writable location
     cp -L ${CERTS_PATH}/public.crt ${writable_certs_path}/public.crt
     cp -L ${CERTS_PATH}/private.key ${writable_certs_path}/private.key

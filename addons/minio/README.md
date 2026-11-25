@@ -138,38 +138,46 @@ kubectl get secret -n demo minio-cluster-minio-account-root -o jsonpath="{.data.
 
 ### Storage class parity
 
-The cluster chart accepts separate STANDARD and RRS policies at creation:
-
-```yaml
-storageClass:
-  standard: "EC:0"
-  rrs: "EC:0"
-```
-
-Omit either key to keep MinIO's native configuration. An empty string restores
-that class's default. Each parity value must fit every erasure set, including
-sets in additional pools; replica count alone does not determine the limit.
-When both values are nonzero, STANDARD parity must be at least RRS parity.
-
-Dynamic reconfiguration uses the `apply_request` string in `storage-class.json`:
+MinIO Addon 1.0.4 exposes `standard` and `rrs` in the `storage-class`
+configuration template. Supply the following `storage-class.json` content
+through a component parameter template to set parity during creation:
 
 ```json
-{"requestID":"a-new-unique-id","parameters":{"standard":"EC:0","rrs":"EC:0"}}
+{"standard":"EC:1","rrs":"EC:0"}
 ```
 
-Use a new request ID for each new OpsRequest, including a new OpsRequest that
-retries a failed operation. Retain the ID while the same OpsRequest retries.
-The operation runs in the KubeBlocks reconfiguration queue, merges
-omitted keys with MinIO's current configuration, and applies the final pair
-without restarting MinIO. It completes only after native configuration and
-runtime parity agree on every server. Explicit initial policies are applied
-before the cluster enters Running. Applied policies persist across MinIO restarts. Do not set
-`MINIO_STORAGE_CLASS_STANDARD` or `MINIO_STORAGE_CLASS_RRS` environment overrides
-when using this feature.
+To change one class on a running cluster, submit a Reconfiguring OpsRequest:
 
-EC:0 has no parity protection. Lost drives can cause permanent data loss. Policy
-changes affect subsequent writes; existing objects are not automatically
-re-encoded, including when parity is increased again.
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  generateName: minio-parity-
+  namespace: demo
+spec:
+  type: Reconfiguring
+  clusterName: minio-cluster
+  reconfigures:
+    - componentName: minio
+      parameters:
+        - key: standard
+          value: "EC:0"
+```
+
+Each changed parameter takes effect without restarting MinIO. To restore a
+class's native default, set it to an empty string. Resetting a previously set
+value requires a KubeBlocks build containing the fix for
+[KubeBlocks #11151](https://github.com/apecloud/kubeblocks/issues/11151).
+Version 1.0.3-beta.22 can report success while retaining the previous parity.
+
+The Addon validates the combined settings against every erasure set and checks
+the native and runtime values on each server.
+Environment overrides `MINIO_STORAGE_CLASS_STANDARD` and
+`MINIO_STORAGE_CLASS_RRS` must be unset.
+
+The new parity applies to subsequent writes. Existing objects retain their
+encoding. Reducing parity lowers fault tolerance, and losing a drive with
+`EC:0` can permanently destroy affected objects.
 
 ### Horizontal scaling
 

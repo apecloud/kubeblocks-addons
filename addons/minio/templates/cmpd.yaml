@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "minio.labels" . | nindent 4 }}
   annotations:
-    apps.kubeblocks.io/minio-storage-class: "true"
     {{- include "minio.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
@@ -51,6 +50,11 @@ spec:
       template: {{ include "minio.scriptTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: minio-script
+      defaultMode: 0555
+    - name: storage-class-script
+      template: minio-storage-class-script-{{ .Chart.Version }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: storage-class-script
       defaultMode: 0555
   volumes:
     - name: data
@@ -132,10 +136,11 @@ spec:
         - patch
   lifecycleActions:
     postProvision:
-      timeoutSeconds: 120
+      # Each MinIO call has a deadline. Allow verification to visit every replica.
+      timeoutSeconds: -1
       exec:
         container: minio
-        command: ["/bin/bash", "/scripts/storage-class.sh"]
+        command: ["/bin/bash", "/minio-reload/storage-class.sh"]
         targetPodSelector: Any
     roleProbe:
       exec:
@@ -175,7 +180,11 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/startup.sh
+          - |-
+            if [[ "$TLS_ENABLED" == true ]]; then
+              cp -L "$CERTS_PATH/ca.crt" /kb-tools/minio-ca.crt || exit 1
+            fi
+            exec /scripts/startup.sh
         ports:
           - name: api
             protocol: TCP
@@ -201,6 +210,8 @@ spec:
             mountPath: /scripts
           - name: minio-replicas-config
             mountPath: /minio-config
+          - name: storage-class-script
+            mountPath: /minio-reload
           - name: minio-storage-class
             mountPath: /minio-storage-class
     volumes:
