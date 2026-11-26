@@ -51,6 +51,7 @@ spec:
         - |
           export BACKUP_CONCURRENCY={{ .Values.backupConcurrency | default 4 | quote }}
           {{- .Files.Get "dataprotection/cluster-common.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/selection.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/cluster-backup.sh" | nindent 10 }}
   restore:
     postReady:
@@ -61,4 +62,5 @@ spec:
             - -c
             - |
               {{- .Files.Get "dataprotection/cluster-common.sh" | nindent 14 }}
+              {{- .Files.Get "dataprotection/selection.sh" | nindent 14 }}
               {{- .Files.Get "dataprotection/cluster-restore.sh" | nindent 14 }}
